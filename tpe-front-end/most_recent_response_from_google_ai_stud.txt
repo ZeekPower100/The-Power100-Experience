@@ -1,0 +1,63 @@
+Excellent. This is a classic and very solvable error that happens when you move code from one framework or project setup to another.
+
+The error page is actually pointing out **two separate problems** in your `src/app/layout.tsx` file. Let's fix them one by one.
+
+---
+
+### **Problem 1: `Module not found: Can't resolve '@/utils'`**
+
+This is the main error. Your old project used a shortcut path called an "alias" (`@/`) to import files. Your new Next.js project understands this alias, but it can't find the `utils` file because we haven't created it yet.
+
+**The Fix:** We will create the utility file in the correct location (`src/lib`) and update the import statement.
+
+1.  **Create the file:** In the file explorer on the left, right-click on your `src/lib` folder and select "New File". Name it **`utils.ts`**.
+2.  **Add content to `utils.ts`:** You will need to move the `createPageUrl` function from your old project into this new file. For now, you can just put some placeholder code in `src/lib/utils.ts`:
+    ```typescript
+    // src/lib/utils.ts
+    export const createPageUrl = (path: string) => {
+      // Logic for creating a page URL will go here
+      return path;
+    };
+    ```
+3.  **Update the import:** In your `src/app/layout.tsx` file, change line 3 to import from the correct location:
+    *   **Change this:** `import { createPageUrl } from "@/utils";`
+    *   **To this:** `import { createPageUrl } from "@/lib/utils";`
+
+---
+
+### **Problem 2: Incorrect Routing Library**
+
+The second, hidden error is on line 2: `import { Link, useLocation } from "react-router-dom";`
+
+**Next.js does not use `react-router-dom`**. It has its own, more powerful built-in routing system. Using `react-router-dom` will break your application.
+
+**The Fix:** We need to replace these imports with the correct Next.js equivalents.
+
+1.  **Delete the incorrect import:** Remove line 2 entirely.
+2.  **Add the correct Next.js imports:** Next.js uses `next/link` for navigation and `next/navigation` for hooks that read the current URL. You will add these as needed.
+
+---
+
+### **Your Corrected `layout.tsx` File**
+
+Here is what the top of your `src/app/layout.tsx` file should look like after making all the changes. You can copy and paste this to fix the errors.
+
+```typescript
+// src/app/layout.tsx
+
+import React from 'react';
+// DELETED: import { Link, useLocation } from "react-router-dom";
+import { createPageUrl } from '@/lib/utils'; // <-- FIXED IMPORT PATH
+import { Crown, Users, Calendar, BarChart3, Settings } from "lucide-react";
+
+// You'll likely need these Next.js hooks later to replace useLocation
+import { usePathname } from 'next/navigation'; 
+// You'll use this component for navigation instead of the one from react-router-dom
+import Link from 'next/link'; 
+
+export default function Layout({ children, currentPageName }) {
+  // ... rest of your layout code
+}
+```
+
+After you have saved these changes, go back to your terminal and run `npm run dev` again. The build error should now be gone.
