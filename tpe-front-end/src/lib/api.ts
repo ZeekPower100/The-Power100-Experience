@@ -1,5 +1,5 @@
 // API Service Layer for The Power100 Experience
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5002/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5003/api';
 
 // Generic API request function
 async function apiRequest<T>(

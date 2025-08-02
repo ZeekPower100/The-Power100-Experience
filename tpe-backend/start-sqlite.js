@@ -2,7 +2,7 @@
 process.env.USE_SQLITE = 'true';
 process.env.NODE_ENV = 'development';
 process.env.JWT_SECRET = 'your-test-jwt-secret-key-for-development-only';
-process.env.PORT = '5002';
+process.env.PORT = '5003';
 
 console.log('🚀 Starting Power100 Backend in SQLite mode...');
 console.log('📊 Database: SQLite (in-memory)');

@@ -87,8 +87,10 @@ const verifyCode = async (req, res, next) => {
     });
   }
 
-  // Check if code matches
-  if (contractor.verification_code !== code) {
+  // Check if code matches (allow 123456 in development)
+  const isDevelopmentCode = process.env.NODE_ENV === 'development' && code === '123456';
+  
+  if (!isDevelopmentCode && contractor.verification_code !== code) {
     return res.status(400).json({
       error: 'Invalid verification code'
     });
