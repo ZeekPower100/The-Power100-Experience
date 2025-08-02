@@ -1,13 +1,13 @@
+"use client";
 
 import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { createPageUrl } from "@/utils";
+import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Contractor } from "@/entities/Contractor";
-import { StrategicPartner } from "@/entities/StrategicPartner";
-import { DemoBooking } from "@/entities/DemoBooking";
+import { Contractor } from "@/lib/types/contractor";
+import { StrategicPartner } from "@/lib/types/strategic_partner";
+import { DemoBooking } from "@/lib/types/demo_booking";
 import { 
   Users, 
   Handshake, 
@@ -22,10 +22,37 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 
+// Mock data for development
+// Extended type to include dashboard-specific fields
+interface DashboardContractor extends Partial<Contractor> {
+  current_stage?: string;
+  created_date?: string;
+}
+
+const MOCK_CONTRACTORS: DashboardContractor[] = [
+  { id: '1', name: 'John Smith', company_name: 'ABC Roofing', email: 'john@abc.com', phone: '555-0001', service_area: 'Dallas, TX', annual_revenue: '1m_5m', focus_areas: ['closing_higher_percentage', 'operational_efficiency'], current_stage: 'completed', created_date: new Date().toISOString() },
+  { id: '2', name: 'Jane Doe', company_name: 'XYZ Plumbing', email: 'jane@xyz.com', phone: '555-0002', service_area: 'Houston, TX', annual_revenue: '500k_1m', focus_areas: ['controlling_lead_flow'], current_stage: 'matching', created_date: new Date().toISOString() },
+  { id: '3', name: 'Bob Johnson', company_name: 'Solar Solutions', email: 'bob@solar.com', phone: '555-0003', service_area: 'Austin, TX', annual_revenue: '5m_10m', focus_areas: ['greenfield_growth', 'marketing_automation'], current_stage: 'completed', created_date: new Date().toISOString() },
+  { id: '4', name: 'Alice Brown', company_name: 'Green HVAC', email: 'alice@green.com', phone: '555-0004', service_area: 'San Antonio, TX', annual_revenue: 'under_500k', focus_areas: ['recession_proofing'], current_stage: 'profiling', created_date: new Date().toISOString() },
+  { id: '5', name: 'Charlie Davis', company_name: 'Home Remodelers', email: 'charlie@home.com', phone: '555-0005', service_area: 'Fort Worth, TX', annual_revenue: '1m_5m', focus_areas: ['closing_higher_percentage', 'controlling_lead_flow', 'operational_efficiency'], current_stage: 'completed', created_date: new Date().toISOString() },
+];
+
+const MOCK_PARTNERS: StrategicPartner[] = [
+  { id: '1', company_name: 'Buildr', is_active: true, power_confidence_score: 96, contact_email: 'contact@buildr.com', description: 'CRM Platform', website: 'https://buildr.com', focus_areas_served: ['closing_higher_percentage'], target_revenue_range: ['1m_5m'], logo_url: '', key_differentiators: [], client_testimonials: [], pricing_model: 'Subscription' },
+  { id: '2', company_name: 'MarketPro', is_active: true, power_confidence_score: 92, contact_email: 'contact@marketpro.com', description: 'Lead Generation', website: 'https://marketpro.com', focus_areas_served: ['controlling_lead_flow'], target_revenue_range: ['500k_1m'], logo_url: '', key_differentiators: [], client_testimonials: [], pricing_model: 'Pay per lead' },
+  { id: '3', company_name: 'FieldForce', is_active: false, power_confidence_score: 88, contact_email: 'contact@fieldforce.com', description: 'Field Management', website: 'https://fieldforce.com', focus_areas_served: ['operational_efficiency'], target_revenue_range: ['5m_10m'], logo_url: '', key_differentiators: [], client_testimonials: [], pricing_model: 'Per user' },
+];
+
+const MOCK_BOOKINGS: DemoBooking[] = [
+  { id: '1', contractor_id: '1', partner_id: '1', status: 'scheduled', scheduled_date: new Date(Date.now() + 86400000).toISOString(), notes: '', created_date: new Date().toISOString() },
+  { id: '2', contractor_id: '2', partner_id: '2', status: 'scheduled', scheduled_date: new Date(Date.now() + 172800000).toISOString(), notes: '', created_date: new Date().toISOString() },
+  { id: '3', contractor_id: '3', partner_id: '1', status: 'completed', scheduled_date: new Date(Date.now() - 86400000).toISOString(), notes: 'Demo went well', created_date: new Date().toISOString() },
+];
+
 export default function AdminDashboard() {
-  const [contractors, setContractors] = useState([]);
-  const [partners, setPartners] = useState([]);
-  const [bookings, setBookings] = useState([]);
+  const [contractors, setContractors] = useState<DashboardContractor[]>([]);
+  const [partners, setPartners] = useState<StrategicPartner[]>([]);
+  const [bookings, setBookings] = useState<DemoBooking[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -34,15 +61,12 @@ export default function AdminDashboard() {
 
   const loadDashboardData = async () => {
     try {
-      const [contractorsData, partnersData, bookingsData] = await Promise.all([
-        Contractor.list("-created_date"),
-        StrategicPartner.list("-created_date"),
-        DemoBooking.list("-created_date")
-      ]);
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
-      setContractors(contractorsData);
-      setPartners(partnersData);
-      setBookings(bookingsData);
+      setContractors(MOCK_CONTRACTORS);
+      setPartners(MOCK_PARTNERS);
+      setBookings(MOCK_BOOKINGS);
     } catch (error) {
       console.error("Error loading dashboard data:", error);
     } finally {
@@ -50,7 +74,7 @@ export default function AdminDashboard() {
     }
   };
 
-  const getStageCount = (stage) => {
+  const getStageCount = (stage: string) => {
     return contractors.filter(c => c.current_stage === stage).length;
   };
 
@@ -79,7 +103,7 @@ export default function AdminDashboard() {
       title: "Active Partners", 
       value: partners.filter(p => p.is_active).length,
       icon: Handshake,
-      color: "bg-[var(--power100-red)]", 
+      color: "bg-power100-red", 
       description: `Avg confidence: ${Math.round(partners.reduce((sum, p) => sum + (p.power_confidence_score || 0), 0) / (partners.length || 1))}`
     },
     {
@@ -93,7 +117,7 @@ export default function AdminDashboard() {
       title: "Completion Rate",
       value: `${getCompletionRate()}%`,
       icon: TrendingUp,
-      color: "bg-[var(--power100-green)]",
+      color: "bg-power100-green",
       description: "Contractors who completed full flow"
     }
   ];
@@ -105,7 +129,7 @@ export default function AdminDashboard() {
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="w-12 h-12 power100-red-gradient rounded-xl flex items-center justify-center mx-auto mb-4"
+            className="w-12 h-12 bg-gradient-to-br from-power100-red to-red-700 rounded-xl flex items-center justify-center mx-auto mb-4"
           >
             <BarChart3 className="w-6 h-6 text-white" />
           </motion.div>
@@ -116,23 +140,23 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[var(--power100-bg-grey)] p-6">
+    <div className="min-h-screen bg-power100-bg-grey p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-4xl font-bold text-black mb-2">Admin Dashboard</h1>
-              <p className="text-lg text-[var(--power100-grey)]">Power100 Experience Analytics & Management</p>
+              <p className="text-lg text-power100-grey">Power100 Experience Analytics & Management</p>
             </div>
             <div className="flex gap-3">
-              <Link to={createPageUrl("ManagePartners")}>
+              <Link href="/admindashboard/partners">
                 <Button variant="outline" className="h-11">
                   <Handshake className="w-4 h-4 mr-2" />
                   Manage Partners
                 </Button>
               </Link>
-              <Link to={createPageUrl("ManageBookings")}>
+              <Link href="/admindashboard/bookings">
                 <Button variant="outline" className="h-11">
                   <Calendar className="w-4 h-4 mr-2" />
                   View Bookings
@@ -266,7 +290,7 @@ export default function AdminDashboard() {
                       <div className="flex items-center space-x-2">
                         <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div 
-                            className="h-full power100-red-gradient rounded-full transition-all duration-500"
+                            className="h-full bg-gradient-to-r from-power100-red to-red-600 rounded-full transition-all duration-500"
                             style={{ width: `${percentage}%` }}
                           ></div>
                         </div>
@@ -282,7 +306,7 @@ export default function AdminDashboard() {
             <Card className="bg-white/70 border-0 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <Star className="w-5 h-5 text-[var(--power100-red)]" />
+                  <Star className="w-5 h-5 text-power100-red" />
                   <span>Top Partners</span>
                 </CardTitle>
               </CardHeader>
@@ -301,8 +325,8 @@ export default function AdminDashboard() {
                         </div>
                         <div className="text-right">
                           <div className="flex items-center space-x-1">
-                            <Star className="w-3 h-3 text-[var(--power100-red)] fill-current" />
-                            <span className="text-sm font-semibold text-[var(--power100-red)]">
+                            <Star className="w-3 h-3 text-power100-red fill-current" />
+                            <span className="text-sm font-semibold text-power100-red">
                               {partner.power_confidence_score || 0}
                             </span>
                           </div>
@@ -322,13 +346,13 @@ export default function AdminDashboard() {
                 <CardTitle>Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Link to={createPageUrl("ManagePartners")} className="block">
+                <Link href="/admindashboard/partners" className="block">
                   <Button variant="outline" className="w-full justify-start">
                     <Handshake className="w-4 h-4 mr-2" />
                     Add New Partner
                   </Button>
                 </Link>
-                <Link to={createPageUrl("Welcome")} className="block">
+                <Link href="/contractorflow" className="block">
                   <Button variant="outline" className="w-full justify-start">
                     <ArrowRight className="w-4 h-4 mr-2" />
                     Test Contractor Flow

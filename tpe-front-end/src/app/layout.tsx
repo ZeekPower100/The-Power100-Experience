@@ -3,7 +3,7 @@
 import React from 'react';
 import './globals.css';
 // import { createPageUrl } from '@/lib/utils'; // <-- Bypassed for now
-import { Crown, Users, Calendar, BarChart3, Settings } from "lucide-react";
+import { Crown, Users, Calendar, BarChart3 } from "lucide-react";
 import { usePathname } from 'next/navigation'; 
 import Link from 'next/link'; 
 

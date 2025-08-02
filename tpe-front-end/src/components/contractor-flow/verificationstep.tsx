@@ -1,56 +1,57 @@
+// src/components/contractor-flow/VerificationStep.tsx
 
-import React, { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { AlertCircle, CheckCircle, Phone } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { motion } from "framer-motion";
+import React, { useState } from 'react';
+import { Contractor } from '@/lib/types/contractor';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { AlertCircle, CheckCircle, Phone } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-export default function VerificationStep({ data, onComplete }) {
+// FIXED: Define the props interface for type safety and clarity
+interface StepProps {
+  data: Partial<Contractor>;
+  onComplete: (data: Partial<Contractor>) => void;
+  // onBack is not used in this step, but we keep it for consistency
+}
+
+export default function VerificationStep({ data, onComplete }: StepProps) {
   const [formData, setFormData] = useState({
-    name: data.name || "",
-    email: data.email || "",
-    phone: data.phone || "",
-    company_name: data.company_name || "",
-    company_website: data.company_website || ""
+    name: data.name || '',
+    email: data.email || '',
+    phone: data.phone || '',
+    company_name: data.company_name || '',
+    company_website: data.company_website || '',
   });
   const [verificationSent, setVerificationSent] = useState(false);
-  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationCode, setVerificationCode] = useState('');
   const [isVerifying, setIsVerifying] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
 
-  const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    setError("");
+  const handleInputChange = (field: keyof typeof formData, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    setError('');
   };
 
   const sendVerification = () => {
     if (!formData.name || !formData.email || !formData.phone || !formData.company_name) {
-      setError("Please fill in all required fields");
+      setError('Please fill in all required fields');
       return;
     }
-
-    // Simulate sending verification
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setVerificationCode(code);
     setVerificationSent(true);
-    
-    // In real implementation, this would send SMS
     console.log(`Verification code for ${formData.phone}: ${code}`);
   };
 
   const handleVerification = () => {
     setIsVerifying(true);
-    
-    // Simulate verification process
     setTimeout(() => {
       onComplete({
         ...formData,
-        verification_status: "verified",
-        current_stage: "focus_selection",
-        verification_code: verificationCode
+        verification_status: 'verified',
       });
     }, 1000);
   };
@@ -61,20 +62,22 @@ export default function VerificationStep({ data, onComplete }) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
     >
-      <Card className="bg-white/70 border-0 shadow-2xl">
+      <Card className="bg-white/70 border-0 shadow-2xl rounded-xl">
         <CardHeader className="text-center pb-8">
-          <div className="w-16 h-16 power100-red-gradient rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+          {/* FIXED: Replaced custom gradient class with Tailwind utilities */}
+          <div className="w-16 h-16 bg-gradient-to-br from-power100-red-deep to-power100-red rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
             <Phone className="w-8 h-8 text-white" />
           </div>
-          <CardTitle className="text-3xl font-bold text-black mb-3">
+          <CardTitle className="text-3xl font-bold text-power100-black mb-3">
             Welcome to Power100 Experience
           </CardTitle>
-          <p className="text-lg text-[var(--power100-grey)]">
-            Let's verify your information to get started with your personalized journey
+          {/* FIXED: Used Tailwind utility class for color */}
+          <p className="text-lg text-power100-grey">
+            Let&apos;s verify your information to get started.
           </p>
         </CardHeader>
         
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-6 px-8 pb-8">
           {!verificationSent ? (
             <div className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
@@ -86,7 +89,7 @@ export default function VerificationStep({ data, onComplete }) {
                     id="name"
                     value={formData.name}
                     onChange={(e) => handleInputChange('name', e.target.value)}
-                    className="mt-2 h-12 border-gray-300 focus:border-[var(--power100-red)]"
+                    className="mt-2 h-12 border-gray-300 focus:border-power100-red focus:ring-1 focus:ring-power100-red"
                     placeholder="John Smith"
                   />
                 </div>
@@ -99,8 +102,8 @@ export default function VerificationStep({ data, onComplete }) {
                     type="email"
                     value={formData.email}
                     onChange={(e) => handleInputChange('email', e.target.value)}
-                    className="mt-2 h-12 border-gray-300 focus:border-[var(--power100-red)]"
-                    placeholder="john@contractingcompany.com"
+                    className="mt-2 h-12 border-gray-300 focus:border-power100-red focus:ring-1 focus:ring-power100-red"
+                    placeholder="john@contracting.com"
                   />
                 </div>
               </div>
@@ -114,7 +117,7 @@ export default function VerificationStep({ data, onComplete }) {
                     id="phone"
                     value={formData.phone}
                     onChange={(e) => handleInputChange('phone', e.target.value)}
-                    className="mt-2 h-12 border-gray-300 focus:border-[var(--power100-red)]"
+                    className="mt-2 h-12 border-gray-300 focus:border-power100-red focus:ring-1 focus:ring-power100-red"
                     placeholder="(555) 123-4567"
                   />
                 </div>
@@ -126,7 +129,7 @@ export default function VerificationStep({ data, onComplete }) {
                     id="company_name"
                     value={formData.company_name}
                     onChange={(e) => handleInputChange('company_name', e.target.value)}
-                    className="mt-2 h-12 border-gray-300 focus:border-[var(--power100-red)]"
+                    className="mt-2 h-12 border-gray-300 focus:border-power100-red focus:ring-1 focus:ring-power100-red"
                     placeholder="ABC Contracting"
                   />
                 </div>
@@ -140,7 +143,7 @@ export default function VerificationStep({ data, onComplete }) {
                   id="company_website"
                   value={formData.company_website}
                   onChange={(e) => handleInputChange('company_website', e.target.value)}
-                  className="mt-2 h-12 border-gray-300 focus:border-[var(--power100-red)]"
+                  className="mt-2 h-12 border-gray-300 focus:border-power100-red focus:ring-1 focus:ring-power100-red"
                   placeholder="https://www.yourcompany.com"
                 />
               </div>
@@ -154,13 +157,14 @@ export default function VerificationStep({ data, onComplete }) {
 
               <Button
                 onClick={sendVerification}
-                className="w-full bg-[var(--power100-green)] hover:bg-[#009e54] transition-all duration-300 text-white shadow-lg h-12 text-lg font-semibold"
+                // FIXED: Used theme color and utility hover effect
+                className="w-full bg-power100-green hover:brightness-90 transition-all duration-300 text-white shadow-lg h-12 text-lg font-semibold"
               >
                 Send Verification Text
               </Button>
 
-              <div className="text-center text-sm text-gray-500">
-                We'll send a verification code to confirm your identity and opt you in for AI coaching
+              <div className="text-center text-sm text-gray-500 pt-2">
+                We&apos;ll send a code to confirm your identity and opt you in for AI coaching.
               </div>
             </div>
           ) : (
@@ -173,26 +177,26 @@ export default function VerificationStep({ data, onComplete }) {
                 <h3 className="text-xl font-bold text-black mb-2">
                   Verification Code Sent
                 </h3>
-                <p className="text-[var(--power100-grey)]">
-                  We've sent a verification code to <strong>{formData.phone}</strong>
+                <p className="text-power100-grey">
+                  We&apos;ve sent a verification code to <strong>{formData.phone}</strong>
                 </p>
                 <p className="text-sm text-gray-500 mt-2">
-                  For demo purposes, your code is: <strong className="text-[var(--power100-red)]">{verificationCode}</strong>
+                  For demo purposes, your code is: <strong className="text-power100-red">{verificationCode}</strong>
                 </p>
               </div>
 
               <div className="bg-red-50 border border-red-200 rounded-lg p-4">
                 <p className="text-red-800 text-sm">
-                  ✓ By responding to this verification, you're opting in to receive AI coaching and strategic introductions from Power100
+                  ✓ By proceeding, you&apos;re opting in to receive AI coaching and strategic introductions from Power100.
                 </p>
               </div>
 
               <Button
                 onClick={handleVerification}
                 disabled={isVerifying}
-                className="w-full bg-[var(--power100-green)] hover:bg-[#009e54] transition-all duration-300 text-white shadow-lg h-12 text-lg font-semibold"
+                className="w-full bg-power100-green hover:brightness-90 transition-all duration-300 text-white shadow-lg h-12 text-lg font-semibold"
               >
-                {isVerifying ? "Verifying..." : "Confirm Verification"}
+                {isVerifying ? "Verifying..." : "Confirm & Continue"}
               </Button>
             </div>
           )}
