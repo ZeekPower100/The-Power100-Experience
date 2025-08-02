@@ -13,8 +13,9 @@ import { motion } from 'framer-motion';
 // Define the props interface for type safety
 interface StepProps {
   data: Partial<Contractor>;
-  onComplete: (data: Partial<Contractor>) => void;
-  onBack: (() => void) | null;
+  onNext: () => void;
+  onPrev?: () => void;
+  onUpdate: (data: Partial<Contractor>) => void;
 }
 
 const focusAreaOptions: { id: FocusArea; title: string; description: string }[] = [
@@ -30,7 +31,7 @@ const focusAreaOptions: { id: FocusArea; title: string; description: string }[] 
   { id: 'financial_management', title: 'Financial Management', description: 'Improving cash flow and profitability.' }
 ];
 
-export default function FocusSelectionStep({ data, onComplete, onBack }: StepProps) {
+export default function FocusSelectionStep({ data, onNext, onPrev, onUpdate }: StepProps) {
   const [selectedAreas, setSelectedAreas] = useState<FocusArea[]>(data.focus_areas || []);
   const [error, setError] = useState('');
 
@@ -54,7 +55,8 @@ export default function FocusSelectionStep({ data, onComplete, onBack }: StepPro
       return;
     }
     setError(''); // Clear error on successful continue
-    onComplete({ focus_areas: selectedAreas });
+    onUpdate({ focus_areas: selectedAreas, primary_focus_area: selectedAreas[0] });
+    onNext();
   };
 
   return (
@@ -65,7 +67,7 @@ export default function FocusSelectionStep({ data, onComplete, onBack }: StepPro
     >
       <Card className="bg-white/70 border-0 shadow-2xl rounded-xl">
         <CardHeader className="text-center pb-8">
-          <div className="w-16 h-16 bg-gradient-to-br from-power100-red-deep to-power100-red rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+          <div className="w-16 h-16 bg-gradient-to-br from-power100-red to-red-700 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
             <Target className="w-8 h-8 text-white" />
           </div>
           <CardTitle className="text-3xl font-bold text-power100-black mb-3">
@@ -142,10 +144,10 @@ export default function FocusSelectionStep({ data, onComplete, onBack }: StepPro
           )}
 
           <div className="flex gap-4 pt-6">
-            {onBack && (
+            {onPrev && (
               <Button
                 variant="outline"
-                onClick={onBack}
+                onClick={onPrev}
                 className="flex-1 h-12 text-lg"
               >
                 Back
