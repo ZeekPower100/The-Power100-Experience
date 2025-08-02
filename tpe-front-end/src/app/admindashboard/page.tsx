@@ -5,9 +5,8 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Contractor } from "@/lib/types/contractor";
-import { StrategicPartner } from "@/lib/types/strategic_partner";
-import { DemoBooking } from "@/lib/types/demo_booking";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { contractorApi, partnerApi, bookingApi } from "@/lib/api";
 import { 
   Users, 
   Handshake, 
@@ -18,122 +17,144 @@ import {
   CheckCircle,
   ArrowRight,
   BarChart3,
-  Target
+  Target,
+  AlertTriangle
 } from "lucide-react";
 import { motion } from "framer-motion";
 
-// Mock data for development
-// Extended type to include dashboard-specific fields
-interface DashboardContractor extends Partial<Contractor> {
-  current_stage?: string;
-  created_date?: string;
+interface DashboardStats {
+  contractors: {
+    total: number;
+    completed: number;
+    new_this_week: number;
+    completion_rate: number;
+  };
+  partners: {
+    total: number;
+    active: number;
+    avg_confidence_score: number;
+  };
+  bookings: {
+    total: number;
+    upcoming: number;
+    completed: number;
+    new_this_week: number;
+  };
 }
 
-const MOCK_CONTRACTORS: DashboardContractor[] = [
-  { id: '1', name: 'John Smith', company_name: 'ABC Roofing', email: 'john@abc.com', phone: '555-0001', service_area: 'Dallas, TX', annual_revenue: '1m_5m', focus_areas: ['closing_higher_percentage', 'operational_efficiency'], current_stage: 'completed', created_date: new Date().toISOString() },
-  { id: '2', name: 'Jane Doe', company_name: 'XYZ Plumbing', email: 'jane@xyz.com', phone: '555-0002', service_area: 'Houston, TX', annual_revenue: '500k_1m', focus_areas: ['controlling_lead_flow'], current_stage: 'matching', created_date: new Date().toISOString() },
-  { id: '3', name: 'Bob Johnson', company_name: 'Solar Solutions', email: 'bob@solar.com', phone: '555-0003', service_area: 'Austin, TX', annual_revenue: '5m_10m', focus_areas: ['greenfield_growth', 'marketing_automation'], current_stage: 'completed', created_date: new Date().toISOString() },
-  { id: '4', name: 'Alice Brown', company_name: 'Green HVAC', email: 'alice@green.com', phone: '555-0004', service_area: 'San Antonio, TX', annual_revenue: 'under_500k', focus_areas: ['recession_proofing'], current_stage: 'profiling', created_date: new Date().toISOString() },
-  { id: '5', name: 'Charlie Davis', company_name: 'Home Remodelers', email: 'charlie@home.com', phone: '555-0005', service_area: 'Fort Worth, TX', annual_revenue: '1m_5m', focus_areas: ['closing_higher_percentage', 'controlling_lead_flow', 'operational_efficiency'], current_stage: 'completed', created_date: new Date().toISOString() },
-];
+interface RecentContractor {
+  id: string;
+  name: string;
+  company_name: string;
+  email: string;
+  current_stage?: string;
+  created_at: string;
+}
 
-const MOCK_PARTNERS: StrategicPartner[] = [
-  { id: '1', company_name: 'Buildr', is_active: true, power_confidence_score: 96, contact_email: 'contact@buildr.com', description: 'CRM Platform', website: 'https://buildr.com', focus_areas_served: ['closing_higher_percentage'], target_revenue_range: ['1m_5m'], logo_url: '', key_differentiators: [], client_testimonials: [], pricing_model: 'Subscription' },
-  { id: '2', company_name: 'MarketPro', is_active: true, power_confidence_score: 92, contact_email: 'contact@marketpro.com', description: 'Lead Generation', website: 'https://marketpro.com', focus_areas_served: ['controlling_lead_flow'], target_revenue_range: ['500k_1m'], logo_url: '', key_differentiators: [], client_testimonials: [], pricing_model: 'Pay per lead' },
-  { id: '3', company_name: 'FieldForce', is_active: false, power_confidence_score: 88, contact_email: 'contact@fieldforce.com', description: 'Field Management', website: 'https://fieldforce.com', focus_areas_served: ['operational_efficiency'], target_revenue_range: ['5m_10m'], logo_url: '', key_differentiators: [], client_testimonials: [], pricing_model: 'Per user' },
-];
-
-const MOCK_BOOKINGS: DemoBooking[] = [
-  { id: '1', contractor_id: '1', partner_id: '1', status: 'scheduled', scheduled_date: new Date(Date.now() + 86400000).toISOString(), notes: '', created_date: new Date().toISOString() },
-  { id: '2', contractor_id: '2', partner_id: '2', status: 'scheduled', scheduled_date: new Date(Date.now() + 172800000).toISOString(), notes: '', created_date: new Date().toISOString() },
-  { id: '3', contractor_id: '3', partner_id: '1', status: 'completed', scheduled_date: new Date(Date.now() - 86400000).toISOString(), notes: 'Demo went well', created_date: new Date().toISOString() },
-];
+interface RecentPartner {
+  id: string;
+  company_name: string;
+  power_confidence_score?: number;
+  is_active: boolean;
+}
 
 export default function AdminDashboard() {
-  const [contractors, setContractors] = useState<DashboardContractor[]>([]);
-  const [partners, setPartners] = useState<StrategicPartner[]>([]);
-  const [bookings, setBookings] = useState<DemoBooking[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [recentContractors, setRecentContractors] = useState<RecentContractor[]>([]);
+  const [topPartners, setTopPartners] = useState<RecentPartner[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadDashboardData();
   }, []);
 
   const loadDashboardData = async () => {
+    setLoading(true);
+    setError(null);
+
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      setContractors(MOCK_CONTRACTORS);
-      setPartners(MOCK_PARTNERS);
-      setBookings(MOCK_BOOKINGS);
-    } catch (error) {
-      console.error("Error loading dashboard data:", error);
+      // Load data from multiple endpoints
+      const [contractorsResponse, partnersResponse, bookingsResponse] = await Promise.all([
+        contractorApi.getAll({ limit: 10 }).catch(() => ({ contractors: [], count: 0 })),
+        partnerApi.getAll({ limit: 5 }).catch(() => ({ partners: [] })),
+        bookingApi.getAll({ limit: 5 }).catch(() => ({ bookings: [] }))
+      ]);
+
+      // Calculate stats from the data
+      const contractorStats = {
+        total: contractorsResponse.count || contractorsResponse.contractors?.length || 0,
+        completed: contractorsResponse.contractors?.filter((c: any) => c.current_stage === 'completed').length || 0,
+        new_this_week: contractorsResponse.contractors?.filter((c: any) => {
+          const createdDate = new Date(c.created_at || c.created_date);
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          return createdDate > weekAgo;
+        }).length || 0,
+        completion_rate: 0
+      };
+
+      contractorStats.completion_rate = contractorStats.total > 0 
+        ? Math.round((contractorStats.completed / contractorStats.total) * 100)
+        : 0;
+
+      const partnerStats = {
+        total: partnersResponse.partners?.length || 0,
+        active: partnersResponse.partners?.filter((p: any) => p.is_active).length || 0,
+        avg_confidence_score: partnersResponse.partners?.length > 0
+          ? Math.round(partnersResponse.partners.reduce((sum: number, p: any) => sum + (p.power_confidence_score || 0), 0) / partnersResponse.partners.length)
+          : 0
+      };
+
+      const bookingStats = {
+        total: bookingsResponse.bookings?.length || 0,
+        upcoming: bookingsResponse.bookings?.filter((b: any) => b.status === 'scheduled' && new Date(b.scheduled_date) > new Date()).length || 0,
+        completed: bookingsResponse.bookings?.filter((b: any) => b.status === 'completed').length || 0,
+        new_this_week: bookingsResponse.bookings?.filter((b: any) => {
+          const createdDate = new Date(b.created_at || b.created_date);
+          const weekAgo = new Date();
+          weekAgo.setDate(weekAgo.getDate() - 7);
+          return createdDate > weekAgo;
+        }).length || 0
+      };
+
+      setStats({
+        contractors: contractorStats,
+        partners: partnerStats,
+        bookings: bookingStats
+      });
+
+      setRecentContractors(contractorsResponse.contractors?.slice(0, 5) || []);
+      setTopPartners(partnersResponse.partners?.slice(0, 3) || []);
+
+    } catch (err: any) {
+      console.error('Dashboard error:', err);
+      setError(err.message || 'Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
   };
 
   const getStageCount = (stage: string) => {
-    return contractors.filter(c => c.current_stage === stage).length;
+    return recentContractors.filter(c => c.current_stage === stage).length;
   };
 
-  const getCompletionRate = () => {
-    if (contractors.length === 0) return 0;
-    return Math.round((getStageCount('completed') / contractors.length) * 100);
+  const getStageColor = (stage: string) => {
+    const colors = {
+      verification: "bg-yellow-500",
+      focus_selection: "bg-blue-500", 
+      profiling: "bg-purple-500",
+      matching: "bg-orange-500",
+      completed: "bg-power100-green"
+    };
+    return colors[stage as keyof typeof colors] || "bg-gray-500";
   };
-
-  const getRecentContractors = () => {
-    return contractors.slice(0, 5);
-  };
-
-  const getPendingBookings = () => {
-    return bookings.filter(b => b.status === 'scheduled').length;
-  };
-
-  const statsCards = [
-    {
-      title: "Total Contractors",
-      value: contractors.length,
-      icon: Users,
-      color: "bg-gray-700",
-      description: `${getStageCount('completed')} completed the experience`
-    },
-    {
-      title: "Active Partners", 
-      value: partners.filter(p => p.is_active).length,
-      icon: Handshake,
-      color: "bg-power100-red", 
-      description: `Avg confidence: ${Math.round(partners.reduce((sum, p) => sum + (p.power_confidence_score || 0), 0) / (partners.length || 1))}`
-    },
-    {
-      title: "Demo Bookings",
-      value: bookings.length,
-      icon: Calendar,
-      color: "bg-gray-700",
-      description: `${getPendingBookings()} pending this week`
-    },
-    {
-      title: "Completion Rate",
-      value: `${getCompletionRate()}%`,
-      icon: TrendingUp,
-      color: "bg-power100-green",
-      description: "Contractors who completed full flow"
-    }
-  ];
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="w-12 h-12 bg-gradient-to-br from-power100-red to-red-700 rounded-xl flex items-center justify-center mx-auto mb-4"
-          >
-            <BarChart3 className="w-6 h-6 text-white" />
-          </motion.div>
-          <p className="text-gray-600">Loading dashboard...</p>
+      <div className="min-h-screen bg-power100-bg-grey p-6">
+        <div className="flex justify-center items-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-power100-red"></div>
         </div>
       </div>
     );
@@ -144,220 +165,249 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center space-x-4 mb-4"
+          >
+            <div className="w-12 h-12 bg-gradient-to-br from-power100-red to-red-700 rounded-xl flex items-center justify-center mx-auto mb-4">
+              <BarChart3 className="w-6 h-6 text-white" />
+            </div>
             <div>
-              <h1 className="text-4xl font-bold text-black mb-2">Admin Dashboard</h1>
+              <h1 className="text-4xl font-bold text-power100-black">Power100 Dashboard</h1>
               <p className="text-lg text-power100-grey">Power100 Experience Analytics & Management</p>
             </div>
-            <div className="flex gap-3">
-              <Link href="/admindashboard/partners">
-                <Button variant="outline" className="h-11">
-                  <Handshake className="w-4 h-4 mr-2" />
-                  Manage Partners
-                </Button>
-              </Link>
-              <Link href="/admindashboard/bookings">
-                <Button variant="outline" className="h-11">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  View Bookings
-                </Button>
-              </Link>
-            </div>
-          </div>
+          </motion.div>
         </div>
+
+        {/* Error Alert */}
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              {error}. Some features may use fallback data.
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Stats Cards */}
-        <div className="grid lg:grid-cols-4 md:grid-cols-2 gap-6 mb-8">
-          {statsCards.map((stat, index) => (
-            <motion.div
-              key={stat.title}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: index * 0.1 }}
-            >
-              <Card className="bg-white/70 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-12 h-12 ${stat.color} rounded-xl flex items-center justify-center shadow-lg`}>
-                      <stat.icon className="w-6 h-6 text-white" />
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl font-bold text-black">{stat.value}</div>
-                      <div className="text-sm font-medium text-gray-500">{stat.title}</div>
-                    </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Total Contractors */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+            <Card className="bg-white hover:shadow-lg transition-all duration-300">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total Contractors</p>
+                    <p className="text-2xl font-bold text-power100-black">{stats?.contractors.total || 0}</p>
+                    <p className="text-xs text-green-600">+{stats?.contractors.new_this_week || 0} this week</p>
                   </div>
-                  <p className="text-sm text-gray-600">{stat.description}</p>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                  <Users className="w-8 h-8 text-power100-red" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Active Partners */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+            <Card className="bg-white hover:shadow-lg transition-all duration-300">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Active Partners</p>
+                    <p className="text-2xl font-bold text-power100-black">{stats?.partners.active || 0}</p>
+                    <p className="text-xs text-gray-500">of {stats?.partners.total || 0} total</p>
+                  </div>
+                  <Handshake className="w-8 h-8 text-power100-red" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Demo Bookings */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+            <Card className="bg-white hover:shadow-lg transition-all duration-300">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Demo Bookings</p>
+                    <p className="text-2xl font-bold text-power100-black">{stats?.bookings.total || 0}</p>
+                    <p className="text-xs text-blue-600">{stats?.bookings.upcoming || 0} upcoming</p>
+                  </div>
+                  <Calendar className="w-8 h-8 text-power100-red" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Completion Rate */}
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+            <Card className="bg-white hover:shadow-lg transition-all duration-300">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Completion Rate</p>
+                    <p className="text-2xl font-bold text-power100-black">{stats?.contractors.completion_rate || 0}%</p>
+                    <p className="text-xs text-green-600">{stats?.contractors.completed || 0} completed</p>
+                  </div>
+                  <Target className="w-8 h-8 text-power100-red" />
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Recent Contractors */}
           <div className="lg:col-span-2">
-            <Card className="bg-white/70 border-0 shadow-lg">
-              <CardHeader className="border-b border-gray-100">
-                <CardTitle className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Users className="w-5 h-5 text-gray-600" />
-                    <span>Recent Contractors</span>
-                  </div>
-                  <Badge variant="outline">{contractors.length} total</Badge>
-                </CardTitle>
+            <Card className="bg-white">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-xl font-semibold">Recent Contractors</CardTitle>
+                <Link href="/admindashboard/contractors">
+                  <Button variant="outline" className="h-11">
+                    <Users className="w-4 h-4 mr-2" />
+                    View All
+                  </Button>
+                </Link>
               </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-gray-100">
-                  {getRecentContractors().map((contractor) => (
-                    <div key={contractor.id} className="p-4 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center">
-                              <span className="text-gray-700 font-semibold text-sm">
-                                {contractor.name ? contractor.name[0].toUpperCase() : 'C'}
-                              </span>
-                            </div>
-                            <div>
-                              <h4 className="font-semibold text-black">{contractor.name}</h4>
-                              <p className="text-sm text-gray-600">{contractor.company_name}</p>
-                            </div>
+              <CardContent>
+                <div className="space-y-4">
+                  {recentContractors.length > 0 ? (
+                    recentContractors.map((contractor, index) => (
+                      <motion.div 
+                        key={contractor.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="flex items-center justify-between p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-power100-red rounded-full flex items-center justify-center text-white font-semibold">
+                            {contractor.name?.charAt(0) || 'C'}
                           </div>
-                          <div className="mt-2 flex items-center space-x-4 text-sm text-gray-500">
-                            <span>{contractor.service_area}</span>
-                            <span>•</span>
-                            <span>{contractor.annual_revenue?.replace(/_/g, ' ')}</span>
-                            {contractor.focus_areas && contractor.focus_areas.length > 0 && (
-                              <>
-                                <span>•</span>
-                                <span>{contractor.focus_areas.length} focus areas</span>
-                              </>
-                            )}
+                          <div>
+                            <h4 className="font-medium text-power100-black">{contractor.name}</h4>
+                            <p className="text-sm text-gray-500">{contractor.company_name}</p>
+                            <p className="text-xs text-gray-400">{contractor.email}</p>
                           </div>
                         </div>
                         <div className="text-right">
                           <Badge 
-                            variant={contractor.current_stage === 'completed' ? 'default' : 'secondary'}
-                            className={contractor.current_stage === 'completed' ? 'bg-green-100 text-green-800' : ''}
+                            variant="secondary" 
+                            className={`${getStageColor(contractor.current_stage || 'verification')} text-white`}
                           >
-                            {contractor.current_stage?.replace(/_/g, ' ')}
+                            {(contractor.current_stage || 'verification').replace('_', ' ')}
                           </Badge>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {new Date(contractor.created_date).toLocaleDateString()}
-                          </div>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {new Date(contractor.created_at).toLocaleDateString()}
+                          </p>
                         </div>
-                      </div>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>No contractors found</p>
                     </div>
-                  ))}
+                  )}
                 </div>
-                {contractors.length === 0 && (
-                  <div className="p-8 text-center text-gray-500">
-                    <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                    <p>No contractors have started the experience yet</p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Quick Stats & Actions */}
+          {/* Right Column */}
           <div className="space-y-6">
-            {/* Pipeline Stats */}
-            <Card className="bg-white/70 border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <BarChart3 className="w-5 h-5 text-gray-600" />
-                  <span>Pipeline Progress</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {[
-                  { stage: 'verification', label: 'Verification', icon: Clock },
-                  { stage: 'focus_selection', label: 'Focus Areas', icon: Target },
-                  { stage: 'profiling', label: 'Profiling', icon: Users },
-                  { stage: 'matching', label: 'Matching', icon: Star },
-                  { stage: 'completed', label: 'Completed', icon: CheckCircle }
-                ].map((item) => {
-                  const count = getStageCount(item.stage);
-                  const percentage = contractors.length > 0 ? (count / contractors.length) * 100 : 0;
-                  
-                  return (
-                    <div key={item.stage} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <item.icon className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-700">{item.label}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-16 h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-power100-red to-red-600 rounded-full transition-all duration-500"
-                            style={{ width: `${percentage}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm font-medium text-black w-8 text-right">{count}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </CardContent>
-            </Card>
-
-            {/* Top Partners */}
-            <Card className="bg-white/70 border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Star className="w-5 h-5 text-power100-red" />
-                  <span>Top Partners</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {partners
-                    .sort((a, b) => (b.power_confidence_score || 0) - (a.power_confidence_score || 0))
-                    .slice(0, 3)
-                    .map((partner) => (
-                      <div key={partner.id} className="flex items-center justify-between">
-                        <div>
-                          <h4 className="font-medium text-black text-sm">{partner.company_name}</h4>
-                          <p className="text-xs text-gray-500">
-                            {partner.focus_areas_served?.length || 0} focus areas
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <div className="flex items-center space-x-1">
-                            <Star className="w-3 h-3 text-power100-red fill-current" />
-                            <span className="text-sm font-semibold text-power100-red">
-                              {partner.power_confidence_score || 0}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                </div>
-                {partners.length === 0 && (
-                  <p className="text-sm text-gray-500 text-center py-4">No partners added yet</p>
-                )}
-              </CardContent>
-            </Card>
-
             {/* Quick Actions */}
-            <Card className="bg-white/70 border-0 shadow-lg">
+            <Card className="bg-white">
               <CardHeader>
-                <CardTitle>Quick Actions</CardTitle>
+                <CardTitle className="text-xl font-semibold">Quick Actions</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <Link href="/admindashboard/partners" className="block">
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button variant="outline" className="w-full justify-start h-11">
                     <Handshake className="w-4 h-4 mr-2" />
-                    Add New Partner
+                    Manage Partners
+                  </Button>
+                </Link>
+                <Link href="/admindashboard/bookings" className="block">
+                  <Button variant="outline" className="w-full justify-start h-11">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    View Bookings
                   </Button>
                 </Link>
                 <Link href="/contractorflow" className="block">
-                  <Button variant="outline" className="w-full justify-start">
+                  <Button variant="outline" className="w-full justify-start h-11">
                     <ArrowRight className="w-4 h-4 mr-2" />
                     Test Contractor Flow
                   </Button>
                 </Link>
+              </CardContent>
+            </Card>
+
+            {/* Top Partners */}
+            <Card className="bg-white">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold">Top Strategic Partners</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {topPartners.length > 0 ? (
+                    topPartners.map((partner, index) => (
+                      <motion.div 
+                        key={partner.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 }}
+                        className="flex items-center justify-between"
+                      >
+                        <div>
+                          <h4 className="font-medium text-power100-black">{partner.company_name}</h4>
+                          <div className="flex items-center space-x-1 mt-1">
+                            <Star className="w-3 h-3 text-power100-red fill-current" />
+                            <span className="text-sm font-semibold text-power100-red">
+                              {partner.power_confidence_score || 0}/100
+                            </span>
+                          </div>
+                        </div>
+                        <Badge variant={partner.is_active ? "default" : "secondary"}>
+                          {partner.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4 text-gray-500">
+                      <Handshake className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No partners found</p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Flow Progress */}
+            <Card className="bg-white">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold">Flow Progress</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {[
+                    { stage: 'verification', label: 'Verification', count: getStageCount('verification') },
+                    { stage: 'focus_selection', label: 'Focus Selection', count: getStageCount('focus_selection') },
+                    { stage: 'profiling', label: 'Profiling', count: getStageCount('profiling') },
+                    { stage: 'matching', label: 'Matching', count: getStageCount('matching') },
+                    { stage: 'completed', label: 'Completed', count: getStageCount('completed') }
+                  ].map((item) => (
+                    <div key={item.stage} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className={`w-3 h-3 rounded-full ${getStageColor(item.stage)}`}></div>
+                        <span className="text-sm text-gray-700">{item.label}</span>
+                      </div>
+                      <span className="text-sm font-semibold text-power100-black">{item.count}</span>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </div>

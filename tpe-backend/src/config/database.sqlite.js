@@ -127,7 +127,10 @@ const initializeSchema = async () => {
 const seedData = async () => {
   // Check if data already exists
   const adminCount = await db.get('SELECT COUNT(*) as count FROM admin_users');
-  if (adminCount.count > 0) return;
+  if (adminCount.count > 0) {
+    console.log('✅ Data already seeded');
+    return;
+  }
 
   // Create default admin
   const hashedPassword = await bcrypt.hash('admin123', 12);

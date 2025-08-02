@@ -4,7 +4,7 @@
  */
 
 const axios = require('axios');
-const BASE_URL = 'http://localhost:5000';
+const BASE_URL = 'http://localhost:5002';
 
 // Colors for console output
 const colors = {
