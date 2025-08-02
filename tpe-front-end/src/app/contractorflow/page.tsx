@@ -139,7 +139,7 @@ export default function ContractorFlow() {
       </div>
 
       {/* Step Content */}
-      <div className="max-w-4xl mx-a uto px-6 py-12">
+      <div className="max-w-4xl mx-auto px-6 py-12">
         <AnimatePresence mode="wait">
           <motion.div
             key={currentStep}
