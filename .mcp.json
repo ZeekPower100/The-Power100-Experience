@@ -1,0 +1,61 @@
+{
+    "mcpServers": {
+      "github": {
+        "command": "npx",
+        "args": ["-y", "@anthropic-ai/mcp-server-github"],
+        "env": {
+          "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
+        }
+      },
+      "filesystem": {
+        "command": "npx",
+        "args": ["-y", "@anthropic-ai/mcp-server-filesystem", "."]
+      },
+      "brave-search": {
+        "command": "npx", 
+        "args": ["-y", "@anthropic-ai/mcp-server-brave-search"],
+        "env": {
+          "BRAVE_API_KEY": "${BRAVE_API_KEY}"
+        }
+      },
+      "puppeteer": {
+        "command": "npx",
+        "args": ["-y", "@anthropic-ai/mcp-server-puppeteer"]
+      }
+    },
+    "globalShortcuts": {
+      "claude-status": "gh repo view --web",
+      "claude-branches": "git branch -a",
+      "claude-commits": "git log --oneline -10"
+    },
+    "projectConfig": {
+      "testCommand": "npm test",
+      "buildCommand": "npm run build", 
+      "devCommand": "npm run dev",
+      "lintCommand": "npm run lint",
+      "formatCommand": "npm run format"
+    },
+    "safetyRules": {
+      "requireBranchForChanges": true,
+      "branchPrefix": "claude/",
+      "autoCommitMessage": "feat: {description} [claude-generated]",
+      "maxFilesPerCommit": 10,
+      "backupBeforeMajorChanges": true
+    },
+    "notifications": {
+      "webhookUrl": "${SLACK_WEBHOOK_URL}",
+      "notifyOnErrors": true,
+      "notifyOnSuccess": false
+    },
+    "mcpServers": {
+      "n8n-mcp": {
+        "command": "cmd",
+        "args": ["/c", "npx", "n8n-mcp"],
+        "env": {
+            "MCP_MODE": "stdio",
+            "LOG_LEVEL": "error",
+            "DISABLE_CONSOLE_OUTPUT": "true"
+          }
+        }
+    }
+  }

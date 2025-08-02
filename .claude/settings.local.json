@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__n8n-mcp__tools_documentation",
+      "mcp__n8n-mcp__list_ai_tools",
+      "mcp__n8n-mcp__search_nodes",
+      "mcp__n8n-mcp__get_node_essentials",
+      "Bash(npm run lint)",
+      "Bash(git checkout:*)"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "n8n-mcp"
+  ]
+}
