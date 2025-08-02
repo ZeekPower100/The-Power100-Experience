@@ -1,3 +1,9 @@
+// Check if we should use SQLite instead of PostgreSQL
+if (process.env.USE_SQLITE === 'true') {
+  module.exports = require('./database.sqlite');
+  return;
+}
+
 const { Pool } = require('pg');
 
 const pool = new Pool({
