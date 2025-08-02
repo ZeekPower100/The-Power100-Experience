@@ -65,7 +65,7 @@ function ContractorFlowContent() {
 
           {/* Step Indicators */}
           <div className="flex justify-between">
-            {steps.map((step, index) => (
+            {steps.map((step) => (
               <div key={step.number} className="flex flex-col items-center">
                 <motion.div
                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${

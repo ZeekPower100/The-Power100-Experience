@@ -1,20 +1,17 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { contractorApi, partnerApi, bookingApi } from "@/lib/api";
+import { contractorApi, partnerApi, bookingApi, authApi } from "@/lib/api";
 import { 
   Users, 
   Handshake, 
   Calendar, 
-  TrendingUp, 
   Star,
-  Clock,
-  CheckCircle,
   ArrowRight,
   BarChart3,
   Target,
@@ -42,7 +39,7 @@ interface DashboardStats {
   };
 }
 
-interface RecentContractor {
+interface Contractor {
   id: string;
   name: string;
   company_name: string;
@@ -51,23 +48,70 @@ interface RecentContractor {
   created_at: string;
 }
 
-interface RecentPartner {
+interface Partner {
   id: string;
   company_name: string;
   power_confidence_score?: number;
   is_active: boolean;
 }
 
+interface Booking {
+  id: string;
+  status: string;
+  scheduled_date: string;
+  created_at: string;
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [recentContractors, setRecentContractors] = useState<RecentContractor[]>([]);
-  const [topPartners, setTopPartners] = useState<RecentPartner[]>([]);
+  const [recentContractors, setRecentContractors] = useState<Contractor[]>([]);
+  const [topPartners, setTopPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [loginLoading, setLoginLoading] = useState(false);
+
+  const checkAuthAndLoadData = useCallback(async () => {
+    // Check if already logged in
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      try {
+        await authApi.getMe();
+        setIsAuthenticated(true);
+        loadDashboardData();
+      } catch {
+        // Token is invalid, remove it
+        localStorage.removeItem('authToken');
+        setIsAuthenticated(false);
+        setLoading(false);
+      }
+    } else {
+      setIsAuthenticated(false);
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    checkAuthAndLoadData();
+  }, [checkAuthAndLoadData]);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    setError(null);
+
+    try {
+      const response = await authApi.login(loginForm.email, loginForm.password);
+      localStorage.setItem('authToken', response.token);
+      setIsAuthenticated(true);
+      loadDashboardData();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
 
   const loadDashboardData = async () => {
     setLoading(true);
@@ -84,9 +128,9 @@ export default function AdminDashboard() {
       // Calculate stats from the data
       const contractorStats = {
         total: contractorsResponse.count || contractorsResponse.contractors?.length || 0,
-        completed: contractorsResponse.contractors?.filter((c: any) => c.current_stage === 'completed').length || 0,
-        new_this_week: contractorsResponse.contractors?.filter((c: any) => {
-          const createdDate = new Date(c.created_at || c.created_date);
+        completed: contractorsResponse.contractors?.filter((c: Contractor) => c.current_stage === 'completed').length || 0,
+        new_this_week: contractorsResponse.contractors?.filter((c: Contractor) => {
+          const createdDate = new Date(c.created_at);
           const weekAgo = new Date();
           weekAgo.setDate(weekAgo.getDate() - 7);
           return createdDate > weekAgo;
@@ -100,18 +144,18 @@ export default function AdminDashboard() {
 
       const partnerStats = {
         total: partnersResponse.partners?.length || 0,
-        active: partnersResponse.partners?.filter((p: any) => p.is_active).length || 0,
+        active: partnersResponse.partners?.filter((p: Partner) => p.is_active).length || 0,
         avg_confidence_score: partnersResponse.partners?.length > 0
-          ? Math.round(partnersResponse.partners.reduce((sum: number, p: any) => sum + (p.power_confidence_score || 0), 0) / partnersResponse.partners.length)
+          ? Math.round(partnersResponse.partners.reduce((sum: number, p: Partner) => sum + (p.power_confidence_score || 0), 0) / partnersResponse.partners.length)
           : 0
       };
 
       const bookingStats = {
         total: bookingsResponse.bookings?.length || 0,
-        upcoming: bookingsResponse.bookings?.filter((b: any) => b.status === 'scheduled' && new Date(b.scheduled_date) > new Date()).length || 0,
-        completed: bookingsResponse.bookings?.filter((b: any) => b.status === 'completed').length || 0,
-        new_this_week: bookingsResponse.bookings?.filter((b: any) => {
-          const createdDate = new Date(b.created_at || b.created_date);
+        upcoming: bookingsResponse.bookings?.filter((b: Booking) => b.status === 'scheduled' && new Date(b.scheduled_date) > new Date()).length || 0,
+        completed: bookingsResponse.bookings?.filter((b: Booking) => b.status === 'completed').length || 0,
+        new_this_week: bookingsResponse.bookings?.filter((b: Booking) => {
+          const createdDate = new Date(b.created_at);
           const weekAgo = new Date();
           weekAgo.setDate(weekAgo.getDate() - 7);
           return createdDate > weekAgo;
@@ -127,9 +171,9 @@ export default function AdminDashboard() {
       setRecentContractors(contractorsResponse.contractors?.slice(0, 5) || []);
       setTopPartners(partnersResponse.partners?.slice(0, 3) || []);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Dashboard error:', err);
-      setError(err.message || 'Failed to load dashboard data');
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -156,6 +200,64 @@ export default function AdminDashboard() {
         <div className="flex justify-center items-center py-20">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-power100-red"></div>
         </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-power100-bg-grey flex items-center justify-center p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold text-power100-black">Admin Login</CardTitle>
+            <p className="text-power100-grey">Access the Power100 Dashboard</p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={loginForm.email}
+                  onChange={(e) => setLoginForm(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-power100-red"
+                  placeholder="admin@power100.io"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input
+                  id="password"
+                  type="password"
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-power100-red"
+                  placeholder="Enter your password"
+                  required
+                />
+              </div>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              <Button
+                type="submit"
+                disabled={loginLoading}
+                className="w-full bg-power100-red hover:bg-red-700 text-white"
+              >
+                {loginLoading ? 'Logging in...' : 'Login'}
+              </Button>
+              <div className="text-center text-sm text-gray-500 mt-4">
+                <p>Development credentials:</p>
+                <p className="font-mono text-xs">admin@power100.io / admin123</p>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
       </div>
     );
   }

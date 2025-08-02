@@ -246,20 +246,14 @@ const completeFlow = async (req, res, next) => {
 const getAllContractors = async (req, res, next) => {
   const { stage, limit = 50, offset = 0 } = req.query;
 
-  let queryText = `
-    SELECT c.*, 
-           COUNT(DISTINCT b.id) as booking_count,
-           COUNT(DISTINCT m.id) as match_count
-    FROM contractors c
-    LEFT JOIN demo_bookings b ON c.id = b.contractor_id
-    LEFT JOIN contractor_partner_matches m ON c.id = m.contractor_id
-  `;
+  console.log('🔍 getAllContractors called with params:', { stage, limit, offset });
 
+  let queryText = `SELECT * FROM contractors`;
   const conditions = [];
   const values = [];
 
   if (stage) {
-    conditions.push(`c.current_stage = $${values.length + 1}`);
+    conditions.push(`current_stage = ?`);
     values.push(stage);
   }
 
@@ -267,10 +261,15 @@ const getAllContractors = async (req, res, next) => {
     queryText += ' WHERE ' + conditions.join(' AND ');
   }
 
-  queryText += ' GROUP BY c.id ORDER BY c.created_at DESC LIMIT $' + (values.length + 1) + ' OFFSET $' + (values.length + 2);
+  queryText += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
   values.push(limit, offset);
 
+  console.log('🔍 Final query:', queryText);
+  console.log('🔍 Query values:', values);
+
   const result = await query(queryText, values);
+  
+  console.log('🔍 Query result:', { rowCount: result.rows?.length || result.length, firstRow: result.rows?.[0] || result[0] });
 
   res.status(200).json({
     success: true,

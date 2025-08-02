@@ -7,7 +7,9 @@
       "mcp__n8n-mcp__get_node_essentials",
       "Bash(npm run lint)",
       "Bash(git checkout:*)",
-      "Bash(npm run dev:sqlite:*)"
+      "Bash(npm run dev:sqlite:*)",
+      "Bash(node:*)",
+      "Bash(npm run build:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

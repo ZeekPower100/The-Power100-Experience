@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Sparkles, Star, ArrowRight, Calendar, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { contractorApi } from '@/lib/api';
 
 // --- FIXED: Replaced direct data access with simulated data ---
 // In a real app, this data would come from an API call to your backend.
@@ -47,11 +48,12 @@ const MOCK_PARTNERS: StrategicPartner[] = [
 // Define the props interface for type safety
 interface StepProps {
   data: Partial<Contractor>;
-  onComplete: (data: Partial<Contractor>) => void;
-  onBack: (() => void) | null;
+  onNext: () => void;
+  onPrev?: () => void;
+  onUpdate: (data: Partial<Contractor>) => void;
 }
 
-export default function MatchingStep({ data, onComplete, onBack }: StepProps) {
+export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepProps) {
   const [matchedPartner, setMatchedPartner] = useState<StrategicPartner | null>(null);
   const [isMatching, setIsMatching] = useState(true);
   const [primaryFocusArea, setPrimaryFocusArea] = useState('');
@@ -88,19 +90,37 @@ export default function MatchingStep({ data, onComplete, onBack }: StepProps) {
 
   const formatFocusArea = (area: string) => area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
-  // FIXED: Replaced direct database calls with a simulated async function
   const bookDemo = async () => {
     if (!matchedPartner || !data.id) return;
     setIsBookingDemo(true);
 
-    console.log(`Booking demo for Contractor ${data.id} with Partner ${matchedPartner.id}`);
-    
-    // Simulate the API call to create a booking
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Update contractor with final data and mark as completed
+      await contractorApi.updateProfile(data.id, {
+        primary_focus_area: primaryFocusArea,
+        current_stage: 'completed'
+      });
 
-    onComplete({
-      primary_focus_area: primaryFocusArea,
-    });
+      // Create demo booking
+      // Note: We'll add this API call once the booking system is ready
+      console.log(`Creating demo booking for Contractor ${data.id} with Partner ${matchedPartner.id}`);
+      
+      onUpdate({
+        primary_focus_area: primaryFocusArea,
+        current_stage: 'completed'
+      });
+      onNext();
+    } catch (error) {
+      console.error('Failed to book demo:', error);
+      // Still proceed to completion for now
+      onUpdate({
+        primary_focus_area: primaryFocusArea,
+        current_stage: 'completed'
+      });
+      onNext();
+    } finally {
+      setIsBookingDemo(false);
+    }
   };
 
   if (isMatching) {
@@ -165,7 +185,7 @@ export default function MatchingStep({ data, onComplete, onBack }: StepProps) {
                     </motion.div>
                 )}
                 <div className="flex gap-4 pt-6">
-                    <Button variant="outline" onClick={onBack!} className="flex-1 h-12 text-lg">Back</Button>
+                    {onPrev && <Button variant="outline" onClick={onPrev} className="flex-1 h-12 text-lg">Back</Button>}
                     <Button onClick={bookDemo} disabled={isBookingDemo} className="flex-1 bg-power100-green hover:brightness-90 transition-all duration-300 text-white shadow-lg h-12 text-lg font-semibold group">
                         {isBookingDemo ? "Scheduling Demo..." : <><Calendar className="w-5 h-5 mr-2" />Book Demo & Get Introduced<ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" /></>}
                     </Button>

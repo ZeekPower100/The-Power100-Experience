@@ -62,7 +62,7 @@ export const contractorApi = {
     }),
 
   // Update contractor profile
-  updateProfile: (contractorId: string, data: any) =>
+  updateProfile: (contractorId: string, data: Record<string, unknown>) =>
     apiRequest(`/contractors/${contractorId}/profile`, {
       method: 'PUT',
       body: JSON.stringify(data)
@@ -114,13 +114,13 @@ export const partnerApi = {
   getById: (id: string) => apiRequest(`/partners/${id}`),
 
   // Create partner (admin)
-  create: (data: any) => apiRequest('/partners', {
+  create: (data: Record<string, unknown>) => apiRequest('/partners', {
     method: 'POST',
     body: JSON.stringify(data)
   }),
 
   // Update partner (admin)
-  update: (id: string, data: any) => apiRequest(`/partners/${id}`, {
+  update: (id: string, data: Record<string, unknown>) => apiRequest(`/partners/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
@@ -156,7 +156,7 @@ export const bookingApi = {
   getById: (id: string) => apiRequest(`/bookings/${id}`),
 
   // Update booking (admin)
-  update: (id: string, data: any) => apiRequest(`/bookings/${id}`, {
+  update: (id: string, data: Record<string, unknown>) => apiRequest(`/bookings/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
@@ -201,17 +201,17 @@ export const adminApi = {
   getDashboard: () => apiRequest('/admin/dashboard'),
 
   // Export data
-  exportContractors: (params?: any) => {
+  exportContractors: (params?: Record<string, string>) => {
     const searchParams = new URLSearchParams(params || {});
     return apiRequest(`/admin/export/contractors?${searchParams.toString()}`);
   },
 
-  exportPartners: (params?: any) => {
+  exportPartners: (params?: Record<string, string>) => {
     const searchParams = new URLSearchParams(params || {});
     return apiRequest(`/admin/export/partners?${searchParams.toString()}`);
   },
 
-  exportBookings: (params?: any) => {
+  exportBookings: (params?: Record<string, string>) => {
     const searchParams = new URLSearchParams(params || {});
     return apiRequest(`/admin/export/bookings?${searchParams.toString()}`);
   },

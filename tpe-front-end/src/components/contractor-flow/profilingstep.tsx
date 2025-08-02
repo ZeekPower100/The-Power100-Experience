@@ -11,12 +11,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Building2, ArrowRight, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { contractorApi } from '@/lib/api';
 
 // Define the props interface for type safety
 interface StepProps {
   data: Partial<Contractor>;
-  onComplete: (data: Partial<Contractor>) => void;
-  onBack: (() => void) | null;
+  onNext: () => void;
+  onPrev?: () => void;
+  onUpdate: (data: Partial<Contractor>) => void;
 }
 
 const serviceOptions = [
@@ -25,7 +27,7 @@ const serviceOptions = [
   "Electrical", "Plumbing", "Landscaping", "Painting", "Insulation"
 ];
 
-export default function ProfilingStep({ data, onComplete, onBack }: StepProps) {
+export default function ProfilingStep({ data, onNext, onPrev, onUpdate }: StepProps) {
   // We ensure team_size is a number for the input, but handle it as a string for display
   const [formData, setFormData] = useState({
     service_area: data.service_area || '',
@@ -63,7 +65,7 @@ export default function ProfilingStep({ data, onComplete, onBack }: StepProps) {
     }));
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!formData.service_area || !formData.annual_revenue || !formData.team_size) {
       setError('Please fill in all required fields.');
       return;
@@ -72,11 +74,33 @@ export default function ProfilingStep({ data, onComplete, onBack }: StepProps) {
       setError('Please select at least one service you offer.');
       return;
     }
+    
     setError('');
-    onComplete({
+    
+    const updateData = {
       ...formData,
       team_size: parseInt(formData.team_size, 10) || 0, // Ensure team_size is a number
-    });
+      increased_tools: formData.readiness_indicators.increased_tools,
+      increased_people: formData.readiness_indicators.increased_people,
+      increased_activity: formData.readiness_indicators.increased_activity,
+      current_stage: 'profiling'
+    };
+
+    try {
+      // Persist to database if contractor ID exists
+      if (data.id) {
+        await contractorApi.updateProfile(data.id, updateData);
+      }
+      
+      onUpdate(updateData);
+      onNext();
+    } catch (error) {
+      console.error('Failed to update contractor profile:', error);
+      // Still proceed to next step but show warning
+      setError('Warning: Changes may not be saved. Please check your connection.');
+      onUpdate(updateData);
+      onNext();
+    }
   };
 
   return (
@@ -155,7 +179,7 @@ export default function ProfilingStep({ data, onComplete, onBack }: StepProps) {
           </div>
           {error && <Alert variant="destructive"><AlertCircle className="h-4 w-4" /><AlertDescription>{error}</AlertDescription></Alert>}
           <div className="flex gap-4 pt-6">
-            <Button variant="outline" onClick={onBack!} className="flex-1 h-12 text-lg">Back</Button>
+            {onPrev && <Button variant="outline" onClick={onPrev} className="flex-1 h-12 text-lg">Back</Button>}
             <Button onClick={handleContinue} className="flex-1 bg-power100-green hover:brightness-90 transition-all duration-300 text-white shadow-lg h-12 text-lg font-semibold group">
               Find My Match
               <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />

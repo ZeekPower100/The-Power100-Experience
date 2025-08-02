@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Target, ArrowRight, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { contractorApi } from '@/lib/api';
 
 // Define the props interface for type safety
 interface StepProps {
@@ -49,14 +50,35 @@ export default function FocusSelectionStep({ data, onNext, onPrev, onUpdate }: S
     });
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (selectedAreas.length === 0) {
       setError('Please select at least one focus area.');
       return;
     }
+    
     setError(''); // Clear error on successful continue
-    onUpdate({ focus_areas: selectedAreas, primary_focus_area: selectedAreas[0] });
-    onNext();
+    
+    const updateData = { 
+      focus_areas: selectedAreas, 
+      primary_focus_area: selectedAreas[0],
+      current_stage: 'focus_selection'
+    };
+
+    try {
+      // Persist to database if contractor ID exists
+      if (data.id) {
+        await contractorApi.updateProfile(data.id, updateData);
+      }
+      
+      onUpdate(updateData);
+      onNext();
+    } catch (error) {
+      console.error('Failed to update focus areas:', error);
+      // Still proceed but show warning
+      setError('Warning: Changes may not be saved. Please check your connection.');
+      onUpdate(updateData);
+      onNext();
+    }
   };
 
   return (

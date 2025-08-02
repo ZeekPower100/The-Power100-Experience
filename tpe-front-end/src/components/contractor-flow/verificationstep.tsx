@@ -10,7 +10,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { contractorApi } from '@/lib/api';
-import { useContractorFlow } from '@/contexts/ContractorFlowContext';
 
 interface StepProps {
   data: Partial<Contractor>;
@@ -20,7 +19,6 @@ interface StepProps {
 }
 
 export default function VerificationStep({ data, onNext, onUpdate }: StepProps) {
-  const { dispatch } = useContractorFlow();
   const [formData, setFormData] = useState({
     name: data.name || '',
     email: data.email || '',
@@ -64,8 +62,8 @@ export default function VerificationStep({ data, onNext, onUpdate }: StepProps) 
         console.log('🔐 Development Mode: Use code "123456" to verify');
         setError(''); // Clear any errors
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to send verification code');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to send verification code');
     } finally {
       setIsLoading(false);
     }
@@ -96,8 +94,8 @@ export default function VerificationStep({ data, onNext, onUpdate }: StepProps) 
 
       // Move to next step
       onNext();
-    } catch (err: any) {
-      setError(err.message || 'Invalid verification code');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Invalid verification code');
     } finally {
       setIsLoading(false);
     }
@@ -241,7 +239,7 @@ export default function VerificationStep({ data, onNext, onUpdate }: StepProps) 
               {process.env.NODE_ENV === 'development' && (
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
                   <p className="text-yellow-800 text-sm">
-                    <strong>Development Mode:</strong> Use code "123456" for testing
+                    <strong>Development Mode:</strong> Use code &quot;123456&quot; for testing
                   </p>
                 </div>
               )}
