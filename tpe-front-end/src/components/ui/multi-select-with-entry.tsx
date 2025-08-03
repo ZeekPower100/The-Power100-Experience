@@ -148,16 +148,16 @@ export const MultiSelectWithEntry: React.FC<MultiSelectWithEntryProps> = ({
       </div>
 
       {isOpen && !disabled && (
-        <div className="absolute z-50 w-full mt-1 bg-popover border rounded-md shadow-md max-h-60 overflow-auto">
+        <div className="absolute z-50 w-full mt-1 bg-power100-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
           {filteredOptions.length > 0 && (
             <div className="p-1">
-              <div className="text-xs text-muted-foreground px-2 py-1 font-medium">Suggested options:</div>
+              <div className="text-xs text-power100-grey px-2 py-1 font-medium">Suggested options:</div>
               {filteredOptions.map((option) => (
                 <button
                   key={option.value}
                   type="button"
                   onClick={() => handleSelectOption(option.value)}
-                  className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm"
+                  className="w-full text-left px-2 py-1.5 text-sm text-power100-black hover:bg-power100-bg-grey hover:text-power100-black rounded-sm"
                 >
                   {option.label}
                 </button>
@@ -170,7 +170,7 @@ export const MultiSelectWithEntry: React.FC<MultiSelectWithEntryProps> = ({
               <button
                 type="button"
                 onClick={handleAddCustomValue}
-                className="w-full text-left px-2 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground rounded-sm flex items-center gap-2"
+                className="w-full text-left px-2 py-1.5 text-sm text-power100-black hover:bg-power100-bg-grey hover:text-power100-black rounded-sm flex items-center gap-2"
               >
                 <Plus className="h-3 w-3" />
                 Add &quot;{newValue.trim()}&quot;
@@ -179,7 +179,7 @@ export const MultiSelectWithEntry: React.FC<MultiSelectWithEntryProps> = ({
           )}
           
           {filteredOptions.length === 0 && !newValue.trim() && (
-            <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+            <div className="px-2 py-3 text-sm text-power100-grey text-center">
               Type to add custom values...
             </div>
           )}

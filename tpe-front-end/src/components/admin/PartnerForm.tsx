@@ -126,14 +126,14 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         throw new Error('Contact email is required');
       }
 
-      // Prepare data for API (convert arrays to JSON strings)
+      // Prepare data for API (keep arrays as arrays for backend validation)
       const apiData = {
         ...formData,
-        focus_areas_served: JSON.stringify(formData.focus_areas_served),
-        target_revenue_range: JSON.stringify(formData.target_revenue_range),
-        geographic_regions: JSON.stringify(formData.geographic_regions),
-        key_differentiators: JSON.stringify(formData.key_differentiators),
-        client_testimonials: JSON.stringify(formData.client_testimonials)
+        focus_areas_served: formData.focus_areas_served,
+        target_revenue_range: formData.target_revenue_range,
+        geographic_regions: formData.geographic_regions,
+        key_differentiators: formData.key_differentiators,
+        client_testimonials: formData.client_testimonials
       };
 
       if (partner) {

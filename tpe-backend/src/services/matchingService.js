@@ -17,16 +17,43 @@ const REVENUE_COMPATIBILITY = {
 };
 
 const matchContractorWithPartners = async (contractor) => {
+  // Parse contractor JSON fields first
+  const parsedContractor = {
+    ...contractor,
+    focus_areas: typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]'
+      ? JSON.parse(contractor.focus_areas || '[]')
+      : Array.isArray(contractor.focus_areas) ? contractor.focus_areas : [],
+    services_offered: typeof contractor.services_offered === 'string' && contractor.services_offered !== '[object Object]'
+      ? JSON.parse(contractor.services_offered || '[]')
+      : Array.isArray(contractor.services_offered) ? contractor.services_offered : []
+  };
+
   // Get all active partners
   const partnersResult = await query(
     'SELECT * FROM strategic_partners WHERE is_active = true'
   );
-  const partners = partnersResult.rows;
+  
+  // Parse JSON fields for each partner
+  const partners = partnersResult.rows.map(partner => ({
+    ...partner,
+    focus_areas_served: typeof partner.focus_areas_served === 'string' && partner.focus_areas_served !== '[object Object]'
+      ? JSON.parse(partner.focus_areas_served || '[]')
+      : Array.isArray(partner.focus_areas_served) ? partner.focus_areas_served : [],
+    target_revenue_range: typeof partner.target_revenue_range === 'string' && partner.target_revenue_range !== '[object Object]'
+      ? JSON.parse(partner.target_revenue_range || '[]')
+      : Array.isArray(partner.target_revenue_range) ? partner.target_revenue_range : [],
+    geographic_regions: typeof partner.geographic_regions === 'string' && partner.geographic_regions !== '[object Object]'
+      ? JSON.parse(partner.geographic_regions || '[]')
+      : Array.isArray(partner.geographic_regions) ? partner.geographic_regions : [],
+    key_differentiators: typeof partner.key_differentiators === 'string' && partner.key_differentiators !== '[object Object]'
+      ? JSON.parse(partner.key_differentiators || '[]')
+      : Array.isArray(partner.key_differentiators) ? partner.key_differentiators : []
+  }));
 
   // Calculate match scores
   const matchedPartners = partners.map(partner => {
-    const matchScore = calculateMatchScore(contractor, partner);
-    const matchReasons = generateMatchReasons(contractor, partner, matchScore);
+    const matchScore = calculateMatchScore(parsedContractor, partner);
+    const matchReasons = generateMatchReasons(parsedContractor, partner, matchScore);
     
     return {
       partner,
@@ -45,8 +72,8 @@ const matchContractorWithPartners = async (contractor) => {
   await transaction(async (client) => {
     // Clear existing matches
     await client.query(
-      'DELETE FROM contractor_partner_matches WHERE contractor_id = $1',
-      [contractor.id]
+      'DELETE FROM contractor_partner_matches WHERE contractor_id = ?',
+      [parsedContractor.id]
     );
 
     // Insert new matches
@@ -55,13 +82,13 @@ const matchContractorWithPartners = async (contractor) => {
       await client.query(`
         INSERT INTO contractor_partner_matches 
         (contractor_id, partner_id, match_score, match_reasons, is_primary_match)
-        VALUES ($1, $2, $3, $4, $5)
+        VALUES (?, ?, ?, ?, ?)
       `, [
-        contractor.id,
+        parsedContractor.id,
         match.partner.id,
         match.matchScore,
-        match.matchReasons,
-        i === 0 // First match is primary
+        JSON.stringify(match.matchReasons), // Convert array to JSON string for SQLite
+        i === 0 ? 1 : 0 // SQLite uses 1/0 for boolean
       ]);
     }
   });
@@ -101,10 +128,16 @@ const calculateFocusAreaScore = (contractor, partner) => {
     return 0;
   }
 
+  // Ensure focus_areas is an array
+  const focusAreas = Array.isArray(contractor.focus_areas) ? contractor.focus_areas : [];
+  if (focusAreas.length === 0) {
+    return 0;
+  }
+
   let score = 0;
   const weights = [FOCUS_AREA_WEIGHTS.primary, FOCUS_AREA_WEIGHTS.secondary, FOCUS_AREA_WEIGHTS.tertiary];
 
-  contractor.focus_areas.forEach((area, index) => {
+  focusAreas.forEach((area, index) => {
     if (partner.focus_areas_served.includes(area)) {
       score += weights[index] || 1.0;
     }
@@ -125,14 +158,20 @@ const calculateRevenueScore = (contractor, partner) => {
     return 50; // Default middle score if data missing
   }
 
+  // Ensure target_revenue_range is an array
+  const revenueRanges = Array.isArray(partner.target_revenue_range) ? partner.target_revenue_range : [];
+  if (revenueRanges.length === 0) {
+    return 50; // Default score if no revenue ranges
+  }
+
   // Check if partner serves contractor's revenue range
-  if (partner.target_revenue_range.includes(contractor.annual_revenue)) {
+  if (revenueRanges.includes(contractor.annual_revenue)) {
     return 100;
   }
 
   // Check if ranges are compatible
   const compatibleRanges = REVENUE_COMPATIBILITY[contractor.annual_revenue] || [];
-  const hasCompatibleRange = partner.target_revenue_range.some(range => 
+  const hasCompatibleRange = revenueRanges.some(range => 
     compatibleRanges.includes(range)
   );
 
@@ -185,11 +224,13 @@ const generateMatchReasons = (contractor, partner, matchScore) => {
   }
 
   // Team size consideration
-  if (contractor.team_size > 10 && partner.key_differentiators) {
+  if (contractor.team_size > 10 && Array.isArray(partner.key_differentiators)) {
     const enterpriseFeatures = partner.key_differentiators.filter(diff => 
-      diff.toLowerCase().includes('enterprise') || 
-      diff.toLowerCase().includes('scale') ||
-      diff.toLowerCase().includes('team')
+      typeof diff === 'string' && (
+        diff.toLowerCase().includes('enterprise') || 
+        diff.toLowerCase().includes('scale') ||
+        diff.toLowerCase().includes('team')
+      )
     );
     
     if (enterpriseFeatures.length > 0) {

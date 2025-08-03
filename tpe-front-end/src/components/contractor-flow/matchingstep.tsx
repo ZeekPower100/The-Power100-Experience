@@ -10,40 +10,7 @@ import { Sparkles, Star, ArrowRight, Calendar, ExternalLink } from 'lucide-react
 import { motion } from 'framer-motion';
 import { contractorApi } from '@/lib/api';
 
-// --- FIXED: Replaced direct data access with simulated data ---
-// In a real app, this data would come from an API call to your backend.
-const MOCK_PARTNERS: StrategicPartner[] = [
-  {
-    id: 'partner_1',
-    company_name: 'Buildr',
-    description: 'Buildr is the leading CRM and project management platform designed specifically for high-growth home improvement contractors. We help you streamline sales, manage projects, and improve communication.',
-    logo_url: '/buildr-logo.png', // You would add this image to your /public folder
-    website: 'https://www.buildr.com',
-    contact_email: 'sales@buildr.com',
-    focus_areas_served: ['closing_higher_percentage', 'controlling_lead_flow', 'operational_efficiency'],
-    target_revenue_range: ['1m_5m', '5m_10m', 'over_10m'],
-    power_confidence_score: 96,
-    is_active: true,
-    key_differentiators: ['All-in-one platform from lead to final payment', 'Advanced sales pipeline automation', 'Real-time project tracking for homeowners'],
-    client_testimonials: [{ client_name: 'John Smith, ABC Roofing', testimonial: 'Buildr transformed our sales process. We closed 30% more deals in the first quarter.' }],
-    pricing_model: 'Per-seat subscription model, starting at $99/user/month.'
-  },
-  {
-    id: 'partner_2',
-    company_name: 'MarketPro',
-    description: 'MarketPro offers hyper-targeted lead generation and marketing automation for contractors, ensuring a steady flow of high-quality, pre-qualified leads.',
-    logo_url: '/marketpro-logo.png',
-    website: 'https://www.marketpro.com',
-    contact_email: 'info@marketpro.com',
-    focus_areas_served: ['greenfield_growth', 'controlling_lead_flow', 'marketing_automation'],
-    target_revenue_range: ['under_500k', '500k_1m', '1m_5m'],
-    power_confidence_score: 92,
-    is_active: true,
-    key_differentiators: ['Exclusive leads in your service area', 'Automated email and SMS follow-up campaigns', 'Pay-per-lead and subscription models available'],
-    client_testimonials: [{ client_name: 'Jane Doe, Solar Solutions', testimonial: 'Our lead quality has never been better. MarketPro delivers homeowners who are ready to buy.' }],
-    pricing_model: 'Flexible pricing based on lead volume and market.'
-  }
-];
+// Real matching will be done via API call to backend
 
 // Define the props interface for type safety
 interface StepProps {
@@ -58,30 +25,75 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
   const [isMatching, setIsMatching] = useState(true);
   const [primaryFocusArea, setPrimaryFocusArea] = useState('');
   const [isBookingDemo, setIsBookingDemo] = useState(false);
+  const [matchingProgress, setMatchingProgress] = useState(0);
 
-  // FIXED: Replaced direct database calls with a simulated async function
+  // Real API call to backend matching service
   const findBestMatch = React.useCallback(async () => {
+    if (!data.id) {
+      console.error('No contractor ID available for matching');
+      return;
+    }
+
     setIsMatching(true);
-    console.log("Starting match process with data:", data);
+    setMatchingProgress(0);
+    console.log("Starting real match process with contractor ID:", data.id);
 
-    // Simulate the API call to our backend for matching
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // Simulate matching progress for better UX
+    const progressInterval = setInterval(() => {
+      setMatchingProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return 90; // Stay at 90% until real matching completes
+        }
+        return prev + Math.random() * 20;
+      });
+    }, 200);
 
-    // Simulate the logic that would happen on the backend
-    const compatiblePartners = MOCK_PARTNERS.filter(partner => 
-      partner.focus_areas_served.some(area => data.focus_areas?.some(focusArea => focusArea === area)) &&
-      partner.target_revenue_range.includes(data.annual_revenue || '') &&
-      partner.is_active
-    );
-    compatiblePartners.sort((a, b) => b.power_confidence_score - a.power_confidence_score);
-    
-    const bestMatch = compatiblePartners[0] || MOCK_PARTNERS[0]; // Fallback to first partner
-    setMatchedPartner(bestMatch);
-    
-    const primary = data.focus_areas?.[0] || 'greenfield_growth';
-    setPrimaryFocusArea(primary);
-    
-    setIsMatching(false);
+    try {
+      // Call the real backend matching API
+      const matchResponse = await contractorApi.getMatches(data.id);
+      console.log('Match response:', matchResponse);
+      
+      if (matchResponse.matches && matchResponse.matches.length > 0) {
+        // Get the top match from the real algorithm
+        const topMatch = matchResponse.matches[0];
+        
+        // Parse JSON fields from the backend
+        const parsedPartner = {
+          ...topMatch.partner,
+          focus_areas_served: typeof topMatch.partner.focus_areas_served === 'string' && topMatch.partner.focus_areas_served !== '[object Object]'
+            ? JSON.parse(topMatch.partner.focus_areas_served || '[]')
+            : topMatch.partner.focus_areas_served || [],
+          target_revenue_range: typeof topMatch.partner.target_revenue_range === 'string' && topMatch.partner.target_revenue_range !== '[object Object]'
+            ? JSON.parse(topMatch.partner.target_revenue_range || '[]')
+            : topMatch.partner.target_revenue_range || [],
+          key_differentiators: typeof topMatch.partner.key_differentiators === 'string' && topMatch.partner.key_differentiators !== '[object Object]'
+            ? JSON.parse(topMatch.partner.key_differentiators || '[]')
+            : topMatch.partner.key_differentiators || [],
+          client_testimonials: typeof topMatch.partner.client_testimonials === 'string' && topMatch.partner.client_testimonials !== '[object Object]'
+            ? JSON.parse(topMatch.partner.client_testimonials || '[]')
+            : topMatch.partner.client_testimonials || []
+        };
+        
+        setMatchedPartner(parsedPartner);
+      } else {
+        console.warn('No matches found for contractor');
+        // Handle case where no matches are found
+        setMatchedPartner(null);
+      }
+      
+      const primary = data.focus_areas?.[0] || 'greenfield_growth';
+      setPrimaryFocusArea(primary);
+      
+    } catch (error) {
+      console.error('Error getting matches:', error);
+      // Handle error - maybe show an error state
+      setMatchedPartner(null);
+    } finally {
+      clearInterval(progressInterval);
+      setMatchingProgress(100);
+      setTimeout(() => setIsMatching(false), 500); // Short delay to show 100%
+    }
   }, [data]);
 
   useEffect(() => {

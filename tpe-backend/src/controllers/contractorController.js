@@ -10,7 +10,7 @@ const startVerification = async (req, res, next) => {
 
   // Check if contractor already exists
   const existingResult = await query(
-    'SELECT id, verification_status FROM contractors WHERE email = $1 OR phone = $2',
+    'SELECT id, verification_status FROM contractors WHERE email = ? OR phone = ?',
     [email, phone]
   );
 
@@ -27,22 +27,31 @@ const startVerification = async (req, res, next) => {
   const verificationCode = generateVerificationCode();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-  // Create or update contractor
-  const result = await query(`
-    INSERT INTO contractors (name, email, phone, company_name, company_website, verification_code, verification_expires_at)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
-    ON CONFLICT (email) DO UPDATE SET
-      name = EXCLUDED.name,
-      phone = EXCLUDED.phone,
-      company_name = EXCLUDED.company_name,
-      company_website = EXCLUDED.company_website,
-      verification_code = EXCLUDED.verification_code,
-      verification_expires_at = EXCLUDED.verification_expires_at,
-      updated_at = CURRENT_TIMESTAMP
-    RETURNING id, name, email, phone, company_name
-  `, [name, email, phone, company_name, company_website, verificationCode, expiresAt]);
-
-  const contractor = result.rows[0];
+  // Create or update contractor (SQLite doesn't support ON CONFLICT with complex updates)
+  // Try to update first, then insert if no rows affected
+  const updateResult = await query(`
+    UPDATE contractors SET 
+      name = ?, phone = ?, company_name = ?, company_website = ?, 
+      verification_code = ?, verification_expires_at = ?, updated_at = CURRENT_TIMESTAMP
+    WHERE email = ?
+  `, [name, phone, company_name, company_website, verificationCode, expiresAt, email]);
+  
+  let contractor;
+  if (updateResult.rowCount === 0) {
+    // Insert new contractor
+    const insertResult = await query(`
+      INSERT INTO contractors (name, email, phone, company_name, company_website, verification_code, verification_expires_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [name, email, phone, company_name, company_website, verificationCode, expiresAt]);
+    
+    // Get the inserted contractor
+    const selectResult = await query('SELECT id, name, email, phone, company_name FROM contractors WHERE email = ?', [email]);
+    contractor = selectResult.rows[0];
+  } else {
+    // Get the updated contractor
+    const selectResult = await query('SELECT id, name, email, phone, company_name FROM contractors WHERE email = ?', [email]);
+    contractor = selectResult.rows[0];
+  }
 
   // Send SMS verification
   try {
@@ -70,7 +79,7 @@ const verifyCode = async (req, res, next) => {
   const { contractor_id, code } = req.body;
 
   const result = await query(
-    'SELECT * FROM contractors WHERE id = $1',
+    'SELECT * FROM contractors WHERE id = ?',
     [contractor_id]
   );
 
@@ -104,7 +113,7 @@ const verifyCode = async (req, res, next) => {
          opted_in_coaching = true,
          verification_code = NULL,
          verification_expires_at = NULL
-     WHERE id = $1`,
+     WHERE id = ?`,
     [contractor_id]
   );
 
@@ -168,7 +177,7 @@ const getMatches = async (req, res, next) => {
 
   // Get contractor data
   const contractorResult = await query(
-    'SELECT * FROM contractors WHERE id = $1',
+    'SELECT * FROM contractors WHERE id = ?',
     [id]
   );
 
@@ -198,7 +207,7 @@ const completeFlow = async (req, res, next) => {
       `UPDATE contractors 
        SET current_stage = 'completed', 
            completed_at = CURRENT_TIMESTAMP 
-       WHERE id = $1`,
+       WHERE id = ?`,
       [id]
     );
 
@@ -209,17 +218,17 @@ const completeFlow = async (req, res, next) => {
 
       await client.query(
         `INSERT INTO demo_bookings (contractor_id, partner_id, scheduled_date)
-         VALUES ($1, $2, $3)`,
+         VALUES (?, ?, ?)`,
         [id, selected_partner_id, scheduledDate]
       );
 
       // Send introduction email
       const contractorResult = await client.query(
-        'SELECT * FROM contractors WHERE id = $1',
+        'SELECT * FROM contractors WHERE id = ?',
         [id]
       );
       const partnerResult = await client.query(
-        'SELECT * FROM strategic_partners WHERE id = $1',
+        'SELECT * FROM strategic_partners WHERE id = ?',
         [selected_partner_id]
       );
 
@@ -301,7 +310,7 @@ const getContractor = async (req, res, next) => {
     LEFT JOIN strategic_partners p ON m.partner_id = p.id
     LEFT JOIN demo_bookings b ON c.id = b.contractor_id
     LEFT JOIN strategic_partners sp ON b.partner_id = sp.id
-    WHERE c.id = $1
+    WHERE c.id = ?
     GROUP BY c.id
   `, [id]);
 
@@ -320,7 +329,7 @@ const deleteContractor = async (req, res, next) => {
   const { id } = req.params;
 
   const result = await query(
-    'DELETE FROM contractors WHERE id = $1 RETURNING id',
+    'DELETE FROM contractors WHERE id = ? RETURNING id',
     [id]
   );
 

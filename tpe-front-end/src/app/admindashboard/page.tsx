@@ -121,7 +121,7 @@ export default function AdminDashboard() {
       // Load data from multiple endpoints
       const [contractorsResponse, partnersResponse, bookingsResponse] = await Promise.all([
         contractorApi.getAll({ limit: 10 }).catch(() => ({ contractors: [], count: 0 })),
-        partnerApi.getAll({ limit: 5 }).catch(() => ({ partners: [] })),
+        partnerApi.getAll().catch(() => ({ partners: [] })), // Get all partners for accurate stats
         bookingApi.getAll({ limit: 5 }).catch(() => ({ bookings: [] }))
       ]);
 
@@ -169,7 +169,19 @@ export default function AdminDashboard() {
       });
 
       setRecentContractors(contractorsResponse.contractors?.slice(0, 5) || []);
-      setTopPartners(partnersResponse.partners?.slice(0, 3) || []);
+      
+      // Parse JSON fields for partners and select top performers
+      const parsedPartners = (partnersResponse.partners || []).map((partner: any) => ({
+        ...partner,
+        focus_areas_served: typeof partner.focus_areas_served === 'string' && partner.focus_areas_served !== '[object Object]'
+          ? JSON.parse(partner.focus_areas_served || '[]') 
+          : partner.focus_areas_served || [],
+        target_revenue_range: typeof partner.target_revenue_range === 'string' && partner.target_revenue_range !== '[object Object]'
+          ? JSON.parse(partner.target_revenue_range || '[]')
+          : partner.target_revenue_range || []
+      }));
+      
+      setTopPartners(parsedPartners.slice(0, 8)); // Show top 8 partners in dashboard
 
     } catch (err: unknown) {
       console.error('Dashboard error:', err);

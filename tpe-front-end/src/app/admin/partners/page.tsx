@@ -19,10 +19,6 @@ export default function PartnersManagement() {
   const [editingPartner, setEditingPartner] = useState<StrategicPartner | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  useEffect(() => {
-    checkAuthAndLoadData();
-  }, [checkAuthAndLoadData]);
-
   const checkAuthAndLoadData = useCallback(async () => {
     const token = localStorage.getItem('authToken');
     if (token) {
@@ -41,11 +37,43 @@ export default function PartnersManagement() {
     }
   }, []);
 
+  useEffect(() => {
+    checkAuthAndLoadData();
+  }, [checkAuthAndLoadData]);
+
   const loadPartners = async () => {
     try {
       setLoading(true);
+      setError(null); // Clear previous errors
       const response = await partnerApi.getAll();
-      setPartners(response.partners || []);
+      // Parse JSON fields from the database with error handling
+      const parsedPartners = (response.partners || []).map((partner: any) => {
+        const safeParseJson = (field: any, fallback: any = []) => {
+          if (typeof field === 'string') {
+            // Check for [object Object] strings
+            if (field === '[object Object]') {
+              return fallback;
+            }
+            try {
+              return JSON.parse(field);
+            } catch (error) {
+              return fallback;
+            }
+          }
+          return field || fallback;
+        };
+
+        return {
+          ...partner,
+          focus_areas_served: safeParseJson(partner.focus_areas_served, []),
+          target_revenue_range: safeParseJson(partner.target_revenue_range, []),
+          geographic_regions: safeParseJson(partner.geographic_regions, []),
+          key_differentiators: safeParseJson(partner.key_differentiators, []),
+          client_testimonials: safeParseJson(partner.client_testimonials, [])
+        };
+      });
+      
+      setPartners(parsedPartners);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load partners');
     } finally {
@@ -77,9 +105,12 @@ export default function PartnersManagement() {
   };
 
   const handleFormSuccess = async () => {
-    setShowForm(false);
     setEditingPartner(null);
-    await loadPartners();
+    setShowForm(false);
+    // Small delay to ensure state updates
+    setTimeout(() => {
+      loadPartners();
+    }, 100);
   };
 
   const handleFormCancel = () => {

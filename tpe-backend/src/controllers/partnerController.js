@@ -31,7 +31,7 @@ const getPartner = async (req, res, next) => {
     FROM strategic_partners p
     LEFT JOIN demo_bookings b ON p.id = b.partner_id
     LEFT JOIN contractor_partner_matches m ON p.id = m.partner_id
-    WHERE p.id = $1
+    WHERE p.id = ?
     GROUP BY p.id
   `, [id]);
 
@@ -49,61 +49,79 @@ const getPartner = async (req, res, next) => {
 const getAllPartners = async (req, res, next) => {
   const { active, limit = 50, offset = 0 } = req.query;
 
-  let queryText = `
-    SELECT p.*,
-           COUNT(DISTINCT b.id) as booking_count,
-           COUNT(DISTINCT m.contractor_id) as match_count
-    FROM strategic_partners p
-    LEFT JOIN demo_bookings b ON p.id = b.partner_id
-    LEFT JOIN contractor_partner_matches m ON p.id = m.partner_id
-  `;
+  try {
+    let queryText = 'SELECT * FROM strategic_partners';
+    const values = [];
 
-  const conditions = [];
-  const values = [];
+    if (active !== undefined) {
+      queryText += ' WHERE is_active = ?';
+      values.push(active === 'true' ? 1 : 0);
+    }
 
-  if (active !== undefined) {
-    conditions.push(`p.is_active = $${values.length + 1}`);
-    values.push(active === 'true');
+    queryText += ' ORDER BY power_confidence_score DESC';
+    
+    if (limit) {
+      queryText += ' LIMIT ?';
+      values.push(parseInt(limit));
+    }
+    
+    if (offset) {
+      queryText += ' OFFSET ?';
+      values.push(parseInt(offset));
+    }
+
+    const result = await query(queryText, values);
+
+    res.status(200).json({
+      success: true,
+      count: result.rows.length,
+      partners: result.rows
+    });
+  } catch (error) {
+    console.error('getAllPartners error:', error);
+    return next(error);
   }
-
-  if (conditions.length > 0) {
-    queryText += ' WHERE ' + conditions.join(' AND ');
-  }
-
-  queryText += ' GROUP BY p.id ORDER BY p.power_confidence_score DESC LIMIT $' + (values.length + 1) + ' OFFSET $' + (values.length + 2);
-  values.push(limit, offset);
-
-  const result = await query(queryText, values);
-
-  res.status(200).json({
-    success: true,
-    count: result.rows.length,
-    partners: result.rows
-  });
 };
 
 // Create partner (admin)
 const createPartner = async (req, res, next) => {
   const {
     company_name, description, logo_url, website, contact_email,
-    contact_phone, focus_areas_served, target_revenue_range,
-    power_confidence_score, key_differentiators, pricing_model,
-    onboarding_url, demo_booking_url
+    contact_phone, power100_subdomain, focus_areas_served, target_revenue_range,
+    geographic_regions, power_confidence_score, key_differentiators, 
+    pricing_model, onboarding_process, client_testimonials, is_active,
+    last_quarterly_report, onboarding_url, demo_booking_url
   } = req.body;
 
   const result = await query(`
     INSERT INTO strategic_partners (
       company_name, description, logo_url, website, contact_email,
-      contact_phone, focus_areas_served, target_revenue_range,
-      power_confidence_score, key_differentiators, pricing_model,
-      onboarding_url, demo_booking_url
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      contact_phone, power100_subdomain, focus_areas_served, target_revenue_range,
+      geographic_regions, power_confidence_score, key_differentiators, 
+      pricing_model, onboarding_process, client_testimonials, is_active,
+      last_quarterly_report, onboarding_url, demo_booking_url
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     RETURNING *
   `, [
-    company_name, description, logo_url, website, contact_email,
-    contact_phone, focus_areas_served, target_revenue_range,
-    power_confidence_score || 0, key_differentiators || [], pricing_model,
-    onboarding_url, demo_booking_url
+    company_name, 
+    description, 
+    logo_url, 
+    website, 
+    contact_email,
+    contact_phone,
+    power100_subdomain,
+    JSON.stringify(focus_areas_served || []),
+    JSON.stringify(target_revenue_range || []),
+    JSON.stringify(geographic_regions || []),
+    power_confidence_score || 0,
+    JSON.stringify(key_differentiators || []),
+    pricing_model,
+    onboarding_process,
+    JSON.stringify(client_testimonials || []),
+    is_active !== undefined ? is_active : true,
+    last_quarterly_report,
+    onboarding_url,
+    demo_booking_url
   ]);
 
   res.status(201).json({
@@ -165,14 +183,14 @@ const updatePartner = async (req, res, next) => {
 const deletePartner = async (req, res, next) => {
   const { id } = req.params;
 
-  const result = await query(
-    'DELETE FROM strategic_partners WHERE id = $1 RETURNING id',
-    [id]
-  );
-
-  if (result.rows.length === 0) {
+  // First check if partner exists
+  const existingPartner = await query('SELECT id FROM strategic_partners WHERE id = ?', [id]);
+  if (existingPartner.rows.length === 0) {
     return next(new AppError('Partner not found', 404));
   }
+
+  // Delete the partner
+  await query('DELETE FROM strategic_partners WHERE id = ?', [id]);
 
   res.status(200).json({
     success: true,
@@ -187,7 +205,7 @@ const togglePartnerStatus = async (req, res, next) => {
   const result = await query(`
     UPDATE strategic_partners 
     SET is_active = NOT is_active, updated_at = CURRENT_TIMESTAMP
-    WHERE id = $1
+    WHERE id = ?
     RETURNING id, is_active
   `, [id]);
 

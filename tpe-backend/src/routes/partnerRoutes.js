@@ -11,6 +11,11 @@ const validatePartner = [
   body('contact_email').isEmail().normalizeEmail().withMessage('Valid email is required'),
   body('focus_areas_served').isArray().withMessage('Focus areas must be an array'),
   body('target_revenue_range').isArray().withMessage('Revenue ranges must be an array'),
+  body('geographic_regions').optional().isArray().withMessage('Geographic regions must be an array'),
+  body('key_differentiators').optional().isArray().withMessage('Key differentiators must be an array'),
+  body('client_testimonials').optional().isArray().withMessage('Client testimonials must be an array'),
+  body('power_confidence_score').optional().isNumeric().withMessage('PowerConfidence score must be a number'),
+  body('is_active').optional().isBoolean().withMessage('Active status must be boolean'),
   (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {

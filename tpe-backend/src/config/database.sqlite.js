@@ -8,6 +8,12 @@ let db = null;
 
 // Initialize SQLite database
 const connectDB = async () => {
+  // Check if already connected
+  if (db) {
+    console.log('✅ SQLite database already connected');
+    return;
+  }
+  
   try {
     // Open database (in-memory for testing)
     db = await open({
@@ -180,6 +186,10 @@ const seedData = async () => {
 
 // Query wrapper for compatibility
 const query = async (text, params = []) => {
+  if (!db) {
+    throw new Error('Database not connected. Call connectDB() first.');
+  }
+  
   try {
     // Handle different query types
     if (text.toUpperCase().startsWith('SELECT')) {
