@@ -1,0 +1,514 @@
+{
+  "version": "1.0",
+  "last_updated": "2025-01-02",
+  "description": "Master field registry for The Power100 Experience database",
+  "field_definitions": [
+    {
+      "id": "contractor_name",
+      "table_name": "contractors",
+      "field_name": "name",
+      "field_type": "text",
+      "display_name": "Contractor's Full Name",
+      "description": "Full name of the contractor",
+      "validation_rules": {
+        "required": true,
+        "max_length": 255,
+        "pattern": "^[A-Za-z\\s'-]+$"
+      },
+      "ui_component": "TextInput",
+      "is_searchable": true,
+      "is_filterable": true,
+      "display_order": 1,
+      "category": "basic_info",
+      "status": "active"
+    },
+    {
+      "id": "contractor_email",
+      "table_name": "contractors",
+      "field_name": "email",
+      "field_type": "email",
+      "display_name": "Work Email Address",
+      "description": "Primary email address for communication",
+      "validation_rules": {
+        "required": true,
+        "unique": true,
+        "pattern": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
+      },
+      "ui_component": "EmailInput",
+      "is_searchable": true,
+      "is_filterable": true,
+      "display_order": 2,
+      "category": "basic_info",
+      "status": "active"
+    },
+    {
+      "id": "contractor_phone",
+      "table_name": "contractors",
+      "field_name": "phone",
+      "field_type": "phone",
+      "display_name": "Cell Phone Number",
+      "description": "Mobile phone number for SMS verification",
+      "validation_rules": {
+        "required": false,
+        "pattern": "^[\\+]?[1-9]?[0-9]{7,15}$"
+      },
+      "ui_component": "PhoneInput",
+      "is_searchable": false,
+      "is_filterable": false,
+      "display_order": 3,
+      "category": "basic_info",
+      "status": "active"
+    },
+    {
+      "id": "contractor_company_name",
+      "table_name": "contractors",
+      "field_name": "company_name",
+      "field_type": "text",
+      "display_name": "Company Name",
+      "description": "Name of the contracting company",
+      "validation_rules": {
+        "required": false,
+        "max_length": 255
+      },
+      "ui_component": "TextInput",
+      "is_searchable": true,
+      "is_filterable": true,
+      "display_order": 4,
+      "category": "basic_info",
+      "status": "active"
+    },
+    {
+      "id": "contractor_company_website",
+      "table_name": "contractors",
+      "field_name": "company_website",
+      "field_type": "url",
+      "display_name": "Company Website",
+      "description": "Company website URL",
+      "validation_rules": {
+        "required": false,
+        "pattern": "^https?:\\/\\/(www\\.)?[-a-zA-Z0-9@:%._\\+~#=]{1,256}\\.[a-zA-Z0-9()]{1,6}\\b([-a-zA-Z0-9()@:%_\\+.~#?&//=]*)$"
+      },
+      "ui_component": "URLInput",
+      "is_searchable": false,
+      "is_filterable": false,
+      "display_order": 5,
+      "category": "basic_info",
+      "status": "planned"
+    },
+    {
+      "id": "contractor_service_area",
+      "table_name": "contractors",
+      "field_name": "service_area",
+      "field_type": "text",
+      "display_name": "Service Area",
+      "description": "Geographic area served",
+      "validation_rules": {
+        "required": false,
+        "max_length": 255
+      },
+      "ui_component": "TextInput",
+      "is_searchable": true,
+      "is_filterable": true,
+      "display_order": 6,
+      "category": "basic_info",
+      "status": "planned"
+    },
+    {
+      "id": "contractor_services_offered",
+      "table_name": "contractors",
+      "field_name": "services_offered",
+      "field_type": "multi-select-with-entry",
+      "display_name": "Services Offered",
+      "description": "List of services the company offers",
+      "validation_rules": {
+        "required": false,
+        "min_items": 0,
+        "max_items": 20
+      },
+      "ui_component": "MultiSelectWithEntry",
+      "is_searchable": true,
+      "is_filterable": true,
+      "display_order": 7,
+      "category": "business_profile",
+      "status": "planned",
+      "options_source": "service_options"
+    },
+    {
+      "id": "contractor_verification_status",
+      "table_name": "contractors",
+      "field_name": "verification_status",
+      "field_type": "select",
+      "display_name": "Verification Status",
+      "description": "Current verification status",
+      "validation_rules": {
+        "required": true,
+        "default": "pending"
+      },
+      "ui_component": "Select",
+      "is_searchable": false,
+      "is_filterable": true,
+      "display_order": 8,
+      "category": "workflow",
+      "status": "planned",
+      "options": [
+        {"value": "pending", "label": "Pending"},
+        {"value": "verified", "label": "Verified"},
+        {"value": "failed", "label": "Failed"}
+      ]
+    },
+    {
+      "id": "contractor_focus_areas",
+      "table_name": "contractors",
+      "field_name": "focus_areas",
+      "field_type": "focus-areas",
+      "display_name": "Focus Areas",
+      "description": "Top 3 focus areas selected",
+      "validation_rules": {
+        "required": false,
+        "min_items": 0,
+        "max_items": 3
+      },
+      "ui_component": "FocusAreaSelector",
+      "is_searchable": true,
+      "is_filterable": true,
+      "display_order": 9,
+      "category": "business_profile",
+      "status": "planned",
+      "options": [
+        {"value": "greenfield_growth", "label": "Greenfield Growth"},
+        {"value": "controlling_lead_flow", "label": "Controlling Lead Flow"},
+        {"value": "closing_higher_percentage", "label": "Closing Higher Percentage"},
+        {"value": "installation_quality", "label": "Installation Quality"},
+        {"value": "hiring_sales_leadership", "label": "Hiring Sales Leadership"}
+      ]
+    },
+    {
+      "id": "contractor_primary_focus_area",
+      "table_name": "contractors",
+      "field_name": "primary_focus_area",
+      "field_type": "select",
+      "display_name": "Primary Focus Area",
+      "description": "The identified primary focus area",
+      "validation_rules": {
+        "required": false,
+        "depends_on": "focus_areas"
+      },
+      "ui_component": "Select",
+      "is_searchable": true,
+      "is_filterable": true,
+      "display_order": 10,
+      "category": "business_profile",
+      "status": "planned",
+      "options_source": "focus_area_options"
+    },
+    {
+      "id": "contractor_annual_revenue",
+      "table_name": "contractors",
+      "field_name": "annual_revenue",
+      "field_type": "select",
+      "display_name": "Annual Revenue",
+      "description": "Annual revenue bracket",
+      "validation_rules": {
+        "required": false
+      },
+      "ui_component": "Select",
+      "is_searchable": false,
+      "is_filterable": true,
+      "display_order": 11,
+      "category": "business_profile",
+      "status": "planned",
+      "options": [
+        {"value": "under_100k", "label": "Under $100K"},
+        {"value": "100k_500k", "label": "$100K - $500K"},
+        {"value": "500k_1m", "label": "$500K - $1M"},
+        {"value": "1m_5m", "label": "$1M - $5M"},
+        {"value": "over_5m", "label": "Over $5M"}
+      ]
+    },
+    {
+      "id": "contractor_team_size",
+      "table_name": "contractors",
+      "field_name": "team_size",
+      "field_type": "number",
+      "display_name": "Team Size",
+      "description": "Total number of employees",
+      "validation_rules": {
+        "required": false,
+        "min": 1,
+        "max": 10000
+      },
+      "ui_component": "NumberInput",
+      "is_searchable": false,
+      "is_filterable": true,
+      "display_order": 12,
+      "category": "business_profile",
+      "status": "planned"
+    },
+    {
+      "id": "contractor_increased_tools",
+      "table_name": "contractors",
+      "field_name": "increased_tools",
+      "field_type": "boolean",
+      "display_name": "Ready for More Tools",
+      "description": "Ready to invest in more tools",
+      "validation_rules": {
+        "required": false,
+        "default": false
+      },
+      "ui_component": "Checkbox",
+      "is_searchable": false,
+      "is_filterable": true,
+      "display_order": 13,
+      "category": "readiness_indicators",
+      "status": "planned"
+    },
+    {
+      "id": "contractor_increased_people",
+      "table_name": "contractors",
+      "field_name": "increased_people",
+      "field_type": "boolean",
+      "display_name": "Ready to Hire",
+      "description": "Ready to hire more people",
+      "validation_rules": {
+        "required": false,
+        "default": false
+      },
+      "ui_component": "Checkbox",
+      "is_searchable": false,
+      "is_filterable": true,
+      "display_order": 14,
+      "category": "readiness_indicators",
+      "status": "planned"
+    },
+    {
+      "id": "contractor_increased_activity",
+      "table_name": "contractors",
+      "field_name": "increased_activity",
+      "field_type": "boolean",
+      "display_name": "Ready for More Marketing",
+      "description": "Ready to increase marketing activity",
+      "validation_rules": {
+        "required": false,
+        "default": false
+      },
+      "ui_component": "Checkbox",
+      "is_searchable": false,
+      "is_filterable": true,
+      "display_order": 15,
+      "category": "readiness_indicators",
+      "status": "planned"
+    },
+    {
+      "id": "contractor_current_stage",
+      "table_name": "contractors",
+      "field_name": "current_stage",
+      "field_type": "select",
+      "display_name": "Current Stage",
+      "description": "Current stage in the contractor flow",
+      "validation_rules": {
+        "required": true,
+        "default": "verification"
+      },
+      "ui_component": "Select",
+      "is_searchable": false,
+      "is_filterable": true,
+      "display_order": 16,
+      "category": "workflow",
+      "status": "active",
+      "options": [
+        {"value": "verification", "label": "Verification"},
+        {"value": "focus_selection", "label": "Focus Selection"},
+        {"value": "profiling", "label": "Profiling"},
+        {"value": "matching", "label": "Matching"},
+        {"value": "completed", "label": "Completed"}
+      ]
+    },
+    {
+      "id": "contractor_opted_in_coaching",
+      "table_name": "contractors",
+      "field_name": "opted_in_coaching",
+      "field_type": "boolean",
+      "display_name": "AI Coaching Opt-in",
+      "description": "Opted in for ongoing AI coaching",
+      "validation_rules": {
+        "required": false,
+        "default": false
+      },
+      "ui_component": "Checkbox",
+      "is_searchable": false,
+      "is_filterable": true,
+      "display_order": 17,
+      "category": "preferences",
+      "status": "planned"
+    },
+    {
+      "id": "partner_company_name",
+      "table_name": "strategic_partners",
+      "field_name": "company_name",
+      "field_type": "text",
+      "display_name": "Partner Company Name",
+      "description": "Name of the strategic partner company",
+      "validation_rules": {
+        "required": true,
+        "max_length": 255
+      },
+      "ui_component": "TextInput",
+      "is_searchable": true,
+      "is_filterable": true,
+      "display_order": 1,
+      "category": "basic_info",
+      "status": "active"
+    },
+    {
+      "id": "partner_description",
+      "table_name": "strategic_partners",
+      "field_name": "description",
+      "field_type": "textarea",
+      "display_name": "Company Description",
+      "description": "Company description and value proposition",
+      "validation_rules": {
+        "required": false,
+        "max_length": 2000
+      },
+      "ui_component": "Textarea",
+      "is_searchable": true,
+      "is_filterable": false,
+      "display_order": 2,
+      "category": "basic_info",
+      "status": "planned"
+    },
+    {
+      "id": "partner_logo_url",
+      "table_name": "strategic_partners",
+      "field_name": "logo_url",
+      "field_type": "file",
+      "display_name": "Company Logo",
+      "description": "Company logo image URL",
+      "validation_rules": {
+        "required": false,
+        "file_types": ["jpg", "jpeg", "png", "svg"],
+        "max_size": "2MB"
+      },
+      "ui_component": "FileUpload",
+      "is_searchable": false,
+      "is_filterable": false,
+      "display_order": 3,
+      "category": "branding",
+      "status": "planned"
+    },
+    {
+      "id": "partner_focus_areas_served",
+      "table_name": "strategic_partners",
+      "field_name": "focus_areas_served",
+      "field_type": "multi-select-with-entry",
+      "display_name": "Focus Areas Served",
+      "description": "Focus areas this partner can help with",
+      "validation_rules": {
+        "required": false,
+        "min_items": 0,
+        "max_items": 10
+      },
+      "ui_component": "MultiSelectWithEntry",
+      "is_searchable": true,
+      "is_filterable": true,
+      "display_order": 4,
+      "category": "capabilities",
+      "status": "planned",
+      "options_source": "focus_area_options"
+    },
+    {
+      "id": "partner_power_confidence_score",
+      "table_name": "strategic_partners",
+      "field_name": "power_confidence_score",
+      "field_type": "number",
+      "display_name": "PowerConfidence Score",
+      "description": "AI-calculated confidence score",
+      "validation_rules": {
+        "required": false,
+        "min": 0,
+        "max": 100,
+        "default": 0
+      },
+      "ui_component": "NumberInput",
+      "is_searchable": false,
+      "is_filterable": true,
+      "display_order": 5,
+      "category": "performance",
+      "status": "planned"
+    },
+    {
+      "id": "partner_client_testimonials",
+      "table_name": "strategic_partners",
+      "field_name": "client_testimonials",
+      "field_type": "dynamic-list",
+      "display_name": "Client Testimonials",
+      "description": "Client testimonials with dynamic add/remove",
+      "validation_rules": {
+        "required": false,
+        "max_items": 10
+      },
+      "ui_component": "DynamicList",
+      "is_searchable": true,
+      "is_filterable": false,
+      "display_order": 6,
+      "category": "social_proof",
+      "status": "planned",
+      "list_schema": {
+        "client_name": {"type": "text", "required": true},
+        "testimonial": {"type": "textarea", "required": true},
+        "rating": {"type": "number", "min": 1, "max": 5}
+      }
+    },
+    {
+      "id": "partner_is_active",
+      "table_name": "strategic_partners",
+      "field_name": "is_active",
+      "field_type": "boolean",
+      "display_name": "Active Status",
+      "description": "Whether the partner is currently active",
+      "validation_rules": {
+        "required": true,
+        "default": true
+      },
+      "ui_component": "Checkbox",
+      "is_searchable": false,
+      "is_filterable": true,
+      "display_order": 7,
+      "category": "status",
+      "status": "active"
+    }
+  ],
+  "option_lists": {
+    "focus_area_options": [
+      {"value": "greenfield_growth", "label": "Greenfield Growth", "description": "Expanding into new markets or territories"},
+      {"value": "controlling_lead_flow", "label": "Controlling Lead Flow", "description": "Managing and optimizing lead generation"},
+      {"value": "closing_higher_percentage", "label": "Closing Higher Percentage", "description": "Improving conversion rates"},
+      {"value": "installation_quality", "label": "Installation Quality", "description": "Enhancing service delivery quality"},
+      {"value": "hiring_sales_leadership", "label": "Hiring Sales Leadership", "description": "Building sales team and leadership"}
+    ],
+    "service_options": [
+      {"value": "plumbing", "label": "Plumbing"},
+      {"value": "electrical", "label": "Electrical"},
+      {"value": "hvac", "label": "HVAC"},
+      {"value": "roofing", "label": "Roofing"},
+      {"value": "solar", "label": "Solar Installation"},
+      {"value": "landscaping", "label": "Landscaping"},
+      {"value": "general_contracting", "label": "General Contracting"},
+      {"value": "flooring", "label": "Flooring"},
+      {"value": "painting", "label": "Painting"},
+      {"value": "windows_doors", "label": "Windows & Doors"}
+    ]
+  },
+  "field_categories": [
+    {"id": "basic_info", "name": "Basic Information", "description": "Essential contact and company information"},
+    {"id": "business_profile", "name": "Business Profile", "description": "Business characteristics and capabilities"},
+    {"id": "readiness_indicators", "name": "Readiness Indicators", "description": "Growth readiness and investment willingness"},
+    {"id": "workflow", "name": "Workflow & Status", "description": "Process tracking and status management"},
+    {"id": "preferences", "name": "Preferences", "description": "User preferences and opt-ins"},
+    {"id": "capabilities", "name": "Capabilities", "description": "Services and areas of expertise"},
+    {"id": "performance", "name": "Performance", "description": "Metrics and scoring"},
+    {"id": "social_proof", "name": "Social Proof", "description": "Testimonials and reviews"},
+    {"id": "branding", "name": "Branding", "description": "Visual identity and marketing materials"},
+    {"id": "status", "name": "Status", "description": "Active/inactive and operational status"}
+  ]
+}

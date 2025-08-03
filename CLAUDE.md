@@ -213,12 +213,47 @@ the-power100-experience/          # Project root
 6. Run existing tests
 7. Create new tests as needed
 
+## 🗃️ Database Management & Extensibility
+
+### Comprehensive Database Enhancement Roadmap
+The Power100 Experience includes a comprehensive plan for evolving from a basic contractor flow system into a full-featured CRM with advanced partner directory capabilities, self-service portals, and intelligent matching algorithms.
+
+**Key Documentation:**
+- `docs/database-management-roadmap.md` - Complete enhancement roadmap with 5 implementation phases
+- `docs/database-schema-evolution.md` - Technical procedures for safe schema changes
+- `docs/field-addition-guide.md` - Step-by-step guide for adding new data fields
+
+### Database Enhancement Phases
+1. **Phase 1**: Foundation & Database Enhancement (Screenshot-based fields, basic CRUD)
+2. **Phase 2**: Advanced Database Management (Search, filtering, bulk operations)
+3. **Phase 3**: Self-Service Partner Portal (Registration, profile management)
+4. **Phase 4**: Public Partner Directory (Contractor-facing search and discovery)
+5. **Phase 5**: Intelligent Matching & Analytics (AI-driven matching, comprehensive analytics)
+
+### Current Schema State
+- **Contractors**: 11 records with basic fields, ready for enhancement with 20+ additional fields
+- **Strategic Partners**: 3 records, expanding to comprehensive profiles with testimonials, regions, capabilities
+- **Admin Users**: 1 record for authentication
+- **Future Tables**: Tags, field definitions, analytics, search logs for advanced functionality
+
+### Extensibility Framework
+- **Dynamic Field Addition**: Add new fields in ~5 minutes using automated scripts
+- **JSON Field Support**: Flexible data storage for custom fields and future expansion
+- **Master Field Registry**: Central configuration for all field definitions and validation rules
+- **Auto-Generated Forms**: UI components automatically adapt to new field definitions
+
+### Data Points Roadmap (Based on UI Screenshots)
+**Contractor Fields**: 25+ fields including verification, business profile, focus areas, readiness indicators, workflow tracking, and analytics
+**Partner Fields**: 20+ fields including company info, service capabilities, social proof, performance metrics, and integration settings
+
 ## 🔍 Key Files to Always Consider
 
 - `tpe-front-end/src/app/contractorflow/page.tsx` - Main flow logic
 - `tpe-front-end/src/app/admindashboard/page.tsx` - Admin functionality  
 - `tpe-front-end/src/app/globals.css` - Brand colors and styling
 - `tpe-front-end/src/app/layout.tsx` - Navigation and overall structure
+- `tpe-database/field-definitions.json` - Master field registry for extensibility
+- `docs/database-management-roadmap.md` - Complete database enhancement plan
 - Entity files - Data models and API integration
 
 ## 🎯 Business Goals

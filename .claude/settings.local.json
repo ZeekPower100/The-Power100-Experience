@@ -9,7 +9,8 @@
       "Bash(git checkout:*)",
       "Bash(npm run dev:sqlite:*)",
       "Bash(node:*)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git add:*)"
     ]
   },
   "enableAllProjectMcpServers": true,

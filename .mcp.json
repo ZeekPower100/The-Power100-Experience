@@ -57,5 +57,14 @@
             "DISABLE_CONSOLE_OUTPUT": "true"
           }
         }
+    
+    },
+    "safetyRules": {
+        "requireBranchForChanges": true,
+        "branchPrefix": "claude/",
+        "autoCommitMessage": "feat: {description} [claude-generated]",
+        "maxFilesPerCommit": 10,
+        "backupBeforeMajorChanges": true,
+        "protectedBranches": ["main", "master"]
+      }
     }
-  }
