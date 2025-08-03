@@ -359,6 +359,38 @@ export default function AdminDashboard() {
           </motion.div>
         </div>
 
+        {/* Quick Actions */}
+        <div className="mb-8">
+          <h2 className="text-xl font-semibold text-power100-black mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <Link href="/admin/partners">
+              <Card className="bg-white hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-power100-red">
+                <CardContent className="p-6 text-center">
+                  <Handshake className="w-8 h-8 text-power100-red mx-auto mb-3" />
+                  <h3 className="font-semibold text-power100-black">Manage Partners</h3>
+                  <p className="text-sm text-power100-grey mt-1">Add, edit, and manage strategic partners</p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Card className="bg-gray-50 cursor-not-allowed opacity-60">
+              <CardContent className="p-6 text-center">
+                <Users className="w-8 h-8 text-gray-400 mx-auto mb-3" />
+                <h3 className="font-semibold text-gray-600">Manage Contractors</h3>
+                <p className="text-sm text-gray-500 mt-1">Coming soon</p>
+              </CardContent>
+            </Card>
+            
+            <Card className="bg-gray-50 cursor-not-allowed opacity-60">
+              <CardContent className="p-6 text-center">
+                <BarChart3 className="w-8 h-8 text-gray-400 mx-auto mb-3" />
+                <h3 className="font-semibold text-gray-600">Analytics</h3>
+                <p className="text-sm text-gray-500 mt-1">Coming soon</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
         {/* Main Content Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Recent Contractors */}
