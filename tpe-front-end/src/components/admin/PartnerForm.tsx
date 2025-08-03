@@ -55,7 +55,7 @@ const GEOGRAPHIC_OPTIONS = [
   { value: 'international', label: 'International' }
 ];
 
-export default function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
+function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
   const [formData, setFormData] = useState({
     company_name: '',
     description: '',
@@ -444,3 +444,5 @@ export default function PartnerForm({ partner, onSuccess, onCancel }: PartnerFor
     </div>
   );
 }
+
+export default PartnerForm;

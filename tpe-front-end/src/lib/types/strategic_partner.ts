@@ -9,6 +9,7 @@ export interface StrategicPartner {
   logo_url?: string; // Optional fields are marked with a '?'
   website?: string;
   contact_email: string;
+  contact_phone?: string;
   power100_subdomain?: string;
   focus_areas_served: string[];
   target_revenue_range: string[];

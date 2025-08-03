@@ -199,7 +199,7 @@ export default function PartnersManagement() {
                 <CardContent className="pt-0">
                   <div className="space-y-3">
                     {partner.description && (
-                      <p className="text-sm text-power100-grey line-clamp-2">
+                      <p className="text-sm text-power100-grey overflow-hidden" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                         {partner.description}
                       </p>
                     )}
