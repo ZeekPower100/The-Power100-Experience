@@ -151,17 +151,17 @@ export default function BulkOperations({
     setIsProcessing(true);
     try {
       let result;
-      const exportParams = {
-        format,
-        ...(selectedIds.length > 0 ? { 
-          [searchType === 'contractors' ? 'contractor_ids' : 'partner_ids']: selectedIds 
-        } : {})
-      };
-
+      
       if (searchType === 'contractors') {
-        result = await bulkApi.exportContractors(exportParams);
+        result = await bulkApi.exportContractors({ 
+          contractor_ids: selectedIds, 
+          format 
+        });
       } else {
-        result = await bulkApi.exportPartners(exportParams);
+        result = await bulkApi.exportPartners({ 
+          partner_ids: selectedIds, 
+          format 
+        });
       }
 
       if (format === 'csv') {

@@ -237,42 +237,54 @@ export const bulkApi = {
   updateContractors: (ids: string[], updateData: Record<string, any>) =>
     apiRequest('/bulk/contractors/update', {
       method: 'POST',
-      body: JSON.stringify({ ids, updateData })
+      body: JSON.stringify({ contractor_ids: ids, updates: updateData })
     }),
 
   // Bulk delete contractors
   deleteContractors: (ids: string[]) =>
     apiRequest('/bulk/contractors/delete', {
       method: 'POST',
-      body: JSON.stringify({ ids })
+      body: JSON.stringify({ contractor_ids: ids })
     }),
 
   // Bulk update partners
   updatePartners: (ids: string[], updateData: Record<string, any>) =>
     apiRequest('/bulk/partners/update', {
       method: 'POST',
-      body: JSON.stringify({ ids, updateData })
+      body: JSON.stringify({ partner_ids: ids, updates: updateData })
     }),
 
-  // Bulk toggle partner status
+  // Bulk toggle partner status (partners don't support delete - use toggle status instead)
   togglePartnerStatus: (ids: string[]) =>
     apiRequest('/bulk/partners/toggle-status', {
       method: 'POST',
-      body: JSON.stringify({ ids })
+      body: JSON.stringify({ partner_ids: ids })
     }),
 
   // Export bulk data
-  exportContractors: (ids: string[]) =>
-    apiRequest('/bulk/contractors/export', {
+  exportContractors: (params: { contractor_ids?: string[]; format?: string } | string[]) => {
+    // Handle both array of IDs and params object
+    const requestBody = Array.isArray(params) 
+      ? { contractor_ids: params, format: 'csv' }
+      : { contractor_ids: params.contractor_ids || [], format: params.format || 'csv' };
+    
+    return apiRequest('/bulk/contractors/export', {
       method: 'POST',
-      body: JSON.stringify({ ids })
-    }),
+      body: JSON.stringify(requestBody)
+    });
+  },
 
-  exportPartners: (ids: string[]) =>
-    apiRequest('/bulk/partners/export', {
+  exportPartners: (params: { partner_ids?: string[]; format?: string } | string[]) => {
+    // Handle both array of IDs and params object
+    const requestBody = Array.isArray(params) 
+      ? { partner_ids: params, format: 'csv' }
+      : { partner_ids: params.partner_ids || [], format: params.format || 'csv' };
+    
+    return apiRequest('/bulk/partners/export', {
       method: 'POST',
-      body: JSON.stringify({ ids })
-    }),
+      body: JSON.stringify(requestBody)
+    });
+  },
 };
 
 // Utility functions
