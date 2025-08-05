@@ -15,6 +15,7 @@ const partnerRoutes = require('./routes/partnerRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const bulkRoutes = require('./routes/bulk');
 
 const app = express();
 
@@ -67,6 +68,7 @@ app.use('/api/partners', partnerRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/bulk', bulkRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -290,10 +290,12 @@ The Power100 Experience platform is now fully functional with the following capa
 - **Performance**: Optimized for real-time matching and responsive user experience
 
 ### 🔧 Development Environment
-- **Local Development**: SQLite backend + Next.js frontend on ports 5000/3002
+- **Local Development**: SQLite backend + Next.js frontend on ports 5000/3000-3006 (auto-assigned)
 - **Authentication**: Admin access via admin@power100.io / admin123
 - **Testing**: Comprehensive manual testing of all flows and features
 - **Version Control**: Git with feature branches and comprehensive commit history
+- **Troubleshooting**: See `docs/DEV-SERVER-TROUBLESHOOTING.md` for common issues and solutions
+- **JSON Fields**: See `docs/JSON-FIELD-HANDLING.md` for handling SQLite JSON string parsing
 
 ## 🗃️ Database Management & Extensibility
 

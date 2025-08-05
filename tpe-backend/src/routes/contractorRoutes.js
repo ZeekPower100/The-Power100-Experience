@@ -30,6 +30,7 @@ router.post('/:id/complete', asyncHandler(contractorController.completeFlow));
 // Protected routes (admin only)
 router.use(protect);
 router.get('/', asyncHandler(contractorController.getAllContractors));
+router.post('/search', asyncHandler(contractorController.searchContractors));
 router.get('/:id', asyncHandler(contractorController.getContractor));
 router.delete('/:id', asyncHandler(contractorController.deleteContractor));
 router.get('/stats/overview', asyncHandler(contractorController.getStats));

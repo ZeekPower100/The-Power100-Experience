@@ -247,6 +247,181 @@ const getPartnerStats = async (req, res, next) => {
   });
 };
 
+// Advanced search for partners (admin)
+const searchPartners = async (req, res, next) => {
+  const {
+    query: searchQuery = '',
+    focusAreas = [],
+    revenueRange = [],
+    revenueRanges = [], // Legacy support
+    geographicRegions = [],
+    isActive,
+    confidenceScoreMin,
+    confidenceScoreMax,
+    dateFrom,
+    dateTo,
+    limit = 50,
+    offset = 0,
+    sortBy = 'created_at',
+    sortOrder = 'DESC'
+  } = req.body;
+
+  console.log('🔍 Advanced partner search received parameters:');
+  console.log('  - searchQuery:', searchQuery);
+  console.log('  - focusAreas:', focusAreas);
+  console.log('  - revenueRange:', revenueRange);
+  console.log('  - revenueRanges:', revenueRanges);
+  console.log('  - isActive:', isActive);
+  console.log('  - Full request body:', JSON.stringify(req.body, null, 2));
+
+  // Build dynamic WHERE conditions
+  const conditions = [];
+  const values = [];
+  let paramIndex = 1;
+
+  // Text search across multiple fields
+  if (searchQuery) {
+    conditions.push(`(
+      company_name LIKE ? OR 
+      description LIKE ? OR 
+      contact_email LIKE ? OR 
+      website LIKE ?
+    )`);
+    const searchTerm = `%${searchQuery}%`;
+    values.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    paramIndex += 4;
+  }
+
+  // Focus areas filter (JSON field) - add protection against [object Object]
+  if (focusAreas.length > 0) {
+    const focusConditions = focusAreas.map(() => `focus_areas_served LIKE ?`);
+    conditions.push(`(${focusConditions.join(' OR ')}) AND focus_areas_served != '[object Object]'`);
+    focusAreas.forEach(area => {
+      values.push(`%"${area}"%`);
+      paramIndex++;
+    });
+  }
+
+  // Revenue ranges filter (JSON field) - support both parameter names
+  const finalRevenueRanges = revenueRange.length > 0 ? revenueRange : revenueRanges;
+  if (finalRevenueRanges.length > 0) {
+    const revenueConditions = finalRevenueRanges.map(() => `target_revenue_range LIKE ?`);
+    conditions.push(`(${revenueConditions.join(' OR ')}) AND target_revenue_range != '[object Object]'`);
+    finalRevenueRanges.forEach(range => {
+      values.push(`%"${range}"%`);
+      paramIndex++;
+    });
+  }
+
+  // Geographic regions filter (JSON field)
+  if (geographicRegions.length > 0) {
+    const regionConditions = geographicRegions.map(() => `geographic_regions LIKE ?`);
+    conditions.push(`(${regionConditions.join(' OR ')})`);
+    geographicRegions.forEach(region => {
+      values.push(`%"${region}"%`);
+      paramIndex++;
+    });
+  }
+
+  // Active status filter
+  if (isActive !== undefined) {
+    conditions.push(`is_active = ?`);
+    values.push(isActive ? 1 : 0);
+    paramIndex++;
+  }
+
+  // PowerConfidence score range
+  if (confidenceScoreMin !== undefined) {
+    conditions.push(`power_confidence_score >= ?`);
+    values.push(confidenceScoreMin);
+    paramIndex++;
+  }
+  if (confidenceScoreMax !== undefined) {
+    conditions.push(`power_confidence_score <= ?`);
+    values.push(confidenceScoreMax);
+    paramIndex++;
+  }
+
+  // Date range filter
+  if (dateFrom) {
+    conditions.push(`created_at >= ?`);
+    values.push(dateFrom);
+    paramIndex++;
+  }
+  if (dateTo) {
+    conditions.push(`created_at <= ?`);
+    values.push(dateTo);
+    paramIndex++;
+  }
+
+  // Build final query
+  let queryText = `SELECT * FROM strategic_partners`;
+  if (conditions.length > 0) {
+    queryText += ` WHERE ${conditions.join(' AND ')}`;
+  }
+
+  // Add sorting
+  const allowedSortFields = ['created_at', 'updated_at', 'company_name', 'power_confidence_score', 'is_active'];
+  const sortField = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+  const order = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+  queryText += ` ORDER BY ${sortField} ${order}`;
+
+  // Add pagination
+  queryText += ` LIMIT ? OFFSET ?`;
+  values.push(limit, offset);
+
+  // Get total count for pagination
+  let countQuery = `SELECT COUNT(*) as total FROM strategic_partners`;
+  if (conditions.length > 0) {
+    countQuery += ` WHERE ${conditions.join(' AND ')}`;
+  }
+  const countValues = values.slice(0, -2); // Remove limit and offset for count
+
+  console.log('🔍 Partner search query:', queryText);
+  console.log('🔍 Partner search values:', values);
+
+  const [results, countResult] = await Promise.all([
+    query(queryText, values),
+    query(countQuery, countValues)
+  ]);
+
+  // Parse JSON fields for each partner
+  const parsedPartners = results.rows.map(partner => ({
+    ...partner,
+    focus_areas_served: typeof partner.focus_areas_served === 'string' && partner.focus_areas_served !== '[object Object]'
+      ? JSON.parse(partner.focus_areas_served || '[]')
+      : Array.isArray(partner.focus_areas_served) ? partner.focus_areas_served : [],
+    target_revenue_range: typeof partner.target_revenue_range === 'string' && partner.target_revenue_range !== '[object Object]'
+      ? JSON.parse(partner.target_revenue_range || '[]')
+      : Array.isArray(partner.target_revenue_range) ? partner.target_revenue_range : [],
+    geographic_regions: typeof partner.geographic_regions === 'string' && partner.geographic_regions !== '[object Object]'
+      ? JSON.parse(partner.geographic_regions || '[]')
+      : Array.isArray(partner.geographic_regions) ? partner.geographic_regions : [],
+    key_differentiators: typeof partner.key_differentiators === 'string' && partner.key_differentiators !== '[object Object]'
+      ? JSON.parse(partner.key_differentiators || '[]')
+      : Array.isArray(partner.key_differentiators) ? partner.key_differentiators : [],
+    client_testimonials: typeof partner.client_testimonials === 'string' && partner.client_testimonials !== '[object Object]'
+      ? JSON.parse(partner.client_testimonials || '[]')
+      : Array.isArray(partner.client_testimonials) ? partner.client_testimonials : []
+  }));
+
+  const total = countResult.rows[0].total;
+  const hasMore = offset + limit < total;
+
+  res.status(200).json({
+    success: true,
+    partners: parsedPartners,
+    pagination: {
+      total,
+      limit,
+      offset,
+      hasMore,
+      totalPages: Math.ceil(total / limit),
+      currentPage: Math.floor(offset / limit) + 1
+    }
+  });
+};
+
 module.exports = {
   getActivePartners,
   getPartner,
@@ -255,5 +430,6 @@ module.exports = {
   updatePartner,
   deletePartner,
   togglePartnerStatus,
-  getPartnerStats
+  getPartnerStats,
+  searchPartners
 };

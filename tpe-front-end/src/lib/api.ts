@@ -92,6 +92,27 @@ export const contractorApi = {
 
   // Get contractor stats
   getStats: () => apiRequest('/contractors/stats/overview'),
+
+  // Advanced search for contractors
+  search: (searchParams: {
+    query?: string;
+    stage?: string;
+    focusAreas?: string[];
+    revenueRange?: string[];
+    verificationStatus?: string;
+    teamSizeMin?: number;
+    teamSizeMax?: number;
+    readinessIndicators?: string[];
+    dateFrom?: string;
+    dateTo?: string;
+    limit?: number;
+    offset?: number;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) => apiRequest('/contractors/search', {
+    method: 'POST',
+    body: JSON.stringify(searchParams)
+  }),
 };
 
 // Partner API
@@ -137,6 +158,26 @@ export const partnerApi = {
 
   // Get partner stats
   getStats: () => apiRequest('/partners/stats/overview'),
+
+  // Advanced search for partners
+  search: (searchParams: {
+    query?: string;
+    focusAreas?: string[];
+    revenueRanges?: string[];
+    geographicRegions?: string[];
+    isActive?: boolean;
+    confidenceScoreMin?: number;
+    confidenceScoreMax?: number;
+    dateFrom?: string;
+    dateTo?: string;
+    limit?: number;
+    offset?: number;
+    sortBy?: string;
+    sortOrder?: 'ASC' | 'DESC';
+  }) => apiRequest('/partners/search', {
+    method: 'POST',
+    body: JSON.stringify(searchParams)
+  }),
 };
 
 // Booking API
@@ -215,6 +256,59 @@ export const adminApi = {
     const searchParams = new URLSearchParams(params || {});
     return apiRequest(`/admin/export/bookings?${searchParams.toString()}`);
   },
+};
+
+// Bulk Operations API
+export const bulkApi = {
+  // Bulk update contractors
+  updateContractors: (contractorIds: string[], updates: Record<string, unknown>) =>
+    apiRequest('/bulk/contractors/update', {
+      method: 'POST',
+      body: JSON.stringify({ contractor_ids: contractorIds, updates })
+    }),
+
+  // Bulk delete contractors
+  deleteContractors: (contractorIds: string[]) =>
+    apiRequest('/bulk/contractors/delete', {
+      method: 'POST',
+      body: JSON.stringify({ contractor_ids: contractorIds })
+    }),
+
+  // Export contractors
+  exportContractors: (params?: {
+    contractor_ids?: string[];
+    format?: 'csv' | 'json';
+    fields?: string[];
+    search_filters?: Record<string, unknown>;
+  }) => apiRequest('/bulk/contractors/export', {
+    method: 'POST',
+    body: JSON.stringify(params || {})
+  }),
+
+  // Bulk update partners
+  updatePartners: (partnerIds: string[], updates: Record<string, unknown>) =>
+    apiRequest('/bulk/partners/update', {
+      method: 'POST',
+      body: JSON.stringify({ partner_ids: partnerIds, updates })
+    }),
+
+  // Bulk toggle partner status
+  togglePartnerStatus: (partnerIds: string[]) =>
+    apiRequest('/bulk/partners/toggle-status', {
+      method: 'POST',
+      body: JSON.stringify({ partner_ids: partnerIds })
+    }),
+
+  // Export partners
+  exportPartners: (params?: {
+    partner_ids?: string[];
+    format?: 'csv' | 'json';
+    fields?: string[];
+    search_filters?: Record<string, unknown>;
+  }) => apiRequest('/bulk/partners/export', {
+    method: 'POST',
+    body: JSON.stringify(params || {})
+  }),
 };
 
 // Utility functions
