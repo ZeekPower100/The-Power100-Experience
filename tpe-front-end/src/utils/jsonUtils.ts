@@ -5,8 +5,6 @@
  * These utilities provide safe, consistent parsing for all JSON fields.
  */
 
-import React from 'react';
-
 /**
  * Safely parse a JSON field that might be a string or already parsed array
  * @param field - The field to parse (could be string, array, null, undefined)
@@ -54,42 +52,25 @@ export function parseJsonObject<T = Record<string, any>>(field: unknown): T | nu
 }
 
 /**
- * Component helper for safely rendering JSON arrays
- * @param field - The JSON field to render
- * @param renderItem - Function to render each item
- * @returns React nodes or null if no items
+ * Get array items for mapping in components
+ * @param field - The JSON field to process
+ * @returns Array of items ready for mapping/rendering
  */
-export function renderJsonArray(
-  field: unknown,
-  renderItem: (item: string, index: number) => React.ReactNode
-): React.ReactNode {
-  const items = parseJsonArray(field);
-  return items.length > 0 ? items.map(renderItem) : null;
+export function getJsonArrayForMapping(field: unknown): string[] {
+  return parseJsonArray(field);
 }
 
 /**
- * Safe wrapper component for JSON array rendering with error boundary
- * @param field - The JSON field to render
- * @param renderItem - Function to render each item
- * @param fallback - Optional fallback content if parsing fails
- * @returns React component
+ * Get parsed JSON array items safely for rendering
+ * @param field - The JSON field to parse
+ * @returns Array of items or empty array if parsing fails
  */
-export function SafeJsonArray({ 
-  field, 
-  renderItem, 
-  fallback = null 
-}: {
-  field: unknown;
-  renderItem: (item: string, index: number) => React.ReactNode;
-  fallback?: React.ReactNode;
-}) {
+export function getSafeJsonArrayItems(field: unknown): string[] {
   try {
-    const items = parseJsonArray(field);
-    if (items.length === 0) return fallback;
-    return <>{items.map(renderItem)}</>;
+    return parseJsonArray(field);
   } catch (e) {
-    console.error('SafeJsonArray render error:', e);
-    return fallback;
+    console.error('SafeJsonArray parse error:', e);
+    return [];
   }
 }
 
@@ -112,56 +93,13 @@ export function hasJsonArrayItems(field: unknown): boolean {
 }
 
 /**
- * Standardized pattern for rendering JSON arrays in components
- * Use this as a template for consistent JSON field handling
+ * Get focus areas as a clean array for rendering
+ * @param field - The JSON field containing focus areas
+ * @returns Array of focus area strings
  */
-export const JsonArrayRenderer = {
-  /**
-   * Focus Areas renderer (most common use case)
-   */
-  focusAreas: (field: unknown, BadgeComponent: React.ComponentType<any>) => (
-    <>
-      {(() => {
-        const items = parseJsonArray(field);
-        return items.length > 0 && (
-          <div className="mb-4">
-            <span className="text-gray-500 text-sm">Focus Areas:</span>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {items.map((item: string, index: number) => (
-                <BadgeComponent key={index} variant="outline" className="text-xs">
-                  {item}
-                </BadgeComponent>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-    </>
-  ),
-
-  /**
-   * Generic list renderer
-   */
-  list: (field: unknown, title: string, BadgeComponent: React.ComponentType<any>) => (
-    <>
-      {(() => {
-        const items = parseJsonArray(field);
-        return items.length > 0 && (
-          <div className="mb-4">
-            <span className="text-gray-500 text-sm">{title}:</span>
-            <div className="flex flex-wrap gap-1 mt-1">
-              {items.map((item: string, index: number) => (
-                <BadgeComponent key={index} variant="outline" className="text-xs">
-                  {item}
-                </BadgeComponent>
-              ))}
-            </div>
-          </div>
-        );
-      })()}
-    </>
-  )
-};
+export function getFocusAreas(field: unknown): string[] {
+  return getSafeJsonArrayItems(field);
+}
 
 /**
  * Debug utilities for JSON fields
