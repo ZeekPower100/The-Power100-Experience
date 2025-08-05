@@ -92,6 +92,13 @@ export const contractorApi = {
 
   // Get contractor stats
   getStats: () => apiRequest('/contractors/stats/overview'),
+
+  // Search contractors with advanced filters
+  search: (params: Record<string, any>) => 
+    apiRequest('/contractors/search', {
+      method: 'POST',
+      body: JSON.stringify(params)
+    }),
 };
 
 // Partner API
@@ -137,6 +144,13 @@ export const partnerApi = {
 
   // Get partner stats
   getStats: () => apiRequest('/partners/stats/overview'),
+
+  // Search partners with advanced filters
+  search: (params: Record<string, any>) => 
+    apiRequest('/partners/search', {
+      method: 'POST',
+      body: JSON.stringify(params)
+    }),
 };
 
 // Booking API
@@ -215,6 +229,50 @@ export const adminApi = {
     const searchParams = new URLSearchParams(params || {});
     return apiRequest(`/admin/export/bookings?${searchParams.toString()}`);
   },
+};
+
+// Bulk Operations API
+export const bulkApi = {
+  // Bulk update contractors
+  updateContractors: (ids: string[], updateData: Record<string, any>) =>
+    apiRequest('/bulk/contractors/update', {
+      method: 'POST',
+      body: JSON.stringify({ ids, updateData })
+    }),
+
+  // Bulk delete contractors
+  deleteContractors: (ids: string[]) =>
+    apiRequest('/bulk/contractors/delete', {
+      method: 'POST',
+      body: JSON.stringify({ ids })
+    }),
+
+  // Bulk update partners
+  updatePartners: (ids: string[], updateData: Record<string, any>) =>
+    apiRequest('/bulk/partners/update', {
+      method: 'POST',
+      body: JSON.stringify({ ids, updateData })
+    }),
+
+  // Bulk toggle partner status
+  togglePartnerStatus: (ids: string[]) =>
+    apiRequest('/bulk/partners/toggle-status', {
+      method: 'POST',
+      body: JSON.stringify({ ids })
+    }),
+
+  // Export bulk data
+  exportContractors: (ids: string[]) =>
+    apiRequest('/bulk/contractors/export', {
+      method: 'POST',
+      body: JSON.stringify({ ids })
+    }),
+
+  exportPartners: (ids: string[]) =>
+    apiRequest('/bulk/partners/export', {
+      method: 'POST',
+      body: JSON.stringify({ ids })
+    }),
 };
 
 // Utility functions
