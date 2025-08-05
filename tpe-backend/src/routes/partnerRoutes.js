@@ -32,10 +32,11 @@ router.get('/:id', asyncHandler(partnerController.getPartner));
 // Protected routes (admin only)
 router.use(protect);
 router.get('/', asyncHandler(partnerController.getAllPartners));
+router.post('/search', asyncHandler(partnerController.searchPartners));
+router.get('/stats/overview', asyncHandler(partnerController.getPartnerStats));
 router.post('/', validatePartner, asyncHandler(partnerController.createPartner));
 router.put('/:id', asyncHandler(partnerController.updatePartner));
 router.delete('/:id', asyncHandler(partnerController.deletePartner));
 router.put('/:id/toggle-status', asyncHandler(partnerController.togglePartnerStatus));
-router.get('/stats/overview', asyncHandler(partnerController.getPartnerStats));
 
 module.exports = router;

@@ -9,16 +9,15 @@ import Link from 'next/link';
 
 interface LayoutProps {
   children: React.ReactNode;
-  currentPageName?: string;
 }
 
-export default function Layout({ children, currentPageName }: LayoutProps) {
+export default function Layout({ children }: LayoutProps) {
   const pathname = usePathname();
   
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <title>{currentPageName ? `Power100 Experience | ${currentPageName}` : 'Power100 Experience'}</title>
+        <title>Power100 Experience</title>
       </head>
       <body className="min-h-screen bg-power100-bg-grey" suppressHydrationWarning>
       <nav className="bg-black shadow-md sticky top-0 z-50">

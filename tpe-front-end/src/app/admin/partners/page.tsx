@@ -45,7 +45,7 @@ export default function PartnersManagement() {
     try {
       setLoading(true);
       setError(null); // Clear previous errors
-      const response = await partnerApi.getAll();
+      const response = await partnerApi.getAll() as { partners: any[] };
       // Parse JSON fields from the database with error handling
       const parsedPartners = (response.partners || []).map((partner: any) => {
         const safeParseJson = (field: any, fallback: any = []) => {

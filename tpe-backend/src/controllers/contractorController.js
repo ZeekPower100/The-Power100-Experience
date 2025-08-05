@@ -1,4 +1,4 @@
-const { query, transaction } = require('../config/database');
+const { query, transaction } = require('../config/database.sqlite');
 const { AppError } = require('../middleware/errorHandler');
 const { generateVerificationCode, sendSMSVerification } = require('../services/smsService');
 const { matchContractorWithPartners } = require('../services/matchingService');
@@ -367,6 +367,177 @@ const getStats = async (req, res, next) => {
   });
 };
 
+// Advanced search for contractors (admin)
+const searchContractors = async (req, res, next) => {
+  const {
+    query: searchQuery = '',
+    stage,
+    focusAreas = [],
+    revenueRange = [],
+    verificationStatus,
+    teamSizeMin,
+    teamSizeMax,
+    readinessIndicators = [],
+    dateFrom,
+    dateTo,
+    limit = 50,
+    offset = 0,
+    sortBy = 'created_at',
+    sortOrder = 'DESC'
+  } = req.body;
+
+  console.log('🔍 Advanced contractor search:', { searchQuery, stage, focusAreas, revenueRange });
+
+  // Build dynamic WHERE conditions
+  const conditions = [];
+  const values = [];
+  let paramIndex = 1;
+
+  // Text search across multiple fields
+  if (searchQuery) {
+    conditions.push(`(
+      name LIKE ? OR 
+      email LIKE ? OR 
+      company_name LIKE ? OR 
+      service_area LIKE ?
+    )`);
+    const searchTerm = `%${searchQuery}%`;
+    values.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    paramIndex += 4;
+  }
+
+  // Stage filter
+  if (stage) {
+    conditions.push(`current_stage = ?`);
+    values.push(stage);
+    paramIndex++;
+  }
+
+  // Focus areas filter (JSON field)
+  if (focusAreas.length > 0) {
+    const focusConditions = focusAreas.map(() => `focus_areas LIKE ?`);
+    conditions.push(`(${focusConditions.join(' OR ')}) AND focus_areas != '[object Object]'`);
+    focusAreas.forEach(area => {
+      values.push(`%"${area}"%`);
+      paramIndex++;
+    });
+  }
+
+  // Revenue range filter
+  if (revenueRange.length > 0) {
+    const revenueConditions = revenueRange.map(() => `annual_revenue = ?`);
+    conditions.push(`(${revenueConditions.join(' OR ')})`);
+    values.push(...revenueRange);
+    paramIndex += revenueRange.length;
+  }
+
+  // Verification status filter
+  if (verificationStatus) {
+    conditions.push(`verification_status = ?`);
+    values.push(verificationStatus);
+    paramIndex++;
+  }
+
+  // Team size range
+  if (teamSizeMin !== undefined) {
+    conditions.push(`team_size >= ?`);
+    values.push(teamSizeMin);
+    paramIndex++;
+  }
+  if (teamSizeMax !== undefined) {
+    conditions.push(`team_size <= ?`);
+    values.push(teamSizeMax);
+    paramIndex++;
+  }
+
+  // Readiness indicators
+  if (readinessIndicators.length > 0) {
+    const readinessConditions = [];
+    if (readinessIndicators.includes('increased_tools')) {
+      readinessConditions.push('increased_tools = 1');
+    }
+    if (readinessIndicators.includes('increased_people')) {
+      readinessConditions.push('increased_people = 1');
+    }
+    if (readinessIndicators.includes('increased_activity')) {
+      readinessConditions.push('increased_activity = 1');
+    }
+    if (readinessConditions.length > 0) {
+      conditions.push(`(${readinessConditions.join(' AND ')})`);
+    }
+  }
+
+  // Date range filter
+  if (dateFrom) {
+    conditions.push(`created_at >= ?`);
+    values.push(dateFrom);
+    paramIndex++;
+  }
+  if (dateTo) {
+    conditions.push(`created_at <= ?`);
+    values.push(dateTo);
+    paramIndex++;
+  }
+
+  // Build final query
+  let queryText = `SELECT * FROM contractors`;
+  if (conditions.length > 0) {
+    queryText += ` WHERE ${conditions.join(' AND ')}`;
+  }
+
+  // Add sorting
+  const allowedSortFields = ['created_at', 'updated_at', 'name', 'company_name', 'current_stage', 'team_size'];
+  const sortField = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+  const order = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+  queryText += ` ORDER BY ${sortField} ${order}`;
+
+  // Add pagination
+  queryText += ` LIMIT ? OFFSET ?`;
+  values.push(limit, offset);
+
+  // Get total count for pagination
+  let countQuery = `SELECT COUNT(*) as total FROM contractors`;
+  if (conditions.length > 0) {
+    countQuery += ` WHERE ${conditions.join(' AND ')}`;
+  }
+  const countValues = values.slice(0, -2); // Remove limit and offset for count
+
+  console.log('🔍 Search query:', queryText);
+  console.log('🔍 Search values:', values);
+
+  const [results, countResult] = await Promise.all([
+    query(queryText, values),
+    query(countQuery, countValues)
+  ]);
+
+  // Parse JSON fields for each contractor
+  const parsedContractors = results.rows.map(contractor => ({
+    ...contractor,
+    focus_areas: typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]'
+      ? JSON.parse(contractor.focus_areas || '[]')
+      : Array.isArray(contractor.focus_areas) ? contractor.focus_areas : [],
+    services_offered: typeof contractor.services_offered === 'string' && contractor.services_offered !== '[object Object]'
+      ? JSON.parse(contractor.services_offered || '[]')
+      : Array.isArray(contractor.services_offered) ? contractor.services_offered : []
+  }));
+
+  const total = countResult.rows[0].total;
+  const hasMore = offset + limit < total;
+
+  res.status(200).json({
+    success: true,
+    contractors: parsedContractors,
+    pagination: {
+      total,
+      limit,
+      offset,
+      hasMore,
+      totalPages: Math.ceil(total / limit),
+      currentPage: Math.floor(offset / limit) + 1
+    }
+  });
+};
+
 module.exports = {
   startVerification,
   verifyCode,
@@ -376,5 +547,6 @@ module.exports = {
   getAllContractors,
   getContractor,
   deleteContractor,
-  getStats
+  getStats,
+  searchContractors
 };

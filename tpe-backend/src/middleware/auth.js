@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { query } = require('../config/database');
+const { query } = require('../config/database.sqlite');
 const { AppError } = require('./errorHandler');
 
 // Protect routes - require authentication
@@ -26,7 +26,7 @@ const protect = async (req, res, next) => {
 
     // Check if admin user still exists
     const result = await query(
-      'SELECT id, email, full_name, is_active FROM admin_users WHERE id = $1',
+      'SELECT id, email, full_name, is_active FROM admin_users WHERE id = ?',
       [decoded.id]
     );
 
@@ -61,6 +61,17 @@ const authorize = (...roles) => {
   };
 };
 
+// Admin-only middleware - requires authenticated admin user
+const adminOnly = (req, res, next) => {
+  if (!req.user) {
+    return next(new AppError('Admin access required', 403));
+  }
+  
+  // All authenticated users are currently admins
+  // In the future, you can add role checking here
+  next();
+};
+
 // Optional auth - adds user to req if authenticated but doesn't require it
 const optionalAuth = async (req, res, next) => {
   let token;
@@ -80,7 +91,7 @@ const optionalAuth = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const result = await query(
-      'SELECT id, email, full_name, is_active FROM admin_users WHERE id = $1 AND is_active = true',
+      'SELECT id, email, full_name, is_active FROM admin_users WHERE id = ? AND is_active = 1',
       [decoded.id]
     );
 
@@ -97,5 +108,6 @@ const optionalAuth = async (req, res, next) => {
 module.exports = {
   protect,
   authorize,
+  adminOnly,
   optionalAuth
 };

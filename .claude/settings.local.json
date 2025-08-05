@@ -12,7 +12,8 @@
       "Bash(npm run build:*)",
       "Bash(git add:*)",
       "Bash(npx tsc:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(PORT=5001 node src/server.js)"
     ]
   },
   "enableAllProjectMcpServers": true,

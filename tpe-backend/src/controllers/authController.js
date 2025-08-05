@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const { query } = require('../config/database');
+const { query } = require('../config/database.sqlite');
 const { AppError } = require('../middleware/errorHandler');
 
 // Generate JWT token
@@ -41,7 +41,7 @@ const login = async (req, res, next) => {
 
   // Check if user exists
   const result = await query(
-    'SELECT * FROM admin_users WHERE email = $1',
+    'SELECT * FROM admin_users WHERE email = ?',
     [email]
   );
 
@@ -98,7 +98,7 @@ const updatePassword = async (req, res, next) => {
 
   // Get user with password
   const result = await query(
-    'SELECT * FROM admin_users WHERE id = $1',
+    'SELECT * FROM admin_users WHERE id = ?',
     [req.user.id]
   );
 
@@ -116,7 +116,7 @@ const updatePassword = async (req, res, next) => {
 
   // Update password
   await query(
-    'UPDATE admin_users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+    'UPDATE admin_users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
     [newPasswordHash, req.user.id]
   );
 
