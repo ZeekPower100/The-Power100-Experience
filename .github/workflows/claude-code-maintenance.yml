@@ -23,7 +23,7 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: 'tpe-front-end/package-lock.json'
+        cache-dependency-path: 'package-lock.json'
 
     - name: Update frontend dependencies
       run: |
