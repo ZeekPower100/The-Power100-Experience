@@ -21,11 +21,18 @@ jest.mock('framer-motion', () => ({
   AnimatePresence: ({ children }) => children,
 }));
 
-// Mock Power100 Experience entities
-jest.mock('@/entities/Contractor', () => ({
-  Contractor: {
+// Mock Power100 Experience entities - only if they exist
+jest.mock('@/lib/api', () => ({
+  contractorApi: {
     create: jest.fn(),
     update: jest.fn(),
-    list: jest.fn(() => []),
+    list: jest.fn(() => Promise.resolve([])),
+    search: jest.fn(() => Promise.resolve({ data: [], total: 0 })),
+  },
+  partnerApi: {
+    create: jest.fn(),
+    update: jest.fn(),
+    list: jest.fn(() => Promise.resolve([])),
+    search: jest.fn(() => Promise.resolve({ data: [], total: 0 })),
   },
 }));

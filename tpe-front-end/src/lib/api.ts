@@ -92,6 +92,13 @@ export const contractorApi = {
 
   // Get contractor stats
   getStats: () => apiRequest('/contractors/stats/overview'),
+
+  // Search contractors with advanced filters
+  search: (params: Record<string, any>) => 
+    apiRequest('/contractors/search', {
+      method: 'POST',
+      body: JSON.stringify(params)
+    }),
 };
 
 // Partner API
@@ -137,6 +144,13 @@ export const partnerApi = {
 
   // Get partner stats
   getStats: () => apiRequest('/partners/stats/overview'),
+
+  // Search partners with advanced filters
+  search: (params: Record<string, any>) => 
+    apiRequest('/partners/search', {
+      method: 'POST',
+      body: JSON.stringify(params)
+    }),
 };
 
 // Booking API
@@ -214,6 +228,62 @@ export const adminApi = {
   exportBookings: (params?: Record<string, string>) => {
     const searchParams = new URLSearchParams(params || {});
     return apiRequest(`/admin/export/bookings?${searchParams.toString()}`);
+  },
+};
+
+// Bulk Operations API
+export const bulkApi = {
+  // Bulk update contractors
+  updateContractors: (ids: string[], updateData: Record<string, any>) =>
+    apiRequest('/bulk/contractors/update', {
+      method: 'POST',
+      body: JSON.stringify({ contractor_ids: ids, updates: updateData })
+    }),
+
+  // Bulk delete contractors
+  deleteContractors: (ids: string[]) =>
+    apiRequest('/bulk/contractors/delete', {
+      method: 'POST',
+      body: JSON.stringify({ contractor_ids: ids })
+    }),
+
+  // Bulk update partners
+  updatePartners: (ids: string[], updateData: Record<string, any>) =>
+    apiRequest('/bulk/partners/update', {
+      method: 'POST',
+      body: JSON.stringify({ partner_ids: ids, updates: updateData })
+    }),
+
+  // Bulk toggle partner status (partners don't support delete - use toggle status instead)
+  togglePartnerStatus: (ids: string[]) =>
+    apiRequest('/bulk/partners/toggle-status', {
+      method: 'POST',
+      body: JSON.stringify({ partner_ids: ids })
+    }),
+
+  // Export bulk data
+  exportContractors: (params: { contractor_ids?: string[]; format?: string } | string[]) => {
+    // Handle both array of IDs and params object
+    const requestBody = Array.isArray(params) 
+      ? { contractor_ids: params, format: 'csv' }
+      : { contractor_ids: params.contractor_ids || [], format: params.format || 'csv' };
+    
+    return apiRequest('/bulk/contractors/export', {
+      method: 'POST',
+      body: JSON.stringify(requestBody)
+    });
+  },
+
+  exportPartners: (params: { partner_ids?: string[]; format?: string } | string[]) => {
+    // Handle both array of IDs and params object
+    const requestBody = Array.isArray(params) 
+      ? { partner_ids: params, format: 'csv' }
+      : { partner_ids: params.partner_ids || [], format: params.format || 'csv' };
+    
+    return apiRequest('/bulk/partners/export', {
+      method: 'POST',
+      body: JSON.stringify(requestBody)
+    });
   },
 };
 

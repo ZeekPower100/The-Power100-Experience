@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Partner Auth Test - Power100</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 { color: #FB0401; }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #FB0401;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        button:hover { background: #d10301; }
+        button:disabled { 
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; border: 1px solid #bee5eb; }
+        .credentials {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Partner Authentication Test</h1>
+        
+        <div class="credentials">
+            <h3>Demo Credentials</h3>
+            <p><strong>Email:</strong> demo@partner.com</p>
+            <p><strong>Password:</strong> testpass123</p>
+            <p><strong>Company:</strong> Auth Test Partner</p>
+        </div>
+
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" value="demo@partner.com">
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" value="testpass123">
+        </div>
+
+        <button onclick="testLogin()">🔑 Test Login</button>
+        <button onclick="testProfile()" id="profileBtn" disabled>👤 Test Profile</button>
+        <button onclick="testLogout()" id="logoutBtn" disabled>🚪 Test Logout</button>
+        <button onclick="clearResults()">🧹 Clear Results</button>
+
+        <div id="results"></div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 Test Results</h2>
+        <div id="status" class="info">Ready to test partner authentication...</div>
+        
+        <p><strong>Access URLs:</strong></p>
+        <ul>
+            <li>Backend API: <a href="http://localhost:5000/health" target="_blank">http://localhost:5000/health</a></li>
+            <li>Partner Portal: <a href="http://localhost:3002/partner-portal" target="_blank">http://localhost:3002/partner-portal</a></li>
+            <li>This Test Page: <a href="http://localhost:5000/partner-auth-test.html" target="_blank">http://localhost:5000/partner-auth-test.html</a></li>
+        </ul>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5000/api/partner-auth';
+        let authToken = localStorage.getItem('partnerToken');
+        
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = type;
+        }
+
+        function addResult(title, data, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = `<strong>${title}</strong>\n${JSON.stringify(data, null, 2)}`;
+            results.appendChild(div);
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            updateStatus('Testing login...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    authToken = data.token;
+                    localStorage.setItem('partnerToken', authToken);
+                    localStorage.setItem('partnerInfo', JSON.stringify(data.partner));
+                    
+                    document.getElementById('profileBtn').disabled = false;
+                    document.getElementById('logoutBtn').disabled = false;
+                    
+                    updateStatus('✅ Login successful!', 'success');
+                    addResult('LOGIN SUCCESS', data, 'success');
+                } else {
+                    updateStatus('❌ Login failed', 'error');
+                    addResult('LOGIN FAILED', data, 'error');
+                }
+            } catch (error) {
+                updateStatus('❌ Network error', 'error');
+                addResult('NETWORK ERROR', { error: error.message }, 'error');
+            }
+        }
+
+        async function testProfile() {
+            if (!authToken) {
+                updateStatus('❌ No auth token - login first', 'error');
+                return;
+            }
+            
+            updateStatus('Testing profile fetch...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/profile`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    updateStatus('✅ Profile fetch successful!', 'success');
+                    addResult('PROFILE SUCCESS', data, 'success');
+                } else {
+                    updateStatus('❌ Profile fetch failed', 'error');
+                    addResult('PROFILE FAILED', data, 'error');
+                }
+            } catch (error) {
+                updateStatus('❌ Network error', 'error');
+                addResult('NETWORK ERROR', { error: error.message }, 'error');
+            }
+        }
+
+        async function testLogout() {
+            updateStatus('Testing logout...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/logout`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                authToken = null;
+                localStorage.removeItem('partnerToken');
+                localStorage.removeItem('partnerInfo');
+                
+                document.getElementById('profileBtn').disabled = true;
+                document.getElementById('logoutBtn').disabled = true;
+                
+                updateStatus('✅ Logout successful!', 'success');
+                addResult('LOGOUT SUCCESS', data, 'success');
+            } catch (error) {
+                updateStatus('❌ Network error', 'error');
+                addResult('NETWORK ERROR', { error: error.message }, 'error');
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            updateStatus('Results cleared - Ready to test', 'info');
+        }
+
+        // Initialize UI based on existing token
+        if (authToken) {
+            document.getElementById('profileBtn').disabled = false;
+            document.getElementById('logoutBtn').disabled = false;
+            updateStatus('Found existing auth token - can test profile', 'success');
+        }
+    </script>
+</body>
+</html>
