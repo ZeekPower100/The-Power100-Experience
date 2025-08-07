@@ -104,11 +104,28 @@ the-power100-experience/          # Project root
 3. Automatic response triggers accounting/booking team CC
 4. Partner takes over with their cadence
 
-### PowerConfidence Scoring
-- Quarterly customer satisfaction calls
-- Automated text message opt-ins
-- Tone and tempo analysis integration (future)
-- Partner ranking and recommendation system
+### PowerConfidence Scoring & Feedback Loop System
+**CRITICAL BUSINESS DIFFERENTIATOR** - Comprehensive feedback collection system for all partner clients
+
+#### Quarterly Feedback Loop Process
+1. **SMS Trigger**: Automated quarterly text messages to ALL partner clients (TPE + non-TPE originated)
+2. **Feedback Flow**: Link directs to 5-step feedback experience (similar to contractor onboarding)
+3. **Data Collection**: Multi-format feedback (text, audio, video when applicable)
+4. **PowerConfidence Calculation**: Algorithm processes feedback into partner scores
+5. **Report Generation**: Quarterly partner performance and industry reports
+
+#### AI Coaching System Integration
+- **Unlocked Access**: Contractors who complete feedback gain access to AI coaching
+- **Multi-Source Training**: AI trained on all feedback data, industry insights, partner performance
+- **Contextual Guidance**: AI provides partner-specific recommendations based on similar client experiences
+- **Conversation Memory**: Persistent conversation history for personalized coaching
+- **Industry Intelligence**: Size/service-matched insights from feedback database
+
+#### Partner Feedback Visibility
+- Partners receive their PowerConfidence scores and feedback summaries
+- Real-time unbiased third-party validation system
+- Performance tracking and improvement recommendations
+- Industry benchmarking capabilities
 
 ## 🛠️ Technical Stack
 
@@ -195,8 +212,44 @@ the-power100-experience/          # Project root
 - Change history for compliance requirements
 - Data integrity monitoring
 
-### 🔮 PHASE 3 - Partner Self-Service Portal (UPCOMING)
-**Timeline**: Week 5-6 | **Priority**: Medium
+### 🔄 PHASE 3 - PowerConfidence Feedback Loop System (CURRENT PRIORITY)
+**Timeline**: Week 3-5 | **Priority**: CRITICAL - Core Business Differentiator
+
+#### Quarterly Feedback Collection System
+- **5-Step Feedback Flow**: Mirror contractor onboarding experience for partner service evaluation
+- **SMS-to-Web Integration**: Text message triggers with feedback flow links
+- **Multi-Format Data Collection**: Text responses, audio recordings, video testimonials
+- **Client Database Management**: Track ALL partner clients (TPE + non-TPE originated)
+- **Automated Quarterly Scheduling**: System-driven feedback collection cycles
+
+#### PowerConfidence Scoring Algorithm
+- **Initial Scoring**: AI analysis of partner onboarding demonstrations and proof-of-capability content
+- **Ongoing Feedback Processing**: Convert multi-format quarterly client feedback into numerical scores
+- **Weighted Scoring System**: Service quality, communication, results delivery, recommendation likelihood
+- **Historical Trend Analysis**: Quarter-over-quarter performance tracking with initial baseline
+- **Industry Benchmarking**: Comparative scoring across partner categories and demonstration quality
+
+#### AI Coaching System (Industry Intelligence Engine)
+- **Feedback-Gated Access**: Unlock AI coaching for contractors who complete feedback
+- **Multi-Source AI Training**: 
+  - Partner onboarding video/audio demonstrations (10s to 100s per partner)
+  - Initial PowerConfidence scoring from partner proof-of-capability content
+  - Quarterly client feedback data and performance metrics
+  - Contractor interaction patterns and success outcomes
+- **Deep Industry Expertise**: AI trained on comprehensive partner demonstration content
+- **Contextual Recommendations**: Size/service-matched insights from verified partner capabilities
+- **Conversation Persistence**: Advanced memory system with business context and coaching history
+- **Broad + Specific Intelligence**: Answer both contractor-specific and general industry questions
+
+#### Reporting & Analytics
+- **Quarterly Partner Reports**: Individual performance summaries with feedback highlights
+- **Industry Reports**: Aggregate performance trends and benchmarks
+- **Admin Dashboard Integration**: Real-time feedback monitoring and score management
+- **Partner Feedback Visibility**: Transparent score and feedback access for partners
+- **Data Export Capabilities**: Flexible reporting for various stakeholder needs
+
+### 🔮 PHASE 4 - Partner Self-Service Portal (UPCOMING)
+**Timeline**: Week 6-7 | **Priority**: Medium
 
 #### Partner Registration & Management
 - Partner application and registration workflow
@@ -210,8 +263,8 @@ the-power100-experience/          # Project root
 - Advanced matching preferences and targeting
 - Integration with external partner systems
 
-### 📝 PHASE 4 - Production & Scaling (FUTURE)
-**Timeline**: Week 7-8 | **Priority**: Low
+### 📝 PHASE 5 - Production & Scaling (FUTURE)
+**Timeline**: Week 8-9 | **Priority**: Low
 
 #### Production Infrastructure
 - PostgreSQL production database setup
@@ -242,6 +295,9 @@ the-power100-experience/          # Project root
 - Implement responsive design
 - Add proper error handling
 - Include loading states
+- **Follow database connection standards** (see `docs/development-best-practices.md`)
+- **Use authentication development checklist** (see `docs/DEVELOPMENT_CHECKLIST.md`)
+- **Test API endpoints independently** before frontend integration
 
 ### Never Do
 - Work directly on main/master branch
@@ -250,6 +306,9 @@ the-power100-experience/          # Project root
 - Ignore TypeScript errors
 - Hardcode values that should be configurable
 - Skip accessibility considerations
+- **Mix database connection methods** (query wrapper + direct connections)
+- **Skip authentication flow testing protocol**
+- **Update dependencies without compatibility checks**
 
 ### When Making Changes
 1. Analyze impact on contractor flow
@@ -344,16 +403,28 @@ The Power100 Experience includes a comprehensive plan for evolving from a basic 
 
 ## 🔍 Key Files to Always Consider
 
+### **Core Application Files**
 - `tpe-front-end/src/app/contractorflow/page.tsx` - Main flow logic
 - `tpe-front-end/src/app/admindashboard/page.tsx` - Admin functionality  
 - `tpe-front-end/src/app/globals.css` - Brand colors and styling
 - `tpe-front-end/src/app/layout.tsx` - Navigation and overall structure
 - `tpe-database/field-definitions.json` - Master field registry for extensibility
-- `docs/database-management-roadmap.md` - Complete database enhancement plan
-- `docs/SERVER_TROUBLESHOOTING.md` - Server connectivity issue solutions
 - `tpe-front-end/src/components/admin/AdvancedSearch.tsx` - Advanced search interface
 - `tpe-front-end/src/components/admin/BulkOperations.tsx` - Bulk operations management
 - Entity files - Data models and API integration
+
+### **Partner Portal & Authentication**
+- `tpe-front-end/src/app/partner-portal/page.tsx` - Partner login interface
+- `tpe-front-end/src/app/partner-portal/dashboard/page.tsx` - Partner dashboard
+- `tpe-backend/src/controllers/partnerAuthController.js` - Partner authentication logic
+- `tpe-backend/src/middleware/partnerAuth.js` - Partner authentication middleware
+- `tpe-backend/src/routes/partnerAuthRoutes.js` - Partner API routes
+
+### **Documentation & Standards**
+- `docs/development-best-practices.md` - **CRITICAL: Development standards & troubleshooting**
+- `docs/DEVELOPMENT_CHECKLIST.md` - **REQUIRED: Pre-development checklist**
+- `docs/database-management-roadmap.md` - Complete database enhancement plan
+- `docs/SERVER_TROUBLESHOOTING.md` - Server connectivity issue solutions
 
 ## 🎯 Business Goals
 

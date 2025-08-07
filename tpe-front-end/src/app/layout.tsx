@@ -3,9 +3,10 @@
 import React from 'react';
 import './globals.css';
 // import { createPageUrl } from '@/lib/utils'; // <-- Bypassed for now
-import { Crown, Users, Calendar, BarChart3 } from "lucide-react";
+import { Crown, Users, Calendar, BarChart3, Building2, Menu, X } from "lucide-react";
 import { usePathname } from 'next/navigation'; 
-import Link from 'next/link'; 
+import Link from 'next/link';
+import { useState } from 'react'; 
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -14,6 +15,7 @@ interface LayoutProps {
 
 export default function Layout({ children, currentPageName }: LayoutProps) {
   const pathname = usePathname();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   return (
     <html lang="en" suppressHydrationWarning>
@@ -36,24 +38,120 @@ export default function Layout({ children, currentPageName }: LayoutProps) {
               </div>
             </Link>
             
-            {pathname.includes('admin') && (
-              <div className="hidden md:flex items-center space-x-8">
-                <Link href="/admindashboard" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
-                  <BarChart3 className="w-4 h-4" />
-                  <span className="font-medium">Dashboard</span>
-                </Link>
-                <Link href="/admindashboard/partners" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
-                  <Users className="w-4 h-4" />
-                  <span className="font-medium">Partners</span>
-                </Link>
-                <Link href="/admindashboard/bookings" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
-                  <Calendar className="w-4 h-4" />
-                  <span className="font-medium">Bookings</span>
-                </Link>
-              </div>
-            )}
+            <div className="hidden md:flex items-center space-x-6">
+              {/* Show admin navigation when in admin section */}
+              {pathname.includes('admin') && (
+                <>
+                  <Link href="/admindashboard" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
+                    <BarChart3 className="w-4 h-4" />
+                    <span className="font-medium">Dashboard</span>
+                  </Link>
+                  <Link href="/admindashboard/partners" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
+                    <Users className="w-4 h-4" />
+                    <span className="font-medium">Partners</span>
+                  </Link>
+                  <Link href="/admindashboard/bookings" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
+                    <Calendar className="w-4 h-4" />
+                    <span className="font-medium">Bookings</span>
+                  </Link>
+                </>
+              )}
+              
+              {/* Show main navigation on homepage and non-admin/non-partner-portal pages */}
+              {!pathname.includes('partner-portal') && !pathname.includes('admin') && (
+                <>
+                  <Link href="/contractorflow" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
+                    <Crown className="w-4 h-4" />
+                    <span className="font-medium">Start Experience</span>
+                  </Link>
+                  <Link href="/partner-portal" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
+                    <Building2 className="w-4 h-4" />
+                    <span className="font-medium">Partner Portal</span>
+                  </Link>
+                  <Link href="/admindashboard" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
+                    <BarChart3 className="w-4 h-4" />
+                    <span className="font-medium">Admin</span>
+                  </Link>
+                </>
+              )}
+              
+              {/* Mobile menu button */}
+              <button
+                className="md:hidden p-2 rounded-md text-gray-300 hover:text-white hover:bg-gray-900"
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              >
+                {mobileMenuOpen ? (
+                  <X className="w-5 h-5" />
+                ) : (
+                  <Menu className="w-5 h-5" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
+        
+        {/* Mobile Navigation Menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-gray-900 border-t border-gray-800">
+            <div className="px-4 py-2 space-y-1">
+              {pathname.includes('admin') ? (
+                <>
+                  <Link 
+                    href="/admindashboard" 
+                    className="flex items-center space-x-2 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    <span>Dashboard</span>
+                  </Link>
+                  <Link 
+                    href="/admindashboard/partners" 
+                    className="flex items-center space-x-2 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Users className="w-4 h-4" />
+                    <span>Partners</span>
+                  </Link>
+                  <Link 
+                    href="/admindashboard/bookings" 
+                    className="flex items-center space-x-2 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Calendar className="w-4 h-4" />
+                    <span>Bookings</span>
+                  </Link>
+                </>
+              ) : !pathname.includes('partner-portal') ? (
+                <>
+                  <Link 
+                    href="/contractorflow" 
+                    className="flex items-center space-x-2 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Crown className="w-4 h-4" />
+                    <span>Start Experience</span>
+                  </Link>
+                  <Link 
+                    href="/partner-portal" 
+                    className="flex items-center space-x-2 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Building2 className="w-4 h-4" />
+                    <span>Partner Portal</span>
+                  </Link>
+                  <Link 
+                    href="/admindashboard" 
+                    className="flex items-center space-x-2 px-4 py-3 rounded-lg text-gray-300 hover:bg-gray-800"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <BarChart3 className="w-4 h-4" />
+                    <span>Admin</span>
+                  </Link>
+                </>
+              ) : null}
+            </div>
+          </div>
+        )}
       </nav>
       
       <main className="min-h-screen">
