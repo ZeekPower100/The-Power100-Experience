@@ -10,6 +10,7 @@ on:
 
 env:
   NODE_VERSION: '18'
+  CI: true
 
 jobs:
   validate-claude-changes:
@@ -34,7 +35,14 @@ jobs:
       run: cd tpe-front-end && npm ci --legacy-peer-deps
 
     - name: Run frontend tests first (fastest check)
-      run: cd tpe-front-end && npm run test:ci
+      run: |
+        cd tpe-front-end
+        echo "Starting frontend tests..."
+        npm run test:ci || {
+          echo "Frontend tests failed, checking test output..."
+          npm run test -- --verbose || echo "Tests failed but continuing workflow..."
+          exit 1
+        }
 
     - name: Run linting
       run: cd tpe-front-end && npm run lint || echo "Linting completed with warnings"
@@ -73,7 +81,14 @@ jobs:
       run: cd tpe-front-end && npm ci --legacy-peer-deps
 
     - name: Run unit tests
-      run: cd tpe-front-end && npm run test:ci
+      run: |
+        cd tpe-front-end
+        echo "Running unit tests..."
+        npm run test:ci || {
+          echo "Unit tests failed, showing detailed output..."
+          npm run test -- --verbose --no-coverage || echo "Tests failed but continuing..."
+          exit 1
+        }
 
     - name: Run integration tests (if available)
       run: |
@@ -159,7 +174,14 @@ jobs:
       run: cd tpe-front-end && npm ci --legacy-peer-deps
 
     - name: Run security audit
-      run: cd tpe-front-end && npm audit --audit-level=moderate || echo "Security audit completed with warnings"
+      run: |
+        cd tpe-front-end
+        echo "Running security audit..."
+        npm audit --audit-level=moderate || {
+          echo "Security audit found issues, checking severity..."
+          npm audit --audit-level=high || echo "High severity issues found but continuing..."
+          exit 0
+        }
 
     - name: Check for vulnerabilities
       run: |
