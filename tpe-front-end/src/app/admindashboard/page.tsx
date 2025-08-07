@@ -16,7 +16,8 @@ import {
   BarChart3,
   Target,
   AlertTriangle,
-  Search
+  Search,
+  MessageSquare
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -404,13 +405,15 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
             
-            <Card className="bg-gray-50 cursor-not-allowed opacity-60">
-              <CardContent className="p-6 text-center">
-                <BarChart3 className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-                <h3 className="font-semibold text-gray-600">Analytics</h3>
-                <p className="text-sm text-gray-500 mt-1">Coming soon</p>
-              </CardContent>
-            </Card>
+            <Link href="/admindashboard/powerconfidence">
+              <Card className="bg-white hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-power100-red">
+                <CardContent className="p-6 text-center">
+                  <MessageSquare className="w-8 h-8 text-power100-red mx-auto mb-3" />
+                  <h3 className="font-semibold text-power100-black">PowerConfidence</h3>
+                  <p className="text-sm text-power100-grey mt-1">Manage feedback & SMS campaigns</p>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </div>
 
@@ -503,6 +506,12 @@ export default function AdminDashboard() {
                   <Button variant="outline" className="w-full justify-start h-11">
                     <ArrowRight className="w-4 h-4 mr-2" />
                     Test Contractor Flow
+                  </Button>
+                </Link>
+                <Link href="/admindashboard/powerconfidence" className="block">
+                  <Button variant="outline" className="w-full justify-start h-11">
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    PowerConfidence
                   </Button>
                 </Link>
               </CardContent>

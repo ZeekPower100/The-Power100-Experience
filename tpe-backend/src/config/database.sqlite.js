@@ -67,6 +67,11 @@ const initializeSchema = async () => {
       pricing_model TEXT,
       onboarding_url TEXT,
       demo_booking_url TEXT,
+      last_feedback_update DATETIME,
+      total_feedback_responses INTEGER DEFAULT 0,
+      average_satisfaction REAL,
+      feedback_trend TEXT DEFAULT 'stable',
+      next_quarterly_review DATE,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
@@ -123,6 +128,100 @@ const initializeSchema = async () => {
       follow_up_sent BOOLEAN DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- PowerConfidence SMS subscriptions table
+    CREATE TABLE IF NOT EXISTS sms_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      contractor_id INTEGER REFERENCES contractors(id),
+      phone_number TEXT NOT NULL,
+      opted_in BOOLEAN DEFAULT 1,
+      opted_in_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      opted_out_at DATETIME,
+      subscription_source TEXT DEFAULT 'contractor_flow',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(contractor_id, phone_number)
+    );
+
+    -- SMS campaigns table
+    CREATE TABLE IF NOT EXISTS sms_campaigns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      campaign_name TEXT NOT NULL,
+      message_template TEXT NOT NULL,
+      partner_id INTEGER REFERENCES strategic_partners(id),
+      target_audience TEXT DEFAULT 'all_partners',
+      status TEXT DEFAULT 'pending',
+      scheduled_at DATETIME,
+      sent_at DATETIME,
+      total_recipients INTEGER DEFAULT 0,
+      total_delivered INTEGER DEFAULT 0,
+      total_responses INTEGER DEFAULT 0,
+      created_by INTEGER REFERENCES admin_users(id),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Feedback surveys table
+    CREATE TABLE IF NOT EXISTS feedback_surveys (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      partner_id INTEGER REFERENCES strategic_partners(id),
+      contractor_id INTEGER REFERENCES contractors(id),
+      survey_type TEXT NOT NULL,
+      quarter TEXT,
+      status TEXT DEFAULT 'pending',
+      survey_url TEXT,
+      sent_at DATETIME,
+      responded_at DATETIME,
+      expires_at DATETIME,
+      reminder_count INTEGER DEFAULT 0,
+      last_reminder_sent DATETIME,
+      sms_campaign_id INTEGER REFERENCES sms_campaigns(id),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Feedback responses table
+    CREATE TABLE IF NOT EXISTS feedback_responses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      survey_id INTEGER REFERENCES feedback_surveys(id),
+      partner_id INTEGER REFERENCES strategic_partners(id),
+      contractor_id INTEGER REFERENCES contractors(id),
+      overall_satisfaction INTEGER CHECK (overall_satisfaction >= 1 AND overall_satisfaction <= 10),
+      communication_rating INTEGER CHECK (communication_rating >= 1 AND communication_rating <= 10),
+      service_quality_rating INTEGER CHECK (service_quality_rating >= 1 AND service_quality_rating <= 10),
+      value_for_money_rating INTEGER CHECK (value_for_money_rating >= 1 AND value_for_money_rating <= 10),
+      likelihood_to_recommend INTEGER CHECK (likelihood_to_recommend >= 1 AND likelihood_to_recommend <= 10),
+      positive_feedback TEXT,
+      improvement_areas TEXT,
+      additional_comments TEXT,
+      would_use_again BOOLEAN,
+      meeting_expectations BOOLEAN,
+      response_time_acceptable BOOLEAN,
+      response_source TEXT DEFAULT 'web',
+      response_time_minutes INTEGER,
+      ip_address TEXT,
+      user_agent TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- PowerConfidence score history table
+    CREATE TABLE IF NOT EXISTS powerconfidence_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      partner_id INTEGER REFERENCES strategic_partners(id),
+      old_score INTEGER,
+      new_score INTEGER,
+      score_change INTEGER,
+      calculation_method TEXT DEFAULT 'quarterly_feedback',
+      feedback_count INTEGER DEFAULT 0,
+      average_satisfaction REAL,
+      total_responses INTEGER DEFAULT 0,
+      quarter TEXT,
+      calculation_details TEXT, -- JSON string for SQLite
+      calculated_by INTEGER REFERENCES admin_users(id),
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
   `);
 

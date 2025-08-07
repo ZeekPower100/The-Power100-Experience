@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { query } = require('../config/database');
+const { query } = require('../config/database.sqlite');
 const { AppError } = require('./errorHandler');
 
 // Protect routes - require authentication
@@ -26,7 +26,7 @@ const protect = async (req, res, next) => {
 
     // Check if admin user still exists
     const result = await query(
-      'SELECT id, email, full_name, is_active FROM admin_users WHERE id = $1',
+      'SELECT id, email, full_name, is_active FROM admin_users WHERE id = ?',
       [decoded.id]
     );
 
@@ -94,8 +94,25 @@ const optionalAuth = async (req, res, next) => {
   next();
 };
 
+// Admin only middleware (all users in admin_users are admins)
+const adminOnly = (req, res, next) => {
+  // Since all users in admin_users are admins, just check if authenticated
+  if (!req.user) {
+    return res.status(403).json({
+      success: false,
+      message: 'Admin access required'
+    });
+  }
+  next();
+};
+
+// Shortcut for admin authentication (all users in admin_users are admins)
+const authenticateAdmin = protect;
+
 module.exports = {
   protect,
   authorize,
-  optionalAuth
+  optionalAuth,
+  authenticateAdmin,
+  adminOnly
 };

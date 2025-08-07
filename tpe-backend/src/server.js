@@ -6,7 +6,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
-const { connectDB } = require('./config/database');
+const { connectDB } = require('./config/database.sqlite');
 const { errorHandler } = require('./middleware/errorHandler');
 
 // Import routes
@@ -16,6 +16,8 @@ const bookingRoutes = require('./routes/bookingRoutes');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const bulkRoutes = require('./routes/bulk');
+const feedbackRoutes = require('./routes/feedbackRoutes');
+const smsRoutes = require('./routes/smsRoutes');
 
 const app = express();
 
@@ -74,6 +76,8 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/bulk', bulkRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/sms', smsRoutes);
 
 // 404 handler
 app.use((req, res) => {
