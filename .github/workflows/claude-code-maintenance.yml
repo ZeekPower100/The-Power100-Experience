@@ -23,7 +23,7 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
-        cache-dependency-path: 'tpe-front-end/package-lock.json'
+        cache-dependency-path: 'package-lock.json'
 
     - name: Update frontend dependencies
       run: |
@@ -45,7 +45,8 @@ jobs:
       run: |
         cd tpe-front-end
         npm ci
-        npm run test -- --passWithNoTests
+        npm run test:ci
+        npm run type-check
         npm run build
 
     - name: Check for changes

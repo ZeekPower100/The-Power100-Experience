@@ -6,7 +6,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
-const { connectDB } = require('./config/database');
+const { connectDB } = require('./config/database.sqlite');
 const { errorHandler } = require('./middleware/errorHandler');
 
 // Import routes
@@ -15,6 +15,10 @@ const partnerRoutes = require('./routes/partnerRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const bulkRoutes = require('./routes/bulk');
+const feedbackRoutes = require('./routes/feedbackRoutes');
+const smsRoutes = require('./routes/smsRoutes');
+const partnerEnhancedRoutes = require('./routes/partnerEnhancedRoutes');
 
 const app = express();
 
@@ -26,7 +30,12 @@ app.use(helmet());
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002',
+    process.env.FRONTEND_URL
+  ].filter(Boolean),
   credentials: true,
   optionsSuccessStatus: 200
 }));
@@ -67,6 +76,10 @@ app.use('/api/partners', partnerRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/bulk', bulkRoutes);
+app.use('/api/feedback', feedbackRoutes);
+app.use('/api/sms', smsRoutes);
+app.use('/api/partners-enhanced', partnerEnhancedRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -82,7 +95,7 @@ app.use(errorHandler);
 // Start server
 const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
+  console.log(`🚀 Server running on http://localhost:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 });
 
 // Graceful shutdown
