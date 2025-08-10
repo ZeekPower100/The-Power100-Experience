@@ -3,7 +3,7 @@
 import React from 'react';
 import './globals.css';
 // import { createPageUrl } from '@/lib/utils'; // <-- Bypassed for now
-import { Crown, Users, Calendar, BarChart3 } from "lucide-react";
+import { Crown, Users, Calendar, BarChart3, Shield } from "lucide-react";
 import { usePathname } from 'next/navigation'; 
 import Link from 'next/link'; 
 
@@ -45,6 +45,10 @@ export default function Layout({ children, currentPageName }: LayoutProps) {
                 <Link href="/admindashboard/partners" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
                   <Users className="w-4 h-4" />
                   <span className="font-medium">Partners</span>
+                </Link>
+                <Link href="/admindashboard/partners-enhanced" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
+                  <Shield className="w-4 h-4" />
+                  <span className="font-medium">Enhanced Partners</span>
                 </Link>
                 <Link href="/admindashboard/bookings" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
                   <Calendar className="w-4 h-4" />

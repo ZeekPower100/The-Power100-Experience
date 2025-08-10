@@ -17,7 +17,8 @@ import {
   Target,
   AlertTriangle,
   Search,
-  MessageSquare
+  MessageSquare,
+  Shield
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -172,16 +173,33 @@ export default function AdminDashboard() {
 
       setRecentContractors(contractorsResponse.contractors?.slice(0, 5) || []);
       
-      // Parse JSON fields for partners and select top performers
-      const parsedPartners = (partnersResponse.partners || []).map((partner: any) => ({
-        ...partner,
-        focus_areas_served: typeof partner.focus_areas_served === 'string' && partner.focus_areas_served !== '[object Object]'
-          ? JSON.parse(partner.focus_areas_served || '[]') 
-          : partner.focus_areas_served || [],
-        target_revenue_range: typeof partner.target_revenue_range === 'string' && partner.target_revenue_range !== '[object Object]'
-          ? JSON.parse(partner.target_revenue_range || '[]')
-          : partner.target_revenue_range || []
-      }));
+      // Parse JSON fields for partners and select top performers with safe parsing
+      const parsedPartners = (partnersResponse.partners || []).map((partner: any) => {
+        const safeJsonParse = (jsonString: any, fallback: any = []) => {
+          if (!jsonString || typeof jsonString !== 'string') {
+            return Array.isArray(jsonString) ? jsonString : fallback;
+          }
+          
+          if (jsonString === '[object Object]') {
+            return fallback;
+          }
+          
+          try {
+            return JSON.parse(jsonString);
+          } catch (error) {
+            console.warn('Failed to parse JSON:', jsonString, error);
+            return fallback;
+          }
+        };
+
+        return {
+          ...partner,
+          focus_areas_served: safeJsonParse(partner.focus_areas_served, []),
+          target_revenue_range: safeJsonParse(partner.target_revenue_range, []),
+          geographic_regions: safeJsonParse(partner.geographic_regions, []),
+          service_categories: safeJsonParse(partner.service_categories, [])
+        };
+      });
       
       setTopPartners(parsedPartners.slice(0, 8)); // Show top 8 partners in dashboard
 
@@ -387,12 +405,12 @@ export default function AdminDashboard() {
               </Card>
             </Link>
 
-            <Link href="/admin/partners">
+            <Link href="/admindashboard/partners-enhanced">
               <Card className="bg-white hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-power100-red">
                 <CardContent className="p-6 text-center">
-                  <Handshake className="w-8 h-8 text-power100-red mx-auto mb-3" />
-                  <h3 className="font-semibold text-power100-black">Manage Partners</h3>
-                  <p className="text-sm text-power100-grey mt-1">Add, edit, and manage strategic partners</p>
+                  <Shield className="w-8 h-8 text-power100-red mx-auto mb-3" />
+                  <h3 className="font-semibold text-power100-black">Enhanced Partners</h3>
+                  <p className="text-sm text-power100-grey mt-1">Advanced partner management & PowerConfidence</p>
                 </CardContent>
               </Card>
             </Link>
@@ -496,10 +514,22 @@ export default function AdminDashboard() {
                     Manage Partners
                   </Button>
                 </Link>
+                <Link href="/admindashboard/partners-enhanced" className="block">
+                  <Button variant="outline" className="w-full justify-start h-11">
+                    <Shield className="w-4 h-4 mr-2" />
+                    Enhanced Partners
+                  </Button>
+                </Link>
                 <Link href="/admindashboard/bookings" className="block">
                   <Button variant="outline" className="w-full justify-start h-11">
                     <Calendar className="w-4 h-4 mr-2" />
                     View Bookings
+                  </Button>
+                </Link>
+                <Link href="/ai-coach" className="block">
+                  <Button variant="outline" className="w-full justify-start h-11">
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    AI Coach Demo
                   </Button>
                 </Link>
                 <Link href="/contractorflow" className="block">

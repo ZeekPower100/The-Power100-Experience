@@ -26,39 +26,29 @@ const protectPartner = async (req, res, next) => {
       return next(new AppError('Invalid token type', 401));
     }
 
-    // Use direct database connection for consistency with login
-    const sqlite3 = require('sqlite3').verbose();
-    const { open } = require('sqlite');
-    
-    const db = await open({
-      filename: './power100.db',
-      driver: sqlite3.Database
-    });
-    
-    const partnerUser = await db.get(`
-      SELECT pu.*, sp.is_active as partner_active, sp.company_name
-      FROM partner_users pu
-      JOIN strategic_partners sp ON pu.partner_id = sp.id
-      WHERE pu.id = ? AND pu.is_active = 1
-    `, [decoded.id]);
+    // Get partner from strategic_partners table
+    const partnerResult = await query(
+      'SELECT * FROM strategic_partners WHERE id = ? AND is_active = 1',
+      [decoded.partnerId]
+    );
 
-    await db.close();
-
-    if (!partnerUser) {
-      return next(new AppError('Partner user no longer exists or is inactive', 401));
+    if (partnerResult.rows.length === 0) {
+      return next(new AppError('Partner no longer exists or is inactive', 401));
     }
 
+    const partner = partnerResult.rows[0];
+
     // Check if partner is active
-    if (!partnerUser.partner_active) {
+    if (!partner.is_active) {
       return next(new AppError('Partner account is currently inactive', 401));
     }
 
     // Add partner info to request
     req.partnerUser = {
-      id: partnerUser.id,
-      partnerId: partnerUser.partner_id,
-      email: partnerUser.email,
-      companyName: partnerUser.company_name
+      id: partner.id,
+      partnerId: partner.id,
+      email: partner.contact_email,
+      companyName: partner.company_name
     };
 
     next();

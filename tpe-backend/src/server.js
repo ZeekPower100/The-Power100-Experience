@@ -19,6 +19,9 @@ const bulkRoutes = require('./routes/bulk');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const smsRoutes = require('./routes/smsRoutes');
 const partnerEnhancedRoutes = require('./routes/partnerEnhancedRoutes');
+const partnerAuthRoutes = require('./routes/partnerAuthRoutes');
+const partnerPortalRoutes = require('./routes/partnerPortalRoutes');
+const aiCoachRoutes = require('./routes/aiCoachRoutes');
 
 const app = express();
 
@@ -80,6 +83,9 @@ app.use('/api/bulk', bulkRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/partners-enhanced', partnerEnhancedRoutes);
+app.use('/api/partner-auth', partnerAuthRoutes);
+app.use('/api/partner-portal', partnerPortalRoutes);
+app.use('/api/ai-coach', aiCoachRoutes);
 
 // 404 handler
 app.use((req, res) => {
