@@ -18,6 +18,7 @@ const adminRoutes = require('./routes/adminRoutes');
 const bulkRoutes = require('./routes/bulk');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const smsRoutes = require('./routes/smsRoutes');
+const partnerEnhancedRoutes = require('./routes/partnerEnhancedRoutes');
 
 const app = express();
 
@@ -78,6 +79,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/bulk', bulkRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/sms', smsRoutes);
+app.use('/api/partners-enhanced', partnerEnhancedRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -92,9 +94,8 @@ app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 5000;
-const HOST = process.env.HOST || 'localhost';
-const server = app.listen(PORT, HOST, () => {
-  console.log(`🚀 Server running on http://${HOST}:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+const server = app.listen(PORT, () => {
+  console.log(`🚀 Server running on http://localhost:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 });
 
 // Graceful shutdown
