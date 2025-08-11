@@ -41,30 +41,36 @@ const StarRating: React.FC<{
   label: string;
 }> = ({ rating, onRatingChange, label }) => {
   return (
-    <div className="space-y-2">
-      <Label className="text-sm font-medium">{label}</Label>
-      <div className="flex space-x-1">
+    <div className="space-y-4 text-center">
+      <Label className="text-lg font-medium text-gray-900 block">{label}</Label>
+      <div className="flex justify-center space-x-2">
         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
           <button
             key={star}
             type="button"
             onClick={() => onRatingChange(star)}
-            className={`p-1 transition-colors ${
+            className={`p-2 transition-all hover:scale-110 ${
               star <= rating
                 ? 'text-yellow-400 hover:text-yellow-500'
                 : 'text-gray-300 hover:text-gray-400'
             }`}
           >
             <Star 
-              className="h-6 w-6" 
+              className="h-8 w-8" 
               fill={star <= rating ? 'currentColor' : 'none'}
             />
           </button>
         ))}
       </div>
-      <p className="text-xs text-gray-500">
-        {rating}/10 - {rating <= 3 ? 'Poor' : rating <= 5 ? 'Fair' : rating <= 7 ? 'Good' : rating <= 9 ? 'Excellent' : 'Outstanding'}
-      </p>
+      {rating > 0 && (
+        <div className="flex justify-center">
+          <div className="bg-gray-100 px-4 py-2 rounded-full">
+            <p className="text-sm font-medium text-gray-700">
+              {rating}/10 - {rating <= 3 ? 'Poor' : rating <= 5 ? 'Fair' : rating <= 7 ? 'Good' : rating <= 9 ? 'Excellent' : 'Outstanding'}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -172,62 +178,75 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      {/* Progress Bar */}
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm text-gray-600">
-          <span>Step {step} of {totalSteps}</span>
-          <span>{Math.round(progress)}% Complete</span>
-        </div>
-        <Progress value={progress} className="w-full" />
-      </div>
-
+    <div className="max-w-4xl mx-auto">
       <motion.div
         key={step}
         initial={{ opacity: 0, x: 20 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.3 }}
       >
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-center">
-              {step === 1 && 'Overall Experience'}
-              {step === 2 && 'Service Evaluation'}
-              {step === 3 && 'Recommendation'}
-              {step === 4 && 'Additional Feedback'}
-            </CardTitle>
-            <p className="text-center text-gray-600">
-              Help us understand your experience with {partnerName}
-            </p>
-          </CardHeader>
-          <CardContent className="p-6 space-y-6">
+        <Card className="bg-white shadow-lg border border-gray-200">
+          <CardContent className="p-12">
+            {/* Red Circle Icon */}
+            <div className="flex justify-center mb-8">
+              <div className="w-16 h-16 bg-red-600 rounded-full flex items-center justify-center">
+                {step === 1 && <ThumbsUp className="w-8 h-8 text-white" />}
+                {step === 2 && <Star className="w-8 h-8 text-white" />}
+                {step === 3 && <Target className="w-8 h-8 text-white" />}
+                {step === 4 && <MessageSquare className="w-8 h-8 text-white" />}
+              </div>
+            </div>
+
+            {/* Title and Subtitle */}
+            <div className="text-center mb-12">
+              <h1 className="text-3xl font-bold text-gray-900 mb-4">
+                {step === 1 && 'How Was Your Overall Experience?'}
+                {step === 2 && 'Rate Service Quality Areas'}
+                {step === 3 && 'Would You Recommend This Partner?'}
+                {step === 4 && 'Share Additional Feedback'}
+              </h1>
+              <p className="text-lg text-gray-600">
+                {step === 1 && `Help us understand your experience working with ${partnerName}`}
+                {step === 2 && 'Rate specific aspects of the service you received'}
+                {step === 3 && 'Let us know about your likelihood to recommend and reuse'}
+                {step === 4 && 'Optional: Share what went well and areas for improvement'}
+              </p>
+            </div>
+
+            {/* Content Area */}
+            <div className="space-y-8 mb-12">
             {step === 1 && (
-              <div className="space-y-6">
-                <StarRating
-                  rating={formData.overallSatisfaction}
-                  onRatingChange={(rating) => setFormData({...formData, overallSatisfaction: rating})}
-                  label="How would you rate your overall experience?"
-                />
+              <div className="space-y-8">
+                <div className="max-w-2xl mx-auto">
+                  <StarRating
+                    rating={formData.overallSatisfaction}
+                    onRatingChange={(rating) => setFormData({...formData, overallSatisfaction: rating})}
+                    label="Rate your overall experience on a scale of 1-10"
+                  />
+                </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <ThumbsUp className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                    <p className="text-sm font-medium">Quality Service</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-3xl mx-auto mt-12">
+                  <div className="text-center p-6 bg-gray-50 rounded-lg border border-gray-200">
+                    <ThumbsUp className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+                    <h3 className="font-semibold text-gray-900 mb-2">Service Quality</h3>
+                    <p className="text-sm text-gray-600">Professional delivery and expertise</p>
                   </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <MessageSquare className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                    <p className="text-sm font-medium">Clear Communication</p>
+                  <div className="text-center p-6 bg-gray-50 rounded-lg border border-gray-200">
+                    <MessageSquare className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                    <h3 className="font-semibold text-gray-900 mb-2">Communication</h3>
+                    <p className="text-sm text-gray-600">Clear and timely responses</p>
                   </div>
-                  <div className="text-center p-4 bg-gray-50 rounded-lg">
-                    <Star className="h-8 w-8 text-yellow-600 mx-auto mb-2" />
-                    <p className="text-sm font-medium">Great Value</p>
+                  <div className="text-center p-6 bg-gray-50 rounded-lg border border-gray-200">
+                    <Star className="h-12 w-12 text-yellow-600 mx-auto mb-4" />
+                    <h3 className="font-semibold text-gray-900 mb-2">Value</h3>
+                    <p className="text-sm text-gray-600">Fair pricing for quality delivered</p>
                   </div>
                 </div>
               </div>
             )}
 
             {step === 2 && (
-              <div className="space-y-6">
+              <div className="space-y-10 max-w-2xl mx-auto">
                 <StarRating
                   rating={formData.communicationRating}
                   onRatingChange={(rating) => setFormData({...formData, communicationRating: rating})}
@@ -249,104 +268,123 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
             )}
 
             {step === 3 && (
-              <div className="space-y-6">
+              <div className="space-y-10 max-w-2xl mx-auto">
                 <StarRating
                   rating={formData.likelihoodToRecommend}
                   onRatingChange={(rating) => setFormData({...formData, likelihoodToRecommend: rating})}
                   label="How likely are you to recommend this partner to other contractors?"
                 />
 
-                <div className="space-y-4 mt-8">
-                  <div className="flex items-center space-x-2">
+                <div className="space-y-6 bg-gray-50 p-6 rounded-lg border border-gray-200">
+                  <h3 className="font-semibold text-gray-900 mb-4">Additional Questions</h3>
+                  
+                  <div className="flex items-center space-x-3">
                     <Checkbox 
                       id="would-use-again"
                       checked={formData.wouldUseAgain === true}
                       onCheckedChange={(checked) => setFormData({...formData, wouldUseAgain: checked as boolean})}
+                      className="w-5 h-5"
                     />
-                    <Label htmlFor="would-use-again">I would use this partner again in the future</Label>
+                    <Label htmlFor="would-use-again" className="text-gray-700 font-medium">I would use this partner again in the future</Label>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-3">
                     <Checkbox 
                       id="met-expectations"
                       checked={formData.meetingExpectations === true}
                       onCheckedChange={(checked) => setFormData({...formData, meetingExpectations: checked as boolean})}
+                      className="w-5 h-5"
                     />
-                    <Label htmlFor="met-expectations">This partner met or exceeded my expectations</Label>
+                    <Label htmlFor="met-expectations" className="text-gray-700 font-medium">This partner met or exceeded my expectations</Label>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-3">
                     <Checkbox 
                       id="response-time"
                       checked={formData.responseTimeAcceptable === true}
                       onCheckedChange={(checked) => setFormData({...formData, responseTimeAcceptable: checked as boolean})}
+                      className="w-5 h-5"
                     />
-                    <Label htmlFor="response-time">Their response time was acceptable</Label>
+                    <Label htmlFor="response-time" className="text-gray-700 font-medium">Their response time was acceptable</Label>
                   </div>
                 </div>
               </div>
             )}
 
             {step === 4 && (
-              <div className="space-y-6">
+              <div className="space-y-8 max-w-2xl mx-auto">
                 <div>
-                  <Label htmlFor="positive-feedback">What did you like most about this partner?</Label>
+                  <Label htmlFor="positive-feedback" className="text-lg font-medium text-gray-900 mb-3 block">
+                    What did you like most about this partner?
+                  </Label>
                   <Textarea
                     id="positive-feedback"
                     value={formData.positiveFeedback}
                     onChange={(e) => setFormData({...formData, positiveFeedback: e.target.value})}
                     placeholder="Tell us about the positive aspects of your experience..."
-                    rows={3}
+                    rows={4}
+                    className="w-full"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="improvement-areas">What areas could they improve?</Label>
+                  <Label htmlFor="improvement-areas" className="text-lg font-medium text-gray-900 mb-3 block">
+                    What areas could they improve?
+                  </Label>
                   <Textarea
                     id="improvement-areas"
                     value={formData.improvementAreas}
                     onChange={(e) => setFormData({...formData, improvementAreas: e.target.value})}
                     placeholder="Share any suggestions for improvement..."
-                    rows={3}
+                    rows={4}
+                    className="w-full"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="additional-comments">Any additional comments?</Label>
+                  <Label htmlFor="additional-comments" className="text-lg font-medium text-gray-900 mb-3 block">
+                    Any additional comments?
+                  </Label>
                   <Textarea
                     id="additional-comments"
                     value={formData.additionalComments}
                     onChange={(e) => setFormData({...formData, additionalComments: e.target.value})}
                     placeholder="Any other feedback you'd like to share..."
-                    rows={3}
+                    rows={4}
+                    className="w-full"
                   />
                 </div>
               </div>
             )}
+            </div>
 
-            {/* Navigation Buttons */}
-            <div className="flex justify-between pt-6 border-t">
+            {/* Navigation Buttons - Matching Contractor Flow */}
+            <div className="flex justify-between pt-8">
               <Button
                 variant="outline"
                 onClick={() => setStep(step - 1)}
                 disabled={step === 1}
+                className="px-8 py-3 text-gray-700 border-gray-300 hover:bg-gray-50 font-medium"
+                size="lg"
               >
-                Previous
+                Back
               </Button>
 
               {step < totalSteps ? (
                 <Button
                   onClick={() => setStep(step + 1)}
                   disabled={!canProceed()}
-                  className="bg-red-600 hover:bg-red-700"
+                  className="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-medium"
+                  size="lg"
                 >
-                  Next
+                  Continue
                 </Button>
               ) : (
                 <Button
                   onClick={handleSubmit}
                   disabled={loading || !canProceed()}
-                  className="bg-red-600 hover:bg-red-700"
+                  className="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-medium"
+                  size="lg"
                 >
                   {loading ? 'Submitting...' : 'Submit Feedback'}
                 </Button>

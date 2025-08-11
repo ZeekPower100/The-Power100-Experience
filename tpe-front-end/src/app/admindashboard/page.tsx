@@ -508,7 +508,7 @@ export default function AdminDashboard() {
                     Advanced Search
                   </Button>
                 </Link>
-                <Link href="/admindashboard/partners" className="block">
+                <Link href="/admindashboard/partners-enhanced" className="block">
                   <Button variant="outline" className="w-full justify-start h-11">
                     <Handshake className="w-4 h-4 mr-2" />
                     Manage Partners

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import FeedbackForm from '@/components/feedback/FeedbackForm';
 import { Card, CardContent } from '@/components/ui/card';
-import { MessageSquare, AlertCircle } from 'lucide-react';
+import { MessageSquare, AlertCircle, CheckCircle, Target, ThumbsUp } from 'lucide-react';
 
 interface SurveyData {
   id: string;
@@ -126,33 +126,51 @@ const FeedbackSurveyPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 px-4">
-      {/* Header */}
-      <div className="max-w-2xl mx-auto mb-8 text-center">
-        <div className="flex items-center justify-center mb-4">
-          <MessageSquare className="h-8 w-8 text-red-600 mr-3" />
-          <h1 className="text-2xl font-bold text-gray-900">Power100 Feedback Survey</h1>
+    <div className="min-h-screen bg-gray-50">
+
+      {/* Progress Steps - Matching Contractor Flow */}
+      <div className="w-full bg-white border-b border-gray-200">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-center items-center space-x-8">
+            <div className="flex items-center">
+              <div className="w-8 h-8 bg-green-500 text-white rounded-full flex items-center justify-center mr-2">
+                <CheckCircle className="w-5 h-5" />
+              </div>
+              <span className="text-sm font-medium text-green-600">Survey Started</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-8 h-8 bg-red-600 text-white rounded-full flex items-center justify-center mr-2">
+                <span className="text-sm font-bold">2</span>
+              </div>
+              <span className="text-sm font-medium text-red-600">Partner Feedback</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-8 h-8 bg-gray-300 text-white rounded-full flex items-center justify-center mr-2">
+                <span className="text-sm font-bold">3</span>
+              </div>
+              <span className="text-sm text-gray-500">Review & Submit</span>
+            </div>
+            <div className="flex items-center">
+              <div className="w-8 h-8 bg-gray-300 text-white rounded-full flex items-center justify-center mr-2">
+                <span className="text-sm font-bold">4</span>
+              </div>
+              <span className="text-sm text-gray-500">Complete</span>
+            </div>
+          </div>
         </div>
-        <p className="text-gray-600">
-          Your feedback helps us maintain high standards and improve our partner network
-        </p>
       </div>
 
-      {/* Feedback Form */}
-      {surveyData && (
-        <FeedbackForm
-          surveyId={surveyData.id}
-          contractorId={surveyData.contractor_id.toString()}
-          partnerId={surveyData.partner_id.toString()}
-          partnerName={surveyData.partner_name}
-        />
-      )}
-
-      {/* Footer */}
-      <div className="max-w-2xl mx-auto mt-8 text-center">
-        <p className="text-sm text-gray-500">
-          © 2025 Power100 Experience. Your responses help us maintain our PowerConfidence scoring system.
-        </p>
+      {/* Main Content */}
+      <div className="py-12 px-4">
+        {/* Feedback Form */}
+        {surveyData && (
+          <FeedbackForm
+            surveyId={surveyData.id}
+            contractorId={surveyData.contractor_id.toString()}
+            partnerId={surveyData.partner_id.toString()}
+            partnerName={surveyData.partner_name}
+          />
+        )}
       </div>
     </div>
   );
