@@ -20,6 +20,19 @@ if (process.env.USE_SQLITE === 'true') {
       console.log('✅ PostgreSQL connected successfully');
       await client.query('SELECT NOW()');
       client.release();
+      
+      // Check if tables exist
+      const tableCheck = await pool.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'admin_users'
+        );
+      `);
+      
+      if (!tableCheck.rows[0].exists) {
+        console.log('⚠️  Database tables not found. Run /api/init-db to initialize.');
+      }
     } catch (error) {
       console.error('❌ PostgreSQL connection error:', error.message);
       console.log('⚠️  Server starting without database connection. Database operations may fail.');

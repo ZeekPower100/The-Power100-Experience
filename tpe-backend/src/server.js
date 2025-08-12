@@ -63,6 +63,16 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined'));
 }
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'TPE Backend API Running',
+    status: 'active',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
