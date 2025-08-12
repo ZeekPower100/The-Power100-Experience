@@ -83,45 +83,104 @@ const getAllPartners = async (req, res, next) => {
   }
 };
 
-// Create partner (admin)
+// Create partner (admin) - Updated with comprehensive onboarding fields
 const createPartner = async (req, res, next) => {
+  console.log('🔍 DEBUG - createPartner received data:', {
+    body_keys: Object.keys(req.body),
+    company_name: req.body.company_name,
+    established_year: req.body.established_year,
+    ceo_contact_name: req.body.ceo_contact_name,
+    target_revenue_audience: req.body.target_revenue_audience,
+    tech_stack_crm: req.body.tech_stack_crm,
+    full_body: req.body
+  });
+
   const {
+    // Basic Info
     company_name, description, logo_url, website, contact_email,
     contact_phone, power100_subdomain, focus_areas_served, target_revenue_range,
     geographic_regions, power_confidence_score, key_differentiators, 
     pricing_model, onboarding_process, client_testimonials, is_active,
-    last_quarterly_report, onboarding_url, demo_booking_url
+    last_quarterly_report, onboarding_url, demo_booking_url,
+    
+    // Comprehensive Onboarding Fields
+    // Step 1: Company Information
+    established_year, employee_count, ownership_type, company_description,
+    
+    // Step 2: Contact Information (5 contact types)
+    ceo_contact_name, ceo_contact_email, ceo_contact_phone, ceo_contact_title,
+    cx_contact_name, cx_contact_email, cx_contact_phone, cx_contact_title,
+    sales_contact_name, sales_contact_email, sales_contact_phone, sales_contact_title,
+    onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_title,
+    marketing_contact_name, marketing_contact_email, marketing_contact_phone, marketing_contact_title,
+    
+    // Step 3: Target Audience
+    target_revenue_audience, service_areas, service_areas_other,
+    
+    // Step 4: Competitive Analysis
+    service_category, value_proposition, why_clients_choose_you, why_clients_choose_competitors,
+    
+    // Step 5: Business Focus
+    focus_areas_12_months,
+    
+    // Step 6: Technology Stack
+    tech_stack_crm, tech_stack_project_management, tech_stack_communication,
+    tech_stack_analytics, tech_stack_marketing, tech_stack_financial,
+    
+    // Step 7: Marketing & Partnership
+    sponsored_events, podcast_appearances, books_read_recommended, best_working_partnerships,
+    
+    // Step 8: Client Demos & References
+    client_demos, client_references
   } = req.body;
 
   const result = await query(`
     INSERT INTO strategic_partners (
+      -- Basic fields
       company_name, description, logo_url, website, contact_email,
       contact_phone, power100_subdomain, focus_areas_served, target_revenue_range,
       geographic_regions, power_confidence_score, key_differentiators, 
       pricing_model, onboarding_process, client_testimonials, is_active,
-      last_quarterly_report, onboarding_url, demo_booking_url
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      last_quarterly_report, onboarding_url, demo_booking_url,
+      
+      -- Comprehensive onboarding fields
+      established_year, employee_count, ownership_type, company_description,
+      ceo_contact_name, ceo_contact_email, ceo_contact_phone, ceo_contact_title,
+      cx_contact_name, cx_contact_email, cx_contact_phone, cx_contact_title,
+      sales_contact_name, sales_contact_email, sales_contact_phone, sales_contact_title,
+      onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_title,
+      marketing_contact_name, marketing_contact_email, marketing_contact_phone, marketing_contact_title,
+      target_revenue_audience, service_areas, service_areas_other,
+      service_category, value_proposition, why_clients_choose_you, why_clients_choose_competitors,
+      focus_areas_12_months,
+      tech_stack_crm, tech_stack_project_management, tech_stack_communication,
+      tech_stack_analytics, tech_stack_marketing, tech_stack_financial,
+      sponsored_events, podcast_appearances, books_read_recommended, best_working_partnerships,
+      client_demos, client_references
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     RETURNING *
   `, [
-    company_name, 
-    description, 
-    logo_url, 
-    website, 
-    contact_email,
-    contact_phone,
-    power100_subdomain,
-    JSON.stringify(focus_areas_served || []),
-    JSON.stringify(target_revenue_range || []),
-    JSON.stringify(geographic_regions || []),
-    power_confidence_score || 0,
-    JSON.stringify(key_differentiators || []),
-    pricing_model,
-    onboarding_process,
-    JSON.stringify(client_testimonials || []),
-    is_active !== undefined ? is_active : true,
-    last_quarterly_report,
-    onboarding_url,
-    demo_booking_url
+    // Basic values
+    company_name, description, logo_url, website, contact_email, contact_phone,
+    power100_subdomain, JSON.stringify(focus_areas_served || []), JSON.stringify(target_revenue_range || []),
+    JSON.stringify(geographic_regions || []), power_confidence_score || 0, JSON.stringify(key_differentiators || []),
+    pricing_model, onboarding_process, JSON.stringify(client_testimonials || []), 
+    is_active !== undefined ? is_active : true, last_quarterly_report, onboarding_url, demo_booking_url,
+    
+    // Comprehensive onboarding values
+    established_year, employee_count, ownership_type, company_description,
+    ceo_contact_name, ceo_contact_email, ceo_contact_phone, ceo_contact_title,
+    cx_contact_name, cx_contact_email, cx_contact_phone, cx_contact_title,
+    sales_contact_name, sales_contact_email, sales_contact_phone, sales_contact_title,
+    onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_title,
+    marketing_contact_name, marketing_contact_email, marketing_contact_phone, marketing_contact_title,
+    JSON.stringify(target_revenue_audience || []), JSON.stringify(service_areas || []), service_areas_other,
+    service_category, value_proposition, why_clients_choose_you, why_clients_choose_competitors,
+    JSON.stringify(focus_areas_12_months || []),
+    JSON.stringify(tech_stack_crm || []), JSON.stringify(tech_stack_project_management || []), JSON.stringify(tech_stack_communication || []),
+    JSON.stringify(tech_stack_analytics || []), JSON.stringify(tech_stack_marketing || []), JSON.stringify(tech_stack_financial || []),
+    JSON.stringify(sponsored_events || []), JSON.stringify(podcast_appearances || []), books_read_recommended, best_working_partnerships,
+    JSON.stringify(client_demos || []), JSON.stringify(client_references || [])
   ]);
 
   res.status(201).json({

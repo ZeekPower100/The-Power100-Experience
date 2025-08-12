@@ -17,15 +17,57 @@ interface PartnerDetailModalProps {
 const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen, onClose }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const [fullPartnerData, setFullPartnerData] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch full partner data when modal opens
+  useEffect(() => {
+    const fetchPartnerDetails = async () => {
+      if (isOpen && partner && partner.id) {
+        setLoading(true);
+        try {
+          // Use the partners-enhanced API to get all partner data
+          const response = await fetch(`http://localhost:5000/api/partners-enhanced/list`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            },
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            // Find the specific partner by ID
+            const foundPartner = data.partners?.find((p: any) => p.id === partner.id);
+            if (foundPartner) {
+              setFullPartnerData(foundPartner);
+            } else {
+              setFullPartnerData(partner); // Fallback to basic partner data
+            }
+          } else {
+            setFullPartnerData(partner); // Fallback to basic partner data
+          }
+        } catch (error) {
+          console.error('Error fetching partner details:', error);
+          setFullPartnerData(partner); // Fallback to basic partner data
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchPartnerDetails();
+  }, [isOpen, partner]);
 
   if (!isOpen || !partner) return null;
+
+  // Use full partner data if available, otherwise fall back to basic partner data
+  const partnerData = fullPartnerData || partner;
 
   // Mock historical data for demonstration
   const scoreHistory = [
     { quarter: 'Q1 2024', score: 82, feedback_count: 15 },
     { quarter: 'Q2 2024', score: 85, feedback_count: 18 },
     { quarter: 'Q3 2024', score: 83, feedback_count: 12 },
-    { quarter: 'Q4 2024', score: partner.current_powerconfidence_score || 87, feedback_count: 20 }
+    { quarter: 'Q4 2024', score: partnerData.current_powerconfidence_score || 87, feedback_count: 20 }
   ];
 
   const categoryBreakdown = [
@@ -93,19 +135,19 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
         <div className="bg-gradient-to-r from-red-600 to-red-700 text-white p-6">
           <div className="flex justify-between items-start">
             <div>
-              <h2 className="text-2xl font-bold mb-2">{partner.company_name}</h2>
+              <h2 className="text-2xl font-bold mb-2">{partnerData.company_name}</h2>
               <div className="flex items-center gap-4 text-sm">
                 <span className="flex items-center gap-1">
                   <Globe className="w-4 h-4" />
-                  {partner.website || 'No website'}
+                  {partnerData.website || 'No website'}
                 </span>
                 <span className="flex items-center gap-1">
                   <Mail className="w-4 h-4" />
-                  {partner.contact_email}
+                  {partnerData.contact_email}
                 </span>
                 <span className="flex items-center gap-1">
                   <Phone className="w-4 h-4" />
-                  {partner.contact_phone || 'No phone'}
+                  {partnerData.contact_phone || 'No phone'}
                 </span>
               </div>
             </div>
@@ -123,15 +165,15 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
               <div>
                 <p className="text-sm opacity-90">PowerConfidence Score</p>
                 <div className="flex items-center gap-2">
-                  <span className="text-4xl font-bold">{partner.current_powerconfidence_score || 87}</span>
+                  <span className="text-4xl font-bold">{partnerData.current_powerconfidence_score || 87}</span>
                   <span className="text-2xl">/100</span>
-                  {getTrendIcon(partner.score_trend || 'stable')}
+                  {getTrendIcon(partnerData.score_trend || 'stable')}
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-sm opacity-90">Trend</p>
                 <p className="text-lg font-semibold">
-                  {partner.score_trend === 'up' ? '+3' : partner.score_trend === 'down' ? '-2' : '0'} points
+                  {partnerData.score_trend === 'up' ? '+3' : partnerData.score_trend === 'down' ? '-2' : '0'} points
                 </p>
                 <p className="text-xs opacity-75">vs last quarter</p>
               </div>
@@ -142,7 +184,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
         {/* Tabs */}
         <div className="border-b">
           <div className="flex gap-4 px-6">
-            {['overview', 'history', 'feedback', 'insights'].map(tab => (
+            {['overview', 'onboarding', 'history', 'feedback', 'insights'].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -152,7 +194,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                     : 'border-transparent text-gray-600 hover:text-gray-900'
                 }`}
               >
-                {tab}
+                {tab === 'onboarding' ? 'Onboarding Info' : tab}
               </button>
             ))}
           </div>
@@ -189,8 +231,8 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                 <CardContent className="space-y-3">
                   <div>
                     <p className="text-sm text-gray-600">Status</p>
-                    <Badge variant={partner.status === 'active' ? 'default' : 'secondary'}>
-                      {partner.status || 'Active'}
+                    <Badge variant={partnerData.status === 'active' ? 'default' : 'secondary'}>
+                      {partnerData.status || 'Active'}
                     </Badge>
                   </div>
                   <div>
@@ -199,10 +241,10 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                       {(() => {
                         let categories = [];
                         try {
-                          const parsed = JSON.parse(partner.service_categories);
-                          categories = Array.isArray(parsed) ? parsed : [partner.service_categories];
+                          const parsed = JSON.parse(partnerData.service_categories);
+                          categories = Array.isArray(parsed) ? parsed : [partnerData.service_categories];
                         } catch {
-                          categories = partner.service_categories ? [partner.service_categories] : ['IT Services', 'Marketing'];
+                          categories = partnerData.service_categories ? [partnerData.service_categories] : ['IT Services', 'Marketing'];
                         }
                         return categories.map((cat: string, idx: number) => (
                           <Badge key={idx} variant="outline">{cat}</Badge>
@@ -212,7 +254,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Total Feedback</p>
-                    <p className="text-lg font-semibold">{partner.recent_feedback_count || 20} responses</p>
+                    <p className="text-lg font-semibold">{partnerData.recent_feedback_count || 20} responses</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Average Rating</p>
@@ -248,6 +290,324 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                       <p className="text-2xl font-bold">95%</p>
                       <p className="text-sm text-gray-600">Would Recommend</p>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {activeTab === 'onboarding' && (
+            <div className="space-y-6">
+              {/* Company Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Globe className="w-5 h-5" />
+                    Company Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Company Name</p>
+                    <p className="text-gray-900">{partnerData.company_name || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Established Year</p>
+                    <p className="text-gray-900">{partnerData.established_year || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Website</p>
+                    <p className="text-gray-900">{partnerData.website || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Employee Count</p>
+                    <p className="text-gray-900">{partnerData.employee_count || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Ownership Type</p>
+                    <p className="text-gray-900">{partnerData.ownership_type || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Company Description</p>
+                    <p className="text-gray-900">{partnerData.company_description || 'Not specified'}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Contact Information */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Users className="w-5 h-5" />
+                    Contact Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {['ceo', 'cx', 'sales', 'onboarding', 'marketing'].map((role) => (
+                      <div key={role} className="p-4 bg-gray-50 rounded-lg">
+                        <h4 className="font-medium text-gray-900 capitalize mb-2">{role} Contact</h4>
+                        <div className="space-y-1 text-sm">
+                          <p><span className="text-gray-600">Name:</span> {partnerData[`${role}_contact_name`] || 'Not specified'}</p>
+                          <p><span className="text-gray-600">Email:</span> {partnerData[`${role}_contact_email`] || 'Not specified'}</p>
+                          <p><span className="text-gray-600">Phone:</span> {partnerData[`${role}_contact_phone`] || 'Not specified'}</p>
+                          <p><span className="text-gray-600">Title:</span> {partnerData[`${role}_contact_title`] || 'Not specified'}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Target Audience & Service Areas */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Target className="w-5 h-5" />
+                    Target Audience & Service Areas
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium mb-2">Target Revenue Audience</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(() => {
+                        try {
+                          const audience = JSON.parse(partnerData.target_revenue_audience || '[]');
+                          return Array.isArray(audience) ? audience.map((item: string, idx: number) => (
+                            <Badge key={idx} variant="outline">{item}</Badge>
+                          )) : <Badge variant="outline">{partnerData.target_revenue_audience || 'Not specified'}</Badge>;
+                        } catch {
+                          return <Badge variant="outline">{partnerData.target_revenue_audience || 'Not specified'}</Badge>;
+                        }
+                      })()}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium mb-2">Service Areas</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(() => {
+                        try {
+                          const areas = JSON.parse(partnerData.service_areas || '[]');
+                          return Array.isArray(areas) ? areas.map((item: string, idx: number) => (
+                            <Badge key={idx} variant="outline">{item}</Badge>
+                          )) : <Badge variant="outline">{partnerData.service_areas || 'Not specified'}</Badge>;
+                        } catch {
+                          return <Badge variant="outline">{partnerData.service_areas || 'Not specified'}</Badge>;
+                        }
+                      })()}
+                    </div>
+                  </div>
+                  {partnerData.service_areas_other && (
+                    <div className="md:col-span-2">
+                      <p className="text-sm text-gray-600 font-medium">Other Service Areas</p>
+                      <p className="text-gray-900">{partnerData.service_areas_other}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Competitive Analysis */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5" />
+                    Competitive Analysis
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Service Category</p>
+                    <p className="text-gray-900">{partnerData.service_category || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Value Proposition</p>
+                    <p className="text-gray-900">{partnerData.value_proposition || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Why Clients Choose You</p>
+                    <p className="text-gray-900">{partnerData.why_clients_choose_you || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Why Clients Choose Competitors</p>
+                    <p className="text-gray-900">{partnerData.why_clients_choose_competitors || 'Not specified'}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Focus Areas */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Award className="w-5 h-5" />
+                    Focus Areas (Next 12 Months)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {(() => {
+                      try {
+                        const areas = JSON.parse(partnerData.focus_areas_12_months || '[]');
+                        return Array.isArray(areas) ? areas.map((item: string, idx: number) => (
+                          <Badge key={idx} variant="outline">{item}</Badge>
+                        )) : <Badge variant="outline">{partnerData.focus_areas_12_months || 'Not specified'}</Badge>;
+                      } catch {
+                        return <Badge variant="outline">{partnerData.focus_areas_12_months || 'Not specified'}</Badge>;
+                      }
+                    })()}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Tech Stack */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <AlertCircle className="w-5 h-5" />
+                    Technology Stack
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {[
+                      { key: 'tech_stack_crm', label: 'CRM Systems' },
+                      { key: 'tech_stack_project_management', label: 'Project Management' },
+                      { key: 'tech_stack_communication', label: 'Communication Tools' },
+                      { key: 'tech_stack_analytics', label: 'Analytics Platforms' },
+                      { key: 'tech_stack_marketing', label: 'Marketing Tools' },
+                      { key: 'tech_stack_financial', label: 'Financial Software' }
+                    ].map((tech) => (
+                      <div key={tech.key}>
+                        <p className="text-sm text-gray-600 font-medium mb-1">{tech.label}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {(() => {
+                            try {
+                              const tools = JSON.parse(partnerData[tech.key] || '[]');
+                              return Array.isArray(tools) ? tools.map((tool: string, idx: number) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">{tool}</Badge>
+                              )) : <span className="text-gray-500 text-sm">Not specified</span>;
+                            } catch {
+                              return <span className="text-gray-500 text-sm">Not specified</span>;
+                            }
+                          })()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Sponsorships & Media */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <MessageSquare className="w-5 h-5" />
+                    Sponsorships & Media
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium mb-2">Events Sponsored</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(() => {
+                        try {
+                          const events = JSON.parse(partnerData.sponsored_events || '[]');
+                          return Array.isArray(events) ? events.map((event: string, idx: number) => (
+                            <Badge key={idx} variant="outline">{event}</Badge>
+                          )) : <span className="text-gray-500">None specified</span>;
+                        } catch {
+                          return <span className="text-gray-500">None specified</span>;
+                        }
+                      })()}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium mb-2">Podcast Appearances</p>
+                    <div className="flex flex-wrap gap-2">
+                      {(() => {
+                        try {
+                          const podcasts = JSON.parse(partnerData.podcast_appearances || '[]');
+                          return Array.isArray(podcasts) ? podcasts.map((podcast: string, idx: number) => (
+                            <Badge key={idx} variant="outline">{podcast}</Badge>
+                          )) : <span className="text-gray-500">None specified</span>;
+                        } catch {
+                          return <span className="text-gray-500">None specified</span>;
+                        }
+                      })()}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Books Read/Recommended</p>
+                    <p className="text-gray-900">{partnerData.books_read_recommended || 'Not specified'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium">Best Working Partnerships</p>
+                    <p className="text-gray-900">{partnerData.best_working_partnerships || 'Not specified'}</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Client Demos & References */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FileText className="w-5 h-5" />
+                    Client Demos & References
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium mb-2">Client Demos</p>
+                    {(() => {
+                      try {
+                        const demos = JSON.parse(partnerData.client_demos || '[]');
+                        return Array.isArray(demos) && demos.length > 0 ? (
+                          <div className="space-y-2">
+                            {demos.map((demo: any, idx: number) => (
+                              <div key={idx} className="p-3 bg-gray-50 rounded-lg">
+                                <p className="font-medium">{demo.title || `Demo ${idx + 1}`}</p>
+                                <p className="text-sm text-gray-600">{demo.description || 'No description'}</p>
+                                {demo.url && (
+                                  <a href={demo.url} target="_blank" rel="noopener noreferrer" 
+                                     className="text-blue-600 hover:underline text-sm">
+                                    View Demo
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : <span className="text-gray-500">No demos uploaded</span>;
+                      } catch {
+                        return <span className="text-gray-500">No demos uploaded</span>;
+                      }
+                    })()}
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium mb-2">Client References</p>
+                    {(() => {
+                      try {
+                        const references = JSON.parse(partnerData.client_references || '[]');
+                        return Array.isArray(references) && references.length > 0 ? (
+                          <div className="space-y-2">
+                            {references.map((ref: any, idx: number) => (
+                              <div key={idx} className="p-3 bg-gray-50 rounded-lg">
+                                <p className="font-medium">{ref.name || 'Unnamed Reference'}</p>
+                                <p className="text-sm text-gray-600">{ref.email}</p>
+                                {ref.phone && <p className="text-sm text-gray-600">{ref.phone}</p>}
+                                {ref.website && (
+                                  <a href={ref.website} target="_blank" rel="noopener noreferrer" 
+                                     className="text-blue-600 hover:underline text-sm">
+                                    {ref.website}
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : <span className="text-gray-500">No references provided</span>;
+                      } catch {
+                        return <span className="text-gray-500">No references provided</span>;
+                      }
+                    })()}
                   </div>
                 </CardContent>
               </Card>

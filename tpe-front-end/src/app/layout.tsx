@@ -3,9 +3,10 @@
 import React from 'react';
 import './globals.css';
 // import { createPageUrl } from '@/lib/utils'; // <-- Bypassed for now
-import { Crown, Users, Calendar, BarChart3, Shield } from "lucide-react";
+import { Users, Calendar, BarChart3, Shield } from "lucide-react";
 import { usePathname } from 'next/navigation'; 
-import Link from 'next/link'; 
+import Link from 'next/link';
+import Image from 'next/image'; 
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -24,11 +25,16 @@ export default function Layout({ children, currentPageName }: LayoutProps) {
       <nav className="bg-black shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-3 group">
+            <Link href="/" className="flex items-center space-x-0 group">
               <div className="relative">
-                <div className="w-10 h-10 bg-[#FB0401] rounded-md flex items-center justify-center">
-                  <Crown className="w-6 h-6 text-white" />
-                </div>
+                <Image 
+                  src="/power100-logo.png" 
+                  alt="Power100 Logo" 
+                  width={80} 
+                  height={80} 
+                  className="w-20 h-20 object-contain object-left"
+                  style={{ marginTop: '-2px' }}
+                />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-white tracking-tight">Power100</h1>
@@ -68,9 +74,13 @@ export default function Layout({ children, currentPageName }: LayoutProps) {
         <div className="max-w-7xl mx-auto px-6 py-6">
           <div className="text-center">
             <div className="flex items-center justify-center space-x-2 mb-3">
-              <div className="w-6 h-6 bg-[#FB0401] rounded-md flex items-center justify-center">
-                <Crown className="w-4 h-4 text-white" />
-              </div>
+              <Image 
+                src="/power100-logo.png" 
+                alt="Power100 Logo" 
+                width={48} 
+                height={48} 
+                className="w-12 h-12 object-contain"
+              />
               <span className="text-white font-semibold text-sm">Power100 Experience</span>
             </div>
             <div className="mt-3 pt-3 border-t border-white/20">
