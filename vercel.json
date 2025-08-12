@@ -1,25 +1,8 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "tpe-front-end/package.json",
-      "use": "@vercel/next"
-    },
-    {
-      "src": "tpe-backend/src/server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "tpe-backend/src/server.js"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "tpe-front-end/$1"
-    }
-  ],
+  "framework": "nextjs",
+  "buildCommand": "npm run build",
+  "outputDirectory": ".next",
+  "installCommand": "npm install",
   "env": {
     "NODE_ENV": "production"
   }
