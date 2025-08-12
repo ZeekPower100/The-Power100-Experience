@@ -3,6 +3,7 @@
     "version": "1.0.0",
     "description": "Power100 Experience - Full Stack Application",
     "scripts": {
+        "postinstall": "cd tpe-backend && npm install",
         "start": "node server.js",
         "dev:frontend": "cd tpe-front-end && npm run dev",
         "dev:backend": "cd tpe-backend && npm run dev",
@@ -18,10 +19,6 @@
         "claude:status": "node scripts/claude-status.js",
         "claude:docs": "node scripts/update-claude-docs.js"
     },
-    "workspaces": [
-        "tpe-front-end",
-        "tpe-backend"
-    ],
     "dependencies": {
         "@sendgrid/mail": "^8.1.0",
         "bcryptjs": "^2.4.3",
