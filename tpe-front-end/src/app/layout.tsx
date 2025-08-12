@@ -3,9 +3,10 @@
 import React from 'react';
 import './globals.css';
 // import { createPageUrl } from '@/lib/utils'; // <-- Bypassed for now
-import { Crown, Users, Calendar, BarChart3, Building2, Menu, X } from "lucide-react";
+import { Users, Calendar, BarChart3, Building2, Menu, X, Shield } from "lucide-react";
 import { usePathname } from 'next/navigation'; 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useState } from 'react'; 
 
 interface LayoutProps {
@@ -26,11 +27,16 @@ export default function Layout({ children, currentPageName }: LayoutProps) {
       <nav className="bg-black shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
-            <Link href="/" className="flex items-center space-x-3 group">
+            <Link href="/" className="flex items-center space-x-0 group">
               <div className="relative">
-                <div className="w-10 h-10 bg-[#FB0401] rounded-md flex items-center justify-center">
-                  <Crown className="w-6 h-6 text-white" />
-                </div>
+                <Image 
+                  src="/power100-logo.png" 
+                  alt="Power100 Logo" 
+                  width={80} 
+                  height={80} 
+                  className="w-20 h-20 object-contain object-left"
+                  style={{ marginTop: '-2px' }}
+                />
               </div>
               <div>
                 <h1 className="text-xl font-bold text-white tracking-tight">Power100</h1>
@@ -50,6 +56,10 @@ export default function Layout({ children, currentPageName }: LayoutProps) {
                     <Users className="w-4 h-4" />
                     <span className="font-medium">Partners</span>
                   </Link>
+                  <Link href="/admindashboard/partners-enhanced" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
+                    <Shield className="w-4 h-4" />
+                    <span className="font-medium">Enhanced Partners</span>
+                  </Link>
                   <Link href="/admindashboard/bookings" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
                     <Calendar className="w-4 h-4" />
                     <span className="font-medium">Bookings</span>
@@ -61,7 +71,7 @@ export default function Layout({ children, currentPageName }: LayoutProps) {
               {!pathname.includes('partner-portal') && !pathname.includes('admin') && (
                 <>
                   <Link href="/contractorflow" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
-                    <Crown className="w-4 h-4" />
+                    <Users className="w-4 h-4" />
                     <span className="font-medium">Start Experience</span>
                   </Link>
                   <Link href="/partner-portal" className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-gray-900 transition-colors">
