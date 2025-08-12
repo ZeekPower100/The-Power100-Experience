@@ -3,12 +3,16 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Plus } from 'lucide-react';
 import Link from 'next/link';
 import PartnerListEnhanced from '@/components/admin/PartnerListEnhanced';
+import PartnerForm from '@/components/admin/PartnerForm';
 
 const EnhancedPartnersPage: React.FC = () => {
   const [selectedPartnerId, setSelectedPartnerId] = useState<number | null>(null);
+  const [showAddPartner, setShowAddPartner] = useState(false);
+  const [editPartner, setEditPartner] = useState<any>(null);
+  const [refreshList, setRefreshList] = useState(0);
 
   const handlePartnerSelect = (partnerId: number) => {
     setSelectedPartnerId(partnerId);
@@ -16,25 +20,70 @@ const EnhancedPartnersPage: React.FC = () => {
     console.log('Selected partner for detailed view:', partnerId);
   };
 
+  const handlePartnerEdit = (partner: any) => {
+    setEditPartner(partner);
+  };
+
+  const handleAddPartnerSuccess = () => {
+    setShowAddPartner(false);
+    setRefreshList(prev => prev + 1); // Trigger list refresh
+  };
+
+  const handleEditPartnerSuccess = () => {
+    setEditPartner(null);
+    setRefreshList(prev => prev + 1); // Trigger list refresh
+  };
+
+  if (showAddPartner) {
+    return (
+      <PartnerForm 
+        partner={null}
+        onSuccess={handleAddPartnerSuccess}
+        onCancel={() => setShowAddPartner(false)}
+      />
+    );
+  }
+
+  if (editPartner) {
+    return (
+      <PartnerForm 
+        partner={editPartner}
+        onSuccess={handleEditPartnerSuccess}
+        onCancel={() => setEditPartner(null)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-power100-bg-grey p-6">
       {/* Header */}
       <div className="mb-8">
-        <div className="flex items-center gap-4 mb-4">
-          <Link href="/admindashboard">
-            <Button variant="outline" size="sm" className="flex items-center gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              Back to Dashboard
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-3xl font-bold text-power100-black">
-              Enhanced Partner Management
-            </h1>
-            <p className="text-power100-grey mt-1">
-              Manage partners with PowerConfidence scores and performance analytics
-            </p>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <Link href="/admindashboard">
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <ArrowLeft className="w-4 h-4" />
+                Back to Dashboard
+              </Button>
+            </Link>
+            <div>
+              <h1 className="text-3xl font-bold text-power100-black">
+                Enhanced Partner Management
+              </h1>
+              <p className="text-power100-grey mt-1">
+                Manage partners with PowerConfidence scores and performance analytics
+              </p>
+            </div>
           </div>
+          
+          {/* Add New Partner Button */}
+          <Button 
+            onClick={() => setShowAddPartner(true)}
+            className="bg-power100-green hover:bg-green-700 text-white flex items-center gap-2"
+          >
+            <Plus className="w-5 h-5" />
+            Add New Partner
+          </Button>
         </div>
         
         {/* Status Banner */}
@@ -59,7 +108,10 @@ const EnhancedPartnersPage: React.FC = () => {
       </div>
 
       {/* Enhanced Partner List Component */}
-      <PartnerListEnhanced onPartnerSelect={handlePartnerSelect} />
+      <PartnerListEnhanced 
+        onPartnerSelect={handlePartnerSelect} 
+        onPartnerEdit={handlePartnerEdit}
+      />
 
       {/* Development Info */}
       <Card className="mt-8 bg-blue-50 border-blue-200">

@@ -39,9 +39,10 @@ interface PartnerSummary {
 
 interface PartnerListEnhancedProps {
   onPartnerSelect?: (partnerId: number) => void;
+  onPartnerEdit?: (partner: Partner) => void;
 }
 
-const PartnerListEnhanced: React.FC<PartnerListEnhancedProps> = ({ onPartnerSelect }) => {
+const PartnerListEnhanced: React.FC<PartnerListEnhancedProps> = ({ onPartnerSelect, onPartnerEdit }) => {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [summary, setSummary] = useState<PartnerSummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -335,6 +336,7 @@ const PartnerListEnhanced: React.FC<PartnerListEnhancedProps> = ({ onPartnerSele
                       <Button
                         size="sm"
                         variant="outline"
+                        onClick={() => onPartnerEdit?.(partner)}
                         className="flex items-center gap-1"
                       >
                         <Edit className="w-4 h-4" />

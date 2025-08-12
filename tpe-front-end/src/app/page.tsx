@@ -4,8 +4,9 @@ import React from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button"; // Assuming this is from a component library like shadcn/ui
 import { Card, CardContent } from "@/components/ui/card"; // Assuming this is from a component library like shadcn/ui
-import { Crown, ArrowRight, Shield, Target, Users, Zap } from "lucide-react";
+import { ArrowRight, Shield, Target, Users, Zap } from "lucide-react";
 import { motion } from "framer-motion";
+import Image from 'next/image';
 
 export default function HomePage() {
   const router = useRouter();
@@ -50,7 +51,13 @@ export default function HomePage() {
               className="mb-8"
             >
               <div className="inline-flex items-center space-x-2 bg-power100-white px-6 py-3 rounded-full border border-gray-200 mb-6">
-                <Crown className="w-5 h-5 text-power100-red" />
+                <Image 
+                  src="/power100-logo.png" 
+                  alt="Power100 Logo" 
+                  width={40} 
+                  height={40} 
+                  className="w-10 h-10 object-contain"
+                />
                 <span className="text-power100-grey font-semibold text-sm">The Power100 Experience</span>
               </div>
               
