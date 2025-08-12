@@ -223,6 +223,97 @@ app.get('/api/contractors', async (req, res) => {
   }
 });
 
+// Partner registration
+app.post('/api/partner-auth/register', async (req, res) => {
+  try {
+    const { email, password, company_name, contact_name } = req.body;
+    
+    // Check if partner user table exists, if not create it
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS partner_users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        company_name VARCHAR(255) NOT NULL,
+        contact_name VARCHAR(255) NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    const hashedPassword = await bcrypt.hash(password, 12);
+    
+    const result = await pool.query(
+      `INSERT INTO partner_users (email, password_hash, company_name, contact_name)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (email) DO UPDATE 
+       SET password_hash = $2, company_name = $3, contact_name = $4
+       RETURNING id, email, company_name, contact_name`,
+      [email, hashedPassword, company_name, contact_name]
+    );
+    
+    res.json({ success: true, user: result.rows[0] });
+  } catch (error) {
+    console.error('Partner registration error:', error);
+    res.status(500).json({ error: 'Registration failed' });
+  }
+});
+
+// Partner login
+app.post('/api/partner-auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    // First ensure the table exists
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS partner_users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        company_name VARCHAR(255) NOT NULL,
+        contact_name VARCHAR(255) NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    const result = await pool.query('SELECT * FROM partner_users WHERE email = $1', [email]);
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const user = result.rows[0];
+    const isValid = await bcrypt.compare(password, user.password_hash);
+    
+    if (!isValid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const token = jwt.sign(
+      { id: user.id, email: user.email, type: 'partner' },
+      process.env.JWT_SECRET || 'development-secret',
+      { expiresIn: '24h' }
+    );
+    
+    res.json({ 
+      success: true, 
+      token, 
+      user: { 
+        id: user.id, 
+        email: user.email, 
+        company_name: user.company_name,
+        contact_name: user.contact_name 
+      } 
+    });
+  } catch (error) {
+    console.error('Partner login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
 // Error handling middleware (MUST be last)
 app.use((err, req, res, next) => {
   console.error('🚨 EXPRESS ERROR:', err);
