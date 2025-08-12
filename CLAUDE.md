@@ -233,7 +233,42 @@ the-power100-experience/          # Project root
 
 ## 🎛️ Special Instructions for Claude Code
 
+### 🚨 CRITICAL: Pre-Action Verification Protocol (MANDATORY)
+**Before ANY git operations involving remote repositories, ALWAYS follow this protocol:**
+
+#### 1. CHECK FIRST - What's Already There
+```bash
+# Check remote branch contents
+git ls-tree -r origin/master --name-only | grep [feature]
+git log origin/master --oneline --grep="[feature]" 
+
+# Check commit history
+git log origin/master --oneline -20
+```
+
+#### 2. COMPARE - Local vs Remote
+```bash
+# See what's different
+git diff --name-only origin/master..HEAD
+git log origin/master..HEAD --oneline
+
+# Check if specific features exist
+git show origin/master:path/to/file
+```
+
+#### 3. VERIFY - Before Creating PRs
+- List what's actually new/missing
+- Confirm what needs to be pushed
+- Check for existing PRs with similar changes
+- **NEVER create PRs without checking if the feature already exists**
+
+#### 4. DOCUMENT - What You're About to Do
+- State clearly what was found in verification
+- Explain what action will be taken and why
+- Get confirmation before proceeding
+
 ### Always Do
+- **VERIFY remote state BEFORE any PR/merge operations**
 - Create new branch for ANY code changes
 - Write tests before implementing features  
 - Follow component-based architecture
@@ -242,6 +277,8 @@ the-power100-experience/          # Project root
 - Implement responsive design
 - Add proper error handling
 - Include loading states
+- Compare branches before attempting merges
+- Check for existing features before creating duplicates
 
 ### Never Do
 - Work directly on main/master branch
@@ -250,15 +287,19 @@ the-power100-experience/          # Project root
 - Ignore TypeScript errors
 - Hardcode values that should be configurable
 - Skip accessibility considerations
+- **Create PRs without checking if features already exist**
+- **Attempt merges without comparing branches first**
+- **Make assumptions about what's missing without verification**
 
 ### When Making Changes
-1. Analyze impact on contractor flow
-2. Consider partner integration effects  
-3. Test responsive behavior
-4. Verify brand consistency
-5. Check TypeScript compilation
-6. Run existing tests
-7. Create new tests as needed
+1. **FIRST verify what's already in remote branches**
+2. Analyze impact on contractor flow
+3. Consider partner integration effects  
+4. Test responsive behavior
+5. Verify brand consistency
+6. Check TypeScript compilation
+7. Run existing tests
+8. Create new tests as needed
 
 ## 🎯 Current System Capabilities (August 2025)
 
