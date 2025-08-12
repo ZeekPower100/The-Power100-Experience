@@ -201,9 +201,9 @@ app.get('/api/contractors', async (req, res) => {
   }
 });
 
-// Start server
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Standalone server running on port ${PORT}`);
+// Start server - Railway requires IPv4 binding
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Standalone server running on 0.0.0.0:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log(`Database configured: ${!!process.env.DATABASE_URL}`);
   console.log(`Server address: ${JSON.stringify(server.address())}`);
