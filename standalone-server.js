@@ -260,6 +260,83 @@ app.post('/api/partner-auth/register', async (req, res) => {
   }
 });
 
+// Feedback survey endpoints
+app.get('/api/feedback/surveys', async (req, res) => {
+  try {
+    const { id, contractor, partner } = req.query;
+    
+    // If survey ID provided, look up specific survey
+    if (id) {
+      // For demo purposes, return mock survey data
+      const mockSurvey = {
+        id: id,
+        partner_id: parseInt(partner) || 1,
+        contractor_id: parseInt(contractor) || 1,
+        partner_name: 'Buildr',
+        contractor_name: 'Demo Contractor',
+        survey_type: 'quarterly',
+        status: 'pending',
+        expires_at: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString()
+      };
+      
+      res.json({ success: true, surveys: [mockSurvey] });
+    } else {
+      // Return all surveys (empty for now)
+      res.json({ success: true, surveys: [] });
+    }
+  } catch (error) {
+    console.error('Survey fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch surveys' });
+  }
+});
+
+app.post('/api/feedback/surveys/submit', async (req, res) => {
+  try {
+    const { surveyId, contractorId, partnerId, responses } = req.body;
+    
+    // For demo purposes, just return success
+    console.log('📝 Feedback survey submitted:', {
+      surveyId,
+      contractorId,
+      partnerId,
+      responses: Object.keys(responses || {}).length + ' responses'
+    });
+    
+    res.json({ 
+      success: true, 
+      message: 'Feedback survey submitted successfully',
+      submissionId: `sub_${Date.now()}`
+    });
+  } catch (error) {
+    console.error('Survey submission error:', error);
+    res.status(500).json({ error: 'Failed to submit survey' });
+  }
+});
+
+app.post('/api/feedback/submit-response', async (req, res) => {
+  try {
+    const formData = req.body;
+    
+    // For demo purposes, just return success
+    console.log('📝 Feedback form submitted:', {
+      surveyId: formData.surveyId,
+      overallSatisfaction: formData.overallSatisfaction,
+      communicationRating: formData.communicationRating,
+      likelihoodToRecommend: formData.likelihoodToRecommend,
+      responseCount: Object.keys(formData).length
+    });
+    
+    res.json({ 
+      success: true, 
+      message: 'Feedback submitted successfully',
+      submissionId: `resp_${Date.now()}`
+    });
+  } catch (error) {
+    console.error('Feedback submission error:', error);
+    res.status(500).json({ error: 'Failed to submit feedback' });
+  }
+});
+
 // Partner login
 app.post('/api/partner-auth/login', async (req, res) => {
   try {
