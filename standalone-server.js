@@ -22,7 +22,23 @@ app.use((req, res, next) => {
 
 // Middleware
 app.use(cors({
-  origin: ['https://the-power100-experience.vercel.app', 'http://localhost:3000', 'http://localhost:3002'],
+  origin: function(origin, callback) {
+    const allowedOrigins = [
+      'https://the-power100-experience.vercel.app',
+      'http://localhost:3000',
+      'http://localhost:3002',
+      'http://localhost:3001'
+    ];
+    
+    // Allow Vercel preview deployments (matches pattern)
+    if (!origin || allowedOrigins.includes(origin) || 
+        origin.includes('.vercel.app') || 
+        origin.includes('vercel.app')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 }));
 app.use(express.json());
