@@ -86,10 +86,82 @@ app.get('/health', (req, res) => {
 // Database initialization route (for production setup)
 app.post('/api/init-db', async (req, res) => {
   try {
-    const { initDatabase } = require('../scripts/init-production-db');
-    await initDatabase();
-    res.json({ success: true, message: 'Database initialized successfully' });
+    const path = require('path');
+    const scriptPath = path.join(__dirname, '..', 'scripts', 'init-production-db.js');
+    
+    // Check if script exists
+    const fs = require('fs');
+    if (!fs.existsSync(scriptPath)) {
+      // Inline database initialization if script doesn't exist
+      const { pool } = require('./config/database');
+      const bcrypt = require('bcryptjs');
+      
+      // Read schema
+      const schemaPath = path.join(__dirname, 'database', 'schema.sql');
+      const schema = fs.readFileSync(schemaPath, 'utf8');
+      
+      // Execute schema
+      await pool.query(schema);
+      
+      // Create admin user
+      const hashedPassword = await bcrypt.hash('admin123', 12);
+      await pool.query(
+        `INSERT INTO admin_users (email, password_hash, full_name)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (email) DO NOTHING`,
+        ['admin@power100.io', hashedPassword, 'System Administrator']
+      );
+      
+      // Insert sample partners
+      const partners = [
+        {
+          company_name: 'Buildr',
+          description: 'Leading CRM and project management platform for contractors',
+          website: 'https://www.buildr.com',
+          contact_email: 'sales@buildr.com',
+          focus_areas_served: ['closing_higher_percentage', 'controlling_lead_flow', 'operational_efficiency'],
+          target_revenue_range: ['1m_5m', '5m_10m', 'over_10m'],
+          power_confidence_score: 96
+        },
+        {
+          company_name: 'MarketPro',
+          description: 'Hyper-targeted lead generation and marketing automation',
+          website: 'https://www.marketpro.com',
+          contact_email: 'info@marketpro.com',
+          focus_areas_served: ['marketing_people_trust', 'controlling_lead_flow'],
+          target_revenue_range: ['500k_1m', '1m_5m'],
+          power_confidence_score: 89
+        }
+      ];
+      
+      for (const partner of partners) {
+        await pool.query(
+          `INSERT INTO strategic_partners (
+            company_name, description, website, contact_email,
+            focus_areas_served, target_revenue_range, power_confidence_score, is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          ON CONFLICT DO NOTHING`,
+          [
+            partner.company_name,
+            partner.description,
+            partner.website,
+            partner.contact_email,
+            partner.focus_areas_served,
+            partner.target_revenue_range,
+            partner.power_confidence_score,
+            true
+          ]
+        );
+      }
+      
+      res.json({ success: true, message: 'Database initialized successfully' });
+    } else {
+      const { initDatabase } = require(scriptPath);
+      await initDatabase();
+      res.json({ success: true, message: 'Database initialized successfully' });
+    }
   } catch (error) {
+    console.error('Database init error:', error);
     res.status(500).json({ success: false, error: error.message });
   }
 });
