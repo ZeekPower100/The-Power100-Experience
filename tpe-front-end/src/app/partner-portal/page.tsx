@@ -35,6 +35,8 @@ export default function PartnerPortalLogin() {
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://the-power100-experience-production.up.railway.app';
+      console.log('🔐 Partner login attempt:', { email: formData.email, apiUrl });
+      
       const response = await fetch(`${apiUrl}/api/partner-auth/login`, {
         method: 'POST',
         headers: {
@@ -43,7 +45,10 @@ export default function PartnerPortalLogin() {
         body: JSON.stringify(formData),
       });
 
+      console.log('📡 Login response status:', response.status, response.statusText);
+      
       const data = await response.json();
+      console.log('📊 Login response data:', data);
 
       if (data.success) {
         // Store token and redirect to dashboard
@@ -51,11 +56,12 @@ export default function PartnerPortalLogin() {
         localStorage.setItem('partnerInfo', JSON.stringify(data.partner));
         router.push('/partner-portal/dashboard');
       } else {
+        console.error('❌ Login failed:', data);
         setError(data.error || 'Login failed. Please check your credentials.');
       }
     } catch (error) {
-      console.error('Login error:', error);
-      setError('Network error. Please try again.');
+      console.error('🚨 Login network error:', error);
+      setError(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsLoading(false);
     }

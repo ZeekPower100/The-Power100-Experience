@@ -38,7 +38,8 @@ const FeedbackSurveyPage: React.FC = () => {
 
         // If we have surveyId, fetch the survey details
         if (surveyId) {
-          const response = await fetch(`/api/feedback/surveys?id=${surveyId}`);
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://the-power100-experience-production.up.railway.app';
+          const response = await fetch(`${apiUrl}/api/feedback/surveys?id=${surveyId}`);
           if (!response.ok) {
             throw new Error('Survey not found or expired');
           }
