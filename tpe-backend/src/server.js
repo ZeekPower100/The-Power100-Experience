@@ -25,17 +25,6 @@ const aiCoachRoutes = require('./routes/aiCoachRoutes');
 
 const app = express();
 
-// Database initialization route (for production setup)
-app.post('/api/init-db', async (req, res) => {
-  try {
-    const { initDatabase } = require('../scripts/init-production-db');
-    await initDatabase();
-    res.json({ success: true, message: 'Database initialized successfully' });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 // Connect to database and initialize if needed
 connectDB();
 
@@ -82,6 +71,17 @@ app.get('/health', (req, res) => {
     environment: process.env.NODE_ENV,
     version: '1.0.0'
   });
+});
+
+// Database initialization route (for production setup)
+app.post('/api/init-db', async (req, res) => {
+  try {
+    const { initDatabase } = require('../scripts/init-production-db');
+    await initDatabase();
+    res.json({ success: true, message: 'Database initialized successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // API Routes
