@@ -5,4 +5,4 @@ nixPkgs = ["nodejs-18_x"]
 cmds = ["cd tpe-backend && npm install --omit=dev"]
 
 [start]
-cmd = "cd tpe-backend && node src/server.js"
+cmd = "node tpe-backend/src/server.js"
