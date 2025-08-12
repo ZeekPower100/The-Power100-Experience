@@ -202,8 +202,9 @@ app.get('/api/contractors', async (req, res) => {
 });
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, () => {
   console.log(`🚀 Standalone server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log(`Database configured: ${!!process.env.DATABASE_URL}`);
+  console.log(`Server address: ${JSON.stringify(server.address())}`);
 });
