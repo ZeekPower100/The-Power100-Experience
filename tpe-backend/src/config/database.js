@@ -22,7 +22,11 @@ if (process.env.USE_SQLITE === 'true') {
       client.release();
     } catch (error) {
       console.error('❌ PostgreSQL connection error:', error.message);
-      process.exit(1);
+      console.log('⚠️  Server starting without database connection. Database operations may fail.');
+      // Don't exit in production - let the server start
+      if (process.env.NODE_ENV !== 'production') {
+        process.exit(1);
+      }
     }
   };
 
