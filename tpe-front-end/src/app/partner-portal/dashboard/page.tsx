@@ -61,7 +61,8 @@ export default function PartnerDashboard() {
 
   const fetchPartnerProfile = async (token: string) => {
     try {
-      const response = await fetch('http://localhost:5001/api/partner-auth/profile', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://the-power100-experience-production.up.railway.app';
+      const response = await fetch(`${apiUrl}/api/partner-auth/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

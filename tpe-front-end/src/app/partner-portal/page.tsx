@@ -34,7 +34,8 @@ export default function PartnerPortalLogin() {
     setError('');
 
     try {
-      const response = await fetch('http://localhost:5001/api/partner-auth/login', {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://the-power100-experience-production.up.railway.app';
+      const response = await fetch(`${apiUrl}/api/partner-auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

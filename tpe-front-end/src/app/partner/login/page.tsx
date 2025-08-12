@@ -23,8 +23,8 @@ export default function PartnerLoginPage() {
     setLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
-      const response = await fetch(`${apiUrl}/partner-auth/login`, {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://the-power100-experience-production.up.railway.app';
+      const response = await fetch(`${apiUrl}/api/partner-auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
