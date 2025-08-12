@@ -1,5 +1,5 @@
 // API Service Layer for The Power100 Experience - Updated for port 5000
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://the-power100-experience-production.up.railway.app/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://the-power100-experience-production.up.railway.app';
 
 // Generic API request function
 async function apiRequest<T>(
@@ -49,32 +49,32 @@ export const contractorApi = {
     phone: string;
     company_name: string;
     company_website?: string;
-  }) => apiRequest('/contractors/verify-start', {
+  }) => apiRequest('/api/contractors/verify-start', {
     method: 'POST',
     body: JSON.stringify(data)
   }),
 
   // Verify SMS code
   verifyCode: (contractorId: string, code: string) => 
-    apiRequest('/contractors/verify-code', {
+    apiRequest('/api/contractors/verify-code', {
       method: 'POST',
       body: JSON.stringify({ contractor_id: contractorId, code })
     }),
 
   // Update contractor profile
   updateProfile: (contractorId: string, data: Record<string, unknown>) =>
-    apiRequest(`/contractors/${contractorId}/profile`, {
+    apiRequest(`/api/contractors/${contractorId}/profile`, {
       method: 'PUT',
       body: JSON.stringify(data)
     }),
 
   // Get partner matches
   getMatches: (contractorId: string) =>
-    apiRequest(`/contractors/${contractorId}/matches`),
+    apiRequest(`/api/contractors/${contractorId}/matches`),
 
   // Complete contractor flow
   completeFlow: (contractorId: string, selectedPartnerId?: string) =>
-    apiRequest(`/contractors/${contractorId}/complete`, {
+    apiRequest(`/api/contractors/${contractorId}/complete`, {
       method: 'POST',
       body: JSON.stringify({ selected_partner_id: selectedPartnerId })
     }),
@@ -87,15 +87,15 @@ export const contractorApi = {
     if (params?.offset) searchParams.set('offset', params.offset.toString());
     
     const query = searchParams.toString();
-    return apiRequest(`/contractors${query ? `?${query}` : ''}`);
+    return apiRequest(`/api/contractors${query ? `?${query}` : ''}`);
   },
 
   // Get contractor stats
-  getStats: () => apiRequest('/contractors/stats/overview'),
+  getStats: () => apiRequest('/api/contractors/stats/overview'),
 
   // Search contractors with advanced filters
   search: (params: Record<string, any>) => 
-    apiRequest('/contractors/search', {
+    apiRequest('/api/contractors/search', {
       method: 'POST',
       body: JSON.stringify(params)
     }),
@@ -104,7 +104,7 @@ export const contractorApi = {
 // Partner API
 export const partnerApi = {
   // Get active partners (public)
-  getActive: () => apiRequest('/partners/active'),
+  getActive: () => apiRequest('/api/partners/active'),
 
   // Get all partners (admin)
   getAll: (params?: { active?: boolean; limit?: number; offset?: number }) => {
@@ -114,40 +114,40 @@ export const partnerApi = {
     if (params?.offset) searchParams.set('offset', params.offset.toString());
     
     const query = searchParams.toString();
-    return apiRequest(`/partners${query ? `?${query}` : ''}`);
+    return apiRequest(`/api/partners${query ? `?${query}` : ''}`);
   },
 
   // Get single partner
-  getById: (id: string) => apiRequest(`/partners/${id}`),
+  getById: (id: string) => apiRequest(`/api/partners/${id}`),
 
   // Create partner (admin)
-  create: (data: Record<string, unknown>) => apiRequest('/partners', {
+  create: (data: Record<string, unknown>) => apiRequest('/api/partners', {
     method: 'POST',
     body: JSON.stringify(data)
   }),
 
   // Update partner (admin)
-  update: (id: string, data: Record<string, unknown>) => apiRequest(`/partners/${id}`, {
+  update: (id: string, data: Record<string, unknown>) => apiRequest(`/api/partners/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
 
   // Delete partner (admin)
-  delete: (id: string) => apiRequest(`/partners/${id}`, {
+  delete: (id: string) => apiRequest(`/api/partners/${id}`, {
     method: 'DELETE'
   }),
 
   // Toggle partner status (admin)
-  toggleStatus: (id: string) => apiRequest(`/partners/${id}/toggle-status`, {
+  toggleStatus: (id: string) => apiRequest(`/api/partners/${id}/toggle-status`, {
     method: 'PUT'
   }),
 
   // Get partner stats
-  getStats: () => apiRequest('/partners/stats/overview'),
+  getStats: () => apiRequest('/api/partners/stats/overview'),
 
   // Search partners with advanced filters
   search: (params: Record<string, any>) => 
-    apiRequest('/partners/search', {
+    apiRequest('/api/partners/search', {
       method: 'POST',
       body: JSON.stringify(params)
     }),
@@ -167,43 +167,43 @@ export const bookingApi = {
   },
 
   // Get single booking (admin)
-  getById: (id: string) => apiRequest(`/bookings/${id}`),
+  getById: (id: string) => apiRequest(`/api/bookings/${id}`),
 
   // Update booking (admin)
-  update: (id: string, data: Record<string, unknown>) => apiRequest(`/bookings/${id}`, {
+  update: (id: string, data: Record<string, unknown>) => apiRequest(`/api/bookings/${id}`, {
     method: 'PUT',
     body: JSON.stringify(data)
   }),
 
   // Delete booking (admin)
-  delete: (id: string) => apiRequest(`/bookings/${id}`, {
+  delete: (id: string) => apiRequest(`/api/bookings/${id}`, {
     method: 'DELETE'
   }),
 
   // Get booking stats
-  getStats: () => apiRequest('/bookings/stats/overview'),
+  getStats: () => apiRequest('/api/bookings/stats/overview'),
 };
 
 // Auth API
 export const authApi = {
   // Login
   login: (email: string, password: string) =>
-    apiRequest('/auth/login', {
+    apiRequest('/api/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password })
     }),
 
   // Logout
-  logout: () => apiRequest('/auth/logout', {
+  logout: () => apiRequest('/api/auth/logout', {
     method: 'POST'
   }),
 
   // Get current user
-  getMe: () => apiRequest('/auth/me'),
+  getMe: () => apiRequest('/api/auth/me'),
 
   // Update password
   updatePassword: (currentPassword: string, newPassword: string) =>
-    apiRequest('/auth/update-password', {
+    apiRequest('/api/auth/update-password', {
       method: 'PUT',
       body: JSON.stringify({ currentPassword, newPassword })
     }),
@@ -212,22 +212,22 @@ export const authApi = {
 // Admin API
 export const adminApi = {
   // Get dashboard stats
-  getDashboard: () => apiRequest('/admin/dashboard'),
+  getDashboard: () => apiRequest('/api/admin/dashboard'),
 
   // Export data
   exportContractors: (params?: Record<string, string>) => {
     const searchParams = new URLSearchParams(params || {});
-    return apiRequest(`/admin/export/contractors?${searchParams.toString()}`);
+    return apiRequest(`/api/admin/export/contractors?${searchParams.toString()}`);
   },
 
   exportPartners: (params?: Record<string, string>) => {
     const searchParams = new URLSearchParams(params || {});
-    return apiRequest(`/admin/export/partners?${searchParams.toString()}`);
+    return apiRequest(`/api/admin/export/partners?${searchParams.toString()}`);
   },
 
   exportBookings: (params?: Record<string, string>) => {
     const searchParams = new URLSearchParams(params || {});
-    return apiRequest(`/admin/export/bookings?${searchParams.toString()}`);
+    return apiRequest(`/api/admin/export/bookings?${searchParams.toString()}`);
   },
 };
 
@@ -235,28 +235,28 @@ export const adminApi = {
 export const bulkApi = {
   // Bulk update contractors
   updateContractors: (ids: string[], updateData: Record<string, any>) =>
-    apiRequest('/bulk/contractors/update', {
+    apiRequest('/api/bulk/contractors/update', {
       method: 'POST',
       body: JSON.stringify({ contractor_ids: ids, updates: updateData })
     }),
 
   // Bulk delete contractors
   deleteContractors: (ids: string[]) =>
-    apiRequest('/bulk/contractors/delete', {
+    apiRequest('/api/bulk/contractors/delete', {
       method: 'POST',
       body: JSON.stringify({ contractor_ids: ids })
     }),
 
   // Bulk update partners
   updatePartners: (ids: string[], updateData: Record<string, any>) =>
-    apiRequest('/bulk/partners/update', {
+    apiRequest('/api/bulk/partners/update', {
       method: 'POST',
       body: JSON.stringify({ partner_ids: ids, updates: updateData })
     }),
 
   // Bulk toggle partner status (partners don't support delete - use toggle status instead)
   togglePartnerStatus: (ids: string[]) =>
-    apiRequest('/bulk/partners/toggle-status', {
+    apiRequest('/api/bulk/partners/toggle-status', {
       method: 'POST',
       body: JSON.stringify({ partner_ids: ids })
     }),
@@ -268,7 +268,7 @@ export const bulkApi = {
       ? { contractor_ids: params, format: 'csv' }
       : { contractor_ids: params.contractor_ids || [], format: params.format || 'csv' };
     
-    return apiRequest('/bulk/contractors/export', {
+    return apiRequest('/api/bulk/contractors/export', {
       method: 'POST',
       body: JSON.stringify(requestBody)
     });
@@ -280,7 +280,7 @@ export const bulkApi = {
       ? { partner_ids: params, format: 'csv' }
       : { partner_ids: params.partner_ids || [], format: params.format || 'csv' };
     
-    return apiRequest('/bulk/partners/export', {
+    return apiRequest('/api/bulk/partners/export', {
       method: 'POST',
       body: JSON.stringify(requestBody)
     });
