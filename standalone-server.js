@@ -301,7 +301,7 @@ app.post('/api/partner-auth/login', async (req, res) => {
     res.json({ 
       success: true, 
       token, 
-      user: { 
+      partner: { 
         id: user.id, 
         email: user.email, 
         company_name: user.company_name,
