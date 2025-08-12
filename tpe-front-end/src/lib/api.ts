@@ -1,5 +1,5 @@
 // API Service Layer for The Power100 Experience - Updated for port 5000
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://the-power100-experience-production.up.railway.app/api';
 
 // Generic API request function
 async function apiRequest<T>(
