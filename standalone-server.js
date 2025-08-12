@@ -14,6 +14,12 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
+// Request logging middleware (FIRST)
+app.use((req, res, next) => {
+  console.log(`🔥 INCOMING REQUEST: ${req.method} ${req.path} from ${req.ip}`);
+  next();
+});
+
 // Middleware
 app.use(cors({
   origin: ['https://the-power100-experience.vercel.app', 'http://localhost:3000', 'http://localhost:3002'],
@@ -201,10 +207,37 @@ app.get('/api/contractors', async (req, res) => {
   }
 });
 
+// Error handling middleware (MUST be last)
+app.use((err, req, res, next) => {
+  console.error('🚨 EXPRESS ERROR:', err);
+  res.status(500).json({ error: 'Internal server error', message: err.message });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  console.log(`❌ 404: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({ error: 'Not found', path: req.originalUrl });
+});
+
+// Global error handlers (Railway requirement)
+process.on('uncaughtException', (err) => {
+  console.error('🚨 UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (err) => {
+  console.error('🚨 UNHANDLED REJECTION:', err);
+});
+
 // Start server - Railway requires IPv4 binding
 const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Standalone server running on 0.0.0.0:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
   console.log(`Database configured: ${!!process.env.DATABASE_URL}`);
   console.log(`Server address: ${JSON.stringify(server.address())}`);
+  console.log(`✅ Ready to receive requests on port ${PORT}`);
+});
+
+// Server error handler
+server.on('error', (err) => {
+  console.error('🚨 SERVER ERROR:', err);
 });
