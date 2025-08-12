@@ -177,10 +177,6 @@ const FeedbackSurveyPage: React.FC = () => {
 };
 
 // Wrap the component that uses useSearchParams in Suspense
-function FeedbackSurveyContent() {
-  return <FeedbackSurveyPage />;
-}
-
 export default function Page() {
   return (
     <Suspense fallback={
@@ -188,7 +184,7 @@ export default function Page() {
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-power100-red"></div>
       </div>
     }>
-      <FeedbackSurveyContent />
+      <FeedbackSurveyPage />
     </Suspense>
   );
 }
