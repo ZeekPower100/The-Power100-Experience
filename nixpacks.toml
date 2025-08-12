@@ -2,7 +2,7 @@
 nixPkgs = ["nodejs-18_x"]
 
 [phases.install]
-cmds = ["cd tpe-backend && npm ci --production"]
+cmds = ["cd tpe-backend && npm install --omit=dev"]
 
 [start]
 cmd = "cd tpe-backend && node src/server.js"
