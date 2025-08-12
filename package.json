@@ -3,7 +3,7 @@
     "version": "1.0.0",
     "description": "Power100 Experience - Full Stack Application",
     "scripts": {
-        "start": "node tpe-backend/src/server.js",
+        "start": "node standalone-server.js",
         "dev:frontend": "cd tpe-front-end && npm run dev",
         "dev:backend": "cd tpe-backend && npm run dev",
         "build:all": "npm run build:frontend && npm run build:backend",
