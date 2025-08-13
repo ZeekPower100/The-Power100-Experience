@@ -109,7 +109,7 @@ export default function VerificationStep({ data, onNext, onUpdate }: StepProps) 
             Let&apos;s verify your information to get started.
           </CardTitle>
           <p className="text-power100-grey">
-            We&apos;ll send a verification code to confirm your identity and opt you in for AI coaching.
+            We&apos;ll send a verification code to confirm your identity and give you access to your Power100 concierge.
           </p>
         </CardHeader>
 
@@ -199,7 +199,7 @@ export default function VerificationStep({ data, onNext, onUpdate }: StepProps) 
               </Button>
 
               <div className="text-center text-sm text-gray-500 pt-2">
-                We&apos;ll send a code to confirm your identity and opt you in for AI coaching.
+                We&apos;ll send a code to confirm your identity and give you access to your Power100 concierge.
               </div>
             </motion.div>
           ) : (

@@ -183,7 +183,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                     <Sparkles className="w-8 h-8 text-white" />
                 </div>
                 <CardTitle className="text-3xl font-bold text-power100-black mb-3">We Found Your Perfect Matches!</CardTitle>
-                <p className="text-lg text-power100-grey">Based on your focus areas and business profile, here are your ideal partners, podcast, and event.</p>
+                <p className="text-lg text-power100-grey">Based on your focused areas selected, business profile, and current tech stack, here is the top Podcast, Event, and ideal Partners for Greenfield Growth.</p>
             </CardHeader>
             <CardContent className="space-y-8 px-8 pb-8">
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
@@ -308,11 +308,23 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                           <Button className="w-full bg-green-500 hover:bg-green-600 text-white">
                             <span className="text-sm">Hear from Similar Customers</span>
                           </Button>
+                          <Button className="w-full bg-power100-red hover:bg-red-600 text-white">
+                            <span className="text-sm">Schedule Introduction</span>
+                          </Button>
                         </div>
                     </motion.div>
                     ))}
                   </div>
                 )}
+                
+                {/* See Results For Your Next Focus Area Section */}
+                <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
+                  <h3 className="text-xl font-bold text-power100-black mb-3">Ready for More?</h3>
+                  <p className="text-gray-700 mb-4">Get personalized recommendations for your next focus area</p>
+                  <Button className="bg-power100-red hover:bg-red-600 text-white px-6 py-2">
+                    See Results For Your Next Focus Area
+                  </Button>
+                </div>
                 
                 <div className="flex justify-center pt-6">
                     <Button variant="outline" onClick={onPrev} className="px-8">Back to Home</Button>
