@@ -105,7 +105,7 @@ export default function HomePage() {
             className="text-center mb-16"
           >
             <h2 className="text-4xl font-bold text-power100-black mb-6">
-              Why Contractors Choose 
+              Why Contractors Choose{' '}
               <span className="text-power100-red">Power100</span>
             </h2>
             <p className="text-lg text-power100-grey max-w-2xl mx-auto">

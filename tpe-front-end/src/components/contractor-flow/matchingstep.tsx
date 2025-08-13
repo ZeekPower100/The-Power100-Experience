@@ -331,7 +331,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
                   <h3 className="text-xl font-bold text-power100-black mb-3">Ready for More?</h3>
                   <p className="text-gray-700 mb-4">Get personalized recommendations for your next focus area</p>
-                  <Button className="bg-green-500 hover:bg-green-600 text-white px-6 py-2">
+                  <Button className="bg-power100-red hover:bg-red-600 text-white px-6 py-2">
                     See Results For Your Next Focus Area
                   </Button>
                 </div>
