@@ -170,9 +170,10 @@ app.post('/api/init-db', async (req, res) => {
     const samplePartners = [
       {
         company_name: 'RillaVoice',
-        description: 'Leading virtual ridealong software that uses AI to transcribe, analyze and give feedback on face-to-face sales conversations, proven to boost conversion by 50% and increase close rates by 40% on average',
+        description: 'Leading virtual ridealong software that uses AI to transcribe, analyze and give feedback on face-to-face sales conversations, proven to boost conversion by 50% and increase close rates by 40% on average. Rilla has 53 clients in your selected revenue range.',
         website: 'https://rillavoice.com',
         contact_email: 'partners@rillavoice.com',
+        logo_url: '/logos/rilla-logo.png',
         focus_areas_served: ['Greenfield Growth', 'Lead Generation', 'Sales Enablement', 'Technology & Software'],
         target_revenue_range: ['$1-5M', '$5-10M', '$10M+'],
         power_confidence_score: 85,
@@ -186,9 +187,10 @@ app.post('/api/init-db', async (req, res) => {
       },
       {
         company_name: 'Destination Motivation',
-        description: 'Sales consulting and training company offering proven strategies and Vacation Voucher systems, helping contractors achieve 20% increase in close rates, $1500 increase in average ticket, and 300% increase in leads',
+        description: 'Sales consulting and training company offering proven strategies and Vacation Voucher systems, helping contractors achieve 20% increase in close rates, $1500 increase in average ticket, and 300% increase in leads. Destination Motivation has 74 clients in your selected revenue range.',
         website: 'https://destinationmotivation.com',
         contact_email: 'growth@destinationmotivation.com',
+        logo_url: '/logos/destination-motivation-logo.webp',
         focus_areas_served: ['Greenfield Growth', 'Sales Enablement', 'Customer Acquisition', 'Operations & Efficiency'],
         target_revenue_range: ['$5-10M', '$10M+', '$25M+'],
         power_confidence_score: 90,
@@ -540,6 +542,7 @@ app.get('/api/contractors/:contractorId/matches', async (req, res) => {
       type: 'podcast',
       name: 'The Wealthy Contractor',
       host: 'Brian Kaskavalciyan',
+      logo_url: '/logos/wealthy-contractor-logo.png',
       description: 'Shares interviews with home improvement industry insiders, revealing stories, strategies, and secrets that top leaders use to grow their businesses and achieve greater success, wealth, and freedom',
       frequency: 'Updated Semimonthly (bi-weekly)',
       topics: [
@@ -563,6 +566,7 @@ app.get('/api/contractors/:contractorId/matches', async (req, res) => {
       type: 'event',
       name: 'Level10 Conference (Operation Lead Surge)',
       date: 'Annual Conference',
+      logo_url: 'https://www.level10contractor.com/wp-content/uploads/2019/01/L10Logo.svg',
       location: 'In-person event',
       format: 'Full conference experience',
       description: 'Focused on proven strategies to generate 200-500 qualified leads every month like clockwork for home improvement contractors',

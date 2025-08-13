@@ -195,9 +195,15 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                 {podcastMatch && (
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
                     <div className="flex items-center space-x-4 mb-6">
-                      <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
-                      </div>
+                      {podcastMatch.logo_url ? (
+                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center p-2">
+                          <img src={podcastMatch.logo_url} alt={podcastMatch.name} className="max-w-full max-h-full object-contain" />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                          <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
+                        </div>
+                      )}
                       <div>
                         <h3 className="text-2xl font-bold text-power100-black">{podcastMatch.name}</h3>
                         <p className="text-gray-600">Hosted by {podcastMatch.host}</p>
@@ -232,9 +238,15 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                 {eventMatch && (
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
                     <div className="flex items-center space-x-4 mb-6">
-                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
-                        <Calendar className="w-8 h-8 text-white" />
-                      </div>
+                      {eventMatch.logo_url ? (
+                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center p-2">
+                          <img src={eventMatch.logo_url} alt={eventMatch.name} className="max-w-full max-h-full object-contain" />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                          <Calendar className="w-8 h-8 text-white" />
+                        </div>
+                      )}
                       <div>
                         <h3 className="text-2xl font-bold text-power100-black">{eventMatch.name}</h3>
                         <p className="text-gray-600">{eventMatch.date}</p>
@@ -271,10 +283,11 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                         <div className="flex flex-col items-start mb-4">
                             <div className="flex items-center space-x-3 mb-3">
                                 {partner.logo_url ? (
-                                    // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={partner.logo_url} alt={partner.company_name} className="w-12 h-12 object-contain rounded-lg bg-gray-50 p-2 border" />
+                                    <div className="w-14 h-14 rounded-lg overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center p-2">
+                                        <img src={partner.logo_url} alt={partner.company_name} className="max-w-full max-h-full object-contain" />
+                                    </div>
                                 ) : (
-                                    <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                                    <div className="w-14 h-14 bg-gray-200 rounded-lg flex items-center justify-center">
                                         <span className="text-gray-600 font-bold text-lg">{partner.company_name?.[0] || 'P'}</span>
                                     </div>
                                 )}
@@ -301,11 +314,8 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                   </div>
                 )}
                 
-                <div className="flex gap-4 pt-6">
-                    <Button variant="outline" onClick={onPrev} className="flex-1">Back</Button>
-                    <Button onClick={bookDemo} disabled={isBookingDemo || !matchedPartners.length} className="flex-1 bg-gradient-to-r from-power100-red to-power100-red-deep hover:from-power100-red-deep hover:to-power100-red text-white">
-                        {isBookingDemo ? 'Processing...' : 'Book Demo & Continue'} <ArrowRight className="ml-2 w-4 h-4" />
-                    </Button>
+                <div className="flex justify-center pt-6">
+                    <Button variant="outline" onClick={onPrev} className="px-8">Back to Home</Button>
                 </div>
             </CardContent>
         </Card>
