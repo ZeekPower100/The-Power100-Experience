@@ -166,6 +166,59 @@ app.post('/api/init-db', async (req, res) => {
       ['admin@power100.io', hashedPassword, 'System Administrator']
     );
     
+    // Add sample partners for demo
+    const samplePartners = [
+      {
+        company_name: 'Buildr Pro Solutions',
+        description: 'Industry-leading construction management software and services',
+        website: 'https://buildrpro.com',
+        contact_email: 'partners@buildrpro.com',
+        focus_areas_served: ['Technology & Software', 'Operations & Efficiency', 'Financial Management'],
+        target_revenue_range: ['$1-5M', '$5-10M', '$10M+'],
+        power_confidence_score: 92,
+        key_differentiators: ['Cloud-based platform', '24/7 support', 'Industry expertise'],
+        pricing_model: 'Monthly subscription starting at $299'
+      },
+      {
+        company_name: 'SafetyFirst Compliance',
+        description: 'Comprehensive safety training and OSHA compliance solutions',
+        website: 'https://safetyfirst.com',
+        contact_email: 'info@safetyfirst.com',
+        focus_areas_served: ['Safety & Compliance', 'Training & Development', 'Risk Management'],
+        target_revenue_range: ['$500K-1M', '$1-5M', '$5-10M'],
+        power_confidence_score: 88,
+        key_differentiators: ['OSHA certified trainers', 'Mobile app', 'Custom programs'],
+        pricing_model: 'Per employee pricing, volume discounts available'
+      },
+      {
+        company_name: 'GrowthScale Marketing',
+        description: 'Digital marketing and lead generation for contractors',
+        website: 'https://growthscale.com',
+        contact_email: 'hello@growthscale.com',
+        focus_areas_served: ['Marketing & Branding', 'Customer Acquisition', 'Sales Enablement'],
+        target_revenue_range: ['$1-5M', '$5-10M', '$10M+'],
+        power_confidence_score: 85,
+        key_differentiators: ['Contractor-specific expertise', 'ROI guarantee', 'Full-service agency'],
+        pricing_model: 'Performance-based pricing with monthly retainer'
+      }
+    ];
+    
+    for (const partner of samplePartners) {
+      await pool.query(
+        `INSERT INTO strategic_partners 
+         (company_name, description, website, contact_email, focus_areas_served, 
+          target_revenue_range, power_confidence_score, key_differentiators, 
+          pricing_model, is_active)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
+         ON CONFLICT (contact_email) DO NOTHING`,
+        [partner.company_name, partner.description, partner.website, 
+         partner.contact_email, partner.focus_areas_served, partner.target_revenue_range,
+         partner.power_confidence_score, partner.key_differentiators, partner.pricing_model]
+      );
+    }
+    
+    console.log('✅ Sample partners added to database');
+    
     res.json({ success: true, message: 'Database initialized successfully' });
   } catch (error) {
     console.error('Init error:', error);
@@ -220,6 +273,310 @@ app.get('/api/contractors', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch contractors' });
+  }
+});
+
+// Start contractor verification
+app.post('/api/contractors/verify-start', async (req, res) => {
+  try {
+    const { name, email, phone, company } = req.body;
+    
+    // Generate verification code (for demo, always use 123456)
+    const verificationCode = '123456';
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    
+    // Insert or update contractor
+    const result = await pool.query(
+      `INSERT INTO contractors (name, email, phone, company_name, verification_code, verification_expires_at, current_stage)
+       VALUES ($1, $2, $3, $4, $5, $6, 'verification')
+       ON CONFLICT (email) DO UPDATE 
+       SET name = $1, phone = $3, company_name = $4, 
+           verification_code = $5, verification_expires_at = $6,
+           current_stage = 'verification', updated_at = CURRENT_TIMESTAMP
+       RETURNING id, name, email, phone, company_name`,
+      [name, email, phone, company, verificationCode, expiresAt]
+    );
+    
+    console.log('📱 Verification started for:', email, 'Code:', verificationCode);
+    
+    res.json({ 
+      success: true, 
+      contractorId: result.rows[0].id,
+      message: 'Verification code sent',
+      // For demo purposes, include the code in response
+      demoCode: verificationCode
+    });
+  } catch (error) {
+    console.error('Verification start error:', error);
+    res.status(500).json({ error: 'Failed to start verification' });
+  }
+});
+
+// Verify contractor code
+app.post('/api/contractors/verify-code', async (req, res) => {
+  try {
+    const { contractorId, code } = req.body;
+    
+    // For demo, accept 123456 always
+    if (code === '123456') {
+      // Update contractor verification status
+      await pool.query(
+        `UPDATE contractors 
+         SET verification_status = 'verified', 
+             current_stage = 'focus_selection',
+             opted_in_coaching = true,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [contractorId]
+      );
+      
+      res.json({ 
+        success: true, 
+        message: 'Verification successful'
+      });
+    } else {
+      res.status(400).json({ 
+        success: false, 
+        error: 'Invalid verification code' 
+      });
+    }
+  } catch (error) {
+    console.error('Verification error:', error);
+    res.status(500).json({ error: 'Failed to verify code' });
+  }
+});
+
+// Update contractor profile
+app.post('/api/contractors/:contractorId/profile', async (req, res) => {
+  try {
+    const { contractorId } = req.params;
+    const profileData = req.body;
+    
+    // Build dynamic update query based on provided fields
+    const updates = [];
+    const values = [];
+    let paramCount = 1;
+    
+    if (profileData.focusAreas) {
+      updates.push(`focus_areas = $${paramCount++}`);
+      values.push(profileData.focusAreas);
+    }
+    if (profileData.primaryFocusArea) {
+      updates.push(`primary_focus_area = $${paramCount++}`);
+      values.push(profileData.primaryFocusArea);
+    }
+    if (profileData.annualRevenue) {
+      updates.push(`annual_revenue = $${paramCount++}`);
+      values.push(profileData.annualRevenue);
+    }
+    if (profileData.teamSize !== undefined) {
+      updates.push(`team_size = $${paramCount++}`);
+      values.push(profileData.teamSize);
+    }
+    if (profileData.increasedTools !== undefined) {
+      updates.push(`increased_tools = $${paramCount++}`);
+      values.push(profileData.increasedTools);
+    }
+    if (profileData.increasedPeople !== undefined) {
+      updates.push(`increased_people = $${paramCount++}`);
+      values.push(profileData.increasedPeople);
+    }
+    if (profileData.increasedActivity !== undefined) {
+      updates.push(`increased_activity = $${paramCount++}`);
+      values.push(profileData.increasedActivity);
+    }
+    if (profileData.serviceArea) {
+      updates.push(`service_area = $${paramCount++}`);
+      values.push(profileData.serviceArea);
+    }
+    if (profileData.servicesOffered) {
+      updates.push(`services_offered = $${paramCount++}`);
+      values.push(profileData.servicesOffered);
+    }
+    
+    // Update current stage
+    if (profileData.focusAreas && profileData.focusAreas.length > 0) {
+      updates.push(`current_stage = $${paramCount++}`);
+      values.push('profiling');
+    }
+    if (profileData.annualRevenue && profileData.teamSize !== undefined) {
+      updates.push(`current_stage = $${paramCount++}`);
+      values.push('matching');
+    }
+    
+    updates.push(`updated_at = $${paramCount++}`);
+    values.push(new Date());
+    
+    values.push(contractorId);
+    
+    const query = `
+      UPDATE contractors 
+      SET ${updates.join(', ')}
+      WHERE id = $${paramCount}
+      RETURNING *
+    `;
+    
+    const result = await pool.query(query, values);
+    
+    res.json({ 
+      success: true, 
+      contractor: result.rows[0] 
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Get contractor matches
+app.get('/api/contractors/:contractorId/matches', async (req, res) => {
+  try {
+    const { contractorId } = req.params;
+    
+    // Get contractor data
+    const contractorResult = await pool.query(
+      'SELECT * FROM contractors WHERE id = $1',
+      [contractorId]
+    );
+    
+    if (contractorResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Contractor not found' });
+    }
+    
+    const contractor = contractorResult.rows[0];
+    
+    // Get all active partners
+    const partnersResult = await pool.query(
+      'SELECT * FROM strategic_partners WHERE is_active = true'
+    );
+    
+    // Calculate matches based on focus areas
+    const matches = partnersResult.rows.map(partner => {
+      let score = 60; // Base score
+      const reasons = [];
+      
+      // Check focus area overlap
+      if (contractor.focus_areas && partner.focus_areas_served) {
+        const contractorFocus = contractor.focus_areas;
+        const partnerFocus = partner.focus_areas_served;
+        const overlap = contractorFocus.filter(f => partnerFocus.includes(f));
+        
+        if (overlap.length > 0) {
+          score += overlap.length * 10;
+          reasons.push(`Specializes in ${overlap.join(', ')}`);
+        }
+      }
+      
+      // Check revenue range compatibility
+      if (contractor.annual_revenue && partner.target_revenue_range) {
+        if (partner.target_revenue_range.includes(contractor.annual_revenue)) {
+          score += 10;
+          reasons.push('Revenue range match');
+        }
+      }
+      
+      // Add PowerConfidence score bonus
+      if (partner.power_confidence_score > 80) {
+        score += 10;
+        reasons.push(`High PowerConfidence score: ${partner.power_confidence_score}`);
+      }
+      
+      return {
+        partnerId: partner.id,
+        partnerName: partner.company_name,
+        description: partner.description,
+        logoUrl: partner.logo_url,
+        website: partner.website,
+        matchScore: Math.min(score, 100),
+        matchReasons: reasons,
+        keyDifferentiators: partner.key_differentiators,
+        powerConfidenceScore: partner.power_confidence_score
+      };
+    });
+    
+    // Sort by match score
+    matches.sort((a, b) => b.matchScore - a.matchScore);
+    
+    // Take top 3 matches
+    const topMatches = matches.slice(0, 3);
+    
+    // Store matches in database
+    for (const match of topMatches) {
+      await pool.query(
+        `INSERT INTO contractor_partner_matches 
+         (contractor_id, partner_id, match_score, match_reasons, is_primary_match)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (contractor_id, partner_id) 
+         DO UPDATE SET match_score = $3, match_reasons = $4`,
+        [contractorId, match.partnerId, match.matchScore, match.matchReasons, 
+         match === topMatches[0]]
+      );
+    }
+    
+    res.json({ 
+      success: true, 
+      matches: topMatches 
+    });
+  } catch (error) {
+    console.error('Match generation error:', error);
+    res.status(500).json({ error: 'Failed to generate matches' });
+  }
+});
+
+// Complete contractor flow
+app.post('/api/contractors/:contractorId/complete', async (req, res) => {
+  try {
+    const { contractorId } = req.params;
+    const { selectedPartnerId, demoDate } = req.body;
+    
+    // Update contractor as completed
+    await pool.query(
+      `UPDATE contractors 
+       SET current_stage = 'completed',
+           completed_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [contractorId]
+    );
+    
+    // Create demo booking if partner selected
+    if (selectedPartnerId && demoDate) {
+      await pool.query(
+        `INSERT INTO demo_bookings 
+         (contractor_id, partner_id, scheduled_date, status)
+         VALUES ($1, $2, $3, 'scheduled')`,
+        [contractorId, selectedPartnerId, demoDate]
+      );
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Contractor flow completed successfully' 
+    });
+  } catch (error) {
+    console.error('Completion error:', error);
+    res.status(500).json({ error: 'Failed to complete flow' });
+  }
+});
+
+// Get contractor stats
+app.get('/api/contractors/stats/overview', async (req, res) => {
+  try {
+    const stats = await pool.query(`
+      SELECT 
+        COUNT(*) as total,
+        COUNT(CASE WHEN current_stage = 'completed' THEN 1 END) as completed,
+        COUNT(CASE WHEN current_stage = 'verification' THEN 1 END) as in_verification,
+        COUNT(CASE WHEN current_stage = 'focus_selection' THEN 1 END) as in_focus,
+        COUNT(CASE WHEN current_stage = 'profiling' THEN 1 END) as in_profiling,
+        COUNT(CASE WHEN current_stage = 'matching' THEN 1 END) as in_matching
+      FROM contractors
+    `);
+    
+    res.json(stats.rows[0]);
+  } catch (error) {
+    console.error('Stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch stats' });
   }
 });
 
