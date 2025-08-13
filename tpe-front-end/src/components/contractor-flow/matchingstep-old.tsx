@@ -95,30 +95,20 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
       
     } catch (error) {
       console.error('Error getting matches:', error);
+      // Handle error - maybe show an error state
+      setMatchedPartner(null);
     } finally {
       clearInterval(progressInterval);
       setMatchingProgress(100);
-      setTimeout(() => {
-        setIsMatching(false);
-      }, 500);
+      setTimeout(() => setIsMatching(false), 500); // Short delay to show 100%
     }
-  }, [data.id, data.focus_areas]);
+  }, [data]);
 
   useEffect(() => {
     findBestMatch();
   }, [findBestMatch]);
 
   const formatFocusArea = (area: string) => area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  
-  // Helper function to fix logo URLs (serve from frontend, not backend)
-  const getLogoUrl = (logoUrl: string) => {
-    if (!logoUrl) return '';
-    // If it's already a full URL, return as-is
-    if (logoUrl.startsWith('http')) return logoUrl;
-    // If it starts with /logos/, serve from frontend
-    if (logoUrl.startsWith('/logos/')) return logoUrl;
-    return logoUrl;
-  };
 
   const bookDemo = async () => {
     if (!matchedPartners.length || !data.id) return;
@@ -139,43 +129,32 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
         primary_focus_area: primaryFocusArea,
         current_stage: 'completed'
       });
-      
       onNext();
     } catch (error) {
-      console.error('Failed to complete booking:', error);
-      // Still proceed to next step
+      console.error('Failed to book demo:', error);
+      // Still proceed to completion for now
+      onUpdate({
+        primary_focus_area: primaryFocusArea,
+        current_stage: 'completed'
+      });
       onNext();
     } finally {
       setIsBookingDemo(false);
     }
   };
 
-  // Show loading animation while matching
   if (isMatching) {
     return (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
-            <Card className="bg-white/70 border-0 shadow-2xl rounded-xl">
-                <CardHeader className="text-center pb-8">
-                    <div className="w-16 h-16 bg-gradient-to-br from-power100-red-deep to-power100-red rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-                        <Sparkles className="w-8 h-8 text-white animate-pulse" />
-                    </div>
-                    <CardTitle className="text-3xl font-bold text-power100-black mb-3">Finding Your Perfect Matches...</CardTitle>
-                    <p className="text-lg text-power100-grey">Our AI is analyzing thousands of potential partners to find the best fit for your business.</p>
-                </CardHeader>
-                <CardContent className="px-8 pb-8">
-                    <div className="bg-gray-50 rounded-lg p-6">
-                        <div className="space-y-4">
-                            <div className="flex justify-between text-sm text-gray-600 mb-2">
-                                <span>Analyzing matches...</span>
-                                <span>{Math.round(matchingProgress)}%</span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
-                                <motion.div className="bg-gradient-to-r from-power100-red to-power100-green h-2 rounded-full" initial={{ width: "0%" }} animate={{ width: `${matchingProgress}%` }} transition={{ duration: 0.5 }} />
-                            </div>
-                        </div>
-                    </div>
-                    <div className="space-y-3 mt-6 text-center text-gray-600">
-                        <div className="flex items-center justify-center space-x-2"><div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div><span>Analyzing focus areas</span></div>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
+            <Card className="bg-white/70 border-0 shadow-2xl max-w-lg mx-auto rounded-xl">
+                <CardContent className="py-12">
+                    <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }} className="w-16 h-16 bg-gradient-to-br from-power100-red-deep to-power100-red rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                        <Sparkles className="w-8 h-8 text-white" />
+                    </motion.div>
+                    <h2 className="text-2xl font-bold text-power100-black mb-4">Finding Your Perfect Match</h2>
+                    <p className="text-power100-grey mb-6">Our AI is analyzing your profile against our network of trusted partners...</p>
+                    <div className="space-y-2 text-sm text-gray-500">
+                        <div className="flex items-center justify-center space-x-2"><div className="w-2 h-2 bg-power100-red rounded-full animate-bounce"></div><span>Evaluating focus areas</span></div>
                         <div className="flex items-center justify-center space-x-2"><div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0.15s]"></div><span>Matching revenue & size</span></div>
                         <div className="flex items-center justify-center space-x-2"><div className="w-2 h-2 bg-power100-green rounded-full animate-bounce [animation-delay:0.3s]"></div><span>Calculating PowerConfidence Scores</span></div>
                     </div>
@@ -193,7 +172,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                     <Sparkles className="w-8 h-8 text-white" />
                 </div>
                 <CardTitle className="text-3xl font-bold text-power100-black mb-3">We Found Your Perfect Matches!</CardTitle>
-                <p className="text-lg text-power100-grey">Based on your focused areas selected, business profile, and current tech stack, here is the top Podcast, Event, and ideal Partners for Greenfield Growth.</p>
+                <p className="text-lg text-power100-grey">Based on your focus areas and business profile, here are your ideal partners, podcast, and event.</p>
             </CardHeader>
             <CardContent className="space-y-8 px-8 pb-8">
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
@@ -203,17 +182,41 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                 
                 {/* Podcast Match - FIRST */}
                 {podcastMatch && (
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
+                    <motion.div key={partner.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: idx * 0.1 }} className="bg-white border-2 border-power100-red rounded-xl p-6 shadow-lg">
+                        <div className="flex flex-col items-start mb-4">
+                            <div className="flex items-center space-x-3 mb-3">
+                                {partner.logo_url ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={partner.logo_url} alt={partner.company_name} className="w-12 h-12 object-contain rounded-lg bg-gray-50 p-2 border" />
+                                ) : (
+                                    <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                                        <span className="text-gray-600 font-bold text-lg">{partner.company_name?.[0] || 'P'}</span>
+                                    </div>
+                                )}
+                                <div className="flex-1">
+                                    <h3 className="text-xl font-bold text-power100-black">{partner.company_name}</h3>
+                                    {partner.power_confidence_score && <div className="flex items-center space-x-1 mt-1"><Star className="w-3 h-3 text-power100-red fill-power100-red" /><span className="text-power100-red font-semibold text-sm">{partner.power_confidence_score}/100 PowerConfidence</span></div>}
+                                </div>
+                            </div>
+                            {partner.website && <Button variant="outline" size="sm" onClick={() => window.open(partner.website, '_blank')} className="flex items-center space-x-1 w-full mb-3"><ExternalLink className="w-3 h-3" /><span>Visit Site</span></Button>}
+                        </div>
+                        <p className="text-gray-700 mb-4 text-sm leading-relaxed">{partner.description}</p>
+                        {partner.key_differentiators?.length > 0 && <div className="mb-4"><h4 className="font-semibold text-power100-black mb-2 text-sm">Key Benefits:</h4><div className="space-y-2">{partner.key_differentiators.map((diff, index) => <div key={index} className="flex items-start space-x-2"><div className="w-1.5 h-1.5 bg-power100-red rounded-full mt-1.5 flex-shrink-0"></div><span className="text-gray-700 text-sm">{diff}</span></div>)}</div></div>}
+                        {partner.pricing_model && <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4"><h4 className="font-semibold text-green-900 mb-1 text-sm">Pricing:</h4><p className="text-green-800 text-sm">{partner.pricing_model}</p></div>}
+                        <Button className="w-full bg-green-500 hover:bg-green-600 text-white">
+                          <span className="text-center text-sm">Click to view quarterly reports and hear from customers in your revenue and service category</span>
+                        </Button>
+                    </motion.div>
+                    ))}
+                  </div>
+                )}
+                {/* Podcast Match */}
+                {podcastMatch && (
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
                     <div className="flex items-center space-x-4 mb-6">
-                      {podcastMatch.logo_url ? (
-                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center p-2">
-                          <img src={getLogoUrl(podcastMatch.logo_url)} alt={podcastMatch.name} className="max-w-full max-h-full object-contain" />
-                        </div>
-                      ) : (
-                        <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
-                          <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
-                        </div>
-                      )}
+                      <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
+                      </div>
                       <div>
                         <h3 className="text-2xl font-bold text-power100-black">{podcastMatch.name}</h3>
                         <p className="text-gray-600">Hosted by {podcastMatch.host}</p>
@@ -236,7 +239,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                       <h4 className="font-semibold text-power100-black mb-2">Topics Covered:</h4>
                       <div className="flex flex-wrap gap-2">
                         {podcastMatch.topics.map((topic: string, index: number) => (
-                          <Badge key={index} className="bg-gray-100 text-gray-700 bg-opacity-100">{topic}</Badge>
+                          <Badge key={index} className="bg-gray-100 text-gray-700">{topic}</Badge>
                         ))}
                       </div>
                     </div>
@@ -244,25 +247,19 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                   </motion.div>
                 )}
                 
-                {/* Event Match - SECOND */}
+                {/* Event Match */}
                 {eventMatch && (
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
                     <div className="flex items-center space-x-4 mb-6">
-                      {eventMatch.logo_url ? (
-                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center p-2">
-                          <img src={getLogoUrl(eventMatch.logo_url)} alt={eventMatch.name} className="max-w-full max-h-full object-contain" />
-                        </div>
-                      ) : (
-                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
-                          <Calendar className="w-8 h-8 text-white" />
-                        </div>
-                      )}
+                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                        <Calendar className="w-8 h-8 text-white" />
+                      </div>
                       <div>
                         <h3 className="text-2xl font-bold text-power100-black">{eventMatch.name}</h3>
                         <p className="text-gray-600">{eventMatch.date}</p>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          <Badge className="bg-blue-100 text-blue-700 bg-opacity-100">{eventMatch.location}</Badge>
-                          <Badge className="bg-green-100 text-green-700 bg-opacity-100">{eventMatch.format}</Badge>
+                        <div className="flex gap-2 mt-1">
+                          <Badge className="bg-blue-100 text-blue-700">{eventMatch.location}</Badge>
+                          <Badge className="bg-green-100 text-green-700">{eventMatch.format}</Badge>
                         </div>
                       </div>
                     </div>
@@ -285,59 +282,11 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                   </motion.div>
                 )}
                 
-                {/* Partner Matches - THIRD (Side by Side) */}
-                {matchedPartners.length > 0 && (
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {matchedPartners.map((partner, idx) => (
-                    <motion.div key={partner.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.3 + idx * 0.1 }} className="bg-white border-2 border-power100-red rounded-xl p-6 shadow-lg">
-                        <div className="flex flex-col items-start mb-4">
-                            <div className="flex items-center space-x-3 mb-3">
-                                {partner.logo_url ? (
-                                    <div className="w-14 h-14 rounded-lg overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center p-2">
-                                        <img src={getLogoUrl(partner.logo_url)} alt={partner.company_name} className="max-w-full max-h-full object-contain" />
-                                    </div>
-                                ) : (
-                                    <div className="w-14 h-14 bg-gray-200 rounded-lg flex items-center justify-center">
-                                        <span className="text-gray-600 font-bold text-lg">{partner.company_name?.[0] || 'P'}</span>
-                                    </div>
-                                )}
-                                <div className="flex-1">
-                                    <h3 className="text-xl font-bold text-power100-black">{partner.company_name}</h3>
-                                    {partner.power_confidence_score && <div className="flex items-center space-x-1 mt-1"><Star className="w-3 h-3 text-power100-red fill-power100-red" /><span className="text-power100-red font-semibold text-sm">{partner.power_confidence_score}/100 PowerConfidence</span></div>}
-                                </div>
-                            </div>
-                            {partner.website && <Button variant="outline" size="sm" onClick={() => window.open(partner.website, '_blank')} className="flex items-center space-x-1 w-full mb-3"><ExternalLink className="w-3 h-3" /><span>Visit Site</span></Button>}
-                        </div>
-                        <p className="text-gray-700 mb-4 text-sm leading-relaxed">{partner.description}</p>
-                        {partner.key_differentiators?.length > 0 && <div className="mb-4"><h4 className="font-semibold text-power100-black mb-2 text-sm">Key Benefits:</h4><div className="space-y-2">{partner.key_differentiators.map((diff, index) => <div key={index} className="flex items-start space-x-2"><div className="w-1.5 h-1.5 bg-power100-red rounded-full mt-1.5 flex-shrink-0"></div><span className="text-gray-700 text-sm">{diff}</span></div>)}</div></div>}
-                        {partner.pricing_model && <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4"><h4 className="font-semibold text-green-900 mb-1 text-sm">Pricing:</h4><p className="text-green-800 text-sm">{partner.pricing_model}</p></div>}
-                        <div className="space-y-2">
-                          <Button className="w-full bg-green-500 hover:bg-green-600 text-white">
-                            <span className="text-sm">View Quarterly Reports</span>
-                          </Button>
-                          <Button className="w-full bg-green-500 hover:bg-green-600 text-white">
-                            <span className="text-sm">Hear from Similar Customers</span>
-                          </Button>
-                          <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white">
-                            <span className="text-sm">Schedule Introduction</span>
-                          </Button>
-                        </div>
-                    </motion.div>
-                    ))}
-                  </div>
-                )}
-                
-                {/* See Results For Your Next Focus Area Section */}
-                <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
-                  <h3 className="text-xl font-bold text-power100-black mb-3">Ready for More?</h3>
-                  <p className="text-gray-700 mb-4">Get personalized recommendations for your next focus area</p>
-                  <Button className="bg-power100-red hover:bg-red-600 text-white px-6 py-2">
-                    See Results For Your Next Focus Area
-                  </Button>
-                </div>
-                
-                <div className="flex justify-center pt-6">
-                    <Button variant="outline" onClick={onPrev} className="px-8">Back to Home</Button>
+                <div className="flex gap-4 pt-6">
+                    {onPrev && <Button variant="outline" onClick={onPrev} className="flex-1 h-12 text-lg">Back</Button>}
+                    <Button onClick={bookDemo} disabled={isBookingDemo} className="flex-1 bg-power100-green hover:brightness-90 transition-all duration-300 text-white shadow-lg h-12 text-lg font-semibold group">
+                        {isBookingDemo ? "Scheduling Demo..." : <><Calendar className="w-5 h-5 mr-2" />Book Demo & Get Introduced<ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" /></>}
+                    </Button>
                 </div>
             </CardContent>
         </Card>

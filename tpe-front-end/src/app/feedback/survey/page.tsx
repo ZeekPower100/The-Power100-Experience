@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import FeedbackForm from '@/components/feedback/FeedbackForm';
 import { Card, CardContent } from '@/components/ui/card';
@@ -38,7 +38,8 @@ const FeedbackSurveyPage: React.FC = () => {
 
         // If we have surveyId, fetch the survey details
         if (surveyId) {
-          const response = await fetch(`/api/feedback/surveys?id=${surveyId}`);
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://the-power100-experience-production.up.railway.app';
+          const response = await fetch(`${apiUrl}/api/feedback/surveys?id=${surveyId}`);
           if (!response.ok) {
             throw new Error('Survey not found or expired');
           }
@@ -176,4 +177,15 @@ const FeedbackSurveyPage: React.FC = () => {
   );
 };
 
-export default FeedbackSurveyPage;
+// Wrap the component that uses useSearchParams in Suspense
+export default function Page() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-power100-red"></div>
+      </div>
+    }>
+      <FeedbackSurveyPage />
+    </Suspense>
+  );
+}

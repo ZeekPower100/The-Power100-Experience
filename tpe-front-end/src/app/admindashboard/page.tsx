@@ -532,7 +532,7 @@ export default function AdminDashboard() {
                     AI Coach Demo
                   </Button>
                 </Link>
-                <Link href="/contractorflow" className="block">
+                <Link href="/experience" className="block">
                   <Button variant="outline" className="w-full justify-start h-11">
                     <ArrowRight className="w-4 h-4 mr-2" />
                     Test Contractor Flow

@@ -6,11 +6,8 @@ if (process.env.USE_SQLITE === 'true') {
   const { Pool } = require('pg');
 
   const pool = new Pool({
-    host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT) || 5432,
-    database: process.env.DB_NAME || 'power100_db',
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     max: 20,
     idleTimeoutMillis: 30000,
     connectionTimeoutMillis: 2000,
@@ -23,9 +20,26 @@ if (process.env.USE_SQLITE === 'true') {
       console.log('✅ PostgreSQL connected successfully');
       await client.query('SELECT NOW()');
       client.release();
+      
+      // Check if tables exist
+      const tableCheck = await pool.query(`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'admin_users'
+        );
+      `);
+      
+      if (!tableCheck.rows[0].exists) {
+        console.log('⚠️  Database tables not found. Run /api/init-db to initialize.');
+      }
     } catch (error) {
       console.error('❌ PostgreSQL connection error:', error.message);
-      process.exit(1);
+      console.log('⚠️  Server starting without database connection. Database operations may fail.');
+      // Don't exit in production - let the server start
+      if (process.env.NODE_ENV !== 'production') {
+        process.exit(1);
+      }
     }
   };
 

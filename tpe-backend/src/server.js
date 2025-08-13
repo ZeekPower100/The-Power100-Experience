@@ -6,7 +6,7 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
-const { connectDB } = require('./config/database.sqlite');
+const { connectDB } = require('./config/database');
 const { errorHandler } = require('./middleware/errorHandler');
 
 // Import routes
@@ -25,7 +25,7 @@ const aiCoachRoutes = require('./routes/aiCoachRoutes');
 
 const app = express();
 
-// Connect to database
+// Connect to database and initialize if needed
 connectDB();
 
 // Security middleware
@@ -63,6 +63,16 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined'));
 }
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'TPE Backend API Running',
+    status: 'active',
+    environment: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -71,6 +81,89 @@ app.get('/health', (req, res) => {
     environment: process.env.NODE_ENV,
     version: '1.0.0'
   });
+});
+
+// Database initialization route (for production setup)
+app.post('/api/init-db', async (req, res) => {
+  try {
+    const path = require('path');
+    const scriptPath = path.join(__dirname, '..', 'scripts', 'init-production-db.js');
+    
+    // Check if script exists
+    const fs = require('fs');
+    if (!fs.existsSync(scriptPath)) {
+      // Inline database initialization if script doesn't exist
+      const { pool } = require('./config/database');
+      const bcrypt = require('bcryptjs');
+      
+      // Read schema
+      const schemaPath = path.join(__dirname, 'database', 'schema.sql');
+      const schema = fs.readFileSync(schemaPath, 'utf8');
+      
+      // Execute schema
+      await pool.query(schema);
+      
+      // Create admin user
+      const hashedPassword = await bcrypt.hash('admin123', 12);
+      await pool.query(
+        `INSERT INTO admin_users (email, password_hash, full_name)
+         VALUES ($1, $2, $3)
+         ON CONFLICT (email) DO NOTHING`,
+        ['admin@power100.io', hashedPassword, 'System Administrator']
+      );
+      
+      // Insert sample partners
+      const partners = [
+        {
+          company_name: 'Buildr',
+          description: 'Leading CRM and project management platform for contractors',
+          website: 'https://www.buildr.com',
+          contact_email: 'sales@buildr.com',
+          focus_areas_served: ['closing_higher_percentage', 'controlling_lead_flow', 'operational_efficiency'],
+          target_revenue_range: ['1m_5m', '5m_10m', 'over_10m'],
+          power_confidence_score: 96
+        },
+        {
+          company_name: 'MarketPro',
+          description: 'Hyper-targeted lead generation and marketing automation',
+          website: 'https://www.marketpro.com',
+          contact_email: 'info@marketpro.com',
+          focus_areas_served: ['marketing_people_trust', 'controlling_lead_flow'],
+          target_revenue_range: ['500k_1m', '1m_5m'],
+          power_confidence_score: 89
+        }
+      ];
+      
+      for (const partner of partners) {
+        await pool.query(
+          `INSERT INTO strategic_partners (
+            company_name, description, website, contact_email,
+            focus_areas_served, target_revenue_range, power_confidence_score, is_active
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          ON CONFLICT DO NOTHING`,
+          [
+            partner.company_name,
+            partner.description,
+            partner.website,
+            partner.contact_email,
+            partner.focus_areas_served,
+            partner.target_revenue_range,
+            partner.power_confidence_score,
+            true
+          ]
+        );
+      }
+      
+      res.json({ success: true, message: 'Database initialized successfully' });
+    } else {
+      const { initDatabase } = require(scriptPath);
+      await initDatabase();
+      res.json({ success: true, message: 'Database initialized successfully' });
+    }
+  } catch (error) {
+    console.error('Database init error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
 });
 
 // API Routes
@@ -100,8 +193,9 @@ app.use(errorHandler);
 
 // Start server
 const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+const HOST = process.env.NODE_ENV === 'production' ? '0.0.0.0' : 'localhost';
+const server = app.listen(PORT, HOST, () => {
+  console.log(`🚀 Server running on http://${HOST}:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 });
 
 // Graceful shutdown

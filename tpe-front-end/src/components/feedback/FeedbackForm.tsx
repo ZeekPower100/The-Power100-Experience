@@ -111,7 +111,8 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
         onSubmit(formData);
       } else {
         // Submit to API
-        const response = await fetch('/api/feedback/submit-response', {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://the-power100-experience-production.up.railway.app';
+        const response = await fetch(`${apiUrl}/api/feedback/submit-response`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

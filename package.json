@@ -3,22 +3,37 @@
     "version": "1.0.0",
     "description": "Power100 Experience - Full Stack Application",
     "scripts": {
-      "dev:frontend": "cd tpe-front-end && npm run dev",
-      "dev:backend": "cd tpe-backend && npm run dev",
-      "build:all": "npm run build:frontend && npm run build:backend",
-      "build:frontend": "cd tpe-front-end && npm run build",
-      "build:backend": "cd tpe-backend && npm run build",
-      "test:all": "npm run test:frontend && npm run test:backend",
-      "test:frontend": "cd tpe-front-end && npm test",
-      "test:backend": "cd tpe-backend && npm test",
-      "claude:setup": "node scripts/claude-setup.js",
-      "claude:verify": "node scripts/claude-verify.js",
-      "claude:backup": "git checkout -b backup/$(date +'%Y%m%d-%H%M%S') && git add . && git commit -m 'Emergency backup' && git push origin backup/$(date +'%Y%m%d-%H%M%S')",
-      "claude:status": "node scripts/claude-status.js",
-      "claude:docs": "node scripts/update-claude-docs.js"
+        "start": "node standalone-server.js",
+        "dev:frontend": "cd tpe-front-end && npm run dev",
+        "dev:backend": "cd tpe-backend && npm run dev",
+        "build:all": "npm run build:frontend && npm run build:backend",
+        "build:frontend": "cd tpe-front-end && npm run build",
+        "build:backend": "cd tpe-backend && npm run build",
+        "test:all": "npm run test:frontend && npm run test:backend",
+        "test:frontend": "cd tpe-front-end && npm test",
+        "test:backend": "cd tpe-backend && npm test",
+        "claude:setup": "node scripts/claude-setup.js",
+        "claude:verify": "node scripts/claude-verify.js",
+        "claude:backup": "git checkout -b backup/$(date +'%Y%m%d-%H%M%S') && git add . && git commit -m 'Emergency backup' && git push origin backup/$(date +'%Y%m%d-%H%M%S')",
+        "claude:status": "node scripts/claude-status.js",
+        "claude:docs": "node scripts/update-claude-docs.js"
     },
-    "workspaces": [
-      "tpe-front-end",
-      "tpe-backend"
-    ]
-  }
+    "dependencies": {
+        "@sendgrid/mail": "^8.1.0",
+        "bcryptjs": "^2.4.3",
+        "compression": "^1.7.4",
+        "cors": "^2.8.5",
+        "cross-env": "^7.0.3",
+        "dotenv": "^16.3.1",
+        "express": "^4.18.2",
+        "express-rate-limit": "^7.1.5",
+        "express-validator": "^7.0.1",
+        "helmet": "^7.1.0",
+        "jsonwebtoken": "^9.0.2",
+        "morgan": "^1.10.0",
+        "multer": "^2.0.2",
+        "nodemailer": "^6.9.7",
+        "pg": "^8.11.3",
+        "twilio": "^4.19.3"
+    }
+}

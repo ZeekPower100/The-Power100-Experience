@@ -81,7 +81,7 @@ export default function HomePage() {
               transition={{ duration: 0.8, delay: 0.3 }}
             >
               <Button
-                onClick={() => router.push("/contractorflow")}
+                onClick={() => router.push("/experience")}
                 size="lg"
                 className="bg-power100-green hover:brightness-90 transition-all duration-300 text-power100-white px-12 py-3 text-lg font-semibold rounded-lg group"
               >
@@ -105,7 +105,7 @@ export default function HomePage() {
             className="text-center mb-16"
           >
             <h2 className="text-4xl font-bold text-power100-black mb-6">
-              Why Contractors Choose 
+              Why Contractors Choose{' '}
               <span className="text-power100-red">Power100</span>
             </h2>
             <p className="text-lg text-power100-grey max-w-2xl mx-auto">
@@ -154,7 +154,7 @@ export default function HomePage() {
               goals and connect you with the ideal strategic partner.
             </p>
             <Button
-              onClick={() => router.push("/contractorflow")}
+              onClick={() => router.push("/experience")}
               size="lg"
               className="bg-power100-green hover:brightness-90 transition-all duration-300 text-power100-white px-8 py-3 text-base font-semibold rounded-lg group"
             >
