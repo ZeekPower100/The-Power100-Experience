@@ -97,10 +97,13 @@ app.post('/api/init-db', async (req, res) => {
           contact_phone VARCHAR(20),
           focus_areas_served TEXT[],
           target_revenue_range TEXT[],
+          geographic_regions TEXT[],
           power_confidence_score INTEGER DEFAULT 0,
           is_active BOOLEAN DEFAULT true,
           key_differentiators TEXT[],
+          client_testimonials TEXT[],
           pricing_model TEXT,
+          onboarding_process TEXT,
           onboarding_url VARCHAR(500),
           demo_booking_url VARCHAR(500),
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -215,12 +218,12 @@ app.post('/api/init-db', async (req, res) => {
       if (existingPartner.rows.length === 0) {
         await pool.query(
           `INSERT INTO strategic_partners 
-           (company_name, description, website, contact_email, focus_areas_served, 
+           (company_name, description, website, contact_email, logo_url, focus_areas_served, 
             target_revenue_range, power_confidence_score, key_differentiators, 
             pricing_model, is_active)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)`,
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true)`,
           [partner.company_name, partner.description, partner.website, 
-           partner.contact_email, partner.focus_areas_served, partner.target_revenue_range,
+           partner.contact_email, partner.logo_url, partner.focus_areas_served, partner.target_revenue_range,
            partner.power_confidence_score, partner.key_differentiators, partner.pricing_model]
         );
       }
@@ -272,6 +275,81 @@ app.get('/api/partners', async (req, res) => {
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch partners' });
+  }
+});
+
+// Create new partner (onboarding)
+app.post('/api/partners', async (req, res) => {
+  try {
+    console.log('📝 Partner onboarding submission received');
+    const partnerData = req.body;
+    
+    // Extract core fields for strategic_partners table
+    const {
+      company_name,
+      description,
+      website,
+      contact_email,
+      contact_phone,
+      focus_areas_served,
+      target_revenue_range,
+      geographic_regions,
+      power_confidence_score,
+      pricing_model,
+      onboarding_process,
+      key_differentiators,
+      client_testimonials,
+      is_active = true
+    } = partnerData;
+    
+    // Validate required fields
+    if (!company_name || !contact_email) {
+      return res.status(400).json({ 
+        error: 'Company name and contact email are required' 
+      });
+    }
+    
+    // Insert into strategic_partners table
+    const result = await pool.query(
+      `INSERT INTO strategic_partners (
+        company_name, description, website, contact_email, contact_phone,
+        focus_areas_served, target_revenue_range, geographic_regions,
+        power_confidence_score, pricing_model, onboarding_process,
+        key_differentiators, client_testimonials, is_active, logo_url
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      RETURNING *`,
+      [
+        company_name,
+        description || '',
+        website || '',
+        contact_email,
+        contact_phone || '',
+        focus_areas_served || [],
+        target_revenue_range || [],
+        geographic_regions || [],
+        power_confidence_score || 0,
+        pricing_model || '',
+        onboarding_process || '',
+        key_differentiators || [],
+        client_testimonials || [],
+        is_active,
+        partnerData.logo_url || ''
+      ]
+    );
+    
+    console.log('✅ Partner onboarding successful:', company_name);
+    
+    res.json({
+      success: true,
+      partner: result.rows[0],
+      message: 'Partner application submitted successfully'
+    });
+  } catch (error) {
+    console.error('Partner creation error:', error);
+    res.status(500).json({ 
+      error: 'Failed to submit partner application',
+      details: error.message 
+    });
   }
 });
 
