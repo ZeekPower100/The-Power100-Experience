@@ -204,17 +204,24 @@ app.post('/api/init-db', async (req, res) => {
     ];
     
     for (const partner of samplePartners) {
-      await pool.query(
-        `INSERT INTO strategic_partners 
-         (company_name, description, website, contact_email, focus_areas_served, 
-          target_revenue_range, power_confidence_score, key_differentiators, 
-          pricing_model, is_active)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)
-         ON CONFLICT (contact_email) DO NOTHING`,
-        [partner.company_name, partner.description, partner.website, 
-         partner.contact_email, partner.focus_areas_served, partner.target_revenue_range,
-         partner.power_confidence_score, partner.key_differentiators, partner.pricing_model]
+      // Check if partner already exists
+      const existingPartner = await pool.query(
+        'SELECT id FROM strategic_partners WHERE contact_email = $1',
+        [partner.contact_email]
       );
+      
+      if (existingPartner.rows.length === 0) {
+        await pool.query(
+          `INSERT INTO strategic_partners 
+           (company_name, description, website, contact_email, focus_areas_served, 
+            target_revenue_range, power_confidence_score, key_differentiators, 
+            pricing_model, is_active)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true)`,
+          [partner.company_name, partner.description, partner.website, 
+           partner.contact_email, partner.focus_areas_served, partner.target_revenue_range,
+           partner.power_confidence_score, partner.key_differentiators, partner.pricing_model]
+        );
+      }
     }
     
     console.log('✅ Sample partners added to database');
