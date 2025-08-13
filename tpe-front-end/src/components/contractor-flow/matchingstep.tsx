@@ -226,7 +226,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                       <h4 className="font-semibold text-power100-black mb-2">Topics Covered:</h4>
                       <div className="flex flex-wrap gap-2">
                         {podcastMatch.topics.map((topic: string, index: number) => (
-                          <Badge key={index} className="bg-gray-100 text-gray-700">{topic}</Badge>
+                          <Badge key={index} className="bg-gray-100 text-gray-700 bg-opacity-100">{topic}</Badge>
                         ))}
                       </div>
                     </div>
@@ -250,9 +250,9 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                       <div>
                         <h3 className="text-2xl font-bold text-power100-black">{eventMatch.name}</h3>
                         <p className="text-gray-600">{eventMatch.date}</p>
-                        <div className="flex gap-2 mt-1">
-                          <Badge className="bg-blue-100 text-blue-700">{eventMatch.location}</Badge>
-                          <Badge className="bg-green-100 text-green-700">{eventMatch.format}</Badge>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          <Badge className="bg-blue-100 text-blue-700 bg-opacity-100">{eventMatch.location}</Badge>
+                          <Badge className="bg-green-100 text-green-700 bg-opacity-100">{eventMatch.format}</Badge>
                         </div>
                       </div>
                     </div>

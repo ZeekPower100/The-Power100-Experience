@@ -81,7 +81,7 @@ export default function HomePage() {
               transition={{ duration: 0.8, delay: 0.3 }}
             >
               <Button
-                onClick={() => router.push("/contractorflow")}
+                onClick={() => router.push("/experience")}
                 size="lg"
                 className="bg-power100-green hover:brightness-90 transition-all duration-300 text-power100-white px-12 py-3 text-lg font-semibold rounded-lg group"
               >
@@ -154,7 +154,7 @@ export default function HomePage() {
               goals and connect you with the ideal strategic partner.
             </p>
             <Button
-              onClick={() => router.push("/contractorflow")}
+              onClick={() => router.push("/experience")}
               size="lg"
               className="bg-power100-green hover:brightness-90 transition-all duration-300 text-power100-white px-8 py-3 text-base font-semibold rounded-lg group"
             >

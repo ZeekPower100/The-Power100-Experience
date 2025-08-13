@@ -175,7 +175,7 @@ app.post('/api/init-db', async (req, res) => {
         contact_email: 'partners@rillavoice.com',
         logo_url: '/logos/rilla-logo.png',
         focus_areas_served: ['Greenfield Growth', 'Lead Generation', 'Sales Enablement', 'Technology & Software'],
-        target_revenue_range: ['$1-5M', '$5-10M', '$10M+'],
+        target_revenue_range: ['0-5 million', '5-10 million', '11-20 million'],
         power_confidence_score: 85,
         key_differentiators: [
           '100-1000x more visibility than traditional methods',
@@ -192,7 +192,7 @@ app.post('/api/init-db', async (req, res) => {
         contact_email: 'growth@destinationmotivation.com',
         logo_url: '/logos/destination-motivation-logo.webp',
         focus_areas_served: ['Greenfield Growth', 'Sales Enablement', 'Customer Acquisition', 'Operations & Efficiency'],
-        target_revenue_range: ['$5-10M', '$10M+', '$25M+'],
+        target_revenue_range: ['5-10 million', '11-20 million', '21-30 million'],
         power_confidence_score: 90,
         key_differentiators: [
           '#2 on Power100 list & Inc. 5000 - 2 years running',

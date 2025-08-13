@@ -129,11 +129,15 @@ export default function ProfilingStep({ data, onNext, onPrev, onUpdate }: StepPr
               <Select value={formData.annual_revenue} onValueChange={(value) => handleInputChange('annual_revenue', value)}>
                 <SelectTrigger className="mt-2 h-12"><SelectValue placeholder="Select revenue range" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="under_500k">Under $500K</SelectItem>
-                  <SelectItem value="500k_1m">$500K - $1M</SelectItem>
-                  <SelectItem value="1m_5m">$1M - $5M</SelectItem>
-                  <SelectItem value="5m_10m">$5M - $10M</SelectItem>
-                  <SelectItem value="over_10m">Over $10M</SelectItem>
+                  <SelectItem value="0-5 million">0-5 million</SelectItem>
+                  <SelectItem value="5-10 million">5-10 million</SelectItem>
+                  <SelectItem value="11-20 million">11-20 million</SelectItem>
+                  <SelectItem value="21-30 million">21-30 million</SelectItem>
+                  <SelectItem value="31-50 million">31-50 million</SelectItem>
+                  <SelectItem value="51-75 million">51-75 million</SelectItem>
+                  <SelectItem value="76-150 million">76-150 million</SelectItem>
+                  <SelectItem value="151-300 million">151-300 million</SelectItem>
+                  <SelectItem value="300+ million">300+ million</SelectItem>
                 </SelectContent>
               </Select>
             </div>
