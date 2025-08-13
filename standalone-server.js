@@ -286,7 +286,18 @@ app.get('/api/contractors', async (req, res) => {
 // Start contractor verification
 app.post('/api/contractors/verify-start', async (req, res) => {
   try {
-    const { name, email, phone, company } = req.body;
+    console.log('📥 Verification request received:', req.body);
+    const { name, email, phone, company_name, company } = req.body;
+    const companyName = company_name || company; // Accept both field names
+    
+    // Validate required fields
+    if (!name || !email || !phone || !companyName) {
+      console.error('❌ Missing required fields:', { name: !!name, email: !!email, phone: !!phone, companyName: !!companyName });
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        details: { name: !!name, email: !!email, phone: !!phone, company: !!companyName }
+      });
+    }
     
     // Generate verification code (for demo, always use 123456)
     const verificationCode = '123456';
@@ -301,7 +312,7 @@ app.post('/api/contractors/verify-start', async (req, res) => {
            verification_code = $5, verification_expires_at = $6,
            current_stage = 'verification', updated_at = CURRENT_TIMESTAMP
        RETURNING id, name, email, phone, company_name`,
-      [name, email, phone, company, verificationCode, expiresAt]
+      [name, email, phone, companyName, verificationCode, expiresAt]
     );
     
     console.log('📱 Verification started for:', email, 'Code:', verificationCode);
@@ -322,7 +333,8 @@ app.post('/api/contractors/verify-start', async (req, res) => {
 // Verify contractor code
 app.post('/api/contractors/verify-code', async (req, res) => {
   try {
-    const { contractorId, code } = req.body;
+    const { contractorId, contractor_id, code } = req.body;
+    const id = contractorId || contractor_id; // Accept both field names
     
     // For demo, accept 123456 always
     if (code === '123456') {
@@ -334,7 +346,7 @@ app.post('/api/contractors/verify-code', async (req, res) => {
              opted_in_coaching = true,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = $1`,
-        [contractorId]
+        [id]
       );
       
       res.json({ 
@@ -353,62 +365,73 @@ app.post('/api/contractors/verify-code', async (req, res) => {
   }
 });
 
-// Update contractor profile
-app.post('/api/contractors/:contractorId/profile', async (req, res) => {
+// Update contractor profile handler
+const updateContractorProfile = async (req, res) => {
   try {
     const { contractorId } = req.params;
     const profileData = req.body;
+    
+    console.log('📝 Profile update request:', { contractorId, fields: Object.keys(profileData) });
     
     // Build dynamic update query based on provided fields
     const updates = [];
     const values = [];
     let paramCount = 1;
     
-    if (profileData.focusAreas) {
+    // Support both camelCase and snake_case field names
+    if (profileData.focusAreas || profileData.focus_areas) {
       updates.push(`focus_areas = $${paramCount++}`);
-      values.push(profileData.focusAreas);
+      values.push(profileData.focusAreas || profileData.focus_areas);
     }
-    if (profileData.primaryFocusArea) {
+    if (profileData.primaryFocusArea || profileData.primary_focus_area) {
       updates.push(`primary_focus_area = $${paramCount++}`);
-      values.push(profileData.primaryFocusArea);
+      values.push(profileData.primaryFocusArea || profileData.primary_focus_area);
     }
-    if (profileData.annualRevenue) {
+    if (profileData.annualRevenue || profileData.annual_revenue) {
       updates.push(`annual_revenue = $${paramCount++}`);
-      values.push(profileData.annualRevenue);
+      values.push(profileData.annualRevenue || profileData.annual_revenue);
     }
-    if (profileData.teamSize !== undefined) {
+    if (profileData.teamSize !== undefined || profileData.team_size !== undefined) {
       updates.push(`team_size = $${paramCount++}`);
-      values.push(profileData.teamSize);
+      values.push(profileData.teamSize ?? profileData.team_size);
     }
-    if (profileData.increasedTools !== undefined) {
+    if (profileData.increasedTools !== undefined || profileData.increased_tools !== undefined) {
       updates.push(`increased_tools = $${paramCount++}`);
-      values.push(profileData.increasedTools);
+      values.push(profileData.increasedTools ?? profileData.increased_tools);
     }
-    if (profileData.increasedPeople !== undefined) {
+    if (profileData.increasedPeople !== undefined || profileData.increased_people !== undefined) {
       updates.push(`increased_people = $${paramCount++}`);
-      values.push(profileData.increasedPeople);
+      values.push(profileData.increasedPeople ?? profileData.increased_people);
     }
-    if (profileData.increasedActivity !== undefined) {
+    if (profileData.increasedActivity !== undefined || profileData.increased_activity !== undefined) {
       updates.push(`increased_activity = $${paramCount++}`);
-      values.push(profileData.increasedActivity);
+      values.push(profileData.increasedActivity ?? profileData.increased_activity);
     }
-    if (profileData.serviceArea) {
+    if (profileData.serviceArea || profileData.service_area) {
       updates.push(`service_area = $${paramCount++}`);
-      values.push(profileData.serviceArea);
+      values.push(profileData.serviceArea || profileData.service_area);
     }
-    if (profileData.servicesOffered) {
+    if (profileData.servicesOffered || profileData.services_offered) {
       updates.push(`services_offered = $${paramCount++}`);
-      values.push(profileData.servicesOffered);
+      values.push(profileData.servicesOffered || profileData.services_offered);
+    }
+    if (profileData.current_stage) {
+      updates.push(`current_stage = $${paramCount++}`);
+      values.push(profileData.current_stage);
     }
     
-    // Update current stage
-    if (profileData.focusAreas && profileData.focusAreas.length > 0) {
-      updates.push(`current_stage = $${paramCount++}`);
-      values.push('profiling');
-    }
-    if (profileData.annualRevenue && profileData.teamSize !== undefined) {
-      updates.push(`current_stage = $${paramCount++}`);
-      values.push('matching');
+    // Don't duplicate current_stage update if already set
+    if (!profileData.current_stage) {
+      // Auto-determine stage based on data provided
+      if ((profileData.annualRevenue || profileData.annual_revenue) && 
+          (profileData.teamSize !== undefined || profileData.team_size !== undefined)) {
+        updates.push(`current_stage = $${paramCount++}`);
+        values.push('matching');
+      } else if ((profileData.focusAreas || profileData.focus_areas) && 
+                 (profileData.focusAreas?.length > 0 || profileData.focus_areas?.length > 0)) {
+        updates.push(`current_stage = $${paramCount++}`);
+        values.push('profiling');
+      }
     }
     
     updates.push(`updated_at = $${paramCount++}`);
@@ -433,7 +456,11 @@ app.post('/api/contractors/:contractorId/profile', async (req, res) => {
     console.error('Profile update error:', error);
     res.status(500).json({ error: 'Failed to update profile' });
   }
-});
+};
+
+// Support both PUT and POST for profile updates
+app.put('/api/contractors/:contractorId/profile', updateContractorProfile);
+app.post('/api/contractors/:contractorId/profile', updateContractorProfile);
 
 // Get contractor matches
 app.get('/api/contractors/:contractorId/matches', async (req, res) => {
@@ -534,7 +561,13 @@ app.get('/api/contractors/:contractorId/matches', async (req, res) => {
 app.post('/api/contractors/:contractorId/complete', async (req, res) => {
   try {
     const { contractorId } = req.params;
-    const { selectedPartnerId, demoDate } = req.body;
+    const { selectedPartnerId, selected_partner_id, demoDate, demo_date } = req.body;
+    
+    // Accept both camelCase and snake_case
+    const partnerId = selectedPartnerId || selected_partner_id;
+    const scheduledDate = demoDate || demo_date;
+    
+    console.log('✅ Completing flow:', { contractorId, partnerId, scheduledDate });
     
     // Update contractor as completed
     await pool.query(
@@ -547,12 +580,21 @@ app.post('/api/contractors/:contractorId/complete', async (req, res) => {
     );
     
     // Create demo booking if partner selected
-    if (selectedPartnerId && demoDate) {
+    if (partnerId && scheduledDate) {
       await pool.query(
         `INSERT INTO demo_bookings 
          (contractor_id, partner_id, scheduled_date, status)
          VALUES ($1, $2, $3, 'scheduled')`,
-        [contractorId, selectedPartnerId, demoDate]
+        [contractorId, partnerId, scheduledDate]
+      );
+    } else if (partnerId) {
+      // If no date provided, use a week from now
+      const defaultDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await pool.query(
+        `INSERT INTO demo_bookings 
+         (contractor_id, partner_id, scheduled_date, status)
+         VALUES ($1, $2, $3, 'scheduled')`,
+        [contractorId, partnerId, defaultDate]
       );
     }
     
