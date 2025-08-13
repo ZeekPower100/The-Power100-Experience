@@ -517,6 +517,7 @@ app.get('/api/contractors/:contractorId/matches', async (req, res) => {
       }
       
       return {
+        partner: partner, // Frontend expects the full partner object
         partnerId: partner.id,
         partnerName: partner.company_name,
         description: partner.description,
