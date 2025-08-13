@@ -25,6 +25,7 @@ app.use(cors({
   origin: function(origin, callback) {
     const allowedOrigins = [
       'https://the-power100-experience.vercel.app',
+      'https://tpe.power100.io',
       'http://localhost:3000',
       'http://localhost:3002',
       'http://localhost:3001'
