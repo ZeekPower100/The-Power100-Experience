@@ -320,6 +320,7 @@ app.post('/api/contractors/verify-start', async (req, res) => {
     res.json({ 
       success: true, 
       contractorId: result.rows[0].id,
+      contractor: result.rows[0], // Frontend expects this
       message: 'Verification code sent',
       // For demo purposes, include the code in response
       demoCode: verificationCode

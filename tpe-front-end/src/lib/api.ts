@@ -1,12 +1,21 @@
 // API Service Layer for The Power100 Experience - Updated for port 5000
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://the-power100-experience-production.up.railway.app';
 
+// Log the API URL being used (for debugging)
+if (typeof window !== 'undefined') {
+  console.log('🔗 API Base URL:', API_BASE_URL);
+  console.log('🔗 Environment Variable:', process.env.NEXT_PUBLIC_API_URL);
+}
+
 // Generic API request function
 async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
+  
+  // Log the full URL being called (for debugging)
+  console.log('📡 API Request:', url);
   
   const config: RequestInit = {
     headers: {
