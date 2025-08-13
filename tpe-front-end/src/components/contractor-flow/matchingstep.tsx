@@ -109,6 +109,16 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
   }, [findBestMatch]);
 
   const formatFocusArea = (area: string) => area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  
+  // Helper function to fix logo URLs (serve from frontend, not backend)
+  const getLogoUrl = (logoUrl: string) => {
+    if (!logoUrl) return '';
+    // If it's already a full URL, return as-is
+    if (logoUrl.startsWith('http')) return logoUrl;
+    // If it starts with /logos/, serve from frontend
+    if (logoUrl.startsWith('/logos/')) return logoUrl;
+    return logoUrl;
+  };
 
   const bookDemo = async () => {
     if (!matchedPartners.length || !data.id) return;
@@ -197,7 +207,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                     <div className="flex items-center space-x-4 mb-6">
                       {podcastMatch.logo_url ? (
                         <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center p-2">
-                          <img src={podcastMatch.logo_url} alt={podcastMatch.name} className="max-w-full max-h-full object-contain" />
+                          <img src={getLogoUrl(podcastMatch.logo_url)} alt={podcastMatch.name} className="max-w-full max-h-full object-contain" />
                         </div>
                       ) : (
                         <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
@@ -240,7 +250,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                     <div className="flex items-center space-x-4 mb-6">
                       {eventMatch.logo_url ? (
                         <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center p-2">
-                          <img src={eventMatch.logo_url} alt={eventMatch.name} className="max-w-full max-h-full object-contain" />
+                          <img src={getLogoUrl(eventMatch.logo_url)} alt={eventMatch.name} className="max-w-full max-h-full object-contain" />
                         </div>
                       ) : (
                         <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
@@ -284,7 +294,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                             <div className="flex items-center space-x-3 mb-3">
                                 {partner.logo_url ? (
                                     <div className="w-14 h-14 rounded-lg overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center p-2">
-                                        <img src={partner.logo_url} alt={partner.company_name} className="max-w-full max-h-full object-contain" />
+                                        <img src={getLogoUrl(partner.logo_url)} alt={partner.company_name} className="max-w-full max-h-full object-contain" />
                                     </div>
                                 ) : (
                                     <div className="w-14 h-14 bg-gray-200 rounded-lg flex items-center justify-center">
@@ -308,7 +318,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                           <Button className="w-full bg-green-500 hover:bg-green-600 text-white">
                             <span className="text-sm">Hear from Similar Customers</span>
                           </Button>
-                          <Button className="w-full bg-power100-red hover:bg-red-600 text-white">
+                          <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white">
                             <span className="text-sm">Schedule Introduction</span>
                           </Button>
                         </div>
@@ -321,7 +331,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                 <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 text-center">
                   <h3 className="text-xl font-bold text-power100-black mb-3">Ready for More?</h3>
                   <p className="text-gray-700 mb-4">Get personalized recommendations for your next focus area</p>
-                  <Button className="bg-power100-red hover:bg-red-600 text-white px-6 py-2">
+                  <Button className="bg-green-500 hover:bg-green-600 text-white px-6 py-2">
                     See Results For Your Next Focus Area
                   </Button>
                 </div>
