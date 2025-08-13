@@ -170,25 +170,35 @@ app.post('/api/init-db', async (req, res) => {
     const samplePartners = [
       {
         company_name: 'RillaVoice',
-        description: 'AI-powered conversation intelligence platform that analyzes sales calls and field interactions to improve close rates and team performance',
+        description: 'Leading virtual ridealong software that uses AI to transcribe, analyze and give feedback on face-to-face sales conversations, proven to boost conversion by 50% and increase close rates by 40% on average',
         website: 'https://rillavoice.com',
         contact_email: 'partners@rillavoice.com',
-        focus_areas_served: ['Sales Enablement', 'Technology & Software', 'Training & Development'],
+        focus_areas_served: ['Greenfield Growth', 'Lead Generation', 'Sales Enablement', 'Technology & Software'],
         target_revenue_range: ['$1-5M', '$5-10M', '$10M+'],
-        power_confidence_score: 94,
-        key_differentiators: ['Real-time coaching insights', 'Offline recording capability', 'Industry-specific AI models', 'Proven 30% close rate improvement'],
-        pricing_model: 'Per user monthly subscription with enterprise discounts'
+        power_confidence_score: 85,
+        key_differentiators: [
+          '100-1000x more visibility than traditional methods',
+          'AI coaches entire team to match top performers',
+          '40% average increase in close rates',
+          'Managers coach 8x faster than ridealongs'
+        ],
+        pricing_model: 'Custom pricing - Best bang for your buck service'
       },
       {
         company_name: 'Destination Motivation',
-        description: 'Transformational business coaching and strategic planning services designed specifically for contractors ready to scale beyond $10M',
+        description: 'Sales consulting and training company offering proven strategies and Vacation Voucher systems, helping contractors achieve 20% increase in close rates, $1500 increase in average ticket, and 300% increase in leads',
         website: 'https://destinationmotivation.com',
         contact_email: 'growth@destinationmotivation.com',
-        focus_areas_served: ['Operations & Efficiency', 'Training & Development', 'Financial Management'],
+        focus_areas_served: ['Greenfield Growth', 'Sales Enablement', 'Customer Acquisition', 'Operations & Efficiency'],
         target_revenue_range: ['$5-10M', '$10M+', '$25M+'],
-        power_confidence_score: 91,
-        key_differentiators: ['Contractor-exclusive expertise', '90-day implementation sprints', 'Peer mastermind groups', 'Guaranteed ROI within 12 months'],
-        pricing_model: 'Quarterly coaching packages with performance-based bonuses'
+        power_confidence_score: 90,
+        key_differentiators: [
+          '#2 on Power100 list & Inc. 5000 - 2 years running',
+          '20% increase in close rate proven',
+          '2,500+ 5-Star Reviews over 20 years',
+          'Low-cost, high-value Vacation Voucher system'
+        ],
+        pricing_model: 'Turnkey vacation voucher system'
       }
     ];
     
@@ -529,34 +539,40 @@ app.get('/api/contractors/:contractorId/matches', async (req, res) => {
     const podcastMatch = {
       type: 'podcast',
       name: 'The Wealthy Contractor',
-      host: 'Mike Agugliaro',
-      description: 'Weekly insights on scaling your contracting business from industry leaders who have built multi-million dollar companies',
-      frequency: 'Weekly episodes every Tuesday',
-      topics: ['Business scaling strategies', 'Financial management', 'Leadership development', 'Marketing & sales tactics'],
-      matchReasons: [
-        'Focused on contractors in your revenue range',
-        'Covers your selected focus areas',
-        'Actionable insights you can implement immediately'
+      host: 'Brian Kaskavalciyan',
+      description: 'Shares interviews with home improvement industry insiders, revealing stories, strategies, and secrets that top leaders use to grow their businesses and achieve greater success, wealth, and freedom',
+      frequency: 'Updated Semimonthly (bi-weekly)',
+      topics: [
+        'Sales strategies and coaching',
+        'Business scaling from startup to $10MM+',
+        'Marketing and lead generation',
+        'Mindset and business psychology',
+        'Industry trends and technology adoption'
       ],
-      website: 'https://wealthycontractor.com',
+      matchReasons: [
+        'Specifically targets home improvement professionals ready to grow',
+        'Features real-world success stories and proven methods',
+        'Listened to by thousands of contractors worldwide'
+      ],
+      website: 'https://thewealthycontractor.com',
       matchScore: 88
     };
     
     // Add event match
     const eventMatch = {
       type: 'event',
-      name: 'Level10 Contractor Summit',
-      date: 'March 15-17, 2025',
-      location: 'Las Vegas, NV',
-      format: 'In-person with virtual access',
-      description: 'The premier annual gathering for growth-minded contractors, featuring workshops, networking, and breakthrough sessions',
-      attendees: '500+ contractors nationwide',
+      name: 'Level10 Conference (Operation Lead Surge)',
+      date: 'Annual Conference',
+      location: 'In-person event',
+      format: 'Full conference experience',
+      description: 'Focused on proven strategies to generate 200-500 qualified leads every month like clockwork for home improvement contractors',
+      attendees: 'Business owners from companies doing $40MM to $150MM+ annually',
       matchReasons: [
-        'Contractors in your exact growth stage',
-        'Focused workshops on your priority areas',
-        'Direct access to industry leaders and peers'
+        'Specializes in contractors ready to grow to $10MM or more',
+        'Features industry experts like Rich Harshaw with proven doubling/tripling techniques',
+        'Highly rated with immediate implementation value'
       ],
-      website: 'https://level10summit.com',
+      website: 'https://level10contractor.com',
       matchScore: 92
     };
     
