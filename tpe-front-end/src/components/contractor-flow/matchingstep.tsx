@@ -21,7 +21,9 @@ interface StepProps {
 }
 
 export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepProps) {
-  const [matchedPartner, setMatchedPartner] = useState<StrategicPartner | null>(null);
+  const [matchedPartners, setMatchedPartners] = useState<StrategicPartner[]>([]);
+  const [podcastMatch, setPodcastMatch] = useState<any>(null);
+  const [eventMatch, setEventMatch] = useState<any>(null);
   const [isMatching, setIsMatching] = useState(true);
   const [primaryFocusArea, setPrimaryFocusArea] = useState('');
   const [isBookingDemo, setIsBookingDemo] = useState(false);
@@ -55,31 +57,37 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
       console.log('Match response:', matchResponse);
       
       if (matchResponse.matches && matchResponse.matches.length > 0) {
-        // Get the top match from the real algorithm
-        const topMatch = matchResponse.matches[0];
+        // Parse all partner matches
+        const parsedPartners = matchResponse.matches.map((match: any) => ({
+          ...match.partner,
+          matchScore: match.matchScore,
+          matchReasons: match.matchReasons,
+          focus_areas_served: typeof match.partner.focus_areas_served === 'string' && match.partner.focus_areas_served !== '[object Object]'
+            ? JSON.parse(match.partner.focus_areas_served || '[]')
+            : match.partner.focus_areas_served || [],
+          target_revenue_range: typeof match.partner.target_revenue_range === 'string' && match.partner.target_revenue_range !== '[object Object]'
+            ? JSON.parse(match.partner.target_revenue_range || '[]')
+            : match.partner.target_revenue_range || [],
+          key_differentiators: typeof match.partner.key_differentiators === 'string' && match.partner.key_differentiators !== '[object Object]'
+            ? JSON.parse(match.partner.key_differentiators || '[]')
+            : match.partner.key_differentiators || [],
+          client_testimonials: typeof match.partner.client_testimonials === 'string' && match.partner.client_testimonials !== '[object Object]'
+            ? JSON.parse(match.partner.client_testimonials || '[]')
+            : match.partner.client_testimonials || []
+        }));
         
-        // Parse JSON fields from the backend
-        const parsedPartner = {
-          ...topMatch.partner,
-          focus_areas_served: typeof topMatch.partner.focus_areas_served === 'string' && topMatch.partner.focus_areas_served !== '[object Object]'
-            ? JSON.parse(topMatch.partner.focus_areas_served || '[]')
-            : topMatch.partner.focus_areas_served || [],
-          target_revenue_range: typeof topMatch.partner.target_revenue_range === 'string' && topMatch.partner.target_revenue_range !== '[object Object]'
-            ? JSON.parse(topMatch.partner.target_revenue_range || '[]')
-            : topMatch.partner.target_revenue_range || [],
-          key_differentiators: typeof topMatch.partner.key_differentiators === 'string' && topMatch.partner.key_differentiators !== '[object Object]'
-            ? JSON.parse(topMatch.partner.key_differentiators || '[]')
-            : topMatch.partner.key_differentiators || [],
-          client_testimonials: typeof topMatch.partner.client_testimonials === 'string' && topMatch.partner.client_testimonials !== '[object Object]'
-            ? JSON.parse(topMatch.partner.client_testimonials || '[]')
-            : topMatch.partner.client_testimonials || []
-        };
-        
-        setMatchedPartner(parsedPartner);
+        setMatchedPartners(parsedPartners);
       } else {
         console.warn('No matches found for contractor');
-        // Handle case where no matches are found
-        setMatchedPartner(null);
+        setMatchedPartners([]);
+      }
+      
+      // Set podcast and event matches
+      if (matchResponse.podcastMatch) {
+        setPodcastMatch(matchResponse.podcastMatch);
+      }
+      if (matchResponse.eventMatch) {
+        setEventMatch(matchResponse.eventMatch);
       }
       
       const primary = data.focus_areas?.[0] || 'greenfield_growth';
@@ -103,7 +111,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
   const formatFocusArea = (area: string) => area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 
   const bookDemo = async () => {
-    if (!matchedPartner || !data.id) return;
+    if (!matchedPartners.length || !data.id) return;
     setIsBookingDemo(true);
 
     try {
@@ -115,7 +123,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
 
       // Create demo booking
       // Note: We'll add this API call once the booking system is ready
-      console.log(`Creating demo booking for Contractor ${data.id} with Partner ${matchedPartner.id}`);
+      console.log(`Creating demo booking for Contractor ${data.id} with Partners`);
       
       onUpdate({
         primary_focus_area: primaryFocusArea,
@@ -163,39 +171,119 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                 <div className="w-16 h-16 bg-gradient-to-br from-power100-red-deep to-power100-red rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
                     <Sparkles className="w-8 h-8 text-white" />
                 </div>
-                <CardTitle className="text-3xl font-bold text-power100-black mb-3">We Found Your Perfect Match!</CardTitle>
-                <p className="text-lg text-power100-grey">Based on your focus areas and business profile, this partner is ideal for you.</p>
+                <CardTitle className="text-3xl font-bold text-power100-black mb-3">We Found Your Perfect Matches!</CardTitle>
+                <p className="text-lg text-power100-grey">Based on your focus areas and business profile, here are your ideal partners, podcast, and event.</p>
             </CardHeader>
             <CardContent className="space-y-8 px-8 pb-8">
                 <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
                     <h3 className="font-semibold text-gray-800 mb-2">Your Primary Focus Area</h3>
                     <Badge className="bg-power100-red text-white text-base px-4 py-2">{formatFocusArea(primaryFocusArea)}</Badge>
                 </div>
-                {matchedPartner && (
-                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
-                        <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between mb-6 gap-4">
-                            <div className="flex items-center space-x-4">
-                                {matchedPartner.logo_url ? (
+                
+                {/* Partner Matches - Side by Side */}
+                {matchedPartners.length > 0 && (
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {matchedPartners.map((partner, idx) => (
+                    <motion.div key={partner.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: idx * 0.1 }} className="bg-white border-2 border-power100-red rounded-xl p-6 shadow-lg">
+                        <div className="flex flex-col items-start mb-4">
+                            <div className="flex items-center space-x-3 mb-3">
+                                {partner.logo_url ? (
                                     // eslint-disable-next-line @next/next/no-img-element
-                                    <img src={matchedPartner.logo_url} alt={matchedPartner.company_name} className="w-16 h-16 object-contain rounded-lg bg-gray-50 p-2 border" />
+                                    <img src={partner.logo_url} alt={partner.company_name} className="w-12 h-12 object-contain rounded-lg bg-gray-50 p-2 border" />
                                 ) : (
-                                    <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                                        <span className="text-gray-600 font-bold text-xl">{matchedPartner.company_name[0]}</span>
+                                    <div className="w-12 h-12 bg-gray-200 rounded-lg flex items-center justify-center">
+                                        <span className="text-gray-600 font-bold text-lg">{partner.company_name?.[0] || 'P'}</span>
                                     </div>
                                 )}
-                                <div>
-                                    <h3 className="text-2xl font-bold text-power100-black">{matchedPartner.company_name}</h3>
-                                    {matchedPartner.power_confidence_score && <div className="flex items-center space-x-2 mt-1"><Star className="w-4 h-4 text-power100-red fill-power100-red" /><span className="text-power100-red font-semibold">{matchedPartner.power_confidence_score}/100 PowerConfidence Score</span></div>}
+                                <div className="flex-1">
+                                    <h3 className="text-xl font-bold text-power100-black">{partner.company_name}</h3>
+                                    {partner.power_confidence_score && <div className="flex items-center space-x-1 mt-1"><Star className="w-3 h-3 text-power100-red fill-power100-red" /><span className="text-power100-red font-semibold text-sm">{partner.power_confidence_score}/100 PowerConfidence</span></div>}
                                 </div>
                             </div>
-                            {matchedPartner.website && <Button variant="outline" size="sm" onClick={() => window.open(matchedPartner.website, '_blank')} className="flex items-center space-x-1 flex-shrink-0"><ExternalLink className="w-4 h-4" /><span>Visit Site</span></Button>}
+                            {partner.website && <Button variant="outline" size="sm" onClick={() => window.open(partner.website, '_blank')} className="flex items-center space-x-1 w-full mb-3"><ExternalLink className="w-3 h-3" /><span>Visit Site</span></Button>}
                         </div>
-                        <p className="text-gray-700 mb-6 text-lg leading-relaxed">{matchedPartner.description}</p>
-                        {matchedPartner.key_differentiators?.length > 0 && <div className="mb-6"><h4 className="font-semibold text-power100-black mb-3">Why This Is Your Perfect Match:</h4><div className="grid md:grid-cols-2 gap-3">{matchedPartner.key_differentiators.map((diff, index) => <div key={index} className="flex items-start space-x-2"><div className="w-2 h-2 bg-power100-red rounded-full mt-1.5 flex-shrink-0"></div><span className="text-gray-700">{diff}</span></div>)}</div></div>}
-                        {matchedPartner.client_testimonials?.length > 0 && <div className="bg-gray-50 rounded-lg p-4 mb-6"><h4 className="font-semibold text-power100-black mb-2">What Other Contractors Say:</h4><blockquote className="italic text-gray-700">&ldquo;{matchedPartner.client_testimonials[0].testimonial}&rdquo;</blockquote><cite className="text-sm text-gray-500 mt-2 block">- {matchedPartner.client_testimonials[0].client_name}</cite></div>}
-                        {matchedPartner.pricing_model && <div className="bg-green-50 border border-green-200 rounded-lg p-4"><h4 className="font-semibold text-green-900 mb-1">Pricing Structure:</h4><p className="text-green-800">{matchedPartner.pricing_model}</p></div>}
+                        <p className="text-gray-700 mb-4 text-sm leading-relaxed">{partner.description}</p>
+                        {partner.key_differentiators?.length > 0 && <div className="mb-4"><h4 className="font-semibold text-power100-black mb-2 text-sm">Key Benefits:</h4><div className="space-y-2">{partner.key_differentiators.map((diff, index) => <div key={index} className="flex items-start space-x-2"><div className="w-1.5 h-1.5 bg-power100-red rounded-full mt-1.5 flex-shrink-0"></div><span className="text-gray-700 text-sm">{diff}</span></div>)}</div></div>}
+                        {partner.pricing_model && <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4"><h4 className="font-semibold text-green-900 mb-1 text-sm">Pricing:</h4><p className="text-green-800 text-sm">{partner.pricing_model}</p></div>}
+                        <Button className="w-full bg-green-500 hover:bg-green-600 text-white">
+                          <span className="text-center text-sm">Click to view quarterly reports and hear from customers in your revenue and service category</span>
+                        </Button>
                     </motion.div>
+                    ))}
+                  </div>
                 )}
+                {/* Podcast Match */}
+                {podcastMatch && (
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
+                    <div className="flex items-center space-x-4 mb-6">
+                      <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15c-.08-.49-.49-.85-.98-.85-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08c3.02-.43 5.42-2.78 5.91-5.78.1-.6-.39-1.14-1-1.14z"/></svg>
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold text-power100-black">{podcastMatch.name}</h3>
+                        <p className="text-gray-600">Hosted by {podcastMatch.host}</p>
+                        <Badge className="bg-purple-100 text-purple-700 mt-1">{podcastMatch.frequency}</Badge>
+                      </div>
+                    </div>
+                    <p className="text-gray-700 mb-4">{podcastMatch.description}</p>
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-power100-black mb-2">Why This Podcast Is Perfect For You:</h4>
+                      <div className="space-y-2">
+                        {podcastMatch.matchReasons.map((reason: string, index: number) => (
+                          <div key={index} className="flex items-start space-x-2">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                            <span className="text-gray-700">{reason}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-power100-black mb-2">Topics Covered:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {podcastMatch.topics.map((topic: string, index: number) => (
+                          <Badge key={index} className="bg-gray-100 text-gray-700">{topic}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                    {podcastMatch.website && <Button variant="outline" onClick={() => window.open(podcastMatch.website, '_blank')} className="w-full"><ExternalLink className="w-4 h-4 mr-2" />Listen to Episodes</Button>}
+                  </motion.div>
+                )}
+                
+                {/* Event Match */}
+                {eventMatch && (
+                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
+                    <div className="flex items-center space-x-4 mb-6">
+                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                        <Calendar className="w-8 h-8 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold text-power100-black">{eventMatch.name}</h3>
+                        <p className="text-gray-600">{eventMatch.date}</p>
+                        <div className="flex gap-2 mt-1">
+                          <Badge className="bg-blue-100 text-blue-700">{eventMatch.location}</Badge>
+                          <Badge className="bg-green-100 text-green-700">{eventMatch.format}</Badge>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-gray-700 mb-4">{eventMatch.description}</p>
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-power100-black mb-2">Why You Should Attend:</h4>
+                      <div className="space-y-2">
+                        {eventMatch.matchReasons.map((reason: string, index: number) => (
+                          <div key={index} className="flex items-start space-x-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                            <span className="text-gray-700">{reason}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                      <p className="text-gray-700"><strong>Expected Attendees:</strong> {eventMatch.attendees}</p>
+                    </div>
+                    {eventMatch.website && <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white" onClick={() => window.open(eventMatch.website, '_blank')}><Calendar className="w-4 h-4 mr-2" />Register for Event</Button>}
+                  </motion.div>
+                )}
+                
                 <div className="flex gap-4 pt-6">
                     {onPrev && <Button variant="outline" onClick={onPrev} className="flex-1 h-12 text-lg">Back</Button>}
                     <Button onClick={bookDemo} disabled={isBookingDemo} className="flex-1 bg-power100-green hover:brightness-90 transition-all duration-300 text-white shadow-lg h-12 text-lg font-semibold group">

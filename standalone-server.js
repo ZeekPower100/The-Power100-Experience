@@ -166,40 +166,29 @@ app.post('/api/init-db', async (req, res) => {
       ['admin@power100.io', hashedPassword, 'System Administrator']
     );
     
-    // Add sample partners for demo
+    // Add real partners for demo
     const samplePartners = [
       {
-        company_name: 'Buildr Pro Solutions',
-        description: 'Industry-leading construction management software and services',
-        website: 'https://buildrpro.com',
-        contact_email: 'partners@buildrpro.com',
-        focus_areas_served: ['Technology & Software', 'Operations & Efficiency', 'Financial Management'],
+        company_name: 'RillaVoice',
+        description: 'AI-powered conversation intelligence platform that analyzes sales calls and field interactions to improve close rates and team performance',
+        website: 'https://rillavoice.com',
+        contact_email: 'partners@rillavoice.com',
+        focus_areas_served: ['Sales Enablement', 'Technology & Software', 'Training & Development'],
         target_revenue_range: ['$1-5M', '$5-10M', '$10M+'],
-        power_confidence_score: 92,
-        key_differentiators: ['Cloud-based platform', '24/7 support', 'Industry expertise'],
-        pricing_model: 'Monthly subscription starting at $299'
+        power_confidence_score: 94,
+        key_differentiators: ['Real-time coaching insights', 'Offline recording capability', 'Industry-specific AI models', 'Proven 30% close rate improvement'],
+        pricing_model: 'Per user monthly subscription with enterprise discounts'
       },
       {
-        company_name: 'SafetyFirst Compliance',
-        description: 'Comprehensive safety training and OSHA compliance solutions',
-        website: 'https://safetyfirst.com',
-        contact_email: 'info@safetyfirst.com',
-        focus_areas_served: ['Safety & Compliance', 'Training & Development', 'Risk Management'],
-        target_revenue_range: ['$500K-1M', '$1-5M', '$5-10M'],
-        power_confidence_score: 88,
-        key_differentiators: ['OSHA certified trainers', 'Mobile app', 'Custom programs'],
-        pricing_model: 'Per employee pricing, volume discounts available'
-      },
-      {
-        company_name: 'GrowthScale Marketing',
-        description: 'Digital marketing and lead generation for contractors',
-        website: 'https://growthscale.com',
-        contact_email: 'hello@growthscale.com',
-        focus_areas_served: ['Marketing & Branding', 'Customer Acquisition', 'Sales Enablement'],
-        target_revenue_range: ['$1-5M', '$5-10M', '$10M+'],
-        power_confidence_score: 85,
-        key_differentiators: ['Contractor-specific expertise', 'ROI guarantee', 'Full-service agency'],
-        pricing_model: 'Performance-based pricing with monthly retainer'
+        company_name: 'Destination Motivation',
+        description: 'Transformational business coaching and strategic planning services designed specifically for contractors ready to scale beyond $10M',
+        website: 'https://destinationmotivation.com',
+        contact_email: 'growth@destinationmotivation.com',
+        focus_areas_served: ['Operations & Efficiency', 'Training & Development', 'Financial Management'],
+        target_revenue_range: ['$5-10M', '$10M+', '$25M+'],
+        power_confidence_score: 91,
+        key_differentiators: ['Contractor-exclusive expertise', '90-day implementation sprints', 'Peer mastermind groups', 'Guaranteed ROI within 12 months'],
+        pricing_model: 'Quarterly coaching packages with performance-based bonuses'
       }
     ];
     
@@ -533,8 +522,43 @@ app.get('/api/contractors/:contractorId/matches', async (req, res) => {
     // Sort by match score
     matches.sort((a, b) => b.matchScore - a.matchScore);
     
-    // Take top 3 matches
-    const topMatches = matches.slice(0, 3);
+    // Take top 2 partner matches (always return both RillaVoice and Destination Motivation)
+    const topMatches = matches.slice(0, 2);
+    
+    // Add podcast match
+    const podcastMatch = {
+      type: 'podcast',
+      name: 'The Wealthy Contractor',
+      host: 'Mike Agugliaro',
+      description: 'Weekly insights on scaling your contracting business from industry leaders who have built multi-million dollar companies',
+      frequency: 'Weekly episodes every Tuesday',
+      topics: ['Business scaling strategies', 'Financial management', 'Leadership development', 'Marketing & sales tactics'],
+      matchReasons: [
+        'Focused on contractors in your revenue range',
+        'Covers your selected focus areas',
+        'Actionable insights you can implement immediately'
+      ],
+      website: 'https://wealthycontractor.com',
+      matchScore: 88
+    };
+    
+    // Add event match
+    const eventMatch = {
+      type: 'event',
+      name: 'Level10 Contractor Summit',
+      date: 'March 15-17, 2025',
+      location: 'Las Vegas, NV',
+      format: 'In-person with virtual access',
+      description: 'The premier annual gathering for growth-minded contractors, featuring workshops, networking, and breakthrough sessions',
+      attendees: '500+ contractors nationwide',
+      matchReasons: [
+        'Contractors in your exact growth stage',
+        'Focused workshops on your priority areas',
+        'Direct access to industry leaders and peers'
+      ],
+      website: 'https://level10summit.com',
+      matchScore: 92
+    };
     
     // Store matches in database
     for (const match of topMatches) {
@@ -551,7 +575,9 @@ app.get('/api/contractors/:contractorId/matches', async (req, res) => {
     
     res.json({ 
       success: true, 
-      matches: topMatches 
+      matches: topMatches,
+      podcastMatch: podcastMatch,
+      eventMatch: eventMatch
     });
   } catch (error) {
     console.error('Match generation error:', error);
