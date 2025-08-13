@@ -76,9 +76,9 @@ export default function PartnerDashboard() {
       // Mock data for now - will connect to real API
       setPartnerData({
         id: 1,
-        company_name: 'TechFlow Solutions',
-        contact_email: 'partner@techflow.com',
-        power_confidence_score: 87,
+        company_name: 'Destination Motivation',
+        contact_email: 'growth@destinationmotivation.com',
+        power_confidence_score: 90,
         score_trend: 'up',
         industry_rank: 4,
         total_partners_in_category: 16,
