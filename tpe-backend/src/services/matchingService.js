@@ -1,4 +1,5 @@
 const { query, transaction } = require('../config/database');
+const outcomeTrackingService = require('./outcomeTrackingService');
 
 // Focus area weights for matching algorithm
 const FOCUS_AREA_WEIGHTS = {
@@ -76,7 +77,7 @@ const matchContractorWithPartners = async (contractor) => {
       [parsedContractor.id]
     );
 
-    // Insert new matches
+    // Insert new matches and track outcomes
     for (let i = 0; i < topMatches.length; i++) {
       const match = topMatches[i];
       await client.query(`
@@ -90,6 +91,20 @@ const matchContractorWithPartners = async (contractor) => {
         JSON.stringify(match.matchReasons), // Convert array to JSON string for SQLite
         i === 0 ? 1 : 0 // SQLite uses 1/0 for boolean
       ]);
+      
+      // Track the match outcome
+      await outcomeTrackingService.trackPartnerMatch(
+        parsedContractor.id,
+        match.partner.id,
+        {
+          score: match.matchScore,
+          reasons: match.matchReasons,
+          isPrimary: i === 0,
+          contractorStage: parsedContractor.pipeline_stage || 'matching',
+          focusAreas: parsedContractor.focus_areas,
+          revenueTier: parsedContractor.revenue_range
+        }
+      );
     }
   });
 

@@ -1,13 +1,22 @@
-const twilio = require('twilio');
-
 // Initialize Twilio client only if credentials are provided
 let twilioClient = null;
 
-if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-  twilioClient = twilio(
-    process.env.TWILIO_ACCOUNT_SID,
-    process.env.TWILIO_AUTH_TOKEN
-  );
+if (process.env.TWILIO_ACCOUNT_SID && 
+    process.env.TWILIO_AUTH_TOKEN && 
+    process.env.TWILIO_ACCOUNT_SID.startsWith('AC')) {
+  try {
+    const twilio = require('twilio');
+    twilioClient = twilio(
+      process.env.TWILIO_ACCOUNT_SID,
+      process.env.TWILIO_AUTH_TOKEN
+    );
+    console.log('✅ Twilio client initialized successfully');
+  } catch (error) {
+    console.log('⚠️ Twilio initialization skipped:', error.message);
+    console.log('   SMS verification will use development mode (code: 123456)');
+  }
+} else {
+  console.log('ℹ️ Twilio credentials not configured - using development mode');
 }
 
 const generateVerificationCode = () => {

@@ -4,10 +4,15 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+const path = require('path');
+
+// Load environment variables based on NODE_ENV
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
+require('dotenv').config({ path: path.join(__dirname, '..', envFile) });
 
 const { connectDB } = require('./config/database.sqlite');
 const { errorHandler } = require('./middleware/errorHandler');
+const dataCollectionService = require('./services/dataCollectionService');
 
 // Import routes
 const contractorRoutes = require('./routes/contractorRoutes');
@@ -62,6 +67,9 @@ app.use(compression());
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined'));
 }
+
+// Data collection middleware - track all API interactions
+app.use(dataCollectionService.trackAPICall());
 
 // Health check endpoint
 app.get('/health', (req, res) => {

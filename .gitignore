@@ -112,6 +112,7 @@ yarn-error.log*
 *.sqlite
 *.sqlite3
 *.db
+database.sqlite
 
 # Database dumps
 *.sql
@@ -119,6 +120,19 @@ yarn-error.log*
 
 # Migration logs
 migration-logs/
+
+# =============================================================================
+# DATA COLLECTION
+# =============================================================================
+
+# Data Lake - contains interaction logs (DO NOT COMMIT)
+data-lake/
+tpe-backend/data-lake/
+**/data-lake/
+
+# Uploads directory
+uploads/
+tpe-backend/uploads/
 
 # =============================================================================
 # LOGS
