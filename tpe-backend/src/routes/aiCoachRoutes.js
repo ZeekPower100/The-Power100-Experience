@@ -5,6 +5,9 @@ const { protect } = require('../middleware/auth');
 const { AppError } = require('../middleware/errorHandler');
 const multer = require('multer');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
+const dataCollectionService = require('../services/dataCollectionService');
+const outcomeTrackingService = require('../services/outcomeTrackingService');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -164,6 +167,8 @@ router.post('/message', protect, checkAICoachAccess, upload.single('media'), asy
   try {
     const contractorId = req.contractor.id;
     const { content, mediaType = 'text' } = req.body;
+    const conversationId = req.body.conversationId || uuidv4();
+    const startTime = Date.now();
     
     if (!content && !req.file) {
       return next(new AppError('Message content or media file required', 400));
@@ -190,6 +195,39 @@ router.post('/message', protect, checkAICoachAccess, upload.single('media'), asy
 
     // Generate AI response (mock implementation)
     const aiResponse = await generateAIResponse(content, req.file, req.contractor);
+    const responseTime = Date.now() - startTime;
+    
+    // Track the AI conversation
+    const messages = [
+      {
+        role: 'user',
+        content: content || 'Shared a file',
+        timestamp: new Date().toISOString(),
+        hasMedia: !!req.file,
+        mediaType: req.file ? getMediaType(req.file.mimetype) : null
+      },
+      {
+        role: 'assistant',
+        content: aiResponse,
+        timestamp: new Date().toISOString(),
+        model: process.env.AI_MODEL || 'gpt-4',
+        responseTime: responseTime
+      }
+    ];
+    
+    // Track with outcome service
+    await outcomeTrackingService.trackAIInteraction(contractorId, {
+      conversationId: conversationId,
+      userType: 'contractor',
+      messages: messages,
+      totalTokens: estimateTokens(content + aiResponse),
+      cost: estimateCost(content + aiResponse),
+      responseTime: responseTime,
+      helpfulRating: null, // Will be updated when user provides feedback
+      questionAnswered: true,
+      actionTaken: null,
+      followUpNeeded: false
+    });
     
     // Save AI response
     const aiMessageResult = await query(`
@@ -266,6 +304,48 @@ const getMediaType = (mimetype) => {
   if (mimetype.startsWith('audio/')) return 'audio';
   return 'document';
 };
+
+// Estimate tokens (rough approximation - 1 token ≈ 4 characters)
+const estimateTokens = (text) => {
+  if (!text) return 0;
+  return Math.ceil(text.length / 4);
+};
+
+// Estimate cost (based on GPT-4 pricing)
+const estimateCost = (text) => {
+  const tokens = estimateTokens(text);
+  const costPer1000Tokens = 0.03; // $0.03 per 1K tokens for GPT-4
+  return (tokens / 1000) * costPer1000Tokens;
+};
+
+// Rate AI response helpfulness
+router.post('/feedback/:messageId', protect, checkAICoachAccess, async (req, res, next) => {
+  try {
+    const { messageId } = req.params;
+    const { helpful, rating, feedback } = req.body;
+    const contractorId = req.contractor.id;
+    
+    // Track the feedback
+    await outcomeTrackingService.trackFeedback(contractorId, 'contractor', {
+      messageId: messageId,
+      helpful: helpful,
+      rating: rating || (helpful ? 5 : 1),
+      comments: feedback,
+      categories: ['ai_coach'],
+      wouldRecommend: helpful,
+      surveyVersion: 'ai_feedback_v1',
+      collectionPoint: 'ai_coach_conversation',
+      sessionDuration: null
+    });
+    
+    res.json({
+      success: true,
+      message: 'Thank you for your feedback!'
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // Clear conversation history
 router.delete('/conversations', protect, checkAICoachAccess, async (req, res, next) => {
