@@ -98,6 +98,23 @@ const initializeSchema = async () => {
       verification_code TEXT,
       verification_expires_at DATETIME,
       current_stage TEXT DEFAULT 'verification',
+      
+      -- Tech Stack Fields
+      tech_stack_sales TEXT DEFAULT '[]',
+      tech_stack_operations TEXT DEFAULT '[]',
+      tech_stack_marketing TEXT DEFAULT '[]',
+      tech_stack_customer_experience TEXT DEFAULT '[]',
+      tech_stack_project_management TEXT DEFAULT '[]',
+      tech_stack_accounting_finance TEXT DEFAULT '[]',
+      
+      -- Tech Stack Other Fields
+      tech_stack_sales_other TEXT,
+      tech_stack_operations_other TEXT,
+      tech_stack_marketing_other TEXT,
+      tech_stack_customer_experience_other TEXT,
+      tech_stack_project_management_other TEXT,
+      tech_stack_accounting_finance_other TEXT,
+      
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       completed_at DATETIME

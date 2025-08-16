@@ -8,13 +8,23 @@ const FOCUS_AREA_WEIGHTS = {
   tertiary: 1.0
 };
 
-// Revenue range compatibility matrix
+// Revenue range compatibility matrix (updated to match partner form)
 const REVENUE_COMPATIBILITY = {
-  'under_500k': ['under_500k', '500k_1m'],
-  '500k_1m': ['under_500k', '500k_1m', '1m_5m'],
-  '1m_5m': ['500k_1m', '1m_5m', '5m_10m'],
-  '5m_10m': ['1m_5m', '5m_10m', 'over_10m'],
-  'over_10m': ['5m_10m', 'over_10m']
+  '0_5_million': ['0_5_million', '5_10_million'],
+  '5_10_million': ['0_5_million', '5_10_million', '11_20_million'],
+  '11_20_million': ['5_10_million', '11_20_million', '21_30_million'],
+  '21_30_million': ['11_20_million', '21_30_million', '31_50_million'],
+  '31_50_million': ['21_30_million', '31_50_million', '51_75_million'],
+  '51_75_million': ['31_50_million', '51_75_million', '76_150_million'],
+  '76_150_million': ['51_75_million', '76_150_million', '151_300_million'],
+  '151_300_million': ['76_150_million', '151_300_million', '300_plus_million'],
+  '300_plus_million': ['151_300_million', '300_plus_million'],
+  // Legacy support for old values
+  'under_500k': ['0_5_million'],
+  '500k_1m': ['0_5_million'],
+  '1m_5m': ['0_5_million', '5_10_million'],
+  '5m_10m': ['5_10_million', '11_20_million'],
+  'over_10m': ['11_20_million', '21_30_million', '31_50_million']
 };
 
 const matchContractorWithPartners = async (contractor) => {
@@ -115,15 +125,20 @@ const calculateMatchScore = (contractor, partner) => {
   let score = 0;
   let maxScore = 0;
 
-  // Focus area matching (60% weight)
+  // Focus area matching (50% weight) - reduced from 60%
   const focusScore = calculateFocusAreaScore(contractor, partner);
-  score += focusScore * 0.6;
-  maxScore += 100 * 0.6;
+  score += focusScore * 0.5;
+  maxScore += 100 * 0.5;
 
-  // Revenue range compatibility (20% weight)
+  // Revenue range compatibility (15% weight) - reduced from 20%
   const revenueScore = calculateRevenueScore(contractor, partner);
-  score += revenueScore * 0.2;
-  maxScore += 100 * 0.2;
+  score += revenueScore * 0.15;
+  maxScore += 100 * 0.15;
+
+  // Tech stack compatibility (15% weight) - NEW
+  const techStackScore = calculateTechStackCompatibility(contractor, partner);
+  score += techStackScore * 0.15;
+  maxScore += 100 * 0.15;
 
   // Power confidence score (10% weight)
   score += (partner.power_confidence_score || 0) * 0.1;
@@ -219,7 +234,28 @@ const generateMatchReasons = (contractor, partner, matchScore) => {
 
   // Revenue range fit
   if (partner.target_revenue_range && partner.target_revenue_range.includes(contractor.annual_revenue)) {
-    reasons.push(`Perfect fit for ${contractor.annual_revenue.replace(/_/g, ' ')} revenue businesses`);
+    // Format the revenue range for display
+    const formatRevenue = (range) => {
+      const revenueMap = {
+        '0_5_million': '$0-5M',
+        '5_10_million': '$5-10M',
+        '11_20_million': '$11-20M',
+        '21_30_million': '$21-30M',
+        '31_50_million': '$31-50M',
+        '51_75_million': '$51-75M',
+        '76_150_million': '$76-150M',
+        '151_300_million': '$151-300M',
+        '300_plus_million': '$300M+',
+        // Legacy formats
+        'under_500k': 'under $500K',
+        '500k_1m': '$500K-1M',
+        '1m_5m': '$1-5M',
+        '5m_10m': '$5-10M',
+        'over_10m': 'over $10M'
+      };
+      return revenueMap[range] || range.replace(/_/g, ' ');
+    };
+    reasons.push(`Perfect fit for ${formatRevenue(contractor.annual_revenue)} revenue businesses`);
   }
 
   // High confidence score
@@ -256,8 +292,126 @@ const generateMatchReasons = (contractor, partner, matchScore) => {
   return reasons;
 };
 
+// Calculate tech stack compatibility score
+const calculateTechStackCompatibility = (contractor, partner) => {
+  // If contractor hasn't provided tech stack info, return neutral score
+  if (!contractor || !hasAnyTechStack(contractor)) {
+    return 50; // Neutral score when no tech stack data available
+  }
+
+  let compatibilityScore = 0;
+  let totalCategories = 0;
+  
+  // Tech stack categories to check
+  const techStackCategories = [
+    'tech_stack_sales',
+    'tech_stack_operations', 
+    'tech_stack_marketing',
+    'tech_stack_customer_experience',
+    'tech_stack_project_management',
+    'tech_stack_accounting_finance'
+  ];
+
+  // Check each tech stack category
+  for (const category of techStackCategories) {
+    const contractorStack = parseTechStack(contractor[category]);
+    
+    if (contractorStack.length > 0) {
+      totalCategories++;
+      
+      // Calculate category compatibility
+      const categoryScore = calculateCategoryCompatibility(
+        contractorStack, 
+        partner, 
+        category
+      );
+      compatibilityScore += categoryScore;
+    }
+  }
+
+  // If no tech stack categories found, return neutral
+  if (totalCategories === 0) {
+    return 50;
+  }
+
+  // Return average compatibility score
+  return compatibilityScore / totalCategories;
+};
+
+// Check if contractor has any tech stack information
+const hasAnyTechStack = (contractor) => {
+  const categories = [
+    'tech_stack_sales',
+    'tech_stack_operations',
+    'tech_stack_marketing', 
+    'tech_stack_customer_experience',
+    'tech_stack_project_management',
+    'tech_stack_accounting_finance'
+  ];
+  
+  return categories.some(category => {
+    const stack = parseTechStack(contractor[category]);
+    return stack.length > 0;
+  });
+};
+
+// Parse tech stack field (handle both string and array)
+const parseTechStack = (techStackField) => {
+  if (!techStackField) return [];
+  
+  if (Array.isArray(techStackField)) {
+    return techStackField;
+  }
+  
+  if (typeof techStackField === 'string') {
+    try {
+      const parsed = JSON.parse(techStackField);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  
+  return [];
+};
+
+// Calculate compatibility for a specific tech stack category
+const calculateCategoryCompatibility = (contractorStack, partner, category) => {
+  // For now, we'll use a simple heuristic since partners don't have detailed tech stack data yet
+  // This can be enhanced when partners provide their tech stack requirements/compatibilities
+  
+  let score = 75; // Base compatibility score
+  
+  // Bonus for having modern, popular tools
+  const modernTools = [
+    'HubSpot', 'Salesforce', 'JobNimbus', 'JobProgress', 'Buildertrend',
+    'Google Ads', 'Facebook Ads', 'Podium', 'ServiceTitan', 'QuickBooks'
+  ];
+  
+  const hasModernTool = contractorStack.some(tool => 
+    modernTools.includes(tool)
+  );
+  
+  if (hasModernTool) {
+    score += 15; // Bonus for modern tools
+  }
+  
+  // Slight penalty for too many tools in one category (potential complexity)
+  if (contractorStack.length > 3) {
+    score -= 5;
+  }
+  
+  // Bonus for having tools at all (shows they're tech-savvy)
+  if (contractorStack.length > 0) {
+    score += 10;
+  }
+  
+  return Math.min(100, Math.max(0, score));
+};
+
 module.exports = {
   matchContractorWithPartners,
   calculateMatchScore,
-  generateMatchReasons
+  generateMatchReasons,
+  calculateTechStackCompatibility
 };

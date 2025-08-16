@@ -10,6 +10,7 @@ import { ContractorFlowProvider, useContractorFlow } from "@/contexts/Contractor
 import VerificationStep from "@/components/contractor-flow/verificationstep";
 import FocusSelectionStep from "@/components/contractor-flow/focusselectionstep";
 import ProfilingStep from "@/components/contractor-flow/profilingstep";
+import TechStackStep from "@/components/contractor-flow/techstackstep";
 import MatchingStep from "@/components/contractor-flow/matchingstep";
 import CompletionStep from "@/components/contractor-flow/completionstep";
 
@@ -21,8 +22,9 @@ function ContractorFlowContent() {
     { number: 1, title: "Verification", component: VerificationStep },
     { number: 2, title: "Focus Areas", component: FocusSelectionStep },
     { number: 3, title: "Business Profile", component: ProfilingStep },
-    { number: 4, title: "Partner Match", component: MatchingStep },
-    { number: 5, title: "Complete", component: CompletionStep }
+    { number: 4, title: "Technology Stack", component: TechStackStep },
+    { number: 5, title: "Partner Match", component: MatchingStep },
+    { number: 6, title: "Complete", component: CompletionStep }
   ];
 
   const nextStep = () => {

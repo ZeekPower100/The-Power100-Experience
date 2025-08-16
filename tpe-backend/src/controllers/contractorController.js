@@ -2,6 +2,7 @@ const { query, transaction } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
 const { generateVerificationCode, sendSMSVerification } = require('../services/smsService');
 const { matchContractorWithPartners } = require('../services/matchingService');
+const { getEnhancedMatches } = require('../services/enhancedMatchingService');
 const { sendPartnerIntroEmail } = require('../services/emailService');
 
 // Start verification process
@@ -142,7 +143,21 @@ const updateProfile = async (req, res, next) => {
   Object.keys(updates).forEach(key => {
     if (allowedFields.includes(key)) {
       setClause.push(`${key} = $${paramCount}`);
-      values.push(updates[key]);
+      
+      // JSON fields that need serialization
+      const jsonFields = ['focus_areas', 'services_offered'];
+      
+      if (jsonFields.includes(key) && Array.isArray(updates[key])) {
+        // Serialize arrays to JSON strings
+        values.push(JSON.stringify(updates[key]));
+      } else if (jsonFields.includes(key) && typeof updates[key] === 'object' && updates[key] !== null) {
+        // Handle objects that might already be stringified incorrectly
+        values.push(JSON.stringify(updates[key]));
+      } else {
+        // Store other values as-is
+        values.push(updates[key]);
+      }
+      
       paramCount++;
     }
   });
@@ -174,6 +189,7 @@ const updateProfile = async (req, res, next) => {
 // Get contractor matches
 const getMatches = async (req, res, next) => {
   const { id } = req.params;
+  const { focusAreaIndex } = req.query; // Optional parameter to specify which focus area to use
 
   // Get contractor data
   const contractorResult = await query(
@@ -187,12 +203,14 @@ const getMatches = async (req, res, next) => {
 
   const contractor = contractorResult.rows[0];
 
-  // Find and save matches
-  const matches = await matchContractorWithPartners(contractor);
+  // Use enhanced matching that includes podcasts and events
+  // Pass the focus area index if provided
+  const enhancedResults = await getEnhancedMatches(contractor, focusAreaIndex);
 
   res.status(200).json({
     success: true,
-    matches
+    ...enhancedResults, // Spreads matches, podcastMatch, and eventMatch
+    focusAreaIndex: focusAreaIndex || 0 // Return which focus area index was used
   });
 };
 

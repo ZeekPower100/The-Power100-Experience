@@ -69,8 +69,8 @@ export const contractorApi = {
     }),
 
   // Get partner matches
-  getMatches: (contractorId: string) =>
-    apiRequest(`/contractors/${contractorId}/matches`),
+  getMatches: (contractorId: string, focusAreaIndex: number = 0) =>
+    apiRequest(`/contractors/${contractorId}/matches?focusAreaIndex=${focusAreaIndex}`),
 
   // Complete contractor flow
   completeFlow: (contractorId: string, selectedPartnerId?: string) =>

@@ -13,6 +13,8 @@ class OutcomeTrackingService {
         match_score: matchData.score,
         match_reasons: matchData.reasons,
         primary_match: matchData.isPrimary || false,
+        podcast_matched: matchData.podcastMatched || false,
+        event_matched: matchData.eventMatched || false,
         timestamp: new Date().toISOString()
       },
       metadata: {
@@ -221,6 +223,75 @@ class OutcomeTrackingService {
         conversion: experimentData.converted || false,
         engagement_score: experimentData.engagementScore,
         time_to_action: experimentData.timeToAction
+      }
+    });
+  }
+
+  // Track podcast interactions
+  async trackPodcastInteraction(contractorId, podcastId, interactionType, metadata = {}) {
+    return dataCollectionService.logInteraction({
+      interaction_type: 'podcast_interaction',
+      user_id: contractorId,
+      user_type: 'contractor',
+      podcast_id: podcastId,
+      action: interactionType, // 'viewed', 'clicked_link', 'visit_website'
+      outcomes: {
+        engaged_with_content: true,
+        content_type: 'podcast',
+        timestamp: new Date().toISOString()
+      },
+      metadata: {
+        podcast_name: metadata.podcastName,
+        host: metadata.host,
+        frequency: metadata.frequency,
+        match_score: metadata.matchScore,
+        ...metadata
+      }
+    });
+  }
+
+  // Track event interactions
+  async trackEventInteraction(contractorId, eventId, interactionType, metadata = {}) {
+    return dataCollectionService.logInteraction({
+      interaction_type: 'event_interaction',
+      user_id: contractorId,
+      user_type: 'contractor',
+      event_id: eventId,
+      action: interactionType, // 'viewed', 'registered', 'clicked_link'
+      outcomes: {
+        engaged_with_content: true,
+        content_type: 'event',
+        timestamp: new Date().toISOString()
+      },
+      metadata: {
+        event_name: metadata.eventName,
+        event_date: metadata.eventDate,
+        location: metadata.location,
+        format: metadata.format,
+        match_score: metadata.matchScore,
+        ...metadata
+      }
+    });
+  }
+
+  // Track CTA button clicks
+  async trackCTAClick(contractorId, ctaType, targetId, metadata = {}) {
+    return dataCollectionService.logInteraction({
+      interaction_type: 'cta_click',
+      user_id: contractorId,
+      user_type: 'contractor',
+      cta_type: ctaType, // 'quarterly_reports', 'customer_testimonials', 'schedule_intro', 'next_focus_area'
+      target_id: targetId, // partner_id or other relevant ID
+      outcomes: {
+        user_engagement: true,
+        click_intent: ctaType,
+        timestamp: new Date().toISOString()
+      },
+      metadata: {
+        target_type: metadata.targetType,
+        target_name: metadata.targetName,
+        placement: metadata.placement,
+        ...metadata
       }
     });
   }
