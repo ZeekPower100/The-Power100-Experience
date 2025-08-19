@@ -1,15 +1,23 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button"; // Assuming this is from a component library like shadcn/ui
 import { Card, CardContent } from "@/components/ui/card"; // Assuming this is from a component library like shadcn/ui
-import { ArrowRight, Shield, Target, Users, Zap } from "lucide-react";
+import { ArrowRight, Shield, Target, Users, Zap, RefreshCw } from "lucide-react";
 import { motion } from "framer-motion";
 import Image from 'next/image';
+import SessionDetectionModal from "@/components/ui/session-detection-modal";
+import SessionService from "@/lib/sessionService";
+import { Contractor } from "@/lib/types/contractor";
 
 export default function HomePage() {
   const router = useRouter();
+  const [showSessionModal, setShowSessionModal] = useState(false);
+  const [sessionContractor, setSessionContractor] = useState<Partial<Contractor> | null>(null);
+  const [sessionStep, setSessionStep] = useState(1);
+  const [hasActiveSession, setHasActiveSession] = useState(false);
+  const [isRestoringSession, setIsRestoringSession] = useState(false);
 
   const benefits = [
     {
@@ -33,6 +41,63 @@ export default function HomePage() {
       description: "Access to dedicated AI concierge for continued guidance and optimization"
     }
   ];
+
+  // Check for existing session when component mounts
+  useEffect(() => {
+    const checkForSession = async () => {
+      try {
+        if (SessionService.hasActiveSession()) {
+          const sessionData = await SessionService.restoreSession();
+          if (sessionData) {
+            setSessionContractor(sessionData.contractor);
+            setSessionStep(sessionData.currentStep);
+            setHasActiveSession(true);
+            
+            // Show modal automatically if session is found
+            setShowSessionModal(true);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check session:', error);
+      }
+    };
+
+    checkForSession();
+  }, []);
+
+  const handleResumeSession = async () => {
+    setIsRestoringSession(true);
+    try {
+      const sessionData = await SessionService.restoreSession();
+      if (sessionData) {
+        setShowSessionModal(false);
+        router.push('/contractorflow');
+      }
+    } catch (error) {
+      console.error('Failed to restore session:', error);
+    } finally {
+      setIsRestoringSession(false);
+    }
+  };
+
+  const handleStartFresh = () => {
+    SessionService.clearSession();
+    setShowSessionModal(false);
+    setHasActiveSession(false);
+    router.push('/contractorflow');
+  };
+
+  const handleStartExperience = () => {
+    router.push("/contractorflow");
+  };
+
+  const handleResumeFromButton = () => {
+    if (hasActiveSession) {
+      setShowSessionModal(true);
+    } else {
+      handleStartExperience();
+    }
+  };
 
   return (
     // The main container now uses theme colors for its default background
@@ -79,15 +144,36 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.3 }}
+              className="space-y-4"
             >
               <Button
-                onClick={() => router.push("/contractorflow")}
+                onClick={handleStartExperience}
                 size="lg"
                 className="bg-power100-green hover:brightness-90 transition-all duration-300 text-power100-white px-12 py-3 text-lg font-semibold rounded-lg group"
               >
                 Start Your Experience
                 <ArrowRight className="w-5 h-5 ml-2 group-hover-translate-x-1 transition-transform" />
               </Button>
+              
+              {/* Conditional Resume Button */}
+              {hasActiveSession && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: 0.1 }}
+                >
+                  <Button
+                    onClick={handleResumeFromButton}
+                    variant="outline"
+                    size="lg"
+                    className="border-power100-red text-power100-red hover:bg-power100-red hover:text-white px-12 py-3 text-lg font-semibold rounded-lg group transition-all duration-300"
+                  >
+                    <RefreshCw className="w-5 h-5 mr-2" />
+                    Resume Your Experience
+                  </Button>
+                </motion.div>
+              )}
+              
               <p className="text-sm text-gray-500 mt-4">Takes only 5 minutes • No cost • Immediate results</p>
             </motion.div>
           </div>
@@ -153,14 +239,35 @@ export default function HomePage() {
               Our AI concierge guides you through a personalized experience to identify your business
               goals and connect you with the ideal strategic partner.
             </p>
-            <Button
-              onClick={() => router.push("/contractorflow")}
-              size="lg"
-              className="bg-power100-green hover:brightness-90 transition-all duration-300 text-power100-white px-8 py-3 text-base font-semibold rounded-lg group"
-            >
-              Begin Your Journey
-              <ArrowRight className="w-4 h-4 ml-2 group-hover-translate-x-1 transition-transform" />
-            </Button>
+            <div className="space-y-4">
+              <Button
+                onClick={handleStartExperience}
+                size="lg"
+                className="bg-power100-green hover:brightness-90 transition-all duration-300 text-power100-white px-8 py-3 text-base font-semibold rounded-lg group"
+              >
+                Begin Your Journey
+                <ArrowRight className="w-4 h-4 ml-2 group-hover-translate-x-1 transition-transform" />
+              </Button>
+              
+              {/* Conditional Resume Button for bottom CTA */}
+              {hasActiveSession && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5 }}
+                >
+                  <Button
+                    onClick={handleResumeFromButton}
+                    variant="outline"
+                    size="lg"
+                    className="border-white text-white hover:bg-white hover:text-power100-black px-8 py-3 text-base font-semibold rounded-lg group transition-all duration-300"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Resume Your Experience
+                  </Button>
+                </motion.div>
+              )}
+            </div>
           </motion.div>
         </div>
       </div>
@@ -177,6 +284,17 @@ export default function HomePage() {
           </Button>
         </div>
       </div>
+
+      {/* Session Detection Modal */}
+      <SessionDetectionModal
+        isOpen={showSessionModal}
+        onClose={() => setShowSessionModal(false)}
+        onResume={handleResumeSession}
+        onStartFresh={handleStartFresh}
+        contractor={sessionContractor}
+        currentStep={sessionStep}
+        isLoading={isRestoringSession}
+      />
     </div>
   );
 }

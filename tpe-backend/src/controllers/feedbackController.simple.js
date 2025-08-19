@@ -91,11 +91,60 @@ const updatePowerConfidenceScores = (req, res) => {
   res.json({ success: true, message: 'PowerConfidence scores updated (Demo mode)' });
 };
 
+// SMS Campaign Management (Placeholder endpoints)
+const getSmsCampaigns = (req, res) => {
+  res.json({
+    success: true,
+    campaigns: [],
+    total: 0
+  });
+};
+
+const createSmsCampaign = (req, res) => {
+  res.json({ 
+    success: true, 
+    campaign: { id: 1, ...req.body, status: 'pending' },
+    message: 'SMS campaign created (Demo mode)' 
+  });
+};
+
+const launchSmsCampaign = (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'SMS campaign launched (Demo mode)' 
+  });
+};
+
+const getSmsAnalytics = (req, res) => {
+  res.json({
+    success: true,
+    campaignPerformance: {
+      total_campaigns: 0,
+      completed_campaigns: 0,
+      total_messages_sent: 0,
+      total_delivered: 0,
+      avg_delivery_rate: 0,
+      avg_response_rate: 0
+    },
+    subscriptionStats: {
+      total_subscriptions: 0,
+      active_subscriptions: 0,
+      this_month_subscriptions: 0,
+      opt_out_rate: 0
+    }
+  });
+};
+
 module.exports = {
   getFeedbackSurveys,
   createFeedbackSurvey,
   submitFeedbackResponse,
   getPartnerFeedbackAnalytics,
   updatePowerConfidenceScores,
-  getPartnerPerformanceDashboard
+  getPartnerPerformanceDashboard,
+  // SMS endpoints
+  getSmsCampaigns,
+  createSmsCampaign,
+  launchSmsCampaign,
+  getSmsAnalytics
 };

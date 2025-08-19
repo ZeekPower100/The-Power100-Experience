@@ -66,6 +66,67 @@ the-power100-experience/          # Project root
 - Lucide React for icons
 - Tailwind CSS for styling
 
+## 🎯 Standard Card Design System
+
+### **REQUIRED: All cards and forms must follow this consistent design pattern**
+
+#### Container Layout
+```tsx
+<div className="min-h-screen bg-power100-bg-grey flex items-center justify-center">
+  <div className="w-full max-w-2xl mx-auto px-4">
+    {/* Card content here */}
+  </div>
+</div>
+```
+
+#### Card Structure
+```tsx
+<div className="bg-white rounded-2xl shadow-lg p-8">
+  {/* Red/Green Icon at top center */}
+  <div className="flex justify-center mb-6">
+    <div className="w-12 h-12 bg-power100-red rounded-full flex items-center justify-center">
+      <IconComponent className="h-6 w-6 text-white" />
+    </div>
+  </div>
+  
+  {/* Content */}
+  <div className="text-center">
+    {/* Main content here */}
+  </div>
+  
+  {/* Navigation Buttons */}
+  <div className="flex gap-4 mt-8">
+    {/* Back Button (if needed) */}
+    <Button
+      variant="outline"
+      className="flex-1 bg-white border-2 border-gray-200 text-power100-black hover:bg-gray-50"
+    >
+      Back
+    </Button>
+    
+    {/* Primary Action Button */}
+    <Button className="flex-1 bg-power100-green hover:bg-green-600 text-white font-semibold">
+      Continue
+    </Button>
+  </div>
+</div>
+```
+
+#### Design Specifications
+- **Background**: Light gray (`bg-power100-bg-grey`)
+- **Card**: White background with rounded corners (`rounded-2xl`) and shadow (`shadow-lg`)
+- **Icon**: 48px circle with Power100 red/green background at top center
+- **Buttons**: 
+  - Primary: Green background (`bg-power100-green`) with white text
+  - Secondary: White background with gray border
+- **Spacing**: 32px padding (`p-8`) inside cards
+- **Layout**: Centered with max width of 2xl (672px)
+
+#### Examples in Codebase
+- ✅ Contractor Flow: `src/app/contractorflow/page.tsx`
+- ✅ Power Cards Survey: `src/components/powerCards/PowerCardSurvey.tsx`
+- ✅ Survey Complete: `src/components/powerCards/SurveyComplete.tsx`
+
 ## 🔄 Development Workflow Requirements
 
 ### Git Strategy

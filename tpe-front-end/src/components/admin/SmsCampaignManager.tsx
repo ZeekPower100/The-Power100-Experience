@@ -77,22 +77,23 @@ const SmsCampaignManager: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('adminToken');
+      const token = localStorage.getItem('authToken');
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       
       // Fetch campaigns
-      const campaignResponse = await fetch('/api/sms/campaigns', {
+      const campaignResponse = await fetch(`${API_BASE_URL}/sms/campaigns`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const campaignData = await campaignResponse.json();
       
       // Fetch analytics
-      const analyticsResponse = await fetch('/api/sms/analytics', {
+      const analyticsResponse = await fetch(`${API_BASE_URL}/sms/analytics`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const analyticsData = await analyticsResponse.json();
       
       // Fetch partners
-      const partnerResponse = await fetch('/api/partners', {
+      const partnerResponse = await fetch(`${API_BASE_URL}/partners`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const partnerData = await partnerResponse.json();
@@ -109,8 +110,9 @@ const SmsCampaignManager: React.FC = () => {
 
   const createCampaign = async () => {
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch('/api/sms/campaigns', {
+      const token = localStorage.getItem('authToken');
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_BASE_URL}/sms/campaigns`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -148,8 +150,9 @@ const SmsCampaignManager: React.FC = () => {
 
   const launchCampaign = async (campaignId: number) => {
     try {
-      const token = localStorage.getItem('adminToken');
-      const response = await fetch(`/api/sms/campaigns/${campaignId}/launch`, {
+      const token = localStorage.getItem('authToken');
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_BASE_URL}/sms/campaigns/${campaignId}/launch`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });

@@ -8,7 +8,7 @@ const {
   getPartnerFeedbackAnalytics,
   updatePowerConfidenceScores,
   getPartnerPerformanceDashboard
-} = require('../controllers/feedbackController');
+} = require('../controllers/feedbackController.simple');
 
 const { authenticateAdmin } = require('../middleware/auth');
 

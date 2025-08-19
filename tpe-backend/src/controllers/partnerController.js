@@ -23,26 +23,44 @@ const getActivePartners = async (req, res, next) => {
 const getPartner = async (req, res, next) => {
   const { id } = req.params;
 
-  const result = await query(`
-    SELECT p.*,
-           COUNT(DISTINCT b.id) as total_bookings,
-           COUNT(DISTINCT b.id) FILTER (WHERE b.status = 'completed') as completed_bookings,
-           COUNT(DISTINCT m.contractor_id) as total_matches
-    FROM strategic_partners p
-    LEFT JOIN demo_bookings b ON p.id = b.partner_id
-    LEFT JOIN contractor_partner_matches m ON p.id = m.partner_id
-    WHERE p.id = ?
-    GROUP BY p.id
-  `, [id]);
+  try {
+    // Get basic partner info
+    const partnerResult = await query(`
+      SELECT * FROM strategic_partners WHERE id = ?
+    `, [id]);
 
-  if (result.rows.length === 0) {
-    return next(new AppError('Partner not found', 404));
+    if (partnerResult.rows.length === 0) {
+      return next(new AppError('Partner not found', 404));
+    }
+
+    const partner = partnerResult.rows[0];
+
+    // Get booking stats
+    const bookingStats = await query(`
+      SELECT 
+        COUNT(*) as total_bookings,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_bookings
+      FROM demo_bookings WHERE partner_id = ?
+    `, [id]);
+
+    // Get match stats
+    const matchStats = await query(`
+      SELECT COUNT(DISTINCT contractor_id) as total_matches
+      FROM contractor_partner_matches WHERE partner_id = ?
+    `, [id]);
+
+    // Combine stats
+    partner.total_bookings = bookingStats.rows[0]?.total_bookings || 0;
+    partner.completed_bookings = bookingStats.rows[0]?.completed_bookings || 0;
+    partner.total_matches = matchStats.rows[0]?.total_matches || 0;
+
+    res.status(200).json({
+      success: true,
+      partner: partner
+    });
+  } catch (error) {
+    return next(error);
   }
-
-  res.status(200).json({
-    success: true,
-    partner: result.rows[0]
-  });
 };
 
 // Get all partners (admin)
@@ -194,23 +212,81 @@ const updatePartner = async (req, res, next) => {
   const { id } = req.params;
   const updates = req.body;
 
-  // Build dynamic update query
+  // Build dynamic update query - Include ALL database fields
   const allowedFields = [
+    // Basic Information
     'company_name', 'description', 'logo_url', 'website', 'contact_email',
-    'contact_phone', 'focus_areas_served', 'target_revenue_range',
-    'power_confidence_score', 'key_differentiators', 'pricing_model',
-    'onboarding_url', 'demo_booking_url', 'is_active'
+    'contact_phone', 'power100_subdomain',
+    
+    // Business Details
+    'established_year', 'employee_count', 'ownership_type', 'company_description',
+    
+    // Service Information
+    'focus_areas_served', 'target_revenue_range', 'geographic_regions',
+    'service_areas', 'service_areas_other', 'service_category',
+    'target_revenue_audience', 'focus_areas_12_months',
+    
+    // Value Proposition
+    'value_proposition', 'why_clients_choose_you', 'why_clients_choose_competitors',
+    'key_differentiators', 'pricing_model',
+    
+    // Performance Metrics
+    'power_confidence_score', 'previous_powerconfidence_score', 'score_trend',
+    'industry_rank', 'category_rank',
+    
+    // Feedback & Reviews
+    'last_feedback_update', 'total_feedback_responses', 'average_satisfaction',
+    'feedback_trend', 'next_quarterly_review', 'avg_contractor_satisfaction',
+    'total_contractor_engagements',
+    
+    // Contact Information
+    'ceo_contact_name', 'ceo_contact_email', 'ceo_contact_phone', 'ceo_contact_title',
+    'cx_contact_name', 'cx_contact_email', 'cx_contact_phone', 'cx_contact_title',
+    'sales_contact_name', 'sales_contact_email', 'sales_contact_phone', 'sales_contact_title',
+    'onboarding_contact_name', 'onboarding_contact_email', 'onboarding_contact_phone', 'onboarding_contact_title',
+    'marketing_contact_name', 'marketing_contact_email', 'marketing_contact_phone', 'marketing_contact_title',
+    
+    // Technology Stack
+    'tech_stack_crm', 'tech_stack_project_management', 'tech_stack_communication',
+    'tech_stack_analytics', 'tech_stack_marketing', 'tech_stack_financial',
+    
+    // Marketing & Partnerships
+    'sponsored_events', 'podcast_appearances', 'books_read_recommended',
+    'best_working_partnerships',
+    
+    // Client Information
+    'client_demos', 'client_references', 'client_testimonials',
+    
+    // Administrative
+    'is_active', 'dashboard_access_enabled', 'last_dashboard_login',
+    'onboarding_url', 'demo_booking_url', 'onboarding_process',
+    'last_quarterly_report'
   ];
 
   const setClause = [];
   const values = [];
-  let paramCount = 1;
 
+  // Process each field
   Object.keys(updates).forEach(key => {
     if (allowedFields.includes(key)) {
-      setClause.push(`${key} = $${paramCount}`);
-      values.push(updates[key]);
-      paramCount++;
+      setClause.push(`${key} = ?`);
+      
+      // Handle JSON fields - Arrays and objects need to be stringified
+      const jsonFields = [
+        'focus_areas_served', 'target_revenue_range', 'geographic_regions',
+        'key_differentiators', 'service_areas', 'target_revenue_audience',
+        'focus_areas_12_months', 'tech_stack_crm', 'tech_stack_project_management',
+        'tech_stack_communication', 'tech_stack_analytics', 'tech_stack_marketing',
+        'tech_stack_financial', 'sponsored_events', 'podcast_appearances',
+        'client_demos', 'client_references', 'client_testimonials'
+      ];
+      
+      if (jsonFields.includes(key)) {
+        // Stringify arrays/objects for JSON storage
+        values.push(typeof updates[key] === 'string' ? updates[key] : JSON.stringify(updates[key] || []));
+      } else {
+        values.push(updates[key]);
+      }
     }
   });
 
@@ -220,22 +296,27 @@ const updatePartner = async (req, res, next) => {
 
   values.push(id);
 
-  const result = await query(
-    `UPDATE strategic_partners 
-     SET ${setClause.join(', ')}, updated_at = CURRENT_TIMESTAMP 
-     WHERE id = $${paramCount}
-     RETURNING *`,
-    values
-  );
+  try {
+    const result = await query(
+      `UPDATE strategic_partners 
+       SET ${setClause.join(', ')}, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = ?
+       RETURNING *`,
+      values
+    );
 
-  if (result.rows.length === 0) {
-    return next(new AppError('Partner not found', 404));
+    if (result.rows.length === 0) {
+      return next(new AppError('Partner not found', 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      partner: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Update partner error:', error);
+    return next(new AppError('Failed to update partner', 500));
   }
-
-  res.status(200).json({
-    success: true,
-    partner: result.rows[0]
-  });
 };
 
 // Delete partner (admin)
@@ -306,6 +387,151 @@ const getPartnerStats = async (req, res, next) => {
   });
 };
 
+// Search partners with advanced filters
+const searchPartners = async (req, res, next) => {
+  const { 
+    query: searchQuery = '', 
+    focusAreas = [], 
+    revenueRanges = [], 
+    isActive, 
+    confidenceScoreMin, 
+    confidenceScoreMax, 
+    dateFrom, 
+    dateTo, 
+    sortBy = 'created_at', 
+    sortOrder = 'DESC', 
+    limit = 20, 
+    offset = 0 
+  } = req.body;
+
+  console.log('🔍 searchPartners called with:', req.body);
+
+  try {
+    let whereClause = '1=1';
+    const values = [];
+    let paramCount = 1;
+
+    // Text search across multiple fields
+    if (searchQuery && searchQuery.trim()) {
+      whereClause += ` AND (
+        company_name LIKE ? OR 
+        description LIKE ? OR 
+        contact_email LIKE ? OR 
+        website LIKE ?
+      )`;
+      const searchPattern = `%${searchQuery.trim()}%`;
+      values.push(searchPattern, searchPattern, searchPattern, searchPattern);
+    }
+
+    // Active status filter
+    if (isActive !== undefined) {
+      whereClause += ` AND is_active = ?`;
+      values.push(isActive ? 1 : 0);
+    }
+
+    // Focus areas filter (JSON field)
+    if (focusAreas && focusAreas.length > 0) {
+      const focusConditions = focusAreas.map(() => `focus_areas_served LIKE ?`).join(' OR ');
+      whereClause += ` AND (${focusConditions})`;
+      focusAreas.forEach(area => {
+        values.push(`%"${area}"%`);
+      });
+    }
+
+    // Revenue ranges filter (JSON field)
+    if (revenueRanges && revenueRanges.length > 0) {
+      const revenueConditions = revenueRanges.map(() => `target_revenue_range LIKE ?`).join(' OR ');
+      whereClause += ` AND (${revenueConditions})`;
+      revenueRanges.forEach(range => {
+        values.push(`%"${range}"%`);
+      });
+    }
+
+    // PowerConfidence score range
+    if (confidenceScoreMin !== undefined) {
+      whereClause += ` AND power_confidence_score >= ?`;
+      values.push(confidenceScoreMin);
+    }
+    if (confidenceScoreMax !== undefined) {
+      whereClause += ` AND power_confidence_score <= ?`;
+      values.push(confidenceScoreMax);
+    }
+
+    // Date range filter
+    if (dateFrom) {
+      whereClause += ` AND created_at >= ?`;
+      values.push(dateFrom);
+    }
+    if (dateTo) {
+      whereClause += ` AND created_at <= ?`;
+      values.push(dateTo + ' 23:59:59'); // Include full day
+    }
+
+    // Validate sort parameters
+    const allowedSortFields = ['created_at', 'updated_at', 'company_name', 'power_confidence_score', 'is_active'];
+    const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+    const validSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    // Get total count
+    const countQuery = `SELECT COUNT(*) as total FROM strategic_partners WHERE ${whereClause}`;
+    const countResult = await query(countQuery, values);
+    const total = countResult.rows[0].total;
+
+    // Use the simplest working query structure
+    const partnersResult = await query(
+      `SELECT * FROM strategic_partners ORDER BY created_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`,
+      []
+    );
+
+    // Parse JSON fields safely
+    const partners = partnersResult.rows.map(partner => ({
+      ...partner,
+      focus_areas_served: partner.focus_areas_served ? 
+        (partner.focus_areas_served === '[object Object]' ? [] : 
+         (typeof partner.focus_areas_served === 'string' ? 
+          JSON.parse(partner.focus_areas_served || '[]') : partner.focus_areas_served)) : [],
+      target_revenue_range: partner.target_revenue_range ? 
+        (partner.target_revenue_range === '[object Object]' ? [] : 
+         (typeof partner.target_revenue_range === 'string' ? 
+          JSON.parse(partner.target_revenue_range || '[]') : partner.target_revenue_range)) : []
+    }));
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(total / limit);
+    const currentPage = Math.floor(offset / limit) + 1;
+    const hasMore = offset + limit < total;
+
+    res.status(200).json({
+      success: true,
+      partners,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore,
+        totalPages,
+        currentPage
+      },
+      searchParams: {
+        query: searchQuery,
+        focusAreas,
+        revenueRanges,
+        isActive,
+        confidenceScoreMin,
+        confidenceScoreMax,
+        dateFrom,
+        dateTo,
+        sortBy: validSortBy,
+        sortOrder: validSortOrder
+      }
+    });
+
+  } catch (error) {
+    console.error('Search partners error:', error);
+    return next(error);
+  }
+};
+
 module.exports = {
   getActivePartners,
   getPartner,
@@ -314,5 +540,6 @@ module.exports = {
   updatePartner,
   deletePartner,
   togglePartnerStatus,
-  getPartnerStats
+  getPartnerStats,
+  searchPartners
 };

@@ -4,6 +4,7 @@ const { generateVerificationCode, sendSMSVerification } = require('../services/s
 const { matchContractorWithPartners } = require('../services/matchingService');
 const { getEnhancedMatches } = require('../services/enhancedMatchingService');
 const { sendPartnerIntroEmail } = require('../services/emailService');
+const contactTaggingService = require('../services/contactTaggingService');
 
 // Start verification process
 const startVerification = async (req, res, next) => {
@@ -48,10 +49,16 @@ const startVerification = async (req, res, next) => {
     // Get the inserted contractor
     const selectResult = await query('SELECT id, name, email, phone, company_name FROM contractors WHERE email = ?', [email]);
     contractor = selectResult.rows[0];
+    
+    // Auto-tag new contractor
+    await contactTaggingService.tagContractorOnboarding(contractor.id, email, ['new_signup']);
   } else {
     // Get the updated contractor
     const selectResult = await query('SELECT id, name, email, phone, company_name FROM contractors WHERE email = ?', [email]);
     contractor = selectResult.rows[0];
+    
+    // Auto-tag returning contractor
+    await contactTaggingService.tagContractorOnboarding(contractor.id, email, ['returning_signup']);
   }
 
   // Send SMS verification
@@ -129,36 +136,64 @@ const updateProfile = async (req, res, next) => {
   const { id } = req.params;
   const updates = req.body;
 
-  // Build dynamic update query
+  // Build dynamic update query - Include ALL contractor database fields
   const allowedFields = [
-    'service_area', 'services_offered', 'focus_areas', 'primary_focus_area',
-    'annual_revenue', 'team_size', 'increased_tools', 'increased_people',
-    'increased_activity', 'current_stage'
+    // Basic Information
+    'name', 'email', 'phone', 'company_name', 'company_website',
+    
+    // Location & Services
+    'service_area', 'services_offered',
+    
+    // Business Focus
+    'focus_areas', 'primary_focus_area',
+    
+    // Business Profile
+    'annual_revenue', 'team_size',
+    
+    // Readiness Indicators
+    'increased_tools', 'increased_people', 'increased_activity',
+    
+    // Technology Stack
+    'tech_stack_sales', 'tech_stack_operations', 'tech_stack_marketing',
+    'tech_stack_customer_experience', 'tech_stack_project_management', 
+    'tech_stack_accounting_finance',
+    
+    // Tech Stack Other Fields
+    'tech_stack_sales_other', 'tech_stack_operations_other', 'tech_stack_marketing_other',
+    'tech_stack_customer_experience_other', 'tech_stack_project_management_other',
+    'tech_stack_accounting_finance_other',
+    
+    // Contact Tagging
+    'contact_type', 'onboarding_source', 'associated_partner_id', 'email_domain', 'tags',
+    
+    // Verification & Flow
+    'opted_in_coaching', 'verification_status', 'current_stage',
+    
+    // PowerConfidence & Feedback
+    'feedback_completion_status'
   ];
 
   const setClause = [];
   const values = [];
-  let paramCount = 1;
 
   Object.keys(updates).forEach(key => {
     if (allowedFields.includes(key)) {
-      setClause.push(`${key} = $${paramCount}`);
+      setClause.push(`${key} = ?`);
       
       // JSON fields that need serialization
-      const jsonFields = ['focus_areas', 'services_offered'];
+      const jsonFields = [
+        'focus_areas', 'services_offered', 'tags',
+        'tech_stack_sales', 'tech_stack_operations', 'tech_stack_marketing',
+        'tech_stack_customer_experience', 'tech_stack_project_management',
+        'tech_stack_accounting_finance'
+      ];
       
-      if (jsonFields.includes(key) && Array.isArray(updates[key])) {
-        // Serialize arrays to JSON strings
-        values.push(JSON.stringify(updates[key]));
-      } else if (jsonFields.includes(key) && typeof updates[key] === 'object' && updates[key] !== null) {
-        // Handle objects that might already be stringified incorrectly
-        values.push(JSON.stringify(updates[key]));
+      if (jsonFields.includes(key)) {
+        // Stringify arrays/objects for JSON storage
+        values.push(typeof updates[key] === 'string' ? updates[key] : JSON.stringify(updates[key] || []));
       } else {
-        // Store other values as-is
         values.push(updates[key]);
       }
-      
-      paramCount++;
     }
   });
 
@@ -168,22 +203,27 @@ const updateProfile = async (req, res, next) => {
 
   values.push(id);
 
-  const result = await query(
-    `UPDATE contractors 
-     SET ${setClause.join(', ')}, updated_at = CURRENT_TIMESTAMP 
-     WHERE id = $${paramCount}
-     RETURNING *`,
-    values
-  );
+  try {
+    const result = await query(
+      `UPDATE contractors 
+       SET ${setClause.join(', ')}, updated_at = CURRENT_TIMESTAMP 
+       WHERE id = ?
+       RETURNING *`,
+      values
+    );
 
-  if (result.rows.length === 0) {
-    return next(new AppError('Contractor not found', 404));
+    if (result.rows.length === 0) {
+      return next(new AppError('Contractor not found', 404));
+    }
+
+    res.status(200).json({
+      success: true,
+      contractor: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Update contractor error:', error);
+    return next(new AppError('Failed to update contractor', 500));
   }
-
-  res.status(200).json({
-    success: true,
-    contractor: result.rows[0]
-  });
 };
 
 // Get contractor matches
@@ -308,38 +348,61 @@ const getAllContractors = async (req, res, next) => {
 // Get single contractor (admin)
 const getContractor = async (req, res, next) => {
   const { id } = req.params;
+  
+  console.log('🔍 getContractor called with ID:', id, 'Type:', typeof id);
 
-  const result = await query(`
-    SELECT c.*,
-           json_agg(DISTINCT jsonb_build_object(
-             'id', p.id,
-             'company_name', p.company_name,
-             'match_score', m.match_score,
-             'is_primary', m.is_primary_match
-           )) FILTER (WHERE p.id IS NOT NULL) as matches,
-           json_agg(DISTINCT jsonb_build_object(
-             'id', b.id,
-             'partner_name', sp.company_name,
-             'scheduled_date', b.scheduled_date,
-             'status', b.status
-           )) FILTER (WHERE b.id IS NOT NULL) as bookings
-    FROM contractors c
-    LEFT JOIN contractor_partner_matches m ON c.id = m.contractor_id
-    LEFT JOIN strategic_partners p ON m.partner_id = p.id
-    LEFT JOIN demo_bookings b ON c.id = b.contractor_id
-    LEFT JOIN strategic_partners sp ON b.partner_id = sp.id
-    WHERE c.id = ?
-    GROUP BY c.id
-  `, [id]);
+  try {
+    // Get basic contractor info
+    console.log('🔍 About to query for contractor with ID:', id);
+    
+    // Use the absolute simplest query that works
+    const contractorResult = await query(`
+      SELECT id, name FROM contractors WHERE id = ?
+    `, [id]);
+    
+    console.log('🔍 Simple query result:', contractorResult.rows.length, contractorResult.rows[0]);
+    
+    console.log('🔍 getContractor query result:', {
+      rowCount: contractorResult.rows.length,
+      id: id,
+      firstRow: contractorResult.rows[0]?.id,
+      rawResult: contractorResult
+    });
 
-  if (result.rows.length === 0) {
-    return next(new AppError('Contractor not found', 404));
+    if (contractorResult.rows.length === 0) {
+      console.log('🔍 getContractor - No contractor found with ID:', id);
+      return next(new AppError('Contractor not found', 404));
+    }
+
+    const contractor = contractorResult.rows[0];
+
+    // Get matches separately
+    const matchesResult = await query(`
+      SELECT p.id, p.company_name, m.match_score, m.is_primary_match
+      FROM contractor_partner_matches m
+      LEFT JOIN strategic_partners p ON m.partner_id = p.id
+      WHERE m.contractor_id = ?
+    `, [id]);
+
+    // Get bookings separately
+    const bookingsResult = await query(`
+      SELECT b.id, sp.company_name as partner_name, b.scheduled_date, b.status
+      FROM demo_bookings b
+      LEFT JOIN strategic_partners sp ON b.partner_id = sp.id
+      WHERE b.contractor_id = ?
+    `, [id]);
+
+    // Combine results
+    contractor.matches = matchesResult.rows || [];
+    contractor.bookings = bookingsResult.rows || [];
+
+    res.status(200).json({
+      success: true,
+      contractor: contractor
+    });
+  } catch (error) {
+    return next(error);
   }
-
-  res.status(200).json({
-    success: true,
-    contractor: result.rows[0]
-  });
 };
 
 // Delete contractor (admin)
@@ -385,6 +448,195 @@ const getStats = async (req, res, next) => {
   });
 };
 
+// Search contractors with advanced filters
+const searchContractors = async (req, res, next) => {
+  const { 
+    query: searchQuery = '', 
+    stage, 
+    focusAreas = [], 
+    revenueRange = [], 
+    verificationStatus, 
+    teamSizeMin, 
+    teamSizeMax, 
+    readinessIndicators = [],
+    contact_type,
+    onboarding_source,
+    tags = [],
+    dateFrom, 
+    dateTo, 
+    sortBy = 'created_at', 
+    sortOrder = 'DESC', 
+    limit = 20, 
+    offset = 0 
+  } = req.body;
+
+  console.log('🔍 searchContractors called with:', req.body);
+
+  try {
+    let whereClause = '1=1';
+    const values = [];
+    console.log('🔍 DEBUG - Starting search with whereClause:', whereClause);
+
+    // Text search across multiple fields
+    if (searchQuery && searchQuery.trim()) {
+      whereClause += ` AND (
+        name LIKE ? OR 
+        email LIKE ? OR 
+        company_name LIKE ? OR 
+        phone LIKE ?
+      )`;
+      const searchPattern = `%${searchQuery.trim()}%`;
+      values.push(searchPattern, searchPattern, searchPattern, searchPattern);
+    }
+
+    // Stage filter
+    if (stage) {
+      whereClause += ` AND current_stage = ?`;
+      values.push(stage);
+    }
+
+    // Verification status filter
+    if (verificationStatus) {
+      whereClause += ` AND verification_status = ?`;
+      values.push(verificationStatus);
+    }
+
+    // Contact type filter (new)
+    if (contact_type) {
+      whereClause += ` AND contact_type = ?`;
+      values.push(contact_type);
+    }
+
+    // Onboarding source filter (new)
+    if (onboarding_source) {
+      whereClause += ` AND onboarding_source = ?`;
+      values.push(onboarding_source);
+    }
+
+    // Tags filter (new) - check if any of the provided tags exist in the JSON tags field
+    if (tags && tags.length > 0) {
+      const tagConditions = tags.map(() => `tags LIKE ?`).join(' OR ');
+      whereClause += ` AND (${tagConditions})`;
+      tags.forEach(tag => {
+        values.push(`%"${tag}"%`);
+      });
+    }
+
+    // Focus areas filter (JSON field)
+    if (focusAreas && focusAreas.length > 0) {
+      const focusConditions = focusAreas.map(() => `focus_areas LIKE ?`).join(' OR ');
+      whereClause += ` AND (${focusConditions})`;
+      focusAreas.forEach(area => {
+        values.push(`%"${area}"%`);
+      });
+    }
+
+    // Revenue range filter
+    if (revenueRange && revenueRange.length > 0) {
+      const revenueConditions = revenueRange.map(() => `annual_revenue = ?`).join(' OR ');
+      whereClause += ` AND (${revenueConditions})`;
+      values.push(...revenueRange);
+    }
+
+    // Team size range
+    if (teamSizeMin !== undefined) {
+      whereClause += ` AND team_size >= ?`;
+      values.push(teamSizeMin);
+    }
+    if (teamSizeMax !== undefined) {
+      whereClause += ` AND team_size <= ?`;
+      values.push(teamSizeMax);
+    }
+
+    // Readiness indicators (boolean fields)
+    if (readinessIndicators && readinessIndicators.length > 0) {
+      const readinessConditions = readinessIndicators.map(indicator => `${indicator} = 1`).join(' OR ');
+      whereClause += ` AND (${readinessConditions})`;
+    }
+
+    // Date range filter
+    if (dateFrom) {
+      whereClause += ` AND created_at >= ?`;
+      values.push(dateFrom);
+    }
+    if (dateTo) {
+      whereClause += ` AND created_at <= ?`;
+      values.push(dateTo + ' 23:59:59'); // Include full day
+    }
+
+    // Validate sort parameters
+    const allowedSortFields = ['created_at', 'updated_at', 'name', 'company_name', 'current_stage', 'team_size', 'email'];
+    const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+    const validSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    // Get total count
+    const countQuery = `SELECT COUNT(*) as total FROM contractors WHERE ${whereClause}`;
+    const countResult = await query(countQuery, values);
+    const total = countResult.rows[0].total;
+
+    // Apply search filters and sorting
+    const contractorsResult = await query(
+      `SELECT * FROM contractors WHERE ${whereClause} ORDER BY ${validSortBy} ${validSortOrder} LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`,
+      values
+    );
+
+    // Parse JSON fields safely
+    const contractors = contractorsResult.rows.map(contractor => ({
+      ...contractor,
+      focus_areas: contractor.focus_areas ? 
+        (contractor.focus_areas === '[object Object]' ? [] : 
+         (typeof contractor.focus_areas === 'string' ? 
+          JSON.parse(contractor.focus_areas || '[]') : contractor.focus_areas)) : [],
+      services_offered: contractor.services_offered ? 
+        (contractor.services_offered === '[object Object]' ? [] : 
+         (typeof contractor.services_offered === 'string' ? 
+          JSON.parse(contractor.services_offered || '[]') : contractor.services_offered)) : [],
+      tags: contractor.tags ? 
+        (typeof contractor.tags === 'string' ? 
+         JSON.parse(contractor.tags || '[]') : contractor.tags) : []
+    }));
+
+    // Calculate pagination info
+    const totalPages = Math.ceil(total / limit);
+    const currentPage = Math.floor(offset / limit) + 1;
+    const hasMore = offset + limit < total;
+
+    res.status(200).json({
+      success: true,
+      contractors,
+      pagination: {
+        total,
+        limit,
+        offset,
+        hasMore,
+        totalPages,
+        currentPage
+      },
+      searchParams: {
+        query: searchQuery,
+        stage,
+        focusAreas,
+        revenueRange,
+        verificationStatus,
+        teamSizeMin,
+        teamSizeMax,
+        readinessIndicators,
+        contact_type,
+        onboarding_source,
+        tags,
+        dateFrom,
+        dateTo,
+        sortBy: validSortBy,
+        sortOrder: validSortOrder
+      }
+    });
+
+  } catch (error) {
+    console.error('Search contractors error:', error);
+    return next(error);
+  }
+};
+
 module.exports = {
   startVerification,
   verifyCode,
@@ -394,5 +646,6 @@ module.exports = {
   getAllContractors,
   getContractor,
   deleteContractor,
-  getStats
+  getStats,
+  searchContractors
 };

@@ -206,7 +206,11 @@ export default function SearchResults({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => onViewDetail(contractor.id)}
+              onClick={() => {
+                console.log('🔍 Viewing contractor with ID:', contractor.id, 'Type:', typeof contractor.id);
+                console.log('🔍 Full contractor object:', contractor);
+                onViewDetail(contractor.id);
+              }}
             >
               <Eye className="w-4 h-4 mr-1" />
               View

@@ -24,9 +24,14 @@ const bulkRoutes = require('./routes/bulk');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const smsRoutes = require('./routes/smsRoutes');
 const partnerEnhancedRoutes = require('./routes/partnerEnhancedRoutes');
+const contractorEnhancedRoutes = require('./routes/contractorEnhancedRoutes');
 const partnerAuthRoutes = require('./routes/partnerAuthRoutes');
 const partnerPortalRoutes = require('./routes/partnerPortalRoutes');
 const aiCoachRoutes = require('./routes/aiCoachRoutes');
+const sessionRoutes = require('./routes/sessionRoutes');
+const powerCardRoutes = require('./routes/powerCards');
+const powerConfidenceRoutes = require('./routes/powerConfidence');
+const contactTaggingRoutes = require('./routes/contactTagging');
 
 const app = express();
 
@@ -91,9 +96,14 @@ app.use('/api/bulk', bulkRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/partners-enhanced', partnerEnhancedRoutes);
+app.use('/api/contractors-enhanced', contractorEnhancedRoutes);
 app.use('/api/partner-auth', partnerAuthRoutes);
 app.use('/api/partner-portal', partnerPortalRoutes);
 app.use('/api/ai-coach', aiCoachRoutes);
+app.use('/api/session', sessionRoutes);
+app.use('/api/power-cards', powerCardRoutes);
+app.use('/api/power-confidence', powerConfidenceRoutes);
+app.use('/api/contact-tagging', contactTaggingRoutes);
 
 // 404 handler
 app.use((req, res) => {

@@ -16,8 +16,21 @@ const connectDB = async () => {
   
   try {
     // Open database (in-memory for testing)
+    const dbPath = process.env.NODE_ENV === 'test' ? ':memory:' : './power100.db';
+    const absolutePath = require('path').resolve(dbPath);
+    console.log('🔍 Connecting to database at:', absolutePath, 'CWD:', process.cwd());
+    
+    // Debug: Check if file exists and log file size
+    const fs = require('fs');
+    try {
+      const stats = fs.statSync(absolutePath);
+      console.log('🔍 Database file exists, size:', stats.size, 'bytes');
+    } catch (e) {
+      console.log('🔍 Database file does not exist:', e.message);
+    }
+    
     db = await open({
-      filename: process.env.NODE_ENV === 'test' ? ':memory:' : './power100.db',
+      filename: dbPath,
       driver: sqlite3.Database
     });
 
@@ -114,6 +127,13 @@ const initializeSchema = async () => {
       tech_stack_customer_experience_other TEXT,
       tech_stack_project_management_other TEXT,
       tech_stack_accounting_finance_other TEXT,
+      
+      -- Contact Tagging Fields
+      contact_type TEXT DEFAULT 'contractor' CHECK (contact_type IN ('contractor', 'employee', 'admin')),
+      onboarding_source TEXT DEFAULT 'contractor_flow',
+      associated_partner_id INTEGER REFERENCES strategic_partners(id),
+      email_domain TEXT,
+      tags TEXT DEFAULT '[]',
       
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -240,6 +260,152 @@ const initializeSchema = async () => {
       notes TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    -- Power Card Templates (Defines survey structure for each partner)
+    CREATE TABLE IF NOT EXISTS power_card_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      partner_id INTEGER NOT NULL,
+      partner_type TEXT NOT NULL CHECK(partner_type IN ('strategic_partner', 'manufacturer', 'podcast', 'event')),
+      metric_1_name TEXT NOT NULL,
+      metric_1_question TEXT NOT NULL,
+      metric_1_type TEXT DEFAULT 'rating' CHECK(metric_1_type IN ('rating', 'text', 'boolean', 'multiple_choice')),
+      metric_2_name TEXT NOT NULL,
+      metric_2_question TEXT NOT NULL,
+      metric_2_type TEXT DEFAULT 'rating' CHECK(metric_2_type IN ('rating', 'text', 'boolean', 'multiple_choice')),
+      metric_3_name TEXT NOT NULL,
+      metric_3_question TEXT NOT NULL,
+      metric_3_type TEXT DEFAULT 'rating' CHECK(metric_3_type IN ('rating', 'text', 'boolean', 'multiple_choice')),
+      include_satisfaction_score BOOLEAN DEFAULT 1,
+      include_recommendation_score BOOLEAN DEFAULT 1,
+      include_culture_questions BOOLEAN DEFAULT 0,
+      is_active BOOLEAN DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (partner_id) REFERENCES strategic_partners(id)
+    );
+
+    -- Power Card Campaigns (Quarterly survey distributions)
+    CREATE TABLE IF NOT EXISTS power_card_campaigns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      campaign_name TEXT NOT NULL,
+      quarter TEXT NOT NULL,
+      year INTEGER NOT NULL,
+      start_date DATE NOT NULL,
+      end_date DATE NOT NULL,
+      reminder_date DATE,
+      status TEXT DEFAULT 'draft' CHECK(status IN ('draft', 'scheduled', 'active', 'completed', 'cancelled')),
+      total_sent INTEGER DEFAULT 0,
+      total_responses INTEGER DEFAULT 0,
+      response_rate DECIMAL(5,2) DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    -- Power Card Recipients (Who gets each survey)
+    CREATE TABLE IF NOT EXISTS power_card_recipients (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      campaign_id INTEGER NOT NULL,
+      template_id INTEGER NOT NULL,
+      recipient_type TEXT NOT NULL CHECK(recipient_type IN ('contractor_client', 'partner_employee')),
+      recipient_id INTEGER NOT NULL,
+      recipient_email TEXT NOT NULL,
+      recipient_name TEXT NOT NULL,
+      company_id INTEGER NOT NULL,
+      company_type TEXT NOT NULL,
+      revenue_tier TEXT,
+      survey_link TEXT UNIQUE,
+      sent_at DATETIME,
+      opened_at DATETIME,
+      started_at DATETIME,
+      completed_at DATETIME,
+      reminder_sent_at DATETIME,
+      status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'sent', 'opened', 'started', 'completed', 'opted_out')),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (campaign_id) REFERENCES power_card_campaigns(id),
+      FOREIGN KEY (template_id) REFERENCES power_card_templates(id)
+    );
+
+    -- Power Card Responses (Anonymous survey responses)
+    CREATE TABLE IF NOT EXISTS power_card_responses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      recipient_id INTEGER NOT NULL,
+      campaign_id INTEGER NOT NULL,
+      template_id INTEGER NOT NULL,
+      metric_1_response TEXT,
+      metric_1_score INTEGER CHECK(metric_1_score >= 1 AND metric_1_score <= 10),
+      metric_2_response TEXT,
+      metric_2_score INTEGER CHECK(metric_2_score >= 1 AND metric_2_score <= 10),
+      metric_3_response TEXT,
+      metric_3_score INTEGER CHECK(metric_3_score >= 1 AND metric_3_score <= 10),
+      satisfaction_score INTEGER CHECK(satisfaction_score >= 1 AND satisfaction_score <= 10),
+      recommendation_score INTEGER CHECK(recommendation_score >= 0 AND recommendation_score <= 10),
+      culture_score INTEGER CHECK(culture_score >= 1 AND culture_score <= 10),
+      leadership_score INTEGER CHECK(leadership_score >= 1 AND leadership_score <= 10),
+      growth_opportunity_score INTEGER CHECK(growth_opportunity_score >= 1 AND growth_opportunity_score <= 10),
+      additional_feedback TEXT,
+      improvement_suggestions TEXT,
+      time_to_complete INTEGER,
+      device_type TEXT,
+      submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (recipient_id) REFERENCES power_card_recipients(id),
+      FOREIGN KEY (campaign_id) REFERENCES power_card_campaigns(id),
+      FOREIGN KEY (template_id) REFERENCES power_card_templates(id)
+    );
+
+    -- Power Confidence Score History V2 (Tracks score changes over time)
+    CREATE TABLE IF NOT EXISTS power_confidence_history_v2 (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      partner_id INTEGER NOT NULL,
+      partner_type TEXT NOT NULL,
+      campaign_id INTEGER NOT NULL,
+      previous_score INTEGER,
+      new_score INTEGER NOT NULL,
+      score_change INTEGER,
+      customer_satisfaction_avg DECIMAL(3,2),
+      nps_score INTEGER,
+      metric_1_avg DECIMAL(3,2),
+      metric_2_avg DECIMAL(3,2),
+      metric_3_avg DECIMAL(3,2),
+      employee_satisfaction_avg DECIMAL(3,2),
+      response_count INTEGER NOT NULL,
+      response_rate DECIMAL(5,2),
+      revenue_tier TEXT,
+      variance_from_peer_avg DECIMAL(5,2),
+      calculated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (partner_id) REFERENCES strategic_partners(id),
+      FOREIGN KEY (campaign_id) REFERENCES power_card_campaigns(id)
+    );
+
+    -- Power Card Analytics (Aggregated anonymous data)
+    CREATE TABLE IF NOT EXISTS power_card_analytics (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      campaign_id INTEGER NOT NULL,
+      revenue_tier TEXT NOT NULL,
+      industry_segment TEXT,
+      geographic_region TEXT,
+      total_responses INTEGER NOT NULL CHECK(total_responses >= 5),
+      avg_satisfaction DECIMAL(3,2),
+      avg_nps INTEGER,
+      avg_metric_1 DECIMAL(3,2),
+      avg_metric_2 DECIMAL(3,2),
+      avg_metric_3 DECIMAL(3,2),
+      variance_from_last_quarter DECIMAL(5,2),
+      trend_direction TEXT CHECK(trend_direction IN ('up', 'down', 'stable')),
+      percentile_25 DECIMAL(3,2),
+      percentile_50 DECIMAL(3,2),
+      percentile_75 DECIMAL(3,2),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (campaign_id) REFERENCES power_card_campaigns(id)
+    );
+  `);
+
+  // Create indexes for Power Cards performance
+  await db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_power_card_recipients_campaign ON power_card_recipients(campaign_id);
+    CREATE INDEX IF NOT EXISTS idx_power_card_recipients_status ON power_card_recipients(status);
+    CREATE INDEX IF NOT EXISTS idx_power_card_responses_campaign ON power_card_responses(campaign_id);
+    CREATE INDEX IF NOT EXISTS idx_power_confidence_history_v2_partner ON power_confidence_history_v2(partner_id, partner_type);
+    CREATE INDEX IF NOT EXISTS idx_power_card_analytics_tier ON power_card_analytics(revenue_tier, campaign_id);
   `);
 
   console.log('✅ Database schema created');

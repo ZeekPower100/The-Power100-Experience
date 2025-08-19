@@ -68,6 +68,13 @@ export const contractorApi = {
       body: JSON.stringify(data)
     }),
 
+  // Update contractor (admin)
+  update: (contractorId: string, data: Record<string, unknown>) =>
+    apiRequest(`/contractors/${contractorId}/profile`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    }),
+
   // Get partner matches
   getMatches: (contractorId: string, focusAreaIndex: number = 0) =>
     apiRequest(`/contractors/${contractorId}/matches?focusAreaIndex=${focusAreaIndex}`),
@@ -89,6 +96,9 @@ export const contractorApi = {
     const query = searchParams.toString();
     return apiRequest(`/contractors${query ? `?${query}` : ''}`);
   },
+
+  // Get single contractor (admin)
+  getById: (id: string) => apiRequest(`/contractors/${id}`),
 
   // Get contractor stats
   getStats: () => apiRequest('/contractors/stats/overview'),
