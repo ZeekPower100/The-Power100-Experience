@@ -92,6 +92,19 @@ GHL Workflow → n8n Webhook → TPE Backend → Database Storage
 
 ### ⚠️ **Common Issues & Solutions**
 
+#### **"JSON parameter needs to be valid JSON" Error:**
+- **Issue**: Template strings with quotes/special characters break JSON parsing
+- **Solution**: Use `JSON.stringify()` for ALL dynamic values in HTTP Request bodies
+- **Critical Pattern**:
+  ```json
+  {
+    "field": {{ JSON.stringify($json.field) }},
+    "boolean": {{ JSON.stringify($json.success) }},
+    "message": {{ JSON.stringify($json.body.body) }}
+  }
+  ```
+- **Works for**: HTTP Request nodes, GHL SMS nodes, any JSON body data
+
 #### **[object Object] in Message Body:**
 - **Issue**: Using `{{ $json.body }}` instead of `{{ $json.body.body }}`
 - **Solution**: Access the actual message field: `{{ $json.body.body }}`

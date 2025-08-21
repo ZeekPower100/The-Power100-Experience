@@ -15,6 +15,7 @@ const receiveCommunication = async (req, res) => {
       type = 'sms', // sms, email, whatsapp
       direction, // inbound, outbound
       body,
+      message_body, // Accept both body and message_body
       subject,
       from,
       to,
@@ -99,7 +100,7 @@ const receiveCommunication = async (req, res) => {
       to?.phone || null,
       to?.name || null,
       subject,
-      body,
+      message_body || body, // Use message_body if provided, fallback to body
       JSON.stringify(attachments || []),
       campaignId || null,
       flowType || null,
