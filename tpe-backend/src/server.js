@@ -104,6 +104,9 @@ app.use('/api/session', sessionRoutes);
 app.use('/api/power-cards', powerCardRoutes);
 app.use('/api/power-confidence', powerConfidenceRoutes);
 app.use('/api/contact-tagging', contactTaggingRoutes);
+app.use('/api/communications', require('./routes/communicationRoutes'));
+app.use('/api/ghl-sync', require('./routes/ghlSyncRoutes'));
+app.use('/api/verification', require('./routes/verificationRoutes'));
 
 // 404 handler
 app.use((req, res) => {

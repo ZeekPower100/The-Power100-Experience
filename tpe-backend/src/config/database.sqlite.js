@@ -473,13 +473,16 @@ const query = async (text, params = []) => {
   }
   
   try {
-    // Handle different query types
-    if (text.toUpperCase().startsWith('SELECT')) {
-      const rows = await db.all(text, params);
+    // Trim the query to handle multiline strings
+    const trimmedQuery = text.trim();
+    
+    // Handle different query types  
+    if (trimmedQuery.toUpperCase().startsWith('SELECT')) {
+      const rows = await db.all(trimmedQuery, params);
       return { rows, rowCount: rows.length };
-    } else if (text.toUpperCase().includes('RETURNING')) {
+    } else if (trimmedQuery.toUpperCase().includes('RETURNING')) {
       // SQLite doesn't support RETURNING, so we need to handle it differently
-      const modifiedQuery = text.replace(/RETURNING .*/i, '');
+      const modifiedQuery = trimmedQuery.replace(/RETURNING .*/i, '');
       const result = await db.run(modifiedQuery, params);
       
       // Fetch the inserted/updated row
@@ -490,7 +493,7 @@ const query = async (text, params = []) => {
       }
       return { rows: [], rowCount: 0 };
     } else {
-      const result = await db.run(text, params);
+      const result = await db.run(trimmedQuery, params);
       return { rows: [], rowCount: result.changes };
     }
   } catch (error) {

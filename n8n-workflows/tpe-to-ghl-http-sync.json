@@ -1,0 +1,225 @@
+{
+  "name": "TPE to GHL HTTP Sync",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "webhook_trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5000/api/ghl-sync/contacts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNzU1NjUxODQ1LCJleHAiOjE3NTgyNDM4NDV9.TY7Z3gHHOH1PETh87553B7DidiWhQyYVn0JYd1Ne1OI"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fetch_tpe_contacts",
+      "name": "1. Fetch TPE Contacts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse the TPE response\nconst tpeResponse = $input.first().json;\n\nif (!tpeResponse.success) {\n  throw new Error('Failed to fetch TPE contacts: ' + tpeResponse.error);\n}\n\n// Log summary\nconsole.log(`📊 Contact Sync Summary:`);\nconsole.log(`  Total: ${tpeResponse.contacts.length}`);\nconsole.log(`  - Contractors: ${tpeResponse.breakdown.contractors}`);\nconsole.log(`  - Partners: ${tpeResponse.breakdown.partners}`);\nconsole.log(`  - Employees: ${tpeResponse.breakdown.employees}`);\n\n// Return each contact as a separate item\nreturn tpeResponse.contacts.map(contact => {\n  // Format phone number for GHL (remove special chars)\n  const cleanPhone = contact.phone ? contact.phone.replace(/[^0-9+]/g, '') : '';\n  \n  return {\n    json: {\n      // Core contact data\n      email: contact.email,\n      firstName: contact.firstName || '',\n      lastName: contact.lastName || '',\n      name: `${contact.firstName} ${contact.lastName}`.trim(),\n      phone: cleanPhone,\n      companyName: contact.companyName || '',\n      \n      // Tags as array (GHL expects array)\n      tags: contact.tags || [],\n      \n      // Custom fields - flatten for GHL\n      customField: {\n        tpe_id: String(contact.tpeId),\n        contact_type: contact.contactType,\n        ...contact.customFields\n      },\n      \n      // Metadata for tracking\n      tpeId: contact.tpeId,\n      contactType: contact.contactType\n    }\n  };\n});"
+      },
+      "id": "process_contacts",
+      "name": "2. Process Contacts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rest.gohighlevel.com/v1/contacts/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GHL_API_KEY_HERE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "firstName",
+              "value": "={{ $json.firstName }}"
+            },
+            {
+              "name": "lastName",
+              "value": "={{ $json.lastName }}"
+            },
+            {
+              "name": "name",
+              "value": "={{ $json.name }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            },
+            {
+              "name": "companyName",
+              "value": "={{ $json.companyName }}"
+            },
+            {
+              "name": "tags",
+              "value": "={{ $json.tags }}"
+            },
+            {
+              "name": "customField",
+              "value": "={{ $json.customField }}"
+            },
+            {
+              "name": "source",
+              "value": "TPE Platform"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 10,
+              "batchInterval": 1000
+            }
+          }
+        }
+      },
+      "id": "sync_to_ghl",
+      "name": "3. Sync to GHL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Collect all results\nconst items = $input.all();\nconst successful = [];\nconst failed = [];\n\nitems.forEach(item => {\n  if (item.json.error || item.json.statusCode >= 400) {\n    failed.push({\n      email: item.json.email || 'unknown',\n      error: item.json.error || item.json.message || 'Request failed',\n      tpeId: item.json.tpeId\n    });\n  } else {\n    successful.push({\n      email: item.json.email || item.json.contact?.email,\n      ghlId: item.json.contact?.id || item.json.id,\n      tpeId: item.json.tpeId || item.json.customField?.tpe_id\n    });\n  }\n});\n\nconst summary = {\n  success: true,\n  timestamp: new Date().toISOString(),\n  totalProcessed: items.length,\n  successCount: successful.length,\n  failedCount: failed.length,\n  successful: successful,\n  failed: failed\n};\n\nconsole.log('✅ Sync Complete:');\nconsole.log(`  Success: ${successful.length}`);\nconsole.log(`  Failed: ${failed.length}`);\n\nreturn [{ json: summary }];"
+      },
+      "id": "summarize_sync",
+      "name": "4. Summarize Sync",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5000/api/ghl-sync/webhook-trigger",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "action",
+              "value": "sync_complete"
+            },
+            {
+              "name": "contacts",
+              "value": "={{ $json.successful }}"
+            },
+            {
+              "name": "summary",
+              "value": "={{ $json }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "notify_backend",
+      "name": "5. Notify Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "webhook_trigger": {
+      "main": [
+        [
+          {
+            "node": "fetch_tpe_contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fetch_tpe_contacts": {
+      "main": [
+        [
+          {
+            "node": "process_contacts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "process_contacts": {
+      "main": [
+        [
+          {
+            "node": "sync_to_ghl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sync_to_ghl": {
+      "main": [
+        [
+          {
+            "node": "summarize_sync",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "summarize_sync": {
+      "main": [
+        [
+          {
+            "node": "notify_backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "tpe-ghl-http-sync"
+  },
+  "tags": ["ghl", "sync", "contacts"]
+}

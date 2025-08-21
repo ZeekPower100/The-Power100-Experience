@@ -1,0 +1,196 @@
+{
+  "name": "GHL Verification SMS (v2 API)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "send-verification-sms",
+        "options": {}
+      },
+      "id": "webhook_trigger",
+      "name": "Webhook - Send Verification",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "send-verification-sms"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract and format verification request\nconst data = $input.first().json.body;\n\nconsole.log('📱 GHL Verification SMS Request:', data);\n\nif (!data.phone || !data.verificationCode) {\n  throw new Error('Missing required fields: phone or verificationCode');\n}\n\n// Format phone for GHL (ensure +1 for US numbers)\nlet formattedPhone = data.phone.replace(/[^0-9+]/g, '');\nif (!formattedPhone.startsWith('+')) {\n  formattedPhone = '+1' + formattedPhone;\n}\n\n// Prepare contact data for GHL\nconst firstName = data.name?.split(' ')[0] || 'TPE';\nconst lastName = data.name?.split(' ').slice(1).join(' ') || 'Contractor';\n\n// Build SMS message\nconst smsMessage = data.message || `Your Power100 verification code is: ${data.verificationCode}\\n\\nThis code expires in 10 minutes.`;\n\nreturn [{\n  json: {\n    // Original request data\n    contractorId: data.contractorId,\n    verificationCode: data.verificationCode,\n    expiresAt: data.expiresAt,\n    \n    // GHL Contact data\n    firstName: firstName,\n    lastName: lastName,\n    phone: formattedPhone,\n    locationId: \"YOUR_GHL_LOCATION_ID_HERE\",\n    \n    // SMS message\n    smsMessage: smsMessage,\n    \n    // Metadata\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format_request",
+      "name": "1. Format Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/contacts/",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GHL_ACCESS_TOKEN_HERE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"firstName\": \"{{ $json.firstName }}\",\n  \"lastName\": \"{{ $json.lastName }}\",\n  \"phone\": \"{{ $json.phone }}\",\n  \"locationId\": \"{{ $json.locationId }}\",\n  \"tags\": [\"tpe-contractor\", \"verification-sms\"],\n  \"customField\": {\n    \"tpe_contractor_id\": \"{{ $json.contractorId }}\",\n    \"verification_requested\": \"{{ $json.timestamp }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "create_contact",
+      "name": "2. Create/Update Contact",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract contactId from GHL response\nconst ghlResponse = $input.first().json;\nconst requestData = $node[\"1. Format Request\"].json;\n\nconsole.log('📋 GHL Contact Response:', ghlResponse);\n\nif (ghlResponse.error || !ghlResponse.contact) {\n  throw new Error(`Failed to create contact: ${ghlResponse.error || 'No contact returned'}`);\n}\n\nconst contactId = ghlResponse.contact?.id || ghlResponse.id;\n\nif (!contactId) {\n  throw new Error('No contactId found in GHL response');\n}\n\nconsole.log('✅ Contact created/found with ID:', contactId);\n\nreturn [{\n  json: {\n    ...requestData,\n    contactId: contactId,\n    ghlContactData: ghlResponse.contact || ghlResponse\n  }\n}];"
+      },
+      "id": "extract_contact_id",
+      "name": "3. Extract Contact ID",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GHL_ACCESS_TOKEN_HERE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $json.contactId }}\",\n  \"message\": \"{{ $json.smsMessage }}\"\n}",
+        "options": {}
+      },
+      "id": "send_sms",
+      "name": "4. Send SMS via GHL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process final SMS result\nconst smsResponse = $input.first().json;\nconst requestData = $node[\"3. Extract Contact ID\"].json;\n\nconst success = !smsResponse.error && (smsResponse.messageId || smsResponse.id);\n\nconst result = {\n  success: success,\n  contractorId: requestData.contractorId,\n  phone: requestData.phone,\n  contactId: requestData.contactId,\n  verificationCode: requestData.verificationCode,\n  messageId: smsResponse.messageId || smsResponse.id || null,\n  timestamp: new Date().toISOString()\n};\n\nif (success) {\n  console.log('✅ Verification SMS sent successfully!');\n  console.log('Message ID:', result.messageId);\n  console.log('Contact ID:', result.contactId);\n} else {\n  console.error('❌ Failed to send SMS:', smsResponse.error || smsResponse.message);\n  result.error = smsResponse.error || smsResponse.message || 'Failed to send SMS';\n  result.ghlResponse = smsResponse;\n}\n\nreturn [{ json: result }];"
+      },
+      "id": "process_result",
+      "name": "5. Process Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "webhook_response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "webhook_trigger": {
+      "main": [
+        [
+          {
+            "node": "format_request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "format_request": {
+      "main": [
+        [
+          {
+            "node": "create_contact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "create_contact": {
+      "main": [
+        [
+          {
+            "node": "extract_contact_id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "extract_contact_id": {
+      "main": [
+        [
+          {
+            "node": "send_sms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_sms": {
+      "main": [
+        [
+          {
+            "node": "process_result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "process_result": {
+      "main": [
+        [
+          {
+            "node": "webhook_response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "ghl-verification-sms-v2"
+  },
+  "tags": ["ghl", "sms", "verification", "v2"]
+}
