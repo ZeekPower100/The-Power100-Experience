@@ -163,12 +163,10 @@ jobs:
       # Deploy to EC2 (Alternative - using Systems Manager)
       - name: Deploy Application to EC2
         run: |
-          # Get EC2 Instance IDs from Auto Scaling Group
-          ASG_NAME="${{ env.STACK_NAME }}-ASG"
-          INSTANCE_IDS=$(aws autoscaling describe-auto-scaling-groups \
-            --auto-scaling-group-names $ASG_NAME \
-            --query 'AutoScalingGroups[0].Instances[*].InstanceId' \
-            --output text)
+          # Get EC2 Instance IDs from the stack (no ASG in current template)
+          # For now, skip EC2 deployment since we don't have instances configured
+          echo "Skipping EC2 deployment - no instances in current CloudFormation template"
+          INSTANCE_IDS=""
           
           # Create deployment package
           tar -czf deploy-package.tar.gz \
@@ -180,8 +178,11 @@ jobs:
           # Upload to S3
           aws s3 cp deploy-package.tar.gz s3://${{ steps.cf-outputs.outputs.S3_BUCKET }}/deployments/
           
-          # Deploy to each instance using Systems Manager
-          for INSTANCE_ID in $INSTANCE_IDS; do
+          # Skip instance deployment if no instances
+          if [ -z "$INSTANCE_IDS" ]; then
+            echo "No EC2 instances to deploy to. Application available via S3."
+          else
+            for INSTANCE_ID in $INSTANCE_IDS; do
             aws ssm send-command \
               --instance-ids $INSTANCE_ID \
               --document-name "AWS-RunShellScript" \
@@ -196,7 +197,8 @@ jobs:
               "] \
               --output S3Bucket=${{ steps.cf-outputs.outputs.S3_BUCKET }} \
               --output S3KeyPrefix=logs/
-          done
+            done
+          fi
 
       - name: Output Deployment URLs
         run: |
