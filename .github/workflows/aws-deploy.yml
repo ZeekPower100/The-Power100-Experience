@@ -1,0 +1,220 @@
+name: Deploy to AWS Production
+
+on:
+  push:
+    branches:
+      - feature/aws-deployment-infrastructure
+  pull_request:
+    branches:
+      - feature/aws-deployment-infrastructure
+    types: [closed]
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: tpe-app
+  ECS_SERVICE: tpe-service
+  ECS_CLUSTER: tpe-cluster
+  STACK_NAME: TPE-Production
+
+jobs:
+  deploy:
+    name: Deploy to AWS
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event.pull_request.merged == true)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Get CloudFormation Outputs
+        id: cf-outputs
+        run: |
+          echo "Getting CloudFormation outputs..."
+          ALB_DNS=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`ALBDNSName`].OutputValue' \
+            --output text)
+          DB_ENDPOINT=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`DatabaseEndpoint`].OutputValue' \
+            --output text)
+          S3_BUCKET=$(aws cloudformation describe-stacks \
+            --stack-name ${{ env.STACK_NAME }} \
+            --query 'Stacks[0].Outputs[?OutputKey==`DataLakeBucketName`].OutputValue' \
+            --output text)
+          
+          echo "ALB_DNS=$ALB_DNS" >> $GITHUB_OUTPUT
+          echo "DB_ENDPOINT=$DB_ENDPOINT" >> $GITHUB_OUTPUT
+          echo "S3_BUCKET=$S3_BUCKET" >> $GITHUB_OUTPUT
+
+      # Backend Deployment
+      - name: Setup Node.js for Backend
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: tpe-backend/package-lock.json
+
+      - name: Install Backend Dependencies
+        working-directory: ./tpe-backend
+        run: npm ci --production
+
+      - name: Create Backend Environment File
+        working-directory: ./tpe-backend
+        run: |
+          cat > .env.production << EOF
+          NODE_ENV=production
+          PORT=5000
+          DATABASE_URL=postgresql://tpeadmin:${{ secrets.DB_PASSWORD }}@${{ steps.cf-outputs.outputs.DB_ENDPOINT }}:5432/tpe_production
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          FRONTEND_URL=http://${{ steps.cf-outputs.outputs.ALB_DNS }}
+          OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+          EOF
+
+      - name: Run Database Migrations
+        working-directory: ./tpe-backend
+        run: |
+          # Install PostgreSQL client
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+          
+          # Run migrations
+          PGPASSWORD=${{ secrets.DB_PASSWORD }} psql \
+            -h ${{ steps.cf-outputs.outputs.DB_ENDPOINT }} \
+            -U tpeadmin \
+            -d tpe_production \
+            -f ../tpe-database/migrate-to-postgresql.sql || true
+          
+          # Load demo data for Destination Motivation
+          PGPASSWORD=${{ secrets.DB_PASSWORD }} psql \
+            -h ${{ steps.cf-outputs.outputs.DB_ENDPOINT }} \
+            -U tpeadmin \
+            -d tpe_production \
+            -f ../tpe-database/destination-motivation-demo-data.sql || true
+
+      # Frontend Deployment
+      - name: Setup Node.js for Frontend
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: tpe-front-end/package-lock.json
+
+      - name: Install Frontend Dependencies
+        working-directory: ./tpe-front-end
+        run: npm ci
+
+      - name: Create Frontend Environment File
+        working-directory: ./tpe-front-end
+        run: |
+          cat > .env.production << EOF
+          NEXT_PUBLIC_API_URL=http://${{ steps.cf-outputs.outputs.ALB_DNS }}:5000
+          NEXT_PUBLIC_ENVIRONMENT=production
+          NEXT_PUBLIC_ALB_URL=http://${{ steps.cf-outputs.outputs.ALB_DNS }}
+          EOF
+
+      - name: Build Frontend
+        working-directory: ./tpe-front-end
+        run: npm run build
+
+      # Deploy to S3 (for static assets)
+      - name: Deploy Frontend to S3
+        run: |
+          # Create S3 bucket for frontend if it doesn't exist
+          aws s3api create-bucket \
+            --bucket tpe-frontend-${{ github.sha }} \
+            --region ${{ env.AWS_REGION }} || true
+          
+          # Enable static website hosting
+          aws s3 website s3://tpe-frontend-${{ github.sha }}/ \
+            --index-document index.html \
+            --error-document error.html
+          
+          # Set bucket policy for public access
+          cat > bucket-policy.json << EOF
+          {
+            "Version": "2012-10-17",
+            "Statement": [{
+              "Sid": "PublicRead",
+              "Effect": "Allow",
+              "Principal": "*",
+              "Action": "s3:GetObject",
+              "Resource": "arn:aws:s3:::tpe-frontend-${{ github.sha }}/*"
+            }]
+          }
+          EOF
+          
+          aws s3api put-bucket-policy \
+            --bucket tpe-frontend-${{ github.sha }} \
+            --policy file://bucket-policy.json
+          
+          # Upload frontend build
+          cd tpe-front-end
+          aws s3 sync .next/static s3://tpe-frontend-${{ github.sha }}/_next/static --cache-control "public, max-age=31536000"
+          aws s3 sync public s3://tpe-frontend-${{ github.sha }}/public
+
+      # Deploy to EC2 (Alternative - using Systems Manager)
+      - name: Deploy Application to EC2
+        run: |
+          # Get EC2 Instance IDs from Auto Scaling Group
+          ASG_NAME="${{ env.STACK_NAME }}-ASG"
+          INSTANCE_IDS=$(aws autoscaling describe-auto-scaling-groups \
+            --auto-scaling-group-names $ASG_NAME \
+            --query 'AutoScalingGroups[0].Instances[*].InstanceId' \
+            --output text)
+          
+          # Create deployment package
+          tar -czf deploy-package.tar.gz \
+            --exclude=node_modules \
+            --exclude=.git \
+            --exclude=.next/cache \
+            tpe-backend tpe-front-end
+          
+          # Upload to S3
+          aws s3 cp deploy-package.tar.gz s3://${{ steps.cf-outputs.outputs.S3_BUCKET }}/deployments/
+          
+          # Deploy to each instance using Systems Manager
+          for INSTANCE_ID in $INSTANCE_IDS; do
+            aws ssm send-command \
+              --instance-ids $INSTANCE_ID \
+              --document-name "AWS-RunShellScript" \
+              --parameters commands=["\
+                cd /home/ec2-user && \
+                aws s3 cp s3://${{ steps.cf-outputs.outputs.S3_BUCKET }}/deployments/deploy-package.tar.gz . && \
+                tar -xzf deploy-package.tar.gz && \
+                cd tpe-backend && npm install --production && \
+                pm2 restart tpe-backend || pm2 start src/server.js --name tpe-backend && \
+                cd ../tpe-front-end && npm install && npm run build && \
+                pm2 restart tpe-frontend || pm2 start npm --name tpe-frontend -- start \
+              "] \
+              --output S3Bucket=${{ steps.cf-outputs.outputs.S3_BUCKET }} \
+              --output S3KeyPrefix=logs/
+          done
+
+      - name: Output Deployment URLs
+        run: |
+          echo "🚀 Deployment Complete!"
+          echo "================================"
+          echo "Application URL: http://${{ steps.cf-outputs.outputs.ALB_DNS }}"
+          echo "Static Assets: http://tpe-frontend-${{ github.sha }}.s3-website-${{ env.AWS_REGION }}.amazonaws.com"
+          echo "Database: ${{ steps.cf-outputs.outputs.DB_ENDPOINT }}"
+          echo "================================"
+          echo "View logs in S3: ${{ steps.cf-outputs.outputs.S3_BUCKET }}/logs/"
+
+      - name: Health Check
+        run: |
+          echo "Waiting for application to be ready..."
+          sleep 30
+          
+          # Check if ALB is responding
+          curl -f http://${{ steps.cf-outputs.outputs.ALB_DNS }} || echo "Frontend not yet responding"
+          curl -f http://${{ steps.cf-outputs.outputs.ALB_DNS }}:5000/api/health || echo "Backend not yet responding"
+          
+          echo "Deployment verification complete!"
