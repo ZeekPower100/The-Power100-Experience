@@ -291,7 +291,7 @@ Resources:
       DBInstanceIdentifier: !Sub 'tpe-database-${Environment}'
       DBName: tpe_production
       Engine: postgres
-      EngineVersion: '15.4'
+      EngineVersion: '15'
       DBInstanceClass: !FindInMap [EnvironmentConfig, !Ref Environment, DatabaseClass]
       AllocatedStorage: 20
       StorageType: gp3

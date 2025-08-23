@@ -1,0 +1,169 @@
+{
+  "name": "Welcome Email Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "welcome-email",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1f9d5b3e-4c2a-4b89-9e7d-8a6c5f3e2d1b",
+      "name": "Webhook - Welcome Email",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "webhookId": "65d8f7e9-3c4a-4b89-9e7d-8a6c5f3e2d1b"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format welcome email data\nconst data = $input.first().json.body;\n\nconsole.log('📧 Welcome Email Request:', data);\n\nif (!data.email || !data.firstName) {\n  throw new Error('Missing required fields: email or firstName');\n}\n\n// Build personalized welcome email content\nconst emailSubject = `Welcome to The Power100 Experience, ${data.firstName}!`;\n\nconst emailBodyHTML = `\n<html>\n<body style=\"font-family: Arial, sans-serif; line-height: 1.6; color: #333;\">\n  <div style=\"max-width: 600px; margin: 0 auto; padding: 20px;\">\n    <h2 style=\"color: #FB0401;\">Welcome to The Power100 Experience!</h2>\n    \n    <p>Hi ${data.firstName},</p>\n    \n    <p>Congratulations! You've successfully completed verification and are now part of our exclusive contractor network. 🎉</p>\n    \n    <h3 style=\"color: #28a745;\">Here's what happens next:</h3>\n    <ul>\n      <li>✅ Your profile has been created</li>\n      <li>✅ SMS notifications are enabled for AI coaching</li>\n      <li>✅ You'll receive strategic partner matches based on your focus areas</li>\n    </ul>\n    \n    <h3 style=\"color: #28a745;\">Your Next Steps:</h3>\n    <ol>\n      <li>Complete your business profile assessment</li>\n      <li>Review your personalized partner matches</li>\n      <li>Book demo calls with recommended partners</li>\n    </ol>\n    \n    <p>Our AI coaching system will send you weekly insights and nudges to help grow your business.</p>\n    \n    <p>Questions? Reply to this email or call <strong>(555) 100-POWER</strong>.</p>\n    \n    <p style=\"margin-top: 30px;\">Welcome aboard!</p>\n    \n    <p>\n      <strong>The Power100 Team</strong><br>\n      <a href=\"https://thepower100experience.com\" style=\"color: #FB0401;\">thepower100experience.com</a>\n    </p>\n  </div>\n</body>\n</html>\n`;\n\nconst emailBodyPlain = `Hi ${data.firstName},\n\nWelcome to The Power100 Experience! 🎉\n\nYou've successfully completed verification and are now part of our exclusive contractor network.\n\nHere's what happens next:\n✅ Your profile has been created\n✅ SMS notifications are enabled for AI coaching\n✅ You'll receive strategic partner matches based on your focus areas\n\nNext Steps:\n1. Complete your business profile assessment\n2. Review your personalized partner matches\n3. Book demo calls with recommended partners\n\nOur AI coaching system will send you weekly insights and nudges to help grow your business.\n\nQuestions? Reply to this email or call (555) 100-POWER.\n\nWelcome aboard!\n\nThe Power100 Team\nhttps://thepower100experience.com`;\n\nreturn [{\n  json: {\n    // Email data\n    email: data.email,\n    firstName: data.firstName,\n    lastName: data.lastName || '',\n    subject: emailSubject,\n    htmlBody: emailBodyHTML,\n    plainBody: emailBodyPlain,\n    \n    // GHL Contact data\n    contactId: data.contactId,\n    locationId: \"Jlq8gw3IEjAQu39n4c0s\",\n    \n    // Tracking\n    contractorId: data.contractorId,\n    emailType: 'welcome_onboarding',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "2e8c4d5f-3b1a-4c89-8d6e-9b5c6f4e3d2c",
+      "name": "1. Format Email Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer pit-47d8d6fc-d175-4c59-a7e4-54c50237d56c"
+            },
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"Email\",\n  \"contactId\": {{ JSON.stringify($json.contactId) }},\n  \"subject\": {{ JSON.stringify($json.subject) }},\n  \"html\": {{ JSON.stringify($json.htmlBody) }},\n  \"emailFrom\": \"support@thepower100experience.com\",\n  \"emailTo\": {{ JSON.stringify($json.email) }}\n}",
+        "options": {}
+      },
+      "id": "3f7d6e8c-2a4b-5c8d-7e9f-8a7c6f5e4d3d",
+      "name": "2. Send Email via GHL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process email send result\nconst emailResponse = $input.first().json;\nconst requestData = $('1. Format Email Content').first().json;\n\nconst success = !emailResponse.error && (emailResponse.messageId || emailResponse.id || emailResponse.conversationId);\n\nconst result = {\n  success: success,\n  status: success ? \"sent\" : \"failed\",\n  contractorId: requestData.contractorId,\n  email: requestData.email,\n  contactId: requestData.contactId,\n  emailType: requestData.emailType,\n  subject: requestData.subject,\n  messageId: emailResponse.messageId || emailResponse.id || emailResponse.conversationId || null,\n  message: success ? \"Welcome email sent successfully\" : (emailResponse.error || emailResponse.message || \"Failed to send email\"),\n  timestamp: new Date().toISOString()\n};\n\nif (success) {\n  console.log('✅ Welcome email sent successfully!');\n  console.log('Message ID:', result.messageId);\n  console.log('Email:', result.email);\n} else {\n  console.error('❌ Failed to send welcome email:', emailResponse.error || emailResponse.message);\n  result.error = emailResponse.error || emailResponse.message || 'Failed to send email';\n  result.ghlResponse = emailResponse;\n}\n\nreturn [{ json: result }];"
+      },
+      "id": "4a9e8f7d-1b3c-5d9e-8f0a-9b8d7e6f5e4e",
+      "name": "3. Process Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.NGROK_URL || 'https://b8447f36fd46.ngrok-free.app' }}/api/communications/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"email\",\n  \"direction\": \"outbound\",\n  \"contactId\": {{ JSON.stringify($json.contactId) }},\n  \"to\": {\n    \"email\": {{ JSON.stringify($json.email) }}\n  },\n  \"subject\": {{ JSON.stringify($json.subject) }},\n  \"messageId\": {{ JSON.stringify($json.messageId) }},\n  \"message_body\": {{ JSON.stringify($json.message) }},\n  \"status\": {{ JSON.stringify($json.status) }},\n  \"contractorId\": {{ JSON.stringify($json.contractorId) }},\n  \"metadata\": {\n    \"emailType\": {{ JSON.stringify($json.emailType) }},\n    \"success\": {{ JSON.stringify($json.success) }}\n  },\n  \"timestamp\": {{ JSON.stringify($json.timestamp) }}\n}",
+        "options": {}
+      },
+      "id": "5b0f9a8e-2c4d-6e0f-9a1b-0c9e8f7a6f5f",
+      "name": "4. Log to TPE Database",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": {{ $json.success }},\n  \"message\": {{ $json.message }},\n  \"emailSent\": {{ $json.success }},\n  \"messageId\": {{ $json.messageId }},\n  \"timestamp\": {{ $json.timestamp }}\n}",
+        "options": {}
+      },
+      "id": "6c1a0b9f-3d5e-7f1a-0b2c-1d0f9b8a7a6a",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Welcome Email": {
+      "main": [
+        [
+          {
+            "node": "1. Format Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Format Email Content": {
+      "main": [
+        [
+          {
+            "node": "2. Send Email via GHL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Send Email via GHL": {
+      "main": [
+        [
+          {
+            "node": "3. Process Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Process Result": {
+      "main": [
+        [
+          {
+            "node": "4. Log to TPE Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Log to TPE Database": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8c8c5237010faa45cd59f6c43c75c61f7b0879ad081c0a5fc5a966b7e044d37d"
+  },
+  "pinData": {},
+  "versionId": "2f0c4d5e-3b1a-4c89-8d6e-9b5c6f4e3d2c",
+  "triggerCount": 0,
+  "tags": []
+}

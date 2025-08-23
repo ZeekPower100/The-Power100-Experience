@@ -1,0 +1,38 @@
+[
+    {
+        "OutputKey": "ALBDNSName",
+        "OutputValue": "TPE-ALB-production-20459154.us-east-1.elb.amazonaws.com",
+        "Description": "Application Load Balancer DNS Name",
+        "ExportName": "TPE-Production-ALBDNSName"
+    },
+    {
+        "OutputKey": "SecretsArn",
+        "OutputValue": "arn:aws:secretsmanager:us-east-1:492267598792:secret:tpe-secrets-production-Ln2dyM",
+        "Description": "Secrets Manager ARN",
+        "ExportName": "TPE-Production-SecretsArn"
+    },
+    {
+        "OutputKey": "VPCId",
+        "OutputValue": "vpc-028f67a675f47aaa3",
+        "Description": "VPC ID",
+        "ExportName": "TPE-Production-VPC"
+    },
+    {
+        "OutputKey": "InteractionsTableName",
+        "OutputValue": "tpe-interactions-production",
+        "Description": "DynamoDB Interactions Table Name",
+        "ExportName": "TPE-Production-InteractionsTable"
+    },
+    {
+        "OutputKey": "DataLakeBucketName",
+        "OutputValue": "tpe-data-lake-production-492267598792",
+        "Description": "Data Lake S3 Bucket Name",
+        "ExportName": "TPE-Production-DataLakeBucket"
+    },
+    {
+        "OutputKey": "DatabaseEndpoint",
+        "OutputValue": "tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com",
+        "Description": "RDS Database Endpoint",
+        "ExportName": "TPE-Production-DatabaseEndpoint"
+    }
+]
