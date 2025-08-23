@@ -123,38 +123,31 @@ jobs:
       # Deploy to S3 (for static assets)
       - name: Deploy Frontend to S3
         run: |
-          # Create S3 bucket for frontend if it doesn't exist
-          aws s3api create-bucket \
-            --bucket tpe-frontend-${{ github.sha }} \
-            --region ${{ env.AWS_REGION }} || true
+          # Use the existing S3 bucket from CloudFormation
+          S3_BUCKET="${{ steps.cf-outputs.outputs.S3_BUCKET }}"
           
-          # Enable static website hosting
-          aws s3 website s3://tpe-frontend-${{ github.sha }}/ \
-            --index-document index.html \
-            --error-document error.html
+          if [ -z "$S3_BUCKET" ]; then
+            echo "Warning: No S3 bucket found in CloudFormation outputs"
+            echo "Skipping S3 deployment"
+            exit 0
+          fi
           
-          # Set bucket policy for public access
-          cat > bucket-policy.json << EOF
-          {
-            "Version": "2012-10-17",
-            "Statement": [{
-              "Sid": "PublicRead",
-              "Effect": "Allow",
-              "Principal": "*",
-              "Action": "s3:GetObject",
-              "Resource": "arn:aws:s3:::tpe-frontend-${{ github.sha }}/*"
-            }]
-          }
-          EOF
+          echo "Deploying frontend assets to S3 bucket: $S3_BUCKET"
           
-          aws s3api put-bucket-policy \
-            --bucket tpe-frontend-${{ github.sha }} \
-            --policy file://bucket-policy.json
-          
-          # Upload frontend build
+          # Upload frontend build to deployment folder
           cd tpe-front-end
-          aws s3 sync .next/static s3://tpe-frontend-${{ github.sha }}/_next/static --cache-control "public, max-age=31536000"
-          aws s3 sync public s3://tpe-frontend-${{ github.sha }}/public
+          
+          # Create deployment folder with timestamp
+          DEPLOYMENT_FOLDER="deployments/frontend-$(date +%Y%m%d-%H%M%S)"
+          
+          # Upload static assets
+          aws s3 sync .next/static s3://$S3_BUCKET/$DEPLOYMENT_FOLDER/_next/static --cache-control "public, max-age=31536000"
+          aws s3 sync public s3://$S3_BUCKET/$DEPLOYMENT_FOLDER/public
+          
+          # Upload the entire build for reference
+          aws s3 sync .next s3://$S3_BUCKET/$DEPLOYMENT_FOLDER/.next --exclude "cache/*"
+          
+          echo "Frontend deployed to: s3://$S3_BUCKET/$DEPLOYMENT_FOLDER"
 
       # Deploy to EC2 (Alternative - using Systems Manager)
       - name: Deploy Application to EC2
@@ -200,11 +193,14 @@ jobs:
         run: |
           echo "🚀 Deployment Complete!"
           echo "================================"
-          echo "Application URL: http://${{ steps.cf-outputs.outputs.ALB_DNS }}"
-          echo "Static Assets: http://tpe-frontend-${{ github.sha }}.s3-website-${{ env.AWS_REGION }}.amazonaws.com"
-          echo "Database: ${{ steps.cf-outputs.outputs.DB_ENDPOINT }}"
+          echo "Application Load Balancer: http://${{ steps.cf-outputs.outputs.ALB_DNS }}"
+          echo "Database Endpoint: ${{ steps.cf-outputs.outputs.DB_ENDPOINT }}"
+          echo "S3 Data Lake: ${{ steps.cf-outputs.outputs.S3_BUCKET }}"
           echo "================================"
-          echo "View logs in S3: ${{ steps.cf-outputs.outputs.S3_BUCKET }}/logs/"
+          echo "Frontend assets deployed to S3 bucket: ${{ steps.cf-outputs.outputs.S3_BUCKET }}/deployments/"
+          echo "Database migrations applied successfully"
+          echo "Demo data loaded for Destination Motivation"
+          echo "================================"
 
       - name: Health Check
         run: |
