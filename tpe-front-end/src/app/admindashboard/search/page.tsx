@@ -17,6 +17,9 @@ import {
 import AdvancedSearch from '@/components/admin/AdvancedSearch';
 import SearchResults from '@/components/admin/SearchResults';
 import BulkOperations from '@/components/admin/BulkOperations';
+import ContractorDetailModal from '@/components/admin/ContractorDetailModal';
+import PartnerDetailModal from '@/components/admin/PartnerDetailModal';
+import PartnerForm from '@/components/admin/PartnerForm';
 
 interface SearchResult {
   contractors?: any[];
@@ -38,6 +41,15 @@ export default function AdminSearchPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Modal states for enhanced view functionality
+  const [selectedContractor, setSelectedContractor] = useState<any>(null);
+  const [selectedPartner, setSelectedPartner] = useState<any>(null);
+  const [isContractorModalOpen, setIsContractorModalOpen] = useState(false);
+  const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
+  
+  // Partner editing state (matching Enhanced Partners pattern)
+  const [editPartner, setEditPartner] = useState<any>(null);
 
   const handleContractorResults = (results: SearchResult) => {
     setContractorResults(results);
@@ -61,6 +73,15 @@ export default function AdminSearchPage() {
     setTimeout(() => setSuccessMessage(null), 5000);
   };
 
+  const handleEditPartnerSuccess = () => {
+    setEditPartner(null); // Close the PartnerForm
+    handleSuccess('Partner updated successfully');
+    // Refresh search results if needed
+    if (activeTab === 'partners') {
+      handleRefresh();
+    }
+  };
+
   const handleRefresh = async () => {
     // Trigger a refresh by clearing current results
     // The search components will need to re-run their last search
@@ -72,24 +93,90 @@ export default function AdminSearchPage() {
     }
   };
 
-  const handleViewContractorDetail = (id: string) => {
-    // Navigate to contractor detail page
-    window.open(`/admindashboard/contractors/${id}`, '_blank');
+  const handleViewContractorDetail = async (id: string) => {
+    try {
+      // Use the contractors-enhanced endpoint that works
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
+      const response = await fetch(`${apiUrl}/contractors-enhanced/${id}/view`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch contractor details');
+      }
+
+      const data = await response.json();
+      setSelectedContractor(data.contractor);
+      setIsContractorModalOpen(true);
+    } catch (error) {
+      console.error('Error fetching contractor details:', error);
+      setError('Failed to load contractor details');
+    }
   };
 
-  const handleViewPartnerDetail = (id: string) => {
-    // Navigate to partner detail page
-    window.open(`/admindashboard/partners/${id}`, '_blank');
+  const handleViewPartnerDetail = async (id: string) => {
+    try {
+      // For now, use the existing enhanced partner functionality pattern
+      // First get all partners and find the specific one (batch approach that works)
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
+      const response = await fetch(`${apiUrl}/partners-enhanced/list`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch partner details');
+      }
+
+      const data = await response.json();
+      const partner = data.partners.find((p: any) => p.id.toString() === id.toString());
+      
+      if (partner) {
+        setSelectedPartner(partner);
+        setIsPartnerModalOpen(true);
+      } else {
+        setError('Partner not found');
+      }
+    } catch (error) {
+      console.error('Error fetching partner details:', error);
+      setError('Failed to load partner details');
+    }
   };
 
   const handleEditContractor = (id: string) => {
     // Navigate to contractor edit page
-    window.open(`/admindashboard/contractors/${id}/edit`, '_blank');
+    window.location.href = `/admindashboard/contractors/${id}/edit`;
   };
 
-  const handleEditPartner = (id: string) => {
-    // Navigate to partner edit page
-    window.open(`/admindashboard/partners/${id}/edit`, '_blank');
+  const handleEditPartner = async (id: string) => {
+    try {
+      // Get full partner data for editing (using enhanced approach)
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
+      const response = await fetch(`${apiUrl}/partners-enhanced/list`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch partner details');
+      }
+
+      const data = await response.json();
+      const partner = data.partners.find((p: any) => p.id.toString() === id.toString());
+      
+      if (partner) {
+        setEditPartner(partner); // This will show the PartnerForm component
+      } else {
+        setError('Partner not found');
+      }
+    } catch (error) {
+      console.error('Error fetching partner for editing:', error);
+      setError('Failed to load partner for editing');
+    }
   };
 
   const handleDeleteContractor = (id: string) => {
@@ -163,6 +250,17 @@ export default function AdminSearchPage() {
     const results = activeTab === 'contractors' ? contractorResults : partnerResults;
     return results?.pagination.total || 0;
   };
+
+  // Show PartnerForm when editing a partner (matching Enhanced Partners pattern)
+  if (editPartner) {
+    return (
+      <PartnerForm 
+        partner={editPartner}
+        onSuccess={handleEditPartnerSuccess}
+        onCancel={() => setEditPartner(null)}
+      />
+    );
+  }
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -338,6 +436,19 @@ export default function AdminSearchPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Enhanced View Modals */}
+      <ContractorDetailModal
+        contractor={selectedContractor}
+        isOpen={isContractorModalOpen}
+        onClose={() => setIsContractorModalOpen(false)}
+      />
+
+      <PartnerDetailModal
+        partner={selectedPartner}
+        isOpen={isPartnerModalOpen}
+        onClose={() => setIsPartnerModalOpen(false)}
+      />
     </div>
   );
 }

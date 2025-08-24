@@ -1,0 +1,29 @@
+#!/bin/bash
+# Ubuntu setup script for TPE
+
+# Update system
+apt-get update
+
+# Install Node.js 18
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+apt-get install -y nodejs git
+
+# Clone repository
+cd /home/ubuntu
+git clone https://github.com/broach44/The-Power100-Experience.git
+chown -R ubuntu:ubuntu The-Power100-Experience
+
+# Install backend dependencies
+cd The-Power100-Experience/tpe-backend
+sudo -u ubuntu npm install
+
+# Start backend
+sudo -u ubuntu npm start &
+
+# Install frontend dependencies
+cd ../tpe-front-end
+sudo -u ubuntu npm install
+
+# Build and start frontend
+sudo -u ubuntu npm run build
+sudo -u ubuntu PORT=3000 npm start &

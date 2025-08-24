@@ -1,0 +1,296 @@
+{
+  "name": "SMS Verification Code Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sms-verification",
+        "options": {}
+      },
+      "id": "webhook_trigger",
+      "name": "Webhook - Verification Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "sms-verification"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract verification request data\nconst data = $input.first().json.body;\n\nconsole.log('📱 Verification request received:', data);\n\nif (!data.phone || !data.verificationCode) {\n  throw new Error('Missing phone or verification code');\n}\n\n// Format phone for GHL (ensure proper format)\nlet formattedPhone = data.phone;\nif (!formattedPhone.startsWith('+')) {\n  // Assume US number if no country code\n  formattedPhone = '+1' + formattedPhone.replace(/[^0-9]/g, '');\n}\n\nreturn [{\n  json: {\n    contractorId: data.contractorId,\n    name: data.name || 'Contractor',\n    phone: formattedPhone,\n    verificationCode: data.verificationCode,\n    message: data.message || `Your Power100 verification code is: ${data.verificationCode}. Reply with this code to verify your phone.`,\n    expiresAt: data.expiresAt,\n    timestamp: data.timestamp\n  }\n}];"
+      },
+      "id": "process_request",
+      "name": "Process Verification Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rest.gohighlevel.com/v1/conversations/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GHL_API_KEY"
+            },
+            {
+              "name": "Content-Type", 
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $json.phone }}\",\n  \"message\": \"{{ $json.message }}\",\n  \"scheduledAt\": null\n}",
+        "options": {}
+      },
+      "id": "send_sms_ghl",
+      "name": "Send SMS via GHL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log the SMS send result\nconst result = $input.first().json;\nconst success = !result.error && result.messageId;\n\nconst response = {\n  success: success,\n  contractorId: $node[\"Process Verification Request\"].json.contractorId,\n  phone: $node[\"Process Verification Request\"].json.phone,\n  messageId: result.messageId || null,\n  ghlResponse: result,\n  timestamp: new Date().toISOString()\n};\n\nif (success) {\n  console.log('✅ Verification SMS sent successfully');\n} else {\n  console.error('❌ Failed to send verification SMS:', result.error);\n}\n\nreturn [{ json: response }];"
+      },
+      "id": "log_result",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "{{ $node[\"Webhook - Verification Request\"].json.body.callbackUrl || 'https://b3a1097d4247.ngrok-free.app/api/verification/webhook/sent' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "notify_tpe",
+      "name": "Notify TPE Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 300],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "sms-reply",
+        "options": {}
+      },
+      "id": "webhook_reply",
+      "name": "Webhook - SMS Reply",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 500],
+      "webhookId": "sms-reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process SMS reply from GHL\nconst data = $input.first().json.body;\n\nconsole.log('📨 SMS Reply received:', data);\n\n// Extract verification code from message\nconst message = data.body || data.message || '';\nconst codeMatch = message.match(/\\b\\d{6}\\b/);\n\nif (!codeMatch) {\n  console.log('⚠️ No verification code found in message:', message);\n  return [{\n    json: {\n      success: false,\n      error: 'No verification code found',\n      message: message,\n      phone: data.from || data.phone\n    }\n  }];\n}\n\nreturn [{\n  json: {\n    phone: data.from || data.phone,\n    body: message,\n    verificationCode: codeMatch[0],\n    contactId: data.contactId,\n    conversationId: data.conversationId,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "process_reply",
+      "name": "Process SMS Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [450, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://b3a1097d4247.ngrok-free.app/api/verification/webhook/reply",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "verify_code",
+      "name": "Verify Code with TPE",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 500]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check_verification",
+      "name": "Check Verification",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 500]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rest.gohighlevel.com/v1/conversations/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GHL_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $node[\"Process SMS Reply\"].json.contactId }}\",\n  \"message\": \"✅ Phone verified successfully! You can now continue with your Power100 Experience.\"\n}",
+        "options": {}
+      },
+      "id": "send_success",
+      "name": "Send Success Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 450]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rest.gohighlevel.com/v1/conversations/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GHL_API_KEY"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $node[\"Process SMS Reply\"].json.contactId }}\",\n  \"message\": \"❌ Invalid verification code. Please check the code and try again, or request a new code.\"\n}",
+        "options": {}
+      },
+      "id": "send_failure",
+      "name": "Send Failure Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1050, 550]
+    }
+  ],
+  "connections": {
+    "webhook_trigger": {
+      "main": [
+        [
+          {
+            "node": "process_request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "process_request": {
+      "main": [
+        [
+          {
+            "node": "send_sms_ghl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_sms_ghl": {
+      "main": [
+        [
+          {
+            "node": "log_result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "log_result": {
+      "main": [
+        [
+          {
+            "node": "notify_tpe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "webhook_reply": {
+      "main": [
+        [
+          {
+            "node": "process_reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "process_reply": {
+      "main": [
+        [
+          {
+            "node": "verify_code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "verify_code": {
+      "main": [
+        [
+          {
+            "node": "check_verification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "check_verification": {
+      "main": [
+        [
+          {
+            "node": "send_success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "send_failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "sms-verification"
+  },
+  "tags": ["verification", "sms", "ghl"]
+}

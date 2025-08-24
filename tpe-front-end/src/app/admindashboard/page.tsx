@@ -415,13 +415,15 @@ export default function AdminDashboard() {
               </Card>
             </Link>
             
-            <Card className="bg-gray-50 cursor-not-allowed opacity-60">
-              <CardContent className="p-6 text-center">
-                <Users className="w-8 h-8 text-gray-400 mx-auto mb-3" />
-                <h3 className="font-semibold text-gray-600">Manage Contractors</h3>
-                <p className="text-sm text-gray-500 mt-1">Coming soon</p>
-              </CardContent>
-            </Card>
+            <Link href="/admindashboard/power-cards">
+              <Card className="bg-white hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-power100-red">
+                <CardContent className="p-6 text-center">
+                  <Star className="w-8 h-8 text-power100-red mx-auto mb-3" />
+                  <h3 className="font-semibold text-power100-black">Power Cards</h3>
+                  <p className="text-sm text-power100-grey mt-1">Manage quarterly feedback surveys</p>
+                </CardContent>
+              </Card>
+            </Link>
             
             <Link href="/admindashboard/powerconfidence">
               <Card className="bg-white hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-power100-red">
@@ -442,7 +444,7 @@ export default function AdminDashboard() {
             <Card className="bg-white">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-xl font-semibold">Recent Contractors</CardTitle>
-                <Link href="/admindashboard/contractors">
+                <Link href="/admindashboard/contractors-enhanced">
                   <Button variant="outline" className="h-11">
                     <Users className="w-4 h-4 mr-2" />
                     View All

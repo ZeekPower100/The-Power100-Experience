@@ -52,9 +52,10 @@ const PowerConfidenceDashboard: React.FC = () => {
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/feedback/analytics/dashboard', {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_BASE_URL}/feedback/analytics/dashboard`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },
       });
 
@@ -74,11 +75,12 @@ const PowerConfidenceDashboard: React.FC = () => {
   const updateAllScores = async () => {
     try {
       setUpdating(true);
-      const response = await fetch('/api/feedback/powerconfidence/update', {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_BASE_URL}/feedback/powerconfidence/update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },
         body: JSON.stringify({})
       });

@@ -1,0 +1,155 @@
+{
+  "name": "GHL to TPE Communication Sync",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ghl-sms-webhook",
+        "responseMode": "responseNode",
+        "responseData": "allEntries",
+        "options": {}
+      },
+      "id": "webhook-receive",
+      "name": "GHL SMS Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookDescription": {
+        "name": "GHL SMS Messages",
+        "httpMethod": "POST",
+        "path": "ghl-sms-webhook"
+      }
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:5000/api/communications/webhook",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "jsonParameters": true,
+        "options": {},
+        "bodyParametersJson": "={{ JSON.stringify({\n  contactId: $json.contactId,\n  conversationId: $json.conversationId,\n  messageId: $json.id,\n  type: 'sms',\n  direction: $json.direction,\n  body: $json.body,\n  from: {\n    phone: $json.from,\n    name: $json.fromName\n  },\n  to: {\n    phone: $json.to,\n    name: $json.toName\n  },\n  status: $json.status,\n  contractorId: $json.customFields?.contractorId,\n  campaignId: $json.campaignId,\n  flowType: $json.customFields?.flowType,\n  flowStep: $json.customFields?.flowStep,\n  metadata: {\n    source: 'ghl',\n    originalData: $json\n  }\n}) }}"
+      },
+      "id": "http-to-tpe",
+      "name": "Send to TPE Backend",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "boolean": [],
+          "string": [
+            {
+              "name": "status",
+              "value": "success"
+            },
+            {
+              "name": "message",
+              "value": "Communication logged"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "response-success",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [650, 250]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "status",
+              "value": "error"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.message }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "response-error",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [650, 350]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "respond-to-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "GHL SMS Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send to TPE Backend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to TPE Backend": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {},
+  "versionId": "1",
+  "id": "ghl-tpe-integration",
+  "meta": {
+    "instanceId": "tpe-n8n"
+  },
+  "tags": []
+}

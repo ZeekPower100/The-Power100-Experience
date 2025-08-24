@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, CheckCircle, Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { contractorApi } from '@/lib/api';
+import SessionService from '@/lib/sessionService';
 
 interface StepProps {
   data: Partial<Contractor>;
@@ -87,10 +88,22 @@ export default function VerificationStep({ data, onNext, onUpdate }: StepProps) 
       await contractorApi.verifyCode(data.id, verificationCode);
       
       // Update contractor status
-      onUpdate({
+      const updatedContractor = {
+        ...data,
         verification_status: 'verified',
         opted_in_coaching: true
-      });
+      };
+      
+      onUpdate(updatedContractor);
+
+      // Create session for verified contractor
+      if (data.id) {
+        try {
+          await SessionService.createSession(data.id, 2); // Move to step 2 (focus selection)
+        } catch (sessionError) {
+          console.warn('Failed to create session, but verification succeeded:', sessionError);
+        }
+      }
 
       // Move to next step
       onNext();

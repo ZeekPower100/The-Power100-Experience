@@ -13,13 +13,17 @@ export type FocusArea =
   | "technology_integration"
   | "financial_management";
 
-// The list of possible revenue ranges
+// The list of possible revenue ranges (matching partner form)
 export type RevenueRange =
-  | "under_500k"
-  | "500k_1m"
-  | "1m_5m"
-  | "5m_10m"
-  | "over_10m";
+  | "0_5_million"
+  | "5_10_million"
+  | "11_20_million"
+  | "21_30_million"
+  | "31_50_million"
+  | "51_75_million"
+  | "76_150_million"
+  | "151_300_million"
+  | "300_plus_million";
 
 // The main Contractor interface
 export interface Contractor {
@@ -42,8 +46,24 @@ export interface Contractor {
     increased_people: boolean;
     increased_activity: boolean;
   };
-  current_stage?: "verification" | "focus_selection" | "profiling" | "matching" | "demo_booked" | "completed";
+  current_stage?: "verification" | "focus_selection" | "profiling" | "tech_stack" | "matching" | "demo_booked" | "completed";
   assigned_partner_id?: string;
   demo_scheduled_date?: string;
   opted_in_coaching: boolean;
+  
+  // Tech Stack Fields
+  tech_stack_sales?: string[];
+  tech_stack_operations?: string[];
+  tech_stack_marketing?: string[];
+  tech_stack_customer_experience?: string[];
+  tech_stack_project_management?: string[];
+  tech_stack_accounting_finance?: string[];
+  
+  // Tech Stack Other Fields
+  tech_stack_sales_other?: string;
+  tech_stack_operations_other?: string;
+  tech_stack_marketing_other?: string;
+  tech_stack_customer_experience_other?: string;
+  tech_stack_project_management_other?: string;
+  tech_stack_accounting_finance_other?: string;
 }

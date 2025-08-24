@@ -28,6 +28,9 @@ interface SearchFilters {
   teamSizeMin?: number;
   teamSizeMax?: number;
   readinessIndicators: string[];
+  contact_type?: string;
+  onboarding_source?: string;
+  tags: string[];
   isActive?: boolean;
   confidenceScoreMin?: number;
   confidenceScoreMax?: number;
@@ -92,6 +95,18 @@ const READINESS_INDICATORS = [
   'increased_tools', 'increased_people', 'increased_activity'
 ];
 
+const CONTACT_TYPES = [
+  'contractor', 'employee', 'admin'
+];
+
+const ONBOARDING_SOURCES = [
+  'contractor_flow', 'partner_portal', 'admin_import'
+];
+
+const COMMON_TAGS = [
+  'contractor', 'customer', 'employee', 'new_signup', 'returning_signup', 'verified_employee', 'external_contact', 'imported'
+];
+
 const GEOGRAPHIC_REGIONS = [
   'North America', 'South America', 'Europe', 'Asia', 'Africa', 'Australia'
 ];
@@ -102,6 +117,7 @@ export default function AdvancedSearch({ searchType, onResults, onError }: Advan
     focusAreas: [],
     revenueRange: [],
     readinessIndicators: [],
+    tags: [],
     sortBy: 'created_at',
     sortOrder: 'DESC'
   });
@@ -140,6 +156,7 @@ export default function AdvancedSearch({ searchType, onResults, onError }: Advan
       focusAreas: [],
       revenueRange: [],
       readinessIndicators: [],
+      tags: [],
       sortBy: 'created_at',
       sortOrder: 'DESC'
     });
@@ -305,6 +322,33 @@ export default function AdvancedSearch({ searchType, onResults, onError }: Advan
                 />
               </Badge>
             ))}
+            {filters.contact_type && (
+              <Badge variant="secondary">
+                Contact Type: {filters.contact_type}
+                <X 
+                  className="w-3 h-3 ml-1 cursor-pointer" 
+                  onClick={() => handleFilterChange('contact_type', undefined)}
+                />
+              </Badge>
+            )}
+            {filters.onboarding_source && (
+              <Badge variant="secondary">
+                Source: {filters.onboarding_source.replace('_', ' ')}
+                <X 
+                  className="w-3 h-3 ml-1 cursor-pointer" 
+                  onClick={() => handleFilterChange('onboarding_source', undefined)}
+                />
+              </Badge>
+            )}
+            {filters.tags.map(tag => (
+              <Badge key={tag} variant="secondary">
+                Tag: {tag}
+                <X 
+                  className="w-3 h-3 ml-1 cursor-pointer" 
+                  onClick={() => handleArrayFilterToggle('tags', tag)}
+                />
+              </Badge>
+            ))}
           </div>
         )}
 
@@ -365,6 +409,40 @@ export default function AdvancedSearch({ searchType, onResults, onError }: Advan
                         onChange={(e) => handleFilterChange('teamSizeMax', e.target.value ? Number(e.target.value) : undefined)}
                       />
                     </div>
+                  </div>
+
+                  {/* Contact Type */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Contact Type</label>
+                    <select
+                      value={filters.contact_type || ''}
+                      onChange={(e) => handleFilterChange('contact_type', e.target.value || undefined)}
+                      className="w-full p-2 border rounded-md"
+                    >
+                      <option value="">All Types</option>
+                      {CONTACT_TYPES.map(type => (
+                        <option key={type} value={type}>
+                          {type.charAt(0).toUpperCase() + type.slice(1)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Onboarding Source */}
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Onboarding Source</label>
+                    <select
+                      value={filters.onboarding_source || ''}
+                      onChange={(e) => handleFilterChange('onboarding_source', e.target.value || undefined)}
+                      className="w-full p-2 border rounded-md"
+                    >
+                      <option value="">All Sources</option>
+                      {ONBOARDING_SOURCES.map(source => (
+                        <option key={source} value={source}>
+                          {source.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Readiness Indicators */}
@@ -516,6 +594,25 @@ export default function AdvancedSearch({ searchType, onResults, onError }: Advan
                 ))}
               </div>
             </div>
+
+            {/* Tags (for contractors) */}
+            {searchType === 'contractors' && (
+              <div>
+                <label className="block text-sm font-medium mb-2">Tags</label>
+                <div className="flex flex-wrap gap-2">
+                  {COMMON_TAGS.map(tag => (
+                    <Button
+                      key={tag}
+                      variant={filters.tags.includes(tag) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handleArrayFilterToggle('tags', tag)}
+                    >
+                      {tag.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

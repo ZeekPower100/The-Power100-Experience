@@ -1,34 +1,24 @@
-// SMS Campaign and Subscription Routes
+// SMS Campaign Routes (Placeholder for PowerConfidence Dashboard)
 const express = require('express');
 const router = express.Router();
 const {
-  getSmsSubscriptions,
-  createSmsSubscription,
-  handleSmsOptOut,
   getSmsCampaigns,
   createSmsCampaign,
   launchSmsCampaign,
   getSmsAnalytics
-} = require('../controllers/smsController');
+} = require('../controllers/feedbackController.simple');
 
-const { authenticateAdmin } = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 
-// Public routes (no authentication required)
-router.post('/opt-out', handleSmsOptOut); // Public opt-out endpoint
+// All SMS routes require authentication
+router.use(protect);
 
-// Admin-only routes
-router.use(authenticateAdmin); // Apply admin authentication to all routes below
-
-// SMS subscriptions management
-router.get('/subscriptions', getSmsSubscriptions);
-router.post('/subscriptions', createSmsSubscription);
-
-// SMS campaigns management
+// SMS Campaigns
 router.get('/campaigns', getSmsCampaigns);
 router.post('/campaigns', createSmsCampaign);
-router.post('/campaigns/:campaignId/launch', launchSmsCampaign);
+router.post('/campaigns/:id/launch', launchSmsCampaign);
 
-// SMS analytics
+// SMS Analytics  
 router.get('/analytics', getSmsAnalytics);
 
 module.exports = router;

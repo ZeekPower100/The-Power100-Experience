@@ -1,0 +1,134 @@
+{
+  "name": "Send Verification SMS",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "send-verification-sms",
+        "options": {}
+      },
+      "id": "webhook_trigger",
+      "name": "Webhook - Send Verification",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "send-verification-sms"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract verification request from TPE\nconst data = $input.first().json.body;\n\nconsole.log('📱 Sending verification code to:', data.phone);\nconsole.log('🔑 Code:', data.verificationCode);\n\nif (!data.phone || !data.verificationCode) {\n  throw new Error('Missing required fields: phone or verificationCode');\n}\n\n// Format phone for GHL (ensure +1 for US numbers)\nlet formattedPhone = data.phone.replace(/[^0-9+]/g, '');\nif (!formattedPhone.startsWith('+')) {\n  formattedPhone = '+1' + formattedPhone;\n}\n\n// Build SMS message\nconst message = data.message || `Your Power100 verification code is: ${data.verificationCode}\\n\\nThis code expires in 10 minutes.`;\n\nreturn [{\n  json: {\n    contractorId: data.contractorId,\n    name: data.name || 'Valued Contractor',\n    phone: formattedPhone,\n    originalPhone: data.phone,\n    verificationCode: data.verificationCode,\n    message: message,\n    expiresAt: data.expiresAt,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "format_request",
+      "name": "Format Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://rest.gohighlevel.com/v1/conversations/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer YOUR_GHL_API_KEY_HERE"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"type\": \"SMS\",\n  \"contactId\": \"{{ $json.phone }}\",\n  \"message\": \"{{ $json.message }}\"\n}",
+        "options": {}
+      },
+      "id": "send_sms_ghl",
+      "name": "Send SMS via GHL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process GHL response\nconst ghlResponse = $input.first().json;\nconst requestData = $node[\"Format Request\"].json;\n\nconst success = !ghlResponse.error && (ghlResponse.messageId || ghlResponse.success);\n\nconst result = {\n  success: success,\n  contractorId: requestData.contractorId,\n  phone: requestData.phone,\n  verificationCode: requestData.verificationCode,\n  messageId: ghlResponse.messageId || null,\n  timestamp: new Date().toISOString()\n};\n\nif (success) {\n  console.log('✅ Verification SMS sent successfully');\n  console.log('Message ID:', ghlResponse.messageId);\n} else {\n  console.error('❌ Failed to send SMS:', ghlResponse.error || 'Unknown error');\n  result.error = ghlResponse.error || ghlResponse.message || 'Failed to send SMS';\n}\n\nreturn [{ json: result }];"
+      },
+      "id": "process_response",
+      "name": "Process Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "webhook_response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    }
+  ],
+  "connections": {
+    "webhook_trigger": {
+      "main": [
+        [
+          {
+            "node": "format_request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "format_request": {
+      "main": [
+        [
+          {
+            "node": "send_sms_ghl",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "send_sms_ghl": {
+      "main": [
+        [
+          {
+            "node": "process_response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "process_response": {
+      "main": [
+        [
+          {
+            "node": "webhook_response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "send-verification-sms"
+  },
+  "tags": ["sms", "verification", "ghl"]
+}

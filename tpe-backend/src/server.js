@@ -4,10 +4,15 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
 const rateLimit = require('express-rate-limit');
-require('dotenv').config();
+const path = require('path');
+
+// Load environment variables based on NODE_ENV
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
+require('dotenv').config({ path: path.join(__dirname, '..', envFile) });
 
 const { connectDB } = require('./config/database.sqlite');
 const { errorHandler } = require('./middleware/errorHandler');
+const dataCollectionService = require('./services/dataCollectionService');
 
 // Import routes
 const contractorRoutes = require('./routes/contractorRoutes');
@@ -19,9 +24,14 @@ const bulkRoutes = require('./routes/bulk');
 const feedbackRoutes = require('./routes/feedbackRoutes');
 const smsRoutes = require('./routes/smsRoutes');
 const partnerEnhancedRoutes = require('./routes/partnerEnhancedRoutes');
+const contractorEnhancedRoutes = require('./routes/contractorEnhancedRoutes');
 const partnerAuthRoutes = require('./routes/partnerAuthRoutes');
 const partnerPortalRoutes = require('./routes/partnerPortalRoutes');
 const aiCoachRoutes = require('./routes/aiCoachRoutes');
+const sessionRoutes = require('./routes/sessionRoutes');
+const powerCardRoutes = require('./routes/powerCards');
+const powerConfidenceRoutes = require('./routes/powerConfidence');
+const contactTaggingRoutes = require('./routes/contactTagging');
 
 const app = express();
 
@@ -63,6 +73,9 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined'));
 }
 
+// Data collection middleware - track all API interactions
+app.use(dataCollectionService.trackAPICall());
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -83,9 +96,18 @@ app.use('/api/bulk', bulkRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/partners-enhanced', partnerEnhancedRoutes);
+app.use('/api/contractors-enhanced', contractorEnhancedRoutes);
 app.use('/api/partner-auth', partnerAuthRoutes);
 app.use('/api/partner-portal', partnerPortalRoutes);
 app.use('/api/ai-coach', aiCoachRoutes);
+app.use('/api/session', sessionRoutes);
+app.use('/api/power-cards', powerCardRoutes);
+app.use('/api/power-confidence', powerConfidenceRoutes);
+app.use('/api/contact-tagging', contactTaggingRoutes);
+app.use('/api/communications', require('./routes/communicationRoutes'));
+app.use('/api/ghl-sync', require('./routes/ghlSyncRoutes'));
+app.use('/api/verification', require('./routes/verificationRoutes'));
+app.use('/api/emails', require('./routes/emailRoutes'));
 
 // 404 handler
 app.use((req, res) => {

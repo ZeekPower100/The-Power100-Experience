@@ -1,8 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useReducer, ReactNode } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
 import { Contractor } from '@/lib/types/contractor';
 import { StrategicPartner } from '@/lib/types/strategic_partner';
+import SessionService from '@/lib/sessionService';
 
 // State types
 interface ContractorFlowState {
@@ -23,7 +24,8 @@ type ContractorFlowAction =
   | { type: 'SELECT_PARTNER'; payload: StrategicPartner | null }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_ERROR'; payload: string | null }
-  | { type: 'RESET_FLOW' };
+  | { type: 'RESET_FLOW' }
+  | { type: 'RESTORE_SESSION'; payload: { contractor: Partial<Contractor>; currentStep: number } };
 
 // Initial state
 const initialState: ContractorFlowState = {
@@ -65,6 +67,15 @@ function contractorFlowReducer(state: ContractorFlowState, action: ContractorFlo
     case 'RESET_FLOW':
       return initialState;
     
+    case 'RESTORE_SESSION':
+      return {
+        ...state,
+        contractor: action.payload.contractor,
+        currentStep: action.payload.currentStep,
+        isLoading: false,
+        error: null
+      };
+    
     default:
       return state;
   }
@@ -79,6 +90,39 @@ const ContractorFlowContext = createContext<{
 // Provider component
 export function ContractorFlowProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(contractorFlowReducer, initialState);
+
+  // Restore session on component mount
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        dispatch({ type: 'SET_LOADING', payload: true });
+        
+        const sessionData = await SessionService.restoreSession();
+        if (sessionData) {
+          dispatch({
+            type: 'RESTORE_SESSION',
+            payload: sessionData
+          });
+        } else {
+          dispatch({ type: 'SET_LOADING', payload: false });
+        }
+      } catch (error) {
+        console.error('Failed to restore session:', error);
+        dispatch({ type: 'SET_LOADING', payload: false });
+        dispatch({ type: 'SET_ERROR', payload: 'Failed to restore session' });
+      }
+    };
+
+    restoreSession();
+  }, []);
+
+  // Save session whenever contractor or step changes
+  useEffect(() => {
+    if (state.contractor?.id && state.currentStep > 1) {
+      SessionService.updateSessionStep(state.currentStep);
+      SessionService.updateSessionContractor(state.contractor);
+    }
+  }, [state.contractor, state.currentStep]);
 
   return (
     <ContractorFlowContext.Provider value={{ state, dispatch }}>
@@ -106,4 +150,8 @@ export const contractorFlowActions = {
   setLoading: (loading: boolean) => ({ type: 'SET_LOADING' as const, payload: loading }),
   setError: (error: string | null) => ({ type: 'SET_ERROR' as const, payload: error }),
   resetFlow: () => ({ type: 'RESET_FLOW' as const }),
+  restoreSession: (contractor: Partial<Contractor>, currentStep: number) => ({ 
+    type: 'RESTORE_SESSION' as const, 
+    payload: { contractor, currentStep } 
+  }),
 };

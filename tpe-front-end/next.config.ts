@@ -1,7 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Remove static export for now - we'll deploy as Node.js app
+  images: {
+    unoptimized: true
+  },
   typescript: {
     // Skip TypeScript checking during build - handle separately with type-check script
     ignoreBuildErrors: true,
