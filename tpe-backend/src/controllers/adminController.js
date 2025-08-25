@@ -7,10 +7,10 @@ const getDashboardStats = async (req, res, next) => {
   const contractorStats = await query(`
     SELECT 
       COUNT(*) as total,
-      COUNT(*) FILTER (WHERE current_stage = 'completed') as completed,
+      COUNT(*) FILTER (WHERE workflow_step = 'completed') as completed,
       COUNT(*) FILTER (WHERE created_at > CURRENT_DATE - INTERVAL '7 days') as new_this_week,
       ROUND(
-        COUNT(*) FILTER (WHERE current_stage = 'completed')::numeric / 
+        COUNT(*) FILTER (WHERE workflow_step = 'completed')::numeric / 
         NULLIF(COUNT(*), 0) * 100, 2
       ) as completion_rate
     FROM contractors
@@ -21,8 +21,8 @@ const getDashboardStats = async (req, res, next) => {
     SELECT 
       COUNT(*) as total,
       COUNT(*) FILTER (WHERE is_active = true) as active,
-      AVG(power_confidence_score) as avg_confidence_score
-    FROM strategic_partners
+      AVG(powerconfidence_score) as avg_confidence_score
+    FROM partners
   `);
 
   // Get booking stats
@@ -44,7 +44,7 @@ const getDashboardStats = async (req, res, next) => {
         name as title,
         company_name as subtitle,
         created_at,
-        current_stage as status
+        workflow_step as status
       FROM contractors
       ORDER BY created_at DESC
       LIMIT 5
@@ -60,7 +60,7 @@ const getDashboardStats = async (req, res, next) => {
         b.status
       FROM demo_bookings b
       JOIN contractors c ON b.contractor_id = c.id
-      JOIN strategic_partners p ON b.partner_id = p.id
+      JOIN partners p ON b.partner_id = p.id
       ORDER BY b.created_at DESC
       LIMIT 5
     )
@@ -72,11 +72,11 @@ const getDashboardStats = async (req, res, next) => {
   const funnelStats = await query(`
     SELECT 
       COUNT(*) as total_started,
-      COUNT(*) FILTER (WHERE current_stage != 'verification') as past_verification,
-      COUNT(*) FILTER (WHERE current_stage NOT IN ('verification', 'focus_selection')) as past_focus,
-      COUNT(*) FILTER (WHERE current_stage NOT IN ('verification', 'focus_selection', 'profiling')) as past_profiling,
-      COUNT(*) FILTER (WHERE current_stage NOT IN ('verification', 'focus_selection', 'profiling', 'matching')) as past_matching,
-      COUNT(*) FILTER (WHERE current_stage = 'completed') as completed
+      COUNT(*) FILTER (WHERE workflow_step != 'verification') as past_verification,
+      COUNT(*) FILTER (WHERE workflow_step NOT IN ('verification', 'focus_selection')) as past_focus,
+      COUNT(*) FILTER (WHERE workflow_step NOT IN ('verification', 'focus_selection', 'profiling')) as past_profiling,
+      COUNT(*) FILTER (WHERE workflow_step NOT IN ('verification', 'focus_selection', 'profiling', 'matching')) as past_matching,
+      COUNT(*) FILTER (WHERE workflow_step = 'completed') as completed
     FROM contractors
   `);
 
@@ -101,7 +101,7 @@ const exportContractors = async (req, res, next) => {
   const values = [];
 
   if (stage) {
-    conditions.push(`current_stage = $${values.length + 1}`);
+    conditions.push(`workflow_step = $${values.length + 1}`);
     values.push(stage);
   }
 
@@ -141,13 +141,13 @@ const exportContractors = async (req, res, next) => {
 const exportPartners = async (req, res, next) => {
   const { format = 'json', active } = req.query;
 
-  let queryText = 'SELECT * FROM strategic_partners';
+  let queryText = 'SELECT * FROM partners';
   
   if (active !== undefined) {
     queryText += ` WHERE is_active = ${active === 'true'}`;
   }
 
-  queryText += ' ORDER BY power_confidence_score DESC';
+  queryText += ' ORDER BY powerconfidence_score DESC';
 
   const result = await query(queryText);
 
@@ -177,7 +177,7 @@ const exportBookings = async (req, res, next) => {
       p.company_name as partner_name
     FROM demo_bookings b
     JOIN contractors c ON b.contractor_id = c.id
-    JOIN strategic_partners p ON b.partner_id = p.id
+    JOIN partners p ON b.partner_id = p.id
   `;
 
   const conditions = [];

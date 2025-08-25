@@ -1,0 +1,2 @@
+id,email,password_hash,full_name,is_active,created_at,updated_at
+1,admin@power100.io,$2a$12$5DsZnd9DH6ONN2mfLM0aP.i1RFUQheLfbztf35ETGjrJBxmT0JufC,"System Administrator",1,"2025-08-24 04:39:48","2025-08-24 04:39:48"

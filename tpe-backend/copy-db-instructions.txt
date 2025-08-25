@@ -1,0 +1,11 @@
+INSTRUCTIONS TO COPY SQLITE DATABASE:
+
+1. On your local Windows machine, find the file:
+   C:\Users\broac\CascadeProjects\The-Power100-Experience\tpe-backend\power100.db
+
+2. Upload it to the server using SCP or your preferred method to:
+   /home/ubuntu/The-Power100-Experience/tpe-backend/power100.db
+
+3. Then run: node /home/ubuntu/migrate-partners.js
+
+Alternatively, we can manually create the demo partners in PostgreSQL.

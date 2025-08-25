@@ -10,13 +10,14 @@ const path = require('path');
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
 require('dotenv').config({ path: path.join(__dirname, '..', envFile) });
 
-const { connectDB } = require('./config/database.sqlite');
+const { connectDB } = require('./config/database');
 const { errorHandler } = require('./middleware/errorHandler');
 const dataCollectionService = require('./services/dataCollectionService');
 
 // Import routes
 const contractorRoutes = require('./routes/contractorRoutes');
 const partnerRoutes = require('./routes/partnerRoutes');
+const publicPartnerRoutes = require('./routes/publicPartnerRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -31,6 +32,7 @@ const aiCoachRoutes = require('./routes/aiCoachRoutes');
 const sessionRoutes = require('./routes/sessionRoutes');
 const powerCardRoutes = require('./routes/powerCards');
 const powerConfidenceRoutes = require('./routes/powerConfidence');
+const reportRoutes = require('./routes/reports');
 const contactTaggingRoutes = require('./routes/contactTagging');
 
 const app = express();
@@ -44,9 +46,13 @@ app.use(helmet());
 // CORS configuration
 app.use(cors({
   origin: [
+    'http://3.95.250.211:5000',
     'http://localhost:3000',
-    'http://localhost:3001',
+    'http://localhost:3001', 
     'http://localhost:3002',
+    'https://tpx.power100.io',
+    'http://tpx.power100.io',
+    'http://3.95.250.211:3000',
     process.env.FRONTEND_URL
   ].filter(Boolean),
   credentials: true,
@@ -87,6 +93,7 @@ app.get('/health', (req, res) => {
 });
 
 // API Routes
+app.use('/api/partners/public', publicPartnerRoutes);
 app.use('/api/contractors', contractorRoutes);
 app.use('/api/partners', partnerRoutes);
 app.use('/api/bookings', bookingRoutes);
@@ -103,6 +110,7 @@ app.use('/api/ai-coach', aiCoachRoutes);
 app.use('/api/session', sessionRoutes);
 app.use('/api/power-cards', powerCardRoutes);
 app.use('/api/power-confidence', powerConfidenceRoutes);
+app.use('/api/reports', reportRoutes);
 app.use('/api/contact-tagging', contactTaggingRoutes);
 app.use('/api/communications', require('./routes/communicationRoutes'));
 app.use('/api/ghl-sync', require('./routes/ghlSyncRoutes'));

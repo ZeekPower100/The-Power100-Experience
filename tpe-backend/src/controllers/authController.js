@@ -26,7 +26,7 @@ const createSendToken = (user, statusCode, res) => {
   res.cookie('token', token, cookieOptions);
 
   // Remove password from output
-  user.password_hash = undefined;
+  user.password = undefined;
 
   res.status(statusCode).json({
     success: true,
@@ -57,7 +57,7 @@ const login = async (req, res, next) => {
   }
 
   // Check password
-  const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+  const isPasswordValid = await bcrypt.compare(password, user.password);
 
   if (!isPasswordValid) {
     return next(new AppError('Invalid email or password', 401));
@@ -105,7 +105,7 @@ const updatePassword = async (req, res, next) => {
   const user = result.rows[0];
 
   // Check current password
-  const isPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
+  const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
 
   if (!isPasswordValid) {
     return next(new AppError('Current password is incorrect', 401));

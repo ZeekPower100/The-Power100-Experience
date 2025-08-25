@@ -7,8 +7,8 @@ const getPartnerPerformanceDashboard = async (req, res) => {
     // Get existing partners from SQLite (using only existing columns)
     const partnersResult = await query(`
       SELECT id, company_name, power_confidence_score, is_active
-      FROM strategic_partners 
-      WHERE is_active = 1 
+      FROM partners 
+      WHERE is_active = true 
       ORDER BY power_confidence_score DESC
     `);
 

@@ -26,7 +26,7 @@ const protect = async (req, res, next) => {
 
     // Check if admin user still exists
     const result = await query(
-      'SELECT id, email, full_name, is_active FROM admin_users WHERE id = ?',
+      'SELECT id, email, name as full_name, is_active FROM admin_users WHERE id = $1',
       [decoded.id]
     );
 

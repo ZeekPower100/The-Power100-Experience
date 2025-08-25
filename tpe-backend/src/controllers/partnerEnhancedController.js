@@ -8,7 +8,7 @@ const getEnhancedPartnerList = async (req, res) => {
     console.log('📋 Fetching enhanced partner list with PowerConfidence scores');
     
     // Use the exact same approach as the working getAllPartners
-    const queryText = 'SELECT * FROM strategic_partners ORDER BY power_confidence_score DESC';
+    const queryText = 'SELECT * FROM partners ORDER BY power_confidence_score DESC';
     const result = await query(queryText);
     
     console.log('Enhanced query result - Has rows:', !!result.rows, 'Rows count:', result.rows ? result.rows.length : 0);
@@ -81,8 +81,8 @@ const getPartnerDetailedAnalytics = async (req, res) => {
         COALESCE(score_trend, 'stable') as score_trend,
         COALESCE(total_contractor_engagements, 5) as total_contractor_engagements,
         COALESCE(avg_contractor_satisfaction, 7.8) as avg_contractor_satisfaction
-      FROM strategic_partners 
-      WHERE id = ? AND is_active = 1
+      FROM partners 
+      WHERE id = ? AND is_active = true
     `;
 
     const partnerResult = await query(partnerQuery, [partnerId]);
@@ -225,7 +225,7 @@ const updatePartnerPowerConfidence = async (req, res) => {
     // Get current score to set as previous
     const currentScoreQuery = `
       SELECT current_powerconfidence_score 
-      FROM strategic_partners 
+      FROM partners 
       WHERE id = ?
     `;
     const currentResult = await query(currentScoreQuery, [partnerId]);
@@ -237,7 +237,7 @@ const updatePartnerPowerConfidence = async (req, res) => {
 
     // Update partner record
     const updateQuery = `
-      UPDATE strategic_partners 
+      UPDATE partners 
       SET 
         current_powerconfidence_score = ?,
         previous_powerconfidence_score = ?,

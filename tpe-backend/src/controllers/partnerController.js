@@ -5,11 +5,11 @@ const { AppError } = require('../middleware/errorHandler');
 const getActivePartners = async (req, res, next) => {
   const result = await query(`
     SELECT id, company_name, description, logo_url, website, 
-           focus_areas_served, target_revenue_range, power_confidence_score,
+           focus_areas_served, target_revenue_range, powerconfidence_score,
            key_differentiators, pricing_model
-    FROM strategic_partners 
+    FROM partners 
     WHERE is_active = true 
-    ORDER BY power_confidence_score DESC
+    ORDER BY powerconfidence_score DESC
   `);
 
   res.status(200).json({
@@ -26,7 +26,7 @@ const getPartner = async (req, res, next) => {
   try {
     // Get basic partner info
     const partnerResult = await query(`
-      SELECT * FROM strategic_partners WHERE id = ?
+      SELECT * FROM partners WHERE id = ?
     `, [id]);
 
     if (partnerResult.rows.length === 0) {
@@ -68,7 +68,7 @@ const getAllPartners = async (req, res, next) => {
   const { active, limit = 50, offset = 0 } = req.query;
 
   try {
-    let queryText = 'SELECT * FROM strategic_partners';
+    let queryText = 'SELECT * FROM partners';
     const values = [];
 
     if (active !== undefined) {
@@ -76,7 +76,7 @@ const getAllPartners = async (req, res, next) => {
       values.push(active === 'true' ? 1 : 0);
     }
 
-    queryText += ' ORDER BY power_confidence_score DESC';
+    queryText += ' ORDER BY powerconfidence_score DESC';
     
     if (limit) {
       queryText += ' LIMIT ?';
@@ -117,7 +117,7 @@ const createPartner = async (req, res, next) => {
     // Basic Info
     company_name, description, logo_url, website, contact_email,
     contact_phone, power100_subdomain, focus_areas_served, target_revenue_range,
-    geographic_regions, power_confidence_score, key_differentiators, 
+    geographic_regions, powerconfidence_score, key_differentiators, 
     pricing_model, onboarding_process, client_testimonials, is_active,
     last_quarterly_report, onboarding_url, demo_booking_url,
     
@@ -153,11 +153,11 @@ const createPartner = async (req, res, next) => {
   } = req.body;
 
   const result = await query(`
-    INSERT INTO strategic_partners (
+    INSERT INTO partners (
       -- Basic fields
       company_name, description, logo_url, website, contact_email,
       contact_phone, power100_subdomain, focus_areas_served, target_revenue_range,
-      geographic_regions, power_confidence_score, key_differentiators, 
+      geographic_regions, powerconfidence_score, key_differentiators, 
       pricing_model, onboarding_process, client_testimonials, is_active,
       last_quarterly_report, onboarding_url, demo_booking_url,
       
@@ -181,7 +181,7 @@ const createPartner = async (req, res, next) => {
     // Basic values
     company_name, description, logo_url, website, contact_email, contact_phone,
     power100_subdomain, JSON.stringify(focus_areas_served || []), JSON.stringify(target_revenue_range || []),
-    JSON.stringify(geographic_regions || []), power_confidence_score || 0, JSON.stringify(key_differentiators || []),
+    JSON.stringify(geographic_regions || []), powerconfidence_score || 0, JSON.stringify(key_differentiators || []),
     pricing_model, onboarding_process, JSON.stringify(client_testimonials || []), 
     is_active !== undefined ? is_active : true, last_quarterly_report, onboarding_url, demo_booking_url,
     
@@ -231,7 +231,7 @@ const updatePartner = async (req, res, next) => {
     'key_differentiators', 'pricing_model',
     
     // Performance Metrics
-    'power_confidence_score', 'previous_powerconfidence_score', 'score_trend',
+    'powerconfidence_score', 'previous_powerconfidence_score', 'score_trend',
     'industry_rank', 'category_rank',
     
     // Feedback & Reviews
@@ -297,8 +297,12 @@ const updatePartner = async (req, res, next) => {
   values.push(id);
 
   try {
+    // Admin-created partners are automatically approved
+    req.body.status = 'approved';
+    req.body.is_active = true;
+    
     const result = await query(
-      `UPDATE strategic_partners 
+      `UPDATE partners 
        SET ${setClause.join(', ')}, updated_at = CURRENT_TIMESTAMP 
        WHERE id = ?
        RETURNING *`,
@@ -324,13 +328,13 @@ const deletePartner = async (req, res, next) => {
   const { id } = req.params;
 
   // First check if partner exists
-  const existingPartner = await query('SELECT id FROM strategic_partners WHERE id = ?', [id]);
+  const existingPartner = await query('SELECT id FROM partners WHERE id = ?', [id]);
   if (existingPartner.rows.length === 0) {
     return next(new AppError('Partner not found', 404));
   }
 
   // Delete the partner
-  await query('DELETE FROM strategic_partners WHERE id = ?', [id]);
+  await query('DELETE FROM partners WHERE id = ?', [id]);
 
   res.status(200).json({
     success: true,
@@ -343,7 +347,7 @@ const togglePartnerStatus = async (req, res, next) => {
   const { id } = req.params;
 
   const result = await query(`
-    UPDATE strategic_partners 
+    UPDATE partners 
     SET is_active = NOT is_active, updated_at = CURRENT_TIMESTAMP
     WHERE id = ?
     RETURNING id, is_active
@@ -366,19 +370,19 @@ const getPartnerStats = async (req, res, next) => {
       COUNT(*) as total_partners,
       COUNT(*) FILTER (WHERE is_active = true) as active_partners,
       COUNT(*) FILTER (WHERE is_active = false) as inactive_partners,
-      AVG(power_confidence_score) as avg_confidence_score,
+      AVG(powerconfidence_score) as avg_confidence_score,
       COUNT(DISTINCT UNNEST(focus_areas_served)) as unique_focus_areas,
       (
         SELECT json_agg(json_build_object(
           'partner_name', p.company_name,
           'booking_count', COUNT(b.id)
         ) ORDER BY COUNT(b.id) DESC)
-        FROM strategic_partners p
+        FROM partners p
         LEFT JOIN demo_bookings b ON p.id = b.partner_id
         GROUP BY p.id
         LIMIT 5
       ) as top_partners_by_bookings
-    FROM strategic_partners
+    FROM partners
   `);
 
   res.status(200).json({
@@ -449,11 +453,11 @@ const searchPartners = async (req, res, next) => {
 
     // PowerConfidence score range
     if (confidenceScoreMin !== undefined) {
-      whereClause += ` AND power_confidence_score >= ?`;
+      whereClause += ` AND powerconfidence_score >= ?`;
       values.push(confidenceScoreMin);
     }
     if (confidenceScoreMax !== undefined) {
-      whereClause += ` AND power_confidence_score <= ?`;
+      whereClause += ` AND powerconfidence_score <= ?`;
       values.push(confidenceScoreMax);
     }
 
@@ -468,18 +472,18 @@ const searchPartners = async (req, res, next) => {
     }
 
     // Validate sort parameters
-    const allowedSortFields = ['created_at', 'updated_at', 'company_name', 'power_confidence_score', 'is_active'];
+    const allowedSortFields = ['created_at', 'updated_at', 'company_name', 'powerconfidence_score', 'is_active'];
     const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
     const validSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
     // Get total count
-    const countQuery = `SELECT COUNT(*) as total FROM strategic_partners WHERE ${whereClause}`;
+    const countQuery = `SELECT COUNT(*) as total FROM partners WHERE ${whereClause}`;
     const countResult = await query(countQuery, values);
     const total = countResult.rows[0].total;
 
     // Use the simplest working query structure
     const partnersResult = await query(
-      `SELECT * FROM strategic_partners ORDER BY created_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`,
+      `SELECT * FROM partners ORDER BY created_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`,
       []
     );
 

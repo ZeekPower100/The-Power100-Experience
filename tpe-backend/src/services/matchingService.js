@@ -41,7 +41,7 @@ const matchContractorWithPartners = async (contractor) => {
 
   // Get all active partners
   const partnersResult = await query(
-    'SELECT * FROM strategic_partners WHERE is_active = true'
+    'SELECT * FROM partners WHERE is_active = true'
   );
   
   // Parse JSON fields for each partner
@@ -56,9 +56,7 @@ const matchContractorWithPartners = async (contractor) => {
     geographic_regions: typeof partner.geographic_regions === 'string' && partner.geographic_regions !== '[object Object]'
       ? JSON.parse(partner.geographic_regions || '[]')
       : Array.isArray(partner.geographic_regions) ? partner.geographic_regions : [],
-    key_differentiators: typeof partner.key_differentiators === 'string' && partner.key_differentiators !== '[object Object]'
-      ? JSON.parse(partner.key_differentiators || '[]')
-      : Array.isArray(partner.key_differentiators) ? partner.key_differentiators : []
+    key_differentiators: partner.key_differentiators || ''
   }));
 
   // Calculate match scores
@@ -83,7 +81,7 @@ const matchContractorWithPartners = async (contractor) => {
   await transaction(async (client) => {
     // Clear existing matches
     await client.query(
-      'DELETE FROM contractor_partner_matches WHERE contractor_id = ?',
+      'DELETE FROM contractor_partner_matches WHERE contractor_id = $1',
       [parsedContractor.id]
     );
 
@@ -93,13 +91,13 @@ const matchContractorWithPartners = async (contractor) => {
       await client.query(`
         INSERT INTO contractor_partner_matches 
         (contractor_id, partner_id, match_score, match_reasons, is_primary_match)
-        VALUES (?, ?, ?, ?, ?)
+        VALUES ($1, $2, $3, $4, $5)
       `, [
         parsedContractor.id,
         match.partner.id,
         match.matchScore,
         JSON.stringify(match.matchReasons), // Convert array to JSON string for SQLite
-        i === 0 ? 1 : 0 // SQLite uses 1/0 for boolean
+        i === 0 ? true : false // SQLite uses 1/0 for boolean
       ]);
       
       // Track the match outcome
@@ -141,7 +139,7 @@ const calculateMatchScore = (contractor, partner) => {
   maxScore += 100 * 0.15;
 
   // Power confidence score (10% weight)
-  score += (partner.power_confidence_score || 0) * 0.1;
+  score += (partner.powerconfidence_score || 0) * 0.1;
   maxScore += 100 * 0.1;
 
   // Readiness indicators bonus (10% weight)
@@ -259,8 +257,8 @@ const generateMatchReasons = (contractor, partner, matchScore) => {
   }
 
   // High confidence score
-  if (partner.power_confidence_score >= 90) {
-    reasons.push(`${partner.power_confidence_score}% customer satisfaction rating`);
+  if (partner.powerconfidence_score >= 90) {
+    reasons.push(`${partner.powerconfidence_score}% customer satisfaction rating`);
   }
 
   // Growth readiness

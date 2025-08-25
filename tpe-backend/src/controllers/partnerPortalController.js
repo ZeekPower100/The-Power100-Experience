@@ -7,7 +7,7 @@ const getPartnerDashboard = async (req, res) => {
 
     // Get partner basic info and current score
     const partnerResult = await query(
-      'SELECT * FROM strategic_partners WHERE id = ?',
+      'SELECT * FROM partners WHERE id = ?',
       [partnerId]
     );
 
@@ -45,15 +45,15 @@ const getPartnerDashboard = async (req, res) => {
     // Get industry ranking
     const rankingResult = await query(`
       SELECT COUNT(*) + 1 as rank
-      FROM strategic_partners 
+      FROM partners 
       WHERE power_confidence_score > ? 
-      AND is_active = 1
+      AND is_active = true
     `, [partner.power_confidence_score]);
 
     const totalPartnersResult = await query(`
       SELECT COUNT(*) as total
-      FROM strategic_partners 
-      WHERE is_active = 1
+      FROM partners 
+      WHERE is_active = true
     `);
 
     const dashboardData = {
@@ -181,7 +181,7 @@ const exportPartnerReport = async (req, res) => {
 
     // Get partner data for export
     const partnerResult = await query(
-      'SELECT * FROM strategic_partners WHERE id = ?',
+      'SELECT * FROM partners WHERE id = ?',
       [partnerId]
     );
 

@@ -121,7 +121,7 @@ const getPartnersForSync = async () => {
            ceo_contact_phone, ceo_contact_title,
            service_category, target_revenue_audience, 
            employee_count, established_year, created_at
-    FROM strategic_partners 
+    FROM partners 
     WHERE ceo_contact_email IS NOT NULL
     ORDER BY created_at DESC
   `);
@@ -182,7 +182,7 @@ const getPartnerEmployeesForSync = async () => {
            cx_contact_name, cx_contact_email, cx_contact_phone, cx_contact_title,
            marketing_contact_name, marketing_contact_email, marketing_contact_phone, marketing_contact_title,
            onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_title
-    FROM strategic_partners 
+    FROM partners 
     ORDER BY created_at DESC
   `);
   

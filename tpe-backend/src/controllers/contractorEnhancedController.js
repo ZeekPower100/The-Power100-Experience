@@ -143,7 +143,7 @@ const getContractorDetailedView = async (req, res) => {
         sp.focus_areas_served as service_categories,
         sp.target_revenue_range
       FROM contractor_partner_matches m
-      LEFT JOIN strategic_partners sp ON m.partner_id = sp.id
+      LEFT JOIN partners sp ON m.partner_id = sp.id
       WHERE m.contractor_id = ?
       ORDER BY m.match_score DESC
     `;
@@ -156,7 +156,7 @@ const getContractorDetailedView = async (req, res) => {
         sp.company_name as partner_name,
         sp.contact_email as partner_contact
       FROM demo_bookings b
-      LEFT JOIN strategic_partners sp ON b.partner_id = sp.id
+      LEFT JOIN partners sp ON b.partner_id = sp.id
       WHERE b.contractor_id = ?
       ORDER BY b.scheduled_date DESC
     `;
