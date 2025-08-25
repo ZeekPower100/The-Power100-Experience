@@ -116,7 +116,7 @@ class ReportGenerationService {
           nps_score: 87
         },
         
-                performance_by_tier: [
+        performance_by_tier: [
           {
             revenue_tier: '$0-$5M',
             clients: 18,
@@ -131,16 +131,6 @@ class ReportGenerationService {
             revenue_tier: '$5M-$10M',
             clients: 38,
             metrics: {
-              closing_percentage: { current: 74, industry_avg: 65, difference: '+9%' },
-              cancellation_rate: { current: 15, industry_avg: 22, difference: '-7%' },
-              customer_experience: { current: 8.9, industry_avg: 7.5, difference: '+1.4' }
-            },
-            satisfaction: '9/10'
-          },
-          {
-            revenue_tier: '$11M-$20M',
-            clients: 45,
-            metrics: {
               closing_percentage: { current: 78, industry_avg: 65, difference: '+13%' },
               cancellation_rate: { current: 12, industry_avg: 22, difference: '-10%' },
               customer_experience: { current: 9.1, industry_avg: 7.5, difference: '+1.6' }
@@ -148,12 +138,22 @@ class ReportGenerationService {
             satisfaction: '9/10'
           },
           {
-            revenue_tier: '$21M-$30M',
-            clients: 22,
+            revenue_tier: '$11M-$20M',
+            clients: 45,
             metrics: {
               closing_percentage: { current: 82, industry_avg: 65, difference: '+17%' },
               cancellation_rate: { current: 10, industry_avg: 22, difference: '-12%' },
               customer_experience: { current: 9.3, industry_avg: 7.5, difference: '+1.8' }
+            },
+            satisfaction: '10/10'
+          },
+          {
+            revenue_tier: '$21M-$30M',
+            clients: 22,
+            metrics: {
+              closing_percentage: { current: 84, industry_avg: 65, difference: '+19%' },
+              cancellation_rate: { current: 9, industry_avg: 22, difference: '-13%' },
+              customer_experience: { current: 9.4, industry_avg: 7.5, difference: '+1.9' }
             },
             satisfaction: '10/10'
           },
@@ -166,102 +166,23 @@ class ReportGenerationService {
               customer_experience: { current: 9.5, industry_avg: 7.5, difference: '+2.0' }
             },
             satisfaction: '10/10'
-          },
-          {
-            revenue_tier: '$51M-$75M',
-            clients: 12,
-            metrics: {
-              closing_percentage: { current: 87, industry_avg: 65, difference: '+22%' },
-              cancellation_rate: { current: 7, industry_avg: 22, difference: '-15%' },
-              customer_experience: { current: 9.6, industry_avg: 7.5, difference: '+2.1' }
-            },
-            satisfaction: '10/10'
-          },
-          {
-            revenue_tier: '$76M-$150M',
-            clients: 8,
-            metrics: {
-              closing_percentage: { current: 89, industry_avg: 65, difference: '+24%' },
-              cancellation_rate: { current: 6, industry_avg: 22, difference: '-16%' },
-              customer_experience: { current: 9.7, industry_avg: 7.5, difference: '+2.2' }
-            },
-            satisfaction: '10/10'
-          },
-          {
-            revenue_tier: '$151M-$300M',
-            clients: 5,
-            metrics: {
-              closing_percentage: { current: 91, industry_avg: 65, difference: '+26%' },
-              cancellation_rate: { current: 5, industry_avg: 22, difference: '-17%' },
-              customer_experience: { current: 9.8, industry_avg: 7.5, difference: '+2.3' }
-            },
-            satisfaction: '10/10'
-          },
-          {
-            revenue_tier: '$300M+',
-            clients: 3,
-            metrics: {
-              closing_percentage: { current: 93, industry_avg: 65, difference: '+28%' },
-              cancellation_rate: { current: 4, industry_avg: 22, difference: '-18%' },
-              customer_experience: { current: 9.9, industry_avg: 7.5, difference: '+2.4' }
-            },
-            satisfaction: '10/10'
           }
         ],
         
-                
         analysis: {
           strengths: [
-            { 
-              area: 'Enterprise Client Performance ($151M+)', 
-              performance: 'Exceptional - 93% closing rate, 4% cancellation',
-              details: 'Top-tier clients showing industry-leading metrics across all KPIs',
-              recommendation: 'Develop case studies from enterprise success stories'
-            },
-            { 
-              area: 'Mid-Market Excellence ($31M-$75M)', 
-              performance: 'Outstanding - 85-87% closing rates',
-              details: 'Sweet spot for DM services with highest satisfaction scores',
-              recommendation: 'Package mid-market solutions as flagship offering'
-            },
-            {
-              area: 'Consistent Cancellation Reduction',
-              performance: 'Industry Leading - Average 14% below industry',
-              details: 'All revenue tiers showing significant cancellation improvements',
-              recommendation: 'Highlight retention methodology in marketing'
-            }
+            { area: 'Team Culture Development', performance: 'Exceptional' },
+            { area: 'Retention Programs', performance: 'Industry Leading' }
           ],
           opportunities: [
-            { 
-              area: 'Small Contractor Engagement ($0-$5M)', 
-              current_performance: 'Only +3% closing improvement',
-              target: '+10% improvement minimum',
-              action_plan: 'Develop scaled coaching programs for smaller contractors'
-            },
-            {
-              area: 'Client Distribution Balance',
-              current_performance: '142 total clients, heavily weighted $11M-$20M',
-              target: 'More even distribution across tiers',
-              action_plan: 'Targeted outreach to underserved revenue segments'
-            }
+            { area: 'Onboarding Speed', current_performance: 'Average 14 days', target: '7 days' }
           ]
         },
         
         recommendations: {
-          start: [
-            'Tiered service packages matching revenue segments',
-            'Monthly virtual workshops for $0-$10M contractors',
-            'Enterprise advisory board with $300M+ clients'
-          ],
-          stop: [
-            'One-size-fits-all coaching approach',
-            'Manual performance tracking for large client base'
-          ],
-          keep: [
-            'Quarterly PowerCard surveys with 3 key metrics focus',
-            'Personalized coaching for $31M+ revenue tier',
-            'Industry variance reporting methodology'
-          ]
+          start: ['Weekly check-ins with at-risk clients'],
+          stop: ['Manual report generation'],
+          keep: ['Personalized coaching sessions', 'Culture workshops']
         }
       };
       

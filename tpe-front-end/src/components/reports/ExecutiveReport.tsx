@@ -140,7 +140,7 @@ export default function ExecutiveReport({ partnerId }: ExecutiveReportProps) {
                       <span className="font-semibold">{tier.metrics.customer_experience.current}</span>
                       <span className="text-sm text-green-600 ml-2">{tier.metrics.customer_experience.difference}</span>
                     </td>
-                    <td className="text-center">{tier.satisfaction}/10</td>
+                    <td className="text-center">{tier.satisfaction}</td>
                   </tr>
                 ))}
               </tbody>
