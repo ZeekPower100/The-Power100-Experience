@@ -1,14 +1,19 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-const pool = new Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'tpedb',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'TPXP0stgres!!',
-  ssl: false // Local PostgreSQL doesn't need SSL
-});
+const pool = process.env.DATABASE_URL 
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: false // RDS doesn't require SSL for this instance
+    })
+  : new Pool({
+      host: process.env.DB_HOST || 'localhost',
+      port: process.env.DB_PORT || 5432,
+      database: process.env.DB_NAME || 'tpedb',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'TPXP0stgres!!',
+      ssl: false // Local PostgreSQL doesn't need SSL
+    });
 
 // Test connection
 pool.connect((err, client, release) => {
