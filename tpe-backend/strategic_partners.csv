@@ -1,0 +1,4 @@
+id,company_name,description,logo_url,website,contact_email,contact_phone,focus_areas_served,target_revenue_range,power_confidence_score,is_active,key_differentiators,pricing_model,onboarding_url,demo_booking_url,last_feedback_update,total_feedback_responses,average_satisfaction,feedback_trend,next_quarterly_review,created_at,updated_at
+1,Buildr,"Leading CRM for contractors",,,sales@buildr.com,,"[""closing_higher_percentage"",""operational_efficiency""]","[""1m_5m"",""5m_10m""]",96,1,,,,,,0,,stable,,"2025-08-24 04:39:48","2025-08-24 04:39:48"
+2,MarketPro,"Lead generation platform",,,info@marketpro.com,,"[""controlling_lead_flow"",""marketing_automation""]","[""500k_1m"",""1m_5m""]",92,1,,,,,,0,,stable,,"2025-08-24 04:39:48","2025-08-24 04:39:48"
+3,FieldForce,"Field service management",,,hello@fieldforce.com,,"[""operational_efficiency"",""recession_proofing""]","[""1m_5m"",""5m_10m""]",88,1,,,,,,0,,stable,,"2025-08-24 04:39:48","2025-08-24 04:39:48"

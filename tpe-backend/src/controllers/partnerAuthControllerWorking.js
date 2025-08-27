@@ -48,8 +48,8 @@ const partnerLoginWorking = async (req, res, next) => {
     const user = await db.get(`
       SELECT pu.*, sp.company_name, sp.is_active as partner_active
       FROM partner_users pu
-      JOIN strategic_partners sp ON pu.partner_id = sp.id
-      WHERE pu.email = ? AND pu.is_active = 1
+      JOIN partners sp ON pu.partner_id = sp.id
+      WHERE pu.email = ? AND pu.is_active = true
     `, [email]);
 
     console.log('🔍 Database query result:', user ? 'User found' : 'No user found');

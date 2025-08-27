@@ -244,7 +244,7 @@ export default function PartnerOnboardingForm() {
         company_name: formData.company_name,
         description: formData.value_proposition || '',
         website: formData.website,
-        contact_email: formData.ceo_email,
+        primary_email: formData.ceo_email,
         contact_phone: formData.ceo_phone,
         
         // Legacy fields for backward compatibility
@@ -267,23 +267,23 @@ export default function PartnerOnboardingForm() {
         
         // Step 2: Contact Information (5 contact types)
         ceo_contact_name: formData.ceo_name,
-        ceo_contact_email: formData.ceo_email,
+        ceo_primary_email: formData.ceo_email,
         ceo_contact_phone: formData.ceo_phone,
         ceo_contact_title: formData.ceo_title,
         cx_contact_name: formData.cx_name,
-        cx_contact_email: formData.cx_email,
+        cx_primary_email: formData.cx_email,
         cx_contact_phone: formData.cx_phone,
         cx_contact_title: formData.cx_title,
         sales_contact_name: formData.sales_name,
-        sales_contact_email: formData.sales_email,
+        sales_primary_email: formData.sales_email,
         sales_contact_phone: formData.sales_phone,
         sales_contact_title: formData.sales_title,
         onboarding_contact_name: formData.onboarding_name,
-        onboarding_contact_email: formData.onboarding_email,
+        onboarding_primary_email: formData.onboarding_email,
         onboarding_contact_phone: formData.onboarding_phone,
         onboarding_contact_title: formData.onboarding_title,
         marketing_contact_name: formData.marketing_name,
-        marketing_contact_email: formData.marketing_email,
+        marketing_primary_email: formData.marketing_email,
         marketing_contact_phone: formData.marketing_phone,
         marketing_contact_title: formData.marketing_title,
         
@@ -321,7 +321,14 @@ export default function PartnerOnboardingForm() {
       };
 
       // Submit to API
-      await partnerApi.create(apiData);
+      // Use public endpoint for submissions
+      const response = await fetch('/api/partners/public/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(apiData)
+      });
+      const result = await response.json();
+      if (!result.success) throw new Error(result.error);
       
       // Redirect to success page
       router.push('/partner/onboarding/success');

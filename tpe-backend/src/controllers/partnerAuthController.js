@@ -77,7 +77,7 @@ const createPartnerUser = async (partnerId, partnerEmail) => {
   }
 };
 
-// Partner login (simplified for demo - uses strategic_partners directly)
+// Partner login (simplified for demo - uses partners directly)
 const partnerLogin = async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -90,9 +90,9 @@ const partnerLogin = async (req, res, next) => {
     
     // Demo credentials check
     if (email === 'demo@techflow.com' && password === 'Demo123!') {
-      // Find the partner in strategic_partners table
+      // Find the partner in partners table
       const partnerResult = await query(
-        'SELECT * FROM strategic_partners WHERE contact_email = ?',
+        'SELECT * FROM partners WHERE contact_email = ?',
         [email]
       );
 
@@ -100,7 +100,7 @@ const partnerLogin = async (req, res, next) => {
       if (partnerResult.rows.length === 0) {
         // Create demo partner if doesn't exist
         const insertResult = await query(`
-          INSERT INTO strategic_partners (
+          INSERT INTO partners (
             company_name, contact_email, website, is_active, power_confidence_score, score_trend
           ) VALUES (?, ?, ?, ?, ?, ?)
         `, ['TechFlow Solutions', email, 'https://techflow.com', 1, 87, 'up']);
@@ -179,7 +179,7 @@ const getPartnerProfile = async (req, res, next) => {
              sp.company_name, sp.description, sp.website, sp.logo_url,
              sp.power_confidence_score, sp.is_active
       FROM partner_users pu
-      JOIN strategic_partners sp ON pu.partner_id = sp.id
+      JOIN partners sp ON pu.partner_id = sp.id
       WHERE pu.id = ?
     `, [req.partnerUser.id]);
 

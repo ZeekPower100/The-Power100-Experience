@@ -158,7 +158,7 @@ const bulkUpdatePartners = async (req, res, next) => {
         const updateValues = [...values, partnerId];
         
         const result = await client.query(
-          `UPDATE strategic_partners 
+          `UPDATE partners 
            SET ${setClause.join(', ')}, updated_at = datetime('now') 
            WHERE id = ?`,
           updateValues
@@ -200,7 +200,7 @@ const bulkTogglePartnerStatus = async (req, res, next) => {
       
       for (const partnerId of partner_ids) {
         const result = await client.query(
-          `UPDATE strategic_partners 
+          `UPDATE partners 
            SET is_active = NOT is_active, updated_at = datetime('now')
            WHERE id = ?`,
           [partnerId]
@@ -208,7 +208,7 @@ const bulkTogglePartnerStatus = async (req, res, next) => {
 
         if (result.rowCount > 0) {
           // Get the updated status
-          const updated = await client.query('SELECT is_active FROM strategic_partners WHERE id = ?', [partnerId]);
+          const updated = await client.query('SELECT is_active FROM partners WHERE id = ?', [partnerId]);
           results.push({ 
             id: partnerId, 
             status: 'updated',
@@ -350,7 +350,7 @@ const exportPartners = async (req, res, next) => {
   console.log(`📄 Exporting partners: format=${format}, count=${partner_ids?.length || 'all'}`);
 
   try {
-    let queryText = 'SELECT * FROM strategic_partners';
+    let queryText = 'SELECT * FROM partners';
     let values = [];
 
     // Export specific partners if IDs provided

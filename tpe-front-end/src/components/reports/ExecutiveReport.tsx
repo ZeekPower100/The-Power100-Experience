@@ -1,4 +1,5 @@
 'use client';
+import { getApiUrl } from '@/utils/api';
 
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
@@ -28,7 +29,7 @@ export default function ExecutiveReport({ partnerId }: ExecutiveReportProps) {
 
   const fetchReport = async () => {
     try {
-      const response = await fetch(`/api/reports/executive/partner/${partnerId}`);
+      const response = await fetch(getApiUrl(`api/reports/executive/partner/${partnerId}`));
       const data = await response.json();
       if (data.success) {
         setReport(data.report);

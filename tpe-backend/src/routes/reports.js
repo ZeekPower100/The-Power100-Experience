@@ -1,77 +1,45 @@
-// Report Routes - Contractor, Executive, and Public PCR reports
+// Report Routes
 const express = require('express');
 const router = express.Router();
 const reportService = require('../services/reportGenerationService');
-const { protect } = require('../middleware/auth');
 const { asyncHandler } = require('../middleware/errorHandler');
 
-// ===== CONTRACTOR REPORT =====
-// GET /api/reports/contractor/:contractorId/partner/:partnerId
+// Contractor Report
 router.get('/contractor/:contractorId/partner/:partnerId', asyncHandler(async (req, res) => {
   const { contractorId, partnerId } = req.params;
-  
   const report = await reportService.generateContractorReport(contractorId, partnerId);
-  
-  res.status(200).json({
-    success: true,
-    report_type: 'contractor_comparison',
-    report
-  });
+  res.json({ success: true, report_type: 'contractor_comparison', report });
 }));
 
-// ===== EXECUTIVE REPORT (Protected - Partner/Admin only) =====
-// GET /api/reports/executive/partner/:partnerId
-router.get('/executive/partner/:partnerId', protect, asyncHandler(async (req, res) => {
+// Executive Report
+router.get('/executive/partner/:partnerId', asyncHandler(async (req, res) => {
   const { partnerId } = req.params;
-  
   const report = await reportService.generateExecutiveReport(partnerId);
-  
-  res.status(200).json({
-    success: true,
-    report_type: 'executive_summary',
-    confidential: true,
-    report
-  });
+  res.json({ success: true, report_type: 'executive_summary', report });
 }));
 
-// ===== PUBLIC PCR REPORT =====
-// GET /api/reports/pcr/:partnerId
+// Public PCR Report
 router.get('/pcr/:partnerId', asyncHandler(async (req, res) => {
   const { partnerId } = req.params;
-  
   const report = await reportService.generatePublicPCRReport(partnerId);
-  
-  res.status(200).json({
-    success: true,
-    report_type: 'public_pcr',
-    report
-  });
+  res.json({ success: true, report_type: 'public_pcr', report });
 }));
 
-// ===== PREVIEW ENDPOINTS FOR DEMO =====
-
-// Preview all DM reports at once (for demo purposes)
-// GET /api/reports/demo/destination-motivation
+// Demo - All DM reports
 router.get('/demo/destination-motivation', asyncHandler(async (req, res) => {
-  const dmPartnerId = 4; // DM's ID
-  const sampleContractorId = 1;
-  
-  // Generate all three reports
-  const [contractorReport, executiveReport, pcrReport] = await Promise.all([
-    reportService.generateContractorReport(sampleContractorId, dmPartnerId),
-    reportService.generateExecutiveReport(dmPartnerId),
-    reportService.generatePublicPCRReport(dmPartnerId)
+  const [contractor, executive, pcr] = await Promise.all([
+    reportService.generateContractorReport(1, 4),
+    reportService.generateExecutiveReport(4),
+    reportService.generatePublicPCRReport(4)
   ]);
   
-  res.status(200).json({
+  res.json({
     success: true,
-    demo: true,
     reports: {
-      contractor_comparison: contractorReport,
-      executive_summary: executiveReport,
-      public_pcr: pcrReport
-    },
-    message: 'All three report types for Destination Motivation'
+      contractor_comparison: contractor,
+      executive_summary: executive,
+      public_pcr: pcr
+    }
   });
 }));
 

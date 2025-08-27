@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { query } = require('../config/database');
+const { query } = require('../config/database.sqlite');
 const { AppError } = require('./errorHandler');
 
 // Protect routes - require authentication
@@ -26,7 +26,7 @@ const protect = async (req, res, next) => {
 
     // Check if admin user still exists
     const result = await query(
-      'SELECT id, email, name, is_active FROM admin_users WHERE id = $1',
+      'SELECT id, email, name as full_name, is_active FROM admin_users WHERE id = $1',
       [decoded.id]
     );
 

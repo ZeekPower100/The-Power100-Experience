@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Destination Motivation - Reports Demo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+  <div class="max-w-7xl mx-auto p-8">
+    <h1 class="text-3xl font-bold mb-8">Destination Motivation - Report Demo</h1>
+    
+    <div class="grid md:grid-cols-3 gap-6 mb-8">
+      <button onclick="loadReport('contractor')" class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+        <h2 class="font-bold text-lg mb-2">Contractor Report</h2>
+        <p class="text-sm text-gray-600">Variance-based peer comparison</p>
+      </button>
+      
+      <button onclick="loadReport('executive')" class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+        <h2 class="font-bold text-lg mb-2">Executive Report</h2>
+        <p class="text-sm text-gray-600">Confidential metrics & coaching</p>
+      </button>
+      
+      <button onclick="loadReport('pcr')" class="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+        <h2 class="font-bold text-lg mb-2">Public PCR</h2>
+        <p class="text-sm text-gray-600">Marketing landing page</p>
+      </button>
+    </div>
+    
+    <div id="report-content" class="bg-white rounded-lg shadow-lg p-8">
+      <p class="text-gray-500">Select a report type above to view</p>
+    </div>
+  </div>
+  
+  <script>
+    async function loadReport(type) {
+      const content = document.getElementById('report-content');
+      content.innerHTML = '<div class="text-center py-8">Loading...</div>';
+      
+      let endpoint = '';
+      if (type === 'contractor') endpoint = '/api/reports/contractor/1/partner/4';
+      if (type === 'executive') endpoint = '/api/reports/executive/partner/4';
+      if (type === 'pcr') endpoint = '/api/reports/pcr/4';
+      
+      try {
+        const response = await fetch(endpoint);
+        const data = await response.json();
+        
+        if (data.success) {
+          displayReport(type, data.report);
+        }
+      } catch (error) {
+        content.innerHTML = '<p class="text-red-600">Error loading report</p>';
+      }
+    }
+    
+    function displayReport(type, report) {
+      const content = document.getElementById('report-content');
+      
+      if (type === 'pcr') {
+        content.innerHTML = `
+          <div class="text-center">
+            <h2 class="text-4xl font-bold mb-4">${report.partner?.name || 'Destination Motivation'}</h2>
+            <p class="text-xl text-gray-600 mb-8">${report.partner?.tagline || ''}</p>
+            <div class="inline-block bg-red-600 text-white rounded-2xl p-8 mb-8">
+              <p class="text-sm uppercase tracking-wide mb-2">PowerConfidence Score</p>
+              <p class="text-6xl font-bold">${report.powerconfidence_score?.current || 99}</p>
+              <p class="text-lg mt-2">${report.powerconfidence_score?.label || 'Elite Partner'}</p>
+            </div>
+            <div class="grid md:grid-cols-3 gap-6 mt-8">
+              ${(report.key_metrics || []).map(m => `
+                <div class="bg-gray-50 p-4 rounded">
+                  <div class="text-2xl font-bold text-red-600">${m.metric}</div>
+                  <div class="text-sm text-gray-600">${m.label}</div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      } else if (type === 'contractor') {
+        content.innerHTML = `
+          <h2 class="text-2xl font-bold mb-4">Contractor Comparison Report</h2>
+          <p class="text-gray-600 mb-6">${report.quarter} • ${report.contractor?.company}</p>
+          <div class="space-y-4">
+            <h3 class="font-bold">Your Tier Performance (${report.current_tier_performance?.tier})</h3>
+            ${Object.entries(report.current_tier_performance?.metrics || {}).map(([key, data]) => `
+              <div class="flex justify-between items-center p-4 bg-gray-50 rounded">
+                <span>${key.replace(/_/g, ' ')}</span>
+                <span class="font-bold ${data.trend === 'up' ? 'text-green-600' : 'text-red-600'}">
+                  ${data.variance} ${data.trend === 'up' ? '↑' : '↓'}
+                </span>
+              </div>
+            `).join('')}
+          </div>
+        `;
+      } else if (type === 'executive') {
+        content.innerHTML = `
+          <h2 class="text-2xl font-bold mb-4">Executive Report - CONFIDENTIAL</h2>
+          <div class="grid md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-gray-50 p-4 rounded">
+              <p class="text-sm text-gray-600">PCR Score</p>
+              <p class="text-2xl font-bold">${report.executive_summary?.powerconfidence_score}</p>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+              <p class="text-sm text-gray-600">Active Clients</p>
+              <p class="text-2xl font-bold">${report.executive_summary?.active_clients}</p>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+              <p class="text-sm text-gray-600">Avg Satisfaction</p>
+              <p class="text-2xl font-bold">${report.executive_summary?.avg_client_satisfaction}/10</p>
+            </div>
+            <div class="bg-gray-50 p-4 rounded">
+              <p class="text-sm text-gray-600">NPS Score</p>
+              <p class="text-2xl font-bold">${report.executive_summary?.nps_score}</p>
+            </div>
+          </div>
+          <div class="border-t pt-4">
+            <h3 class="font-bold mb-2">Recommendations</h3>
+            <div class="grid md:grid-cols-3 gap-4">
+              <div>
+                <p class="font-semibold text-green-600">START</p>
+                <ul class="text-sm">${(report.recommendations?.start || []).map(i => `<li>• ${i}</li>`).join('')}</ul>
+              </div>
+              <div>
+                <p class="font-semibold text-red-600">STOP</p>
+                <ul class="text-sm">${(report.recommendations?.stop || []).map(i => `<li>• ${i}</li>`).join('')}</ul>
+              </div>
+              <div>
+                <p class="font-semibold text-blue-600">KEEP</p>
+                <ul class="text-sm">${(report.recommendations?.keep || []).map(i => `<li>• ${i}</li>`).join('')}</ul>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+    }
+    
+    // Load PCR by default
+    loadReport('pcr');
+  </script>
+</body>
+</html>

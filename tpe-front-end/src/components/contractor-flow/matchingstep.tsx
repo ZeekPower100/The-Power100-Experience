@@ -405,7 +405,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                         </p>
                         <div className="flex flex-wrap gap-2 mt-1">
                           <Badge className="bg-orange-100 text-orange-700 bg-opacity-100">
-                            {manufacturerMatch.power_confidence_score}% PowerConfidence
+                            {manufacturerMatch.powerconfidence_score}% PowerConfidence
                           </Badge>
                           {manufacturerMatch.contractor_rating && (
                             <Badge className="bg-yellow-100 text-yellow-700 bg-opacity-100">
@@ -488,7 +488,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                                 )}
                                 <div className="flex-1">
                                     <h3 className="text-xl font-bold text-power100-black">{partner.company_name}</h3>
-                                    {partner.power_confidence_score && <div className="flex items-center space-x-1 mt-1"><Star className="w-3 h-3 text-power100-red fill-power100-red" /><span className="text-power100-red font-semibold text-sm">{partner.power_confidence_score}/100 PowerConfidence</span></div>}
+                                    {partner.powerconfidence_score && <div className="flex items-center space-x-1 mt-1"><Star className="w-3 h-3 text-power100-red fill-power100-red" /><span className="text-power100-red font-semibold text-sm">{partner.powerconfidence_score}/100 PowerConfidence</span></div>}
                                 </div>
                             </div>
                             {partner.website && <Button variant="outline" size="sm" onClick={() => window.open(partner.website, '_blank')} className="flex items-center space-x-1 w-full mb-3"><ExternalLink className="w-3 h-3" /><span>Visit Site</span></Button>}

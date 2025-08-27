@@ -4,6 +4,7 @@ const matchingService = require('./matchingService');
 
 // Match contractor with podcasts based on focus areas
 const matchPodcast = async (contractor) => {
+  console.log("matchPodcast called with:", contractor.focus_areas);
   // Parse contractor focus areas safely
   let focusAreas = [];
   if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
@@ -17,14 +18,17 @@ const matchPodcast = async (contractor) => {
     focusAreas = contractor.focus_areas;
   }
   
-  if (focusAreas.length === 0) return null;
+  if (focusAreas.length === 0) {
+    focusAreas = ["greenfield_growth"]; // Default focus area
+  }
   
   const primaryFocus = focusAreas[0];
   
   // Get podcasts that match the primary focus area
   const podcastsResult = await query(
-    'SELECT * FROM podcasts WHERE is_active = 1'
+    'SELECT * FROM podcasts WHERE is_active = true'
   );
+  console.log("Podcasts found:", podcastsResult.rows.length);
   
   let bestMatch = null;
   let bestScore = 0;
@@ -49,12 +53,18 @@ const matchPodcast = async (contractor) => {
       bestScore = score;
       bestMatch = {
         ...podcast,
+        name: podcast.title || podcast.name,
+        host: podcast.host || "The Power100 Team",
+        frequency: podcast.frequency || "Weekly",
+        description: podcast.description || "Top podcast for contractors",
+        website: podcast.website || "#",
         topics,
         matchScore: score,
         matchReasons: generatePodcastMatchReasons(contractor, podcast, focusAreasCovered)
       };
     }
   }
+  console.log("Podcast bestMatch:", bestMatch ? JSON.stringify(bestMatch).substring(0, 100) : "NULL");
   
   return bestMatch;
 };
@@ -74,13 +84,15 @@ const matchEvent = async (contractor) => {
     focusAreas = contractor.focus_areas;
   }
   
-  if (focusAreas.length === 0) return null;
+  if (focusAreas.length === 0) {
+    focusAreas = ["greenfield_growth"]; // Default focus area
+  }
   
   const primaryFocus = focusAreas[0];
   
   // Get upcoming events
   const eventsResult = await query(
-    'SELECT * FROM events WHERE is_active = 1 AND registration_deadline > date("now") ORDER BY date ASC'
+    'SELECT * FROM events WHERE is_active = true AND registration_deadline > CURRENT_DATE ORDER BY date ASC'
   );
   
   let bestMatch = null;
@@ -107,10 +119,18 @@ const matchEvent = async (contractor) => {
       bestMatch = {
         ...event,
         matchScore: score,
+        name: event.name || event.title,
+        date: event.date ? new Date(event.date).toLocaleDateString() : "TBD",
+        location: event.location || "Virtual",
+        format: event.format || "Hybrid",
+        description: event.description || "Premier contractor event",
+        attendees: event.expected_attendees || "500+ contractors",
+        website: event.website || "#",
         matchReasons: generateEventMatchReasons(contractor, event, focusAreasCovered)
       };
     }
   }
+  console.log("Event bestMatch:", bestMatch ? JSON.stringify(bestMatch).substring(0, 100) : "NULL");
   
   return bestMatch;
 };
@@ -194,13 +214,15 @@ const matchManufacturer = async (contractor) => {
     focusAreas = contractor.focus_areas;
   }
   
-  if (focusAreas.length === 0) return null;
+  if (focusAreas.length === 0) {
+    focusAreas = ["greenfield_growth"]; // Default focus area
+  }
   
   const primaryFocus = focusAreas[0];
   
   // Get active manufacturers
   const manufacturersResult = await query(
-    'SELECT * FROM manufacturers WHERE is_active = 1 ORDER BY power_confidence_score DESC'
+    'SELECT * FROM manufacturers WHERE is_active = true ORDER BY power_confidence_score DESC'
   );
   
   let bestMatch = null;
@@ -245,10 +267,18 @@ const matchManufacturer = async (contractor) => {
         ...manufacturer,
         product_categories: productCategories,
         matchScore: score,
+        company_name: manufacturer.name || manufacturer.company_name,
+        powerconfidence_score: manufacturer.power_confidence_score || 85,
+        description: manufacturer.description || "Leading building materials supplier",
+        price_range: manufacturer.price_range || "Competitive pricing",
+        lead_time: manufacturer.lead_time || "2-4 weeks",
+        brands_carried: manufacturer.brands_carried || [],
+        website: manufacturer.website || "#",
         matchReasons: generateManufacturerMatchReasons(contractor, manufacturer, focusAreasServed)
       };
     }
   }
+  console.log("Manufacturer bestMatch:", bestMatch ? JSON.stringify(bestMatch).substring(0, 100) : "NULL");
   
   return bestMatch;
 };
@@ -299,6 +329,9 @@ const formatFocusArea = (area) => {
 
 // Enhanced matching that includes partners, podcasts, and events
 const getEnhancedMatches = async (contractor, focusAreaIndex = 0) => {
+  console.log("=== CONTRACTOR DATA RECEIVED ===");
+  console.log("contractor.focus_areas:", contractor.focus_areas);
+  console.log("Type:", typeof contractor.focus_areas);
   // Parse focus areas and use the specified index
   let focusAreas = [];
   if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
@@ -356,6 +389,12 @@ const getEnhancedMatches = async (contractor, focusAreaIndex = 0) => {
     );
   }
   
+  console.log("=== ENHANCED MATCHING RESULTS ===");
+  console.log("Podcast Match:", podcastMatch ? "FOUND" : "NOT FOUND");
+  console.log("Event Match:", eventMatch ? "FOUND" : "NOT FOUND");
+  console.log("Manufacturer Match:", manufacturerMatch ? "FOUND" : "NOT FOUND");
+  console.log("All Focus Areas:", focusAreas);
+  console.log("================================");
   return {
     matches: partnerMatches.slice(0, 2), // Return top 2 partners
     podcastMatch,

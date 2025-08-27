@@ -105,10 +105,10 @@ export default function DMReportsDemo() {
             <Button 
               size="sm" 
               variant="outline" 
-              className="text-white border-white hover:bg-white/10"
+              className="text-black border-black hover:bg-gray-100"
               onClick={() => window.location.href = '/contractorflow'}
             >
-              Start Contractor Flow
+              Start The Experience
             </Button>
             <Button 
               size="sm" 

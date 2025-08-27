@@ -1,4 +1,5 @@
 'use client';
+import { getApiUrl } from '@/utils/api';
 
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
@@ -20,7 +21,7 @@ export default function ContractorComparisonReport({ contractorId, partnerId }: 
 
   const fetchReport = async () => {
     try {
-      const response = await fetch(`/api/reports/contractor/${contractorId}/partner/${partnerId}`);
+      const response = await fetch(getApiUrl(`api/reports/contractor/${contractorId}/partner/${partnerId}`));
       const data = await response.json();
       if (data.success) {
         setReport(data.report);

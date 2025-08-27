@@ -13,7 +13,7 @@ const getFeedbackSurveys = async (req, res) => {
              c.email as contractor_email,
              sc.campaign_name as sms_campaign_name
       FROM feedback_surveys fs
-      LEFT JOIN strategic_partners p ON fs.partner_id = p.id
+      LEFT JOIN partners p ON fs.partner_id = p.id
       LEFT JOIN contractors c ON fs.contractor_id = c.id  
       LEFT JOIN sms_campaigns sc ON fs.sms_campaign_id = sc.id
       WHERE 1=1
@@ -191,7 +191,7 @@ const submitFeedbackResponse = async (req, res) => {
 
     // Update partner feedback statistics
     await query(`
-      UPDATE strategic_partners 
+      UPDATE partners 
       SET total_feedback_responses = total_feedback_responses + 1,
           average_satisfaction = (
             SELECT AVG(overall_satisfaction) 
@@ -282,7 +282,7 @@ const updatePowerConfidenceScores = async (req, res) => {
     if (partnerId) {
       // Update specific partner
       const oldScoreResult = await query(`
-        SELECT power_confidence_score FROM strategic_partners WHERE id = ?
+        SELECT power_confidence_score FROM partners WHERE id = ?
       `, [partnerId]);
 
       const oldScore = oldScoreResult.rows[0]?.power_confidence_score || 75;
@@ -290,7 +290,7 @@ const updatePowerConfidenceScores = async (req, res) => {
       // Simple score calculation based on feedback (placeholder logic)
       const feedbackResult = await query(`
         SELECT AVG(average_satisfaction) as avg_satisfaction, total_feedback_responses
-        FROM strategic_partners WHERE id = ?
+        FROM partners WHERE id = ?
       `, [partnerId]);
 
       const avgSatisfaction = feedbackResult.rows[0]?.avg_satisfaction || 3.5;
@@ -303,7 +303,7 @@ const updatePowerConfidenceScores = async (req, res) => {
 
       // Update the partner's score
       await query(`
-        UPDATE strategic_partners 
+        UPDATE partners 
         SET power_confidence_score = ?,
             last_feedback_update = CURRENT_TIMESTAMP,
             feedback_trend = CASE 
@@ -324,14 +324,14 @@ const updatePowerConfidenceScores = async (req, res) => {
     } else {
       // Update all partners
       const partnersResult = await query(`
-        SELECT id FROM strategic_partners WHERE is_active = 1
+        SELECT id FROM partners WHERE is_active = true
       `);
 
       for (const partner of partnersResult.rows) {
         // Update each partner individually
         const feedbackResult = await query(`
           SELECT AVG(average_satisfaction) as avg_satisfaction, total_feedback_responses
-          FROM strategic_partners WHERE id = ?
+          FROM partners WHERE id = ?
         `, [partner.id]);
 
         const avgSatisfaction = feedbackResult.rows[0]?.avg_satisfaction || 3.5;
@@ -342,7 +342,7 @@ const updatePowerConfidenceScores = async (req, res) => {
         ));
 
         await query(`
-          UPDATE strategic_partners 
+          UPDATE partners 
           SET power_confidence_score = ?,
               last_feedback_update = CURRENT_TIMESTAMP
           WHERE id = ?
@@ -411,10 +411,10 @@ const getPartnerPerformanceDashboard = async (req, res) => {
         COUNT(DISTINCT m.contractor_id) as total_contractors_matched,
         COUNT(DISTINCT b.id) as completed_demos,
         p.average_satisfaction as recent_satisfaction_avg
-      FROM strategic_partners p
+      FROM partners p
       LEFT JOIN contractor_partner_matches m ON p.id = m.partner_id
       LEFT JOIN demo_bookings b ON p.id = b.partner_id AND b.status = 'completed'
-      WHERE p.is_active = 1
+      WHERE p.is_active = true
       GROUP BY p.id, p.company_name, p.power_confidence_score, p.average_satisfaction, p.total_feedback_responses, p.feedback_trend
       ORDER BY p.power_confidence_score DESC
     `);
@@ -429,8 +429,8 @@ const getPartnerPerformanceDashboard = async (req, res) => {
         COALESCE(SUM(total_feedback_responses), 0) as total_feedback_responses,
         ROUND(AVG(average_satisfaction), 1) as avg_system_satisfaction,
         0 as recent_responses
-      FROM strategic_partners
-      WHERE is_active = 1
+      FROM partners
+      WHERE is_active = true
     `);
     
     console.log('🔍 System metrics result:', systemMetricsResult.rows?.[0]);

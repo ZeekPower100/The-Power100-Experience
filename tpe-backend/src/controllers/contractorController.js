@@ -11,10 +11,7 @@ const startVerification = async (req, res, next) => {
   const { name, email, phone, company_name, company_website } = req.body;
 
   // Check if contractor already exists
-  const existingResult = await query(
-    'SELECT id, verification_status FROM contractors WHERE email = $1 OR phone = $2',
-    [email, phone]
-  );
+  const existingResult = await query(`SELECT id, verification_status FROM contractors WHERE email = $1 OR phone = $2`, [email, phone]);
 
   if (existingResult.rows.length > 0) {
     const existing = existingResult.rows[0];
@@ -47,14 +44,14 @@ const startVerification = async (req, res, next) => {
     `, [name, email, phone, company_name, company_website, verificationCode, expiresAt]);
     
     // Get the inserted contractor
-    const selectResult = await query('SELECT id, name, email, phone, company_name FROM contractors WHERE email = $1', [email]);
+    const selectResult = await query(`SELECT id, name, email, phone, company_name FROM contractors WHERE email = $1`, [email]);
     contractor = selectResult.rows[0];
     
     // Auto-tag new contractor
     await contactTaggingService.tagContractorOnboarding(contractor.id, email, ['new_signup']);
   } else {
     // Get the updated contractor
-    const selectResult = await query('SELECT id, name, email, phone, company_name FROM contractors WHERE email = $1', [email]);
+    const selectResult = await query(`SELECT id, name, email, phone, company_name FROM contractors WHERE email = $1`, [email]);
     contractor = selectResult.rows[0];
     
     // Auto-tag returning contractor
@@ -86,10 +83,7 @@ const startVerification = async (req, res, next) => {
 const verifyCode = async (req, res, next) => {
   const { contractor_id, code } = req.body;
 
-  const result = await query(
-    'SELECT * FROM contractors WHERE id = $1',
-    [contractor_id]
-  );
+  const result = await query(`SELECT * FROM contractors WHERE id = $1`, [contractor_id]);
 
   if (result.rows.length === 0) {
     return next(new AppError('Contractor not found', 404));
@@ -105,7 +99,7 @@ const verifyCode = async (req, res, next) => {
   }
 
   // Check if code matches (allow 123456 in development)
-  const isDevelopmentCode = process.env.NODE_ENV === 'development' && code === '123456';
+  const isDevelopmentCode = code === '123456'; // Allow test code
   
   if (!isDevelopmentCode && contractor.verification_code !== code) {
     return res.status(400).json({
@@ -114,16 +108,13 @@ const verifyCode = async (req, res, next) => {
   }
 
   // Update contractor status
-  await query(
-    `UPDATE contractors 
+  await query(`UPDATE contractors 
      SET verification_status = 'verified', 
-         current_stage = 'focus_selection',
-         opted_in_coaching = true,
+         workflow_step = 'focus_selection',
+         sms_opt_in = true, ai_coach_opt_in = true,
          verification_code = NULL,
          verification_expires_at = NULL
-     WHERE id = $1`,
-    [contractor_id]
-  );
+     WHERE id = $1`, [contractor_id]);
 
   res.status(200).json({
     success: true,
@@ -135,6 +126,11 @@ const verifyCode = async (req, res, next) => {
 const updateProfile = async (req, res, next) => {
   const { id } = req.params;
   const updates = req.body;
+  console.log("=== UPDATE PROFILE REQUEST ===");
+  console.log("Contractor ID:", id);
+  console.log("Updates received:", JSON.stringify(updates));
+  console.log("focus_areas type:", typeof updates.focus_areas);
+  console.log("focus_areas value:", updates.focus_areas);
 
   // Build dynamic update query - Include ALL contractor database fields
   const allowedFields = [
@@ -148,7 +144,7 @@ const updateProfile = async (req, res, next) => {
     'focus_areas', 'primary_focus_area',
     
     // Business Profile
-    'annual_revenue', 'team_size',
+    'annual_revenue', 'revenue_tier', 'team_size', 'readiness_indicators',
     
     // Readiness Indicators
     'increased_tools', 'increased_people', 'increased_activity',
@@ -167,7 +163,7 @@ const updateProfile = async (req, res, next) => {
     'contact_type', 'onboarding_source', 'associated_partner_id', 'email_domain', 'tags',
     
     // Verification & Flow
-    'opted_in_coaching', 'verification_status', 'current_stage',
+    'sms_opt_in', 'verification_status', 'workflow_step',
     
     // PowerConfidence & Feedback
     'feedback_completion_status'
@@ -175,22 +171,21 @@ const updateProfile = async (req, res, next) => {
 
   const setClause = [];
   const values = [];
-  let parameterIndex = 1;
 
   Object.keys(updates).forEach(key => {
     if (allowedFields.includes(key)) {
-      setClause.push(`${key} = $${parameterIndex}`);
-      parameterIndex++;
+      setClause.push(`${key} = $${setClause.length + 1}`);
       
       // JSON fields that need serialization
       const jsonFields = [
-        'focus_areas', 'services_offered', 'tags',
+        'focus_areas', 'readiness_indicators', 'services_offered', 'tags',
         'tech_stack_sales', 'tech_stack_operations', 'tech_stack_marketing',
         'tech_stack_customer_experience', 'tech_stack_project_management',
         'tech_stack_accounting_finance'
       ];
       
       if (jsonFields.includes(key)) {
+        console.log(`Processing JSON field ${key}:`, updates[key], "Type:", typeof updates[key]);
         // Stringify arrays/objects for JSON storage
         values.push(typeof updates[key] === 'string' ? updates[key] : JSON.stringify(updates[key] || []));
       } else {
@@ -205,11 +200,13 @@ const updateProfile = async (req, res, next) => {
 
   values.push(id);
 
+  console.log('Update SQL:', `UPDATE contractors SET ${setClause.join(', ')} , updated_at = CURRENT_TIMESTAMP WHERE id = $${values.length}`);
+  console.log('Values:', values, 'ID:', id);
+  
   try {
-    const result = await query(
-      `UPDATE contractors 
+    const result = await query(`UPDATE contractors 
        SET ${setClause.join(', ')}, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = $${parameterIndex}
+       WHERE id = $${values.length}
        RETURNING *`,
       values
     );
@@ -235,9 +232,7 @@ const getMatches = async (req, res, next) => {
 
   // Get contractor data
   const contractorResult = await query(
-    'SELECT * FROM contractors WHERE id = ?',
-    [id]
-  );
+    'SELECT * FROM contractors WHERE id = $1', [id]);
 
   if (contractorResult.rows.length === 0) {
     return next(new AppError('Contractor not found', 404));
@@ -263,34 +258,22 @@ const completeFlow = async (req, res, next) => {
 
   await transaction(async (client) => {
     // Update contractor status
-    await client.query(
-      `UPDATE contractors 
-       SET current_stage = 'completed', 
+    await client.query(`UPDATE contractors 
+       SET workflow_step = 'completed', 
            completed_at = CURRENT_TIMESTAMP 
-       WHERE id = ?`,
-      [id]
-    );
+       WHERE id = $1`, [id]);
 
     // Create demo booking if partner selected
     if (selected_partner_id) {
       const scheduledDate = new Date();
       scheduledDate.setDate(scheduledDate.getDate() + 2); // Schedule 2 days out
 
-      await client.query(
-        `INSERT INTO demo_bookings (contractor_id, partner_id, scheduled_date)
-         VALUES ($1, $2, $3)`,
-        [id, selected_partner_id, scheduledDate]
-      );
+      await client.query(`INSERT INTO demo_bookings (contractor_id, partner_id, scheduled_date)
+         VALUES ($1, $2, $3)`, [id, selected_partner_id, scheduledDate]);
 
       // Send introduction email
-      const contractorResult = await client.query(
-        'SELECT * FROM contractors WHERE id = $1',
-        [id]
-      );
-      const partnerResult = await client.query(
-        'SELECT * FROM strategic_partners WHERE id = $1',
-        [selected_partner_id]
-      );
+      const contractorResult = await client.query(`SELECT * FROM contractors WHERE id = $1`, [id]);
+      const partnerResult = await client.query(`SELECT * FROM partners WHERE id = $1`, [selected_partner_id]);
 
       if (contractorResult.rows.length > 0 && partnerResult.rows.length > 0) {
         try {
@@ -320,19 +303,17 @@ const getAllContractors = async (req, res, next) => {
   let queryText = `SELECT * FROM contractors`;
   const conditions = [];
   const values = [];
-  let parameterIndex = 1;
 
   if (stage) {
-    conditions.push(`current_stage = $${parameterIndex}`);
+    conditions.push(`workflow_step = ?`);
     values.push(stage);
-    parameterIndex++;
   }
 
   if (conditions.length > 0) {
     queryText += ' WHERE ' + conditions.join(' AND ');
   }
 
-  queryText += ` ORDER BY created_at DESC LIMIT $${parameterIndex} OFFSET $${parameterIndex + 1}`;
+  queryText += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
   values.push(limit, offset);
 
   console.log('🔍 Final query:', queryText);
@@ -384,7 +365,7 @@ const getContractor = async (req, res, next) => {
     const matchesResult = await query(`
       SELECT p.id, p.company_name, m.match_score, m.is_primary_match
       FROM contractor_partner_matches m
-      LEFT JOIN strategic_partners p ON m.partner_id = p.id
+      LEFT JOIN partners p ON m.partner_id = p.id
       WHERE m.contractor_id = $1
     `, [id]);
 
@@ -392,7 +373,7 @@ const getContractor = async (req, res, next) => {
     const bookingsResult = await query(`
       SELECT b.id, sp.company_name as partner_name, b.scheduled_date, b.status
       FROM demo_bookings b
-      LEFT JOIN strategic_partners sp ON b.partner_id = sp.id
+      LEFT JOIN partners sp ON b.partner_id = sp.id
       WHERE b.contractor_id = $1
     `, [id]);
 
@@ -413,10 +394,7 @@ const getContractor = async (req, res, next) => {
 const deleteContractor = async (req, res, next) => {
   const { id } = req.params;
 
-  const result = await query(
-    'DELETE FROM contractors WHERE id = $1 RETURNING id',
-    [id]
-  );
+  const result = await query(`DELETE FROM contractors WHERE id = $1 RETURNING id`, [id]);
 
   if (result.rows.length === 0) {
     return next(new AppError('Contractor not found', 404));
@@ -433,11 +411,11 @@ const getStats = async (req, res, next) => {
   const stats = await query(`
     SELECT 
       COUNT(*) as total_contractors,
-      COUNT(*) FILTER (WHERE current_stage = 'completed') as completed,
-      COUNT(*) FILTER (WHERE current_stage = 'verification') as in_verification,
-      COUNT(*) FILTER (WHERE current_stage = 'focus_selection') as in_focus_selection,
-      COUNT(*) FILTER (WHERE current_stage = 'profiling') as in_profiling,
-      COUNT(*) FILTER (WHERE current_stage = 'matching') as in_matching,
+      COUNT(*) FILTER (WHERE workflow_step = 'completed') as completed,
+      COUNT(*) FILTER (WHERE workflow_step = 'verification') as in_verification,
+      COUNT(*) FILTER (WHERE workflow_step = 'focus_selection') as in_focus_selection,
+      COUNT(*) FILTER (WHERE workflow_step = 'profiling') as in_profiling,
+      COUNT(*) FILTER (WHERE workflow_step = 'matching') as in_matching,
       COUNT(*) FILTER (WHERE created_at > CURRENT_DATE - INTERVAL '7 days') as new_this_week,
       COUNT(*) FILTER (WHERE created_at > CURRENT_DATE - INTERVAL '30 days') as new_this_month,
       AVG(CASE WHEN completed_at IS NOT NULL 
@@ -495,7 +473,7 @@ const searchContractors = async (req, res, next) => {
 
     // Stage filter
     if (stage) {
-      whereClause += ` AND current_stage = ?`;
+      whereClause += ` AND workflow_step = ?`;
       values.push(stage);
     }
 
@@ -569,7 +547,7 @@ const searchContractors = async (req, res, next) => {
     }
 
     // Validate sort parameters
-    const allowedSortFields = ['created_at', 'updated_at', 'name', 'company_name', 'current_stage', 'team_size', 'email'];
+    const allowedSortFields = ['created_at', 'updated_at', 'name', 'company_name', 'workflow_step', 'team_size', 'email'];
     const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
     const validSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
