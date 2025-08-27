@@ -15,7 +15,7 @@ const getAllBookings = async (req, res, next) => {
            p.primary_email as partner_email
     FROM demo_bookings b
     JOIN contractors c ON b.contractor_id = c.id
-    JOIN partners p ON b.partner_id = p.id
+    JOIN strategic_partners p ON b.partner_id = p.id
   `;
 
   const conditions = [];

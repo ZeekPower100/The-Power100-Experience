@@ -303,9 +303,10 @@ const getAllContractors = async (req, res, next) => {
   let queryText = `SELECT * FROM contractors`;
   const conditions = [];
   const values = [];
+  let paramCount = 0;
 
   if (stage) {
-    conditions.push(`workflow_step = ?`);
+    conditions.push(`workflow_step = $${++paramCount}`);
     values.push(stage);
   }
 
@@ -313,7 +314,7 @@ const getAllContractors = async (req, res, next) => {
     queryText += ' WHERE ' + conditions.join(' AND ');
   }
 
-  queryText += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+  queryText += ` ORDER BY created_at DESC LIMIT $${++paramCount} OFFSET $${++paramCount}`;
   values.push(limit, offset);
 
   console.log('🔍 Final query:', queryText);

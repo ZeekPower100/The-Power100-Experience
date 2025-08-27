@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { query } = require('../config/database.sqlite');
+const { query } = require('../config/database');
 const { AppError } = require('./errorHandler');
 
 // Protect routes - require authentication
@@ -44,6 +44,7 @@ const protect = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
+    console.error('Auth middleware error:', error.message);
     return next(new AppError('Not authorized to access this route', 401));
   }
 };

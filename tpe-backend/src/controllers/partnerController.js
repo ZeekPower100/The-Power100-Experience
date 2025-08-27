@@ -68,23 +68,24 @@ const getAllPartners = async (req, res, next) => {
   const { active, limit = 50, offset = 0 } = req.query;
 
   try {
-    let queryText = 'SELECT * FROM partners';
+    let queryText = 'SELECT * FROM strategic_partners';
     const values = [];
+    let paramCount = 0;
 
     if (active !== undefined) {
-      queryText += ' WHERE is_active = ?';
-      values.push(active === 'true' ? 1 : 0);
+      queryText += ` WHERE is_active = $${++paramCount}`;
+      values.push(active === 'true');
     }
 
     queryText += ' ORDER BY powerconfidence_score DESC';
     
     if (limit) {
-      queryText += ' LIMIT ?';
+      queryText += ` LIMIT $${++paramCount}`;
       values.push(parseInt(limit));
     }
     
     if (offset) {
-      queryText += ' OFFSET ?';
+      queryText += ` OFFSET $${++paramCount}`;
       values.push(parseInt(offset));
     }
 
