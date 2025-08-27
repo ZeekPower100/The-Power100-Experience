@@ -1,0 +1,3282 @@
+From 1c262c191fff83e2ebeb64e28f42500c32ab4b70 Mon Sep 17 00:00:00 2001
+From: Ubuntu <ubuntu@ip-10-0-1-248.ec2.internal>
+Date: Mon, 25 Aug 2025 04:00:14 +0000
+Subject: [PATCH 1/2] Update Public PCR metrics to align with Destination
+ Motivation's 3 custom metrics
+
+---
+ package-lock.json                             |   2 +-
+ tpe-backend/admin_users.csv                   |   2 +
+ ...reportGenerationService_20250825_004331.js | 194 +++++++
+ ...reportGenerationService_20250825_004428.js | 195 +++++++
+ ...reportGenerationService_20250825_004911.js | 195 +++++++
+ ...reportGenerationService_20250825_005010.js | 208 +++++++
+ tpe-backend/contractors.csv                   |   0
+ tpe-backend/copy-db-instructions.txt          |  11 +
+ tpe-backend/fix-placeholders.js               |  41 ++
+ tpe-backend/migrate-all-tables.js             | 170 ++++++
+ tpe-backend/migrate-data.js                   |  70 +++
+ tpe-backend/migrate-to-postgres.sh            |  71 +++
+ tpe-backend/package.json                      |   2 +-
+ tpe-backend/scripts/backup-service.sh         |  48 ++
+ tpe-backend/scripts/quick-restore.sh          |  21 +
+ tpe-backend/src/config/database.js            |  76 +--
+ tpe-backend/src/config/database.postgresql.js |  70 +++
+ .../src/controllers/adminController.js        |  30 +-
+ tpe-backend/src/controllers/authController.js |   6 +-
+ .../src/controllers/bookingController.js      |   6 +-
+ tpe-backend/src/controllers/bulkController.js |   8 +-
+ .../src/controllers/contractorController.js   | 118 ++--
+ .../contractorEnhancedController.js           |   4 +-
+ .../src/controllers/feedbackController.js     |  24 +-
+ .../controllers/feedbackController.simple.js  |   4 +-
+ .../src/controllers/ghlSyncController.js      |   4 +-
+ .../src/controllers/partnerAuthController.js  |  10 +-
+ .../partnerAuthControllerWorking.js           |   4 +-
+ .../src/controllers/partnerController.js      |  50 +-
+ .../controllers/partnerEnhancedController.js  |  10 +-
+ .../controllers/partnerPortalController.js    |  12 +-
+ tpe-backend/src/controllers/smsController.js  |   2 +-
+ tpe-backend/src/middleware/auth.js            |   2 +-
+ tpe-backend/src/routes/publicPartnerRoutes.js |  96 ++++
+ tpe-backend/src/routes/reports.js             |  46 ++
+ tpe-backend/src/server.js                     |  12 +-
+ .../src/services/enhancedMatchingService.js   |  51 +-
+ .../enhancedMatchingService.js.backup         | 374 ++++++++++++
+ tpe-backend/src/services/matchingService.js   |  18 +-
+ .../reportGenerationService-backup.js         | 194 +++++++
+ .../reportGenerationService-pcr-update.js     | 121 ++++
+ .../reportGenerationService-updated.js        | 239 ++++++++
+ .../src/services/reportGenerationService.js   | 208 +++++++
+ tpe-backend/strategic_partners.csv            |   4 +
+ tpe-backend/test_update.js                    |  29 +
+ tpe-backend/update-cors.js                    |  16 +
+ tpe-front-end/next.config.js                  |  19 +
+ tpe-front-end/public/dm-reports-demo.html     | 142 +++++
+ .../src/app/contractorflow/page.tsx.backup    | 152 +++++
+ .../src/app/contractorflow/page.tsx.broken    | 231 ++++++++
+ .../src/app/demo/dm-reports/page.tsx          | 125 ++++
+ .../src/app/demo/employee-powercard/page.tsx  | 498 ++++++++++++++++
+ tpe-front-end/src/app/demo/powercard/page.tsx | 535 ++++++++++++++++++
+ tpe-front-end/src/app/page.tsx.backup         | 300 ++++++++++
+ .../contractor-flow/matchingstep.tsx          |   4 +-
+ .../partner/PartnerOnboardingForm.tsx         |  21 +-
+ .../reports/ContractorComparisonReport.tsx    | 179 ++++++
+ .../components/reports/ExecutiveReport.tsx    | 249 ++++++++
+ .../components/reports/PublicPCRLanding.tsx   | 251 ++++++++
+ tpe-front-end/src/utils/api.ts                |  13 +
+ 60 files changed, 5545 insertions(+), 252 deletions(-)
+ create mode 100644 tpe-backend/admin_users.csv
+ create mode 100644 tpe-backend/backups/reportGenerationService_20250825_004331.js
+ create mode 100644 tpe-backend/backups/reportGenerationService_20250825_004428.js
+ create mode 100644 tpe-backend/backups/reportGenerationService_20250825_004911.js
+ create mode 100644 tpe-backend/backups/reportGenerationService_20250825_005010.js
+ create mode 100644 tpe-backend/contractors.csv
+ create mode 100644 tpe-backend/copy-db-instructions.txt
+ create mode 100644 tpe-backend/fix-placeholders.js
+ create mode 100644 tpe-backend/migrate-all-tables.js
+ create mode 100644 tpe-backend/migrate-data.js
+ create mode 100755 tpe-backend/migrate-to-postgres.sh
+ create mode 100755 tpe-backend/scripts/backup-service.sh
+ create mode 100755 tpe-backend/scripts/quick-restore.sh
+ create mode 100644 tpe-backend/src/config/database.postgresql.js
+ create mode 100644 tpe-backend/src/routes/publicPartnerRoutes.js
+ create mode 100644 tpe-backend/src/routes/reports.js
+ create mode 100644 tpe-backend/src/services/enhancedMatchingService.js.backup
+ create mode 100644 tpe-backend/src/services/reportGenerationService-backup.js
+ create mode 100644 tpe-backend/src/services/reportGenerationService-pcr-update.js
+ create mode 100644 tpe-backend/src/services/reportGenerationService-updated.js
+ create mode 100644 tpe-backend/src/services/reportGenerationService.js
+ create mode 100644 tpe-backend/strategic_partners.csv
+ create mode 100644 tpe-backend/test_update.js
+ create mode 100644 tpe-backend/update-cors.js
+ create mode 100644 tpe-front-end/next.config.js
+ create mode 100644 tpe-front-end/public/dm-reports-demo.html
+ create mode 100644 tpe-front-end/src/app/contractorflow/page.tsx.backup
+ create mode 100644 tpe-front-end/src/app/contractorflow/page.tsx.broken
+ create mode 100644 tpe-front-end/src/app/demo/dm-reports/page.tsx
+ create mode 100644 tpe-front-end/src/app/demo/employee-powercard/page.tsx
+ create mode 100644 tpe-front-end/src/app/demo/powercard/page.tsx
+ create mode 100644 tpe-front-end/src/app/page.tsx.backup
+ create mode 100644 tpe-front-end/src/components/reports/ContractorComparisonReport.tsx
+ create mode 100644 tpe-front-end/src/components/reports/ExecutiveReport.tsx
+ create mode 100644 tpe-front-end/src/components/reports/PublicPCRLanding.tsx
+ create mode 100644 tpe-front-end/src/utils/api.ts
+
+diff --git a/package-lock.json b/package-lock.json
+index 914a66d..b22ec94 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -9144,7 +9144,7 @@
+                 "compression": "^1.7.4",
+                 "cors": "^2.8.5",
+                 "cross-env": "^7.0.3",
+-                "dotenv": "^16.3.1",
++                "dotenv": "^16.6.1",
+                 "express": "^4.18.2",
+                 "express-rate-limit": "^7.1.5",
+                 "express-validator": "^7.0.1",
+diff --git a/tpe-backend/admin_users.csv b/tpe-backend/admin_users.csv
+new file mode 100644
+index 0000000..a5fd5cb
+--- /dev/null
++++ b/tpe-backend/admin_users.csv
+@@ -0,0 +1,2 @@
++id,email,password_hash,full_name,is_active,created_at,updated_at
++1,admin@power100.io,$2a$12$5DsZnd9DH6ONN2mfLM0aP.i1RFUQheLfbztf35ETGjrJBxmT0JufC,"System Administrator",1,"2025-08-24 04:39:48","2025-08-24 04:39:48"
+diff --git a/tpe-backend/backups/reportGenerationService_20250825_004331.js b/tpe-backend/backups/reportGenerationService_20250825_004331.js
+new file mode 100644
+index 0000000..d911e3a
+--- /dev/null
++++ b/tpe-backend/backups/reportGenerationService_20250825_004331.js
+@@ -0,0 +1,194 @@
++// Report Generation Service - Creates contractor, executive, and public reports
++const { query } = require('../config/database');
++
++class ReportGenerationService {
++  
++  // ===== CONTRACTOR REPORT (Variance-based comparison) =====
++  async generateContractorReport(contractorId, partnerId) {
++    try {
++      // Get contractor details
++      const contractorResult = await query(
++        'SELECT * FROM contractors WHERE id = $1',
++        [contractorId]
++      );
++      
++      if (contractorResult.rows.length === 0) {
++        throw new Error('Contractor not found');
++      }
++      
++      const contractor = contractorResult.rows[0];
++      const contractorRevenue = contractor.revenue_tier || '$1M-$5M';
++      
++      // Get partner details
++      const partnerResult = await query(
++        'SELECT * FROM partners WHERE id = $1',
++        [partnerId]
++      );
++      
++      const partner = partnerResult.rows[0];
++      
++      // Format report data with variance only (no actual numbers)
++      const report = {
++        contractor: {
++          name: contractor.name,
++          company: contractor.company_name,
++          revenue_tier: contractorRevenue
++        },
++        partner: {
++          name: partner.company_name,
++          powerconfidence_score: partner.powerconfidence_score
++        },
++        report_date: new Date().toISOString(),
++        quarter: 'Q1 2025',
++        
++        current_tier_performance: {
++          tier: contractorRevenue,
++          metrics: {
++            closing_percentage: {
++              variance: '+6.2%',
++              trend: 'up',
++              comparison: 'Above tier average'
++            },
++            cancellation_rate: {
++              variance: '-3.8%',
++              trend: 'down',
++              comparison: 'Better than 72% of peers'
++            },
++            customer_experience: {
++              variance: '+4.5%',
++              trend: 'up',
++              comparison: 'Top quartile performance'
++            }
++          },
++          peer_insights: [
++            'Companies in your tier using Destination Motivation saw average closing rate improvements of 5.8%',
++            '68% of contractors in your tier improved customer satisfaction scores',
++            'Team retention increased for 82% of similar-sized contractors'
++          ]
++        },
++        
++        next_tier_performance: {
++          tier: '$5M-$10M',
++          metrics: {
++            closing_percentage: {
++              variance: '+8.3%',
++              trend: 'up'
++            },
++            cancellation_rate: {
++              variance: '-5.2%',
++              trend: 'down'
++            },
++            customer_experience: {
++              variance: '+7.1%',
++              trend: 'up'
++            }
++          }
++        },
++        
++        best_practices: [
++          'Schedule monthly team culture assessments',
++          'Implement DM recognition program framework',
++          'Use quarterly pulse surveys',
++          'Apply 5-star recruitment methodology'
++        ]
++      };
++      
++      return report;
++    } catch (error) {
++      console.error('Error generating contractor report:', error);
++      throw error;
++    }
++  }
++  
++  // ===== EXECUTIVE REPORT =====
++  async generateExecutiveReport(partnerId) {
++    try {
++      const report = {
++        partner_name: 'Destination Motivation',
++        report_date: new Date().toISOString(),
++        executive_summary: {
++          powerconfidence_score: 99,
++          previous_score: 97,
++          score_change: '+2',
++          total_clients_served: 142,
++          active_clients: 89,
++          avg_client_satisfaction: 9.2,
++          nps_score: 87
++        },
++        
++        performance_by_tier: [
++          {
++            revenue_tier: '$5M-$10M',
++            clients: 38,
++            metrics: {
++              closing_percentage: { current: 78, industry_avg: 65, difference: '+13%' },
++              cancellation_rate: { current: 12, industry_avg: 22, difference: '-10%' },
++              customer_experience: { current: 9.1, industry_avg: 7.5, difference: '+1.6' }
++            }
++          }
++        ],
++        
++        analysis: {
++          strengths: [
++            { area: 'Team Culture Development', performance: 'Exceptional' },
++            { area: 'Retention Programs', performance: 'Industry Leading' }
++          ],
++          opportunities: [
++            { area: 'Onboarding Speed', current_performance: 'Average 14 days', target: '7 days' }
++          ]
++        },
++        
++        recommendations: {
++          start: ['Weekly check-ins with at-risk clients'],
++          stop: ['Manual report generation'],
++          keep: ['Personalized coaching sessions', 'Culture workshops']
++        }
++      };
++      
++      return report;
++    } catch (error) {
++      console.error('Error generating executive report:', error);
++      throw error;
++    }
++  }
++  
++  // ===== PUBLIC PCR REPORT =====
++  async generatePublicPCRReport(partnerId) {
++    try {
++      const report = {
++        partner: {
++          name: 'Destination Motivation',
++          tagline: 'Building Winning Teams That Stay'
++        },
++        
++        powerconfidence_score: {
++          current: 99,
++          label: 'Elite Partner',
++          percentile: '99th percentile',
++          description: 'Top 1% of all strategic partners'
++        },
++        
++        key_metrics: [
++          { metric: '38%', label: 'Average Turnover Reduction' },
++          { metric: '94%', label: 'Client Satisfaction Rate' },
++          { metric: '142', label: 'Contractors Transformed' }
++        ],
++        
++        testimonials: [
++          {
++            quote: 'DM transformed our culture. Turnover down 40%!',
++            author: 'John Smith',
++            company: 'ABC Contracting'
++          }
++        ]
++      };
++      
++      return report;
++    } catch (error) {
++      console.error('Error generating PCR report:', error);
++      throw error;
++    }
++  }
++}
++
++module.exports = new ReportGenerationService();
+diff --git a/tpe-backend/backups/reportGenerationService_20250825_004428.js b/tpe-backend/backups/reportGenerationService_20250825_004428.js
+new file mode 100644
+index 0000000..3bb387f
+--- /dev/null
++++ b/tpe-backend/backups/reportGenerationService_20250825_004428.js
+@@ -0,0 +1,195 @@
++// Report Generation Service - Creates contractor, executive, and public reports
++const { query } = require('../config/database');
++
++class ReportGenerationService {
++  
++  // ===== CONTRACTOR REPORT (Variance-based comparison) =====
++  async generateContractorReport(contractorId, partnerId) {
++    try {
++      // Get contractor details
++      const contractorResult = await query(
++        'SELECT * FROM contractors WHERE id = $1',
++        [contractorId]
++      );
++      
++      if (contractorResult.rows.length === 0) {
++        throw new Error('Contractor not found');
++      }
++      
++      const contractor = contractorResult.rows[0];
++      const contractorRevenue = contractor.revenue_tier || '$1M-$5M';
++      
++      // Get partner details
++      const partnerResult = await query(
++        'SELECT * FROM partners WHERE id = $1',
++        [partnerId]
++      );
++      
++      const partner = partnerResult.rows[0];
++      
++      // Format report data with variance only (no actual numbers)
++      const report = {
++        contractor: {
++          name: contractor.name,
++          company: contractor.company_name,
++          revenue_tier: contractorRevenue
++        },
++        partner: {
++          name: partner.company_name,
++          powerconfidence_score: partner.powerconfidence_score
++        },
++        report_date: new Date().toISOString(),
++        quarter: 'Q1 2025',
++        
++        current_tier_performance: {
++          tier: contractorRevenue,
++          metrics: {
++            closing_percentage: {
++              variance: '+6.2%',
++              trend: 'up',
++              comparison: 'Above tier average'
++            },
++            cancellation_rate: {
++              variance: '-3.8%',
++              trend: 'down',
++              comparison: 'Better than 72% of peers'
++            },
++            customer_experience: {
++              variance: '+4.5%',
++              trend: 'up',
++              comparison: 'Top quartile performance'
++            }
++          },
++          peer_insights: [
++            'Companies in your tier using Destination Motivation saw average closing rate improvements of 5.8%',
++            '68% of contractors in your tier improved customer satisfaction scores',
++            'Team retention increased for 82% of similar-sized contractors'
++          ]
++        },
++        
++        next_tier_performance: {
++          tier: '$5M-$10M',
++          metrics: {
++            closing_percentage: {
++              variance: '+8.3%',
++              trend: 'up'
++            },
++            cancellation_rate: {
++              variance: '-5.2%',
++              trend: 'down'
++            },
++            customer_experience: {
++              variance: '+7.1%',
++              trend: 'up'
++            }
++          }
++        },
++        
++        best_practices: [
++          'Schedule monthly team culture assessments',
++          'Implement DM recognition program framework',
++          'Use quarterly pulse surveys',
++          'Apply 5-star recruitment methodology'
++        ]
++      };
++      
++      return report;
++    } catch (error) {
++      console.error('Error generating contractor report:', error);
++      throw error;
++    }
++  }
++  
++  // ===== EXECUTIVE REPORT =====
++  async generateExecutiveReport(partnerId) {
++    try {
++      const report = {
++        partner_name: 'Destination Motivation',
++        report_date: new Date().toISOString(),
++        executive_summary: {
++          powerconfidence_score: 99,
++          previous_score: 97,
++          score_change: '+2',
++          total_clients_served: 142,
++          active_clients: 89,
++          avg_client_satisfaction: 9.2,
++          nps_score: 87
++        },
++        
++        performance_by_tier: [
++          {
++            revenue_tier: '$5M-$10M',
++            clients: 38,
++            metrics: {
++              closing_percentage: { current: 78, industry_avg: 65, difference: '+13%' },
++              cancellation_rate: { current: 12, industry_avg: 22, difference: '-10%' },
++              customer_experience: { current: 9.1, industry_avg: 7.5, difference: '+1.6' }
++            }
++          }
++        ],
++        
++        analysis: {
++          strengths: [
++            { area: 'Team Culture Development', performance: 'Exceptional' },
++            { area: 'Retention Programs', performance: 'Industry Leading' }
++          ],
++          opportunities: [
++            { area: 'Onboarding Speed', current_performance: 'Average 14 days', target: '7 days' }
++          ]
++        },
++        
++        recommendations: {
++          start: ['Weekly check-ins with at-risk clients'],
++          stop: ['Manual report generation'],
++          keep: ['Personalized coaching sessions', 'Culture workshops']
++        }
++      };
++      
++      return report;
++    } catch (error) {
++      console.error('Error generating executive report:', error);
++      throw error;
++    }
++  }
++  
++  // ===== PUBLIC PCR REPORT =====
++  async generatePublicPCRReport(partnerId) {
++    try {
++      const report = {
++        partner: {
++          name: 'Destination Motivation',
++          tagline: 'Building Winning Teams That Stay'
++        },
++        
++        powerconfidence_score: {
++          current: 99,
++          label: 'Elite Partner',
++          percentile: '99th percentile',
++          description: 'Top 1% of all strategic partners'
++        },
++        
++        key_metrics: [
++          { metric: '38%', label: 'Average Turnover Reduction' },
++          { metric: '94%', label: 'Client Satisfaction Rate' },
++          { metric: '142', label: 'Contractors Transformed' },
++        { metric: '4.8/5', label: 'Leadership Training Score' }
++        ],
++        
++        testimonials: [
++          {
++            quote: 'DM transformed our culture. Turnover down 40%!',
++            author: 'John Smith',
++            company: 'ABC Contracting'
++          }
++        ]
++      };
++      
++      return report;
++    } catch (error) {
++      console.error('Error generating PCR report:', error);
++      throw error;
++    }
++  }
++}
++
++module.exports = new ReportGenerationService();
+diff --git a/tpe-backend/backups/reportGenerationService_20250825_004911.js b/tpe-backend/backups/reportGenerationService_20250825_004911.js
+new file mode 100644
+index 0000000..3bb387f
+--- /dev/null
++++ b/tpe-backend/backups/reportGenerationService_20250825_004911.js
+@@ -0,0 +1,195 @@
++// Report Generation Service - Creates contractor, executive, and public reports
++const { query } = require('../config/database');
++
++class ReportGenerationService {
++  
++  // ===== CONTRACTOR REPORT (Variance-based comparison) =====
++  async generateContractorReport(contractorId, partnerId) {
++    try {
++      // Get contractor details
++      const contractorResult = await query(
++        'SELECT * FROM contractors WHERE id = $1',
++        [contractorId]
++      );
++      
++      if (contractorResult.rows.length === 0) {
++        throw new Error('Contractor not found');
++      }
++      
++      const contractor = contractorResult.rows[0];
++      const contractorRevenue = contractor.revenue_tier || '$1M-$5M';
++      
++      // Get partner details
++      const partnerResult = await query(
++        'SELECT * FROM partners WHERE id = $1',
++        [partnerId]
++      );
++      
++      const partner = partnerResult.rows[0];
++      
++      // Format report data with variance only (no actual numbers)
++      const report = {
++        contractor: {
++          name: contractor.name,
++          company: contractor.company_name,
++          revenue_tier: contractorRevenue
++        },
++        partner: {
++          name: partner.company_name,
++          powerconfidence_score: partner.powerconfidence_score
++        },
++        report_date: new Date().toISOString(),
++        quarter: 'Q1 2025',
++        
++        current_tier_performance: {
++          tier: contractorRevenue,
++          metrics: {
++            closing_percentage: {
++              variance: '+6.2%',
++              trend: 'up',
++              comparison: 'Above tier average'
++            },
++            cancellation_rate: {
++              variance: '-3.8%',
++              trend: 'down',
++              comparison: 'Better than 72% of peers'
++            },
++            customer_experience: {
++              variance: '+4.5%',
++              trend: 'up',
++              comparison: 'Top quartile performance'
++            }
++          },
++          peer_insights: [
++            'Companies in your tier using Destination Motivation saw average closing rate improvements of 5.8%',
++            '68% of contractors in your tier improved customer satisfaction scores',
++            'Team retention increased for 82% of similar-sized contractors'
++          ]
++        },
++        
++        next_tier_performance: {
++          tier: '$5M-$10M',
++          metrics: {
++            closing_percentage: {
++              variance: '+8.3%',
++              trend: 'up'
++            },
++            cancellation_rate: {
++              variance: '-5.2%',
++              trend: 'down'
++            },
++            customer_experience: {
++              variance: '+7.1%',
++              trend: 'up'
++            }
++          }
++        },
++        
++        best_practices: [
++          'Schedule monthly team culture assessments',
++          'Implement DM recognition program framework',
++          'Use quarterly pulse surveys',
++          'Apply 5-star recruitment methodology'
++        ]
++      };
++      
++      return report;
++    } catch (error) {
++      console.error('Error generating contractor report:', error);
++      throw error;
++    }
++  }
++  
++  // ===== EXECUTIVE REPORT =====
++  async generateExecutiveReport(partnerId) {
++    try {
++      const report = {
++        partner_name: 'Destination Motivation',
++        report_date: new Date().toISOString(),
++        executive_summary: {
++          powerconfidence_score: 99,
++          previous_score: 97,
++          score_change: '+2',
++          total_clients_served: 142,
++          active_clients: 89,
++          avg_client_satisfaction: 9.2,
++          nps_score: 87
++        },
++        
++        performance_by_tier: [
++          {
++            revenue_tier: '$5M-$10M',
++            clients: 38,
++            metrics: {
++              closing_percentage: { current: 78, industry_avg: 65, difference: '+13%' },
++              cancellation_rate: { current: 12, industry_avg: 22, difference: '-10%' },
++              customer_experience: { current: 9.1, industry_avg: 7.5, difference: '+1.6' }
++            }
++          }
++        ],
++        
++        analysis: {
++          strengths: [
++            { area: 'Team Culture Development', performance: 'Exceptional' },
++            { area: 'Retention Programs', performance: 'Industry Leading' }
++          ],
++          opportunities: [
++            { area: 'Onboarding Speed', current_performance: 'Average 14 days', target: '7 days' }
++          ]
++        },
++        
++        recommendations: {
++          start: ['Weekly check-ins with at-risk clients'],
++          stop: ['Manual report generation'],
++          keep: ['Personalized coaching sessions', 'Culture workshops']
++        }
++      };
++      
++      return report;
++    } catch (error) {
++      console.error('Error generating executive report:', error);
++      throw error;
++    }
++  }
++  
++  // ===== PUBLIC PCR REPORT =====
++  async generatePublicPCRReport(partnerId) {
++    try {
++      const report = {
++        partner: {
++          name: 'Destination Motivation',
++          tagline: 'Building Winning Teams That Stay'
++        },
++        
++        powerconfidence_score: {
++          current: 99,
++          label: 'Elite Partner',
++          percentile: '99th percentile',
++          description: 'Top 1% of all strategic partners'
++        },
++        
++        key_metrics: [
++          { metric: '38%', label: 'Average Turnover Reduction' },
++          { metric: '94%', label: 'Client Satisfaction Rate' },
++          { metric: '142', label: 'Contractors Transformed' },
++        { metric: '4.8/5', label: 'Leadership Training Score' }
++        ],
++        
++        testimonials: [
++          {
++            quote: 'DM transformed our culture. Turnover down 40%!',
++            author: 'John Smith',
++            company: 'ABC Contracting'
++          }
++        ]
++      };
++      
++      return report;
++    } catch (error) {
++      console.error('Error generating PCR report:', error);
++      throw error;
++    }
++  }
++}
++
++module.exports = new ReportGenerationService();
+diff --git a/tpe-backend/backups/reportGenerationService_20250825_005010.js b/tpe-backend/backups/reportGenerationService_20250825_005010.js
+new file mode 100644
+index 0000000..f447f81
+--- /dev/null
++++ b/tpe-backend/backups/reportGenerationService_20250825_005010.js
+@@ -0,0 +1,208 @@
++// Report Generation Service - Creates contractor, executive, and public reports
++const { query } = require('../config/database');
++
++class ReportGenerationService {
++  
++  // ===== CONTRACTOR REPORT (Variance-based comparison) =====
++  async generateContractorReport(contractorId, partnerId) {
++    try {
++      // Get contractor details
++      const contractorResult = await query(
++        'SELECT * FROM contractors WHERE id = $1',
++        [contractorId]
++      );
++      
++      if (contractorResult.rows.length === 0) {
++        throw new Error('Contractor not found');
++      }
++      
++      const contractor = contractorResult.rows[0];
++      const contractorRevenue = contractor.revenue_tier || '$1M-$5M';
++      
++      // Get partner details
++      const partnerResult = await query(
++        'SELECT * FROM partners WHERE id = $1',
++        [partnerId]
++      );
++      
++      const partner = partnerResult.rows[0];
++      
++      // Format report data with variance only (no actual numbers)
++      const report = {
++        contractor: {
++          name: contractor.name,
++          company: contractor.company_name,
++          revenue_tier: contractorRevenue
++        },
++        partner: {
++          name: partner.company_name,
++          powerconfidence_score: partner.powerconfidence_score
++        },
++        report_date: new Date().toISOString(),
++        quarter: 'Q1 2025',
++        
++        current_tier_performance: {
++          tier: contractorRevenue,
++          metrics: {
++            closing_percentage: {
++              variance: '+6.2%',
++              trend: 'up',
++              comparison: 'Above tier average'
++            },
++            cancellation_rate: {
++              variance: '-3.8%',
++              trend: 'down',
++              comparison: 'Better than 72% of peers'
++            },
++            customer_experience: {
++              variance: '+4.5%',
++              trend: 'up',
++              comparison: 'Top quartile performance'
++            }
++          },
++          peer_insights: [
++            'Companies in your tier using Destination Motivation saw average closing rate improvements of 5.8%',
++            '68% of contractors in your tier improved customer satisfaction scores',
++            'Team retention increased for 82% of similar-sized contractors'
++          ]
++        },
++        
++        next_tier_performance: {
++          tier: '$5M-$10M',
++          metrics: {
++            closing_percentage: {
++              variance: '+8.3%',
++              trend: 'up'
++            },
++            cancellation_rate: {
++              variance: '-5.2%',
++              trend: 'down'
++            },
++            customer_experience: {
++              variance: '+7.1%',
++              trend: 'up'
++            }
++          }
++        },
++        
++        best_practices: [
++          'Schedule monthly team culture assessments',
++          'Implement DM recognition program framework',
++          'Use quarterly pulse surveys',
++          'Apply 5-star recruitment methodology'
++        ]
++      };
++      
++      return report;
++    } catch (error) {
++      console.error('Error generating contractor report:', error);
++      throw error;
++    }
++  }
++  
++  // ===== EXECUTIVE REPORT =====
++  async generateExecutiveReport(partnerId) {
++    try {
++      const report = {
++        partner_name: 'Destination Motivation',
++        report_date: new Date().toISOString(),
++        executive_summary: {
++          powerconfidence_score: 99,
++          previous_score: 97,
++          score_change: '+2',
++          total_clients_served: 142,
++          active_clients: 89,
++          avg_client_satisfaction: 9.2,
++          nps_score: 87
++        },
++        
++        performance_by_tier: [
++          {
++            revenue_tier: '$5M-$10M',
++            clients: 38,
++            metrics: {
++              closing_percentage: { current: 78, industry_avg: 65, difference: '+13%' },
++              cancellation_rate: { current: 12, industry_avg: 22, difference: '-10%' },
++              customer_experience: { current: 9.1, industry_avg: 7.5, difference: '+1.6' }
++            }
++          }
++        ],
++        
++        analysis: {
++          strengths: [
++            { area: 'Team Culture Development', performance: 'Exceptional' },
++            { area: 'Retention Programs', performance: 'Industry Leading' }
++          ],
++          opportunities: [
++            { area: 'Onboarding Speed', current_performance: 'Average 14 days', target: '7 days' }
++          ]
++        },
++        
++        recommendations: {
++          start: ['Weekly check-ins with at-risk clients'],
++          stop: ['Manual report generation'],
++          keep: ['Personalized coaching sessions', 'Culture workshops']
++        }
++      };
++      
++      return report;
++    } catch (error) {
++      console.error('Error generating executive report:', error);
++      throw error;
++    }
++  }
++  
++  // ===== PUBLIC PCR REPORT =====
++  async generatePublicPCRReport(partnerId) {
++    try {
++      const report = {
++        partner: {
++          name: 'Destination Motivation',
++          tagline: 'Building Winning Teams That Stay'
++        },
++        
++        powerconfidence_score: {
++          current: 99,
++          label: 'Elite Partner',
++          percentile: '99th percentile',
++          description: 'Top 1% of all strategic partners'
++        },
++        
++        key_metrics: [
++          { metric: '38%', label: 'Average Turnover Reduction' },
++          { metric: '94%', label: 'Client Satisfaction Rate' },
++          { metric: '142', label: 'Contractors Transformed' },
++        { metric: '4.8/5', label: 'Leadership Training Score' }
++        ],
++        
++        testimonials: [
++          {
++            quote: 'DM transformed our culture. Turnover down 40%!',
++            author: 'John Smith',
++            company: 'ABC Contracting',
++            revenue_tier: '31-50M'
++          },
++          {
++            quote: 'The leadership training was a game-changer for our managers.',
++            author: 'Sarah Johnson',
++            company: 'Premier Builders',
++            revenue_tier: '11-20M'
++          },
++          {
++            quote: 'Employee satisfaction scores up 35% in just 6 months!',
++            author: 'Mike Davis',
++            company: 'Excel Construction',
++            revenue_tier: '51-75M'
++          }
++        ]
++      };
++      
++      return report;
++    } catch (error) {
++      console.error('Error generating PCR report:', error);
++      throw error;
++    }
++  }
++}
++
++module.exports = new ReportGenerationService();
+diff --git a/tpe-backend/contractors.csv b/tpe-backend/contractors.csv
+new file mode 100644
+index 0000000..e69de29
+diff --git a/tpe-backend/copy-db-instructions.txt b/tpe-backend/copy-db-instructions.txt
+new file mode 100644
+index 0000000..6d98dd6
+--- /dev/null
++++ b/tpe-backend/copy-db-instructions.txt
+@@ -0,0 +1,11 @@
++INSTRUCTIONS TO COPY SQLITE DATABASE:
++
++1. On your local Windows machine, find the file:
++   C:\Users\broac\CascadeProjects\The-Power100-Experience\tpe-backend\power100.db
++
++2. Upload it to the server using SCP or your preferred method to:
++   /home/ubuntu/The-Power100-Experience/tpe-backend/power100.db
++
++3. Then run: node /home/ubuntu/migrate-partners.js
++
++Alternatively, we can manually create the demo partners in PostgreSQL.
+diff --git a/tpe-backend/fix-placeholders.js b/tpe-backend/fix-placeholders.js
+new file mode 100644
+index 0000000..31d557f
+--- /dev/null
++++ b/tpe-backend/fix-placeholders.js
+@@ -0,0 +1,41 @@
++const fs = require('fs');
++const path = require('path');
++
++function fixPlaceholders(dir) {
++  const files = fs.readdirSync(dir);
++  
++  files.forEach(file => {
++    const filePath = path.join(dir, file);
++    const stat = fs.statSync(filePath);
++    
++    if (stat.isDirectory() && !file.includes('node_modules')) {
++      fixPlaceholders(filePath);
++    } else if (file.endsWith('.js')) {
++      let content = fs.readFileSync(filePath, 'utf8');
++      
++      // Only fix SQL queries, not other uses of ?
++      // Look for patterns like 'SELECT ... WHERE ... = ?'
++      content = content.replace(/(\bSELECT\b[\s\S]*?\bWHERE\b[\s\S]*?=\s*)\?/gi, '$1$1');
++      content = content.replace(/(\bINSERT INTO\b[\s\S]*?\bVALUES\b[\s\S]*?\([\s\S]*?)\?/gi, '$1$1');
++      content = content.replace(/(\bUPDATE\b[\s\S]*?\bSET\b[\s\S]*?=\s*)\?/gi, '$1$1');
++      content = content.replace(/(\bDELETE FROM\b[\s\S]*?\bWHERE\b[\s\S]*?=\s*)\?/gi, '$1$1');
++      
++      // More specific: Replace ? with numbered placeholders
++      let queryMatches = content.match(/(query|get|all|run)\s*\(\s*['"`][\s\S]*?['"`]/g);
++      if (queryMatches) {
++        queryMatches.forEach(match => {
++          let placeholderCount = 1;
++          let fixed = match.replace(/\?/g, () => `$${placeholderCount++}`);
++          content = content.replace(match, fixed);
++        });
++      }
++      
++      fs.writeFileSync(filePath, content);
++    }
++  });
++}
++
++// Fix all controllers and middleware
++fixPlaceholders('./src/controllers');
++fixPlaceholders('./src/middleware');
++console.log('Fixed placeholders');
+diff --git a/tpe-backend/migrate-all-tables.js b/tpe-backend/migrate-all-tables.js
+new file mode 100644
+index 0000000..40cfcf6
+--- /dev/null
++++ b/tpe-backend/migrate-all-tables.js
+@@ -0,0 +1,170 @@
++const sqlite3 = require('sqlite3').verbose();
++const { Client } = require('pg');
++
++async function migrateAllTables() {
++  const pgClient = new Client({
++    host: 'tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com',
++    port: 5432,
++    database: 'tpedb',
++    user: 'tpeadmin',
++    password: 'dBP0wer100!!',
++    ssl: { rejectUnauthorized: false }
++  });
++
++  const sqliteDb = new sqlite3.Database('./power100.db');
++
++  try {
++    await pgClient.connect();
++    console.log('Connected to PostgreSQL');
++
++    // Get SQLite schema and recreate in PostgreSQL
++    console.log('Creating missing tables...');
++    
++    // Create all tables that don't exist yet
++    const createTableQueries = [
++      `CREATE TABLE IF NOT EXISTS contractor_partner_matches (
++        id SERIAL PRIMARY KEY,
++        contractor_id INTEGER,
++        partner_id INTEGER,
++        score DECIMAL(5,2),
++        reasons TEXT,
++        is_primary BOOLEAN DEFAULT false,
++        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
++      )`,
++      `CREATE TABLE IF NOT EXISTS demo_bookings (
++        id SERIAL PRIMARY KEY,
++        contractor_id INTEGER,
++        partner_id INTEGER,
++        scheduled_date TIMESTAMP,
++        status VARCHAR(50),
++        notes TEXT,
++        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
++      )`,
++      `CREATE TABLE IF NOT EXISTS strategic_partners (
++        id SERIAL PRIMARY KEY,
++        company_name VARCHAR(255),
++        primary_contact VARCHAR(255),
++        primary_email VARCHAR(255),
++        primary_phone VARCHAR(50),
++        secondary_contact VARCHAR(255),
++        secondary_email VARCHAR(255),
++        secondary_phone VARCHAR(50),
++        focus_areas TEXT,
++        revenue_tiers TEXT,
++        powerconfidence_score INTEGER DEFAULT 0,
++        is_active BOOLEAN DEFAULT true,
++        testimonials TEXT,
++        success_stories TEXT,
++        unique_value TEXT,
++        ideal_customer TEXT,
++        onboarding_process TEXT,
++        pricing_model TEXT,
++        integration_requirements TEXT,
++        support_options TEXT,
++        contract_terms TEXT,
++        compliance_certifications TEXT,
++        geographical_coverage TEXT,
++        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
++      )`,
++      `CREATE TABLE IF NOT EXISTS feedback_surveys (
++        id SERIAL PRIMARY KEY,
++        partner_id INTEGER,
++        survey_link VARCHAR(255) UNIQUE,
++        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
++      )`,
++      `CREATE TABLE IF NOT EXISTS feedback_responses (
++        id SERIAL PRIMARY KEY,
++        survey_id INTEGER,
++        contractor_name VARCHAR(255),
++        contractor_email VARCHAR(255),
++        rating INTEGER,
++        comments TEXT,
++        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
++      )`,
++      `CREATE TABLE IF NOT EXISTS sms_campaigns (
++        id SERIAL PRIMARY KEY,
++        name VARCHAR(255),
++        message TEXT,
++        recipient_count INTEGER,
++        status VARCHAR(50),
++        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
++      )`,
++      `CREATE TABLE IF NOT EXISTS sms_subscriptions (
++        id SERIAL PRIMARY KEY,
++        contractor_id INTEGER,
++        phone VARCHAR(50),
++        is_subscribed BOOLEAN DEFAULT true,
++        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
++      )`,
++      `CREATE TABLE IF NOT EXISTS powerconfidence_history (
++        id SERIAL PRIMARY KEY,
++        partner_id INTEGER,
++        score INTEGER,
++        recorded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
++      )`
++    ];
++
++    for (const query of createTableQueries) {
++      await pgClient.query(query);
++    }
++    console.log('Tables created');
++
++    // Migrate data from each table
++    const tables = [
++      'contractor_partner_matches',
++      'demo_bookings', 
++      'strategic_partners',
++      'feedback_surveys',
++      'feedback_responses',
++      'sms_campaigns',
++      'sms_subscriptions',
++      'powerconfidence_history'
++    ];
++
++    for (const table of tables) {
++      console.log(`Migrating ${table}...`);
++      
++      const rows = await new Promise((resolve, reject) => {
++        sqliteDb.all(`SELECT * FROM ${table}`, (err, rows) => {
++          if (err) {
++            console.log(`Table ${table} doesn't exist or has no data`);
++            resolve([]);
++          } else {
++            resolve(rows);
++          }
++        });
++      });
++
++      if (rows.length > 0) {
++        // Clear existing data to avoid duplicates
++        await pgClient.query(`DELETE FROM ${table}`);
++        
++        for (const row of rows) {
++          // Build dynamic insert query
++          const columns = Object.keys(row).filter(col => col !== 'id');
++          const values = columns.map((col, idx) => `$${idx + 1}`);
++          const query = `INSERT INTO ${table} (${columns.join(', ')}) VALUES (${values.join(', ')})`;
++          const params = columns.map(col => row[col]);
++          
++          try {
++            await pgClient.query(query, params);
++          } catch (err) {
++            console.log(`Error inserting into ${table}:`, err.message);
++          }
++        }
++        console.log(`Migrated ${rows.length} rows to ${table}`);
++      }
++    }
++
++    console.log('Migration complete!');
++    
++  } catch (error) {
++    console.error('Migration error:', error);
++  } finally {
++    await pgClient.end();
++    sqliteDb.close();
++  }
++}
++
++migrateAllTables();
+diff --git a/tpe-backend/migrate-data.js b/tpe-backend/migrate-data.js
+new file mode 100644
+index 0000000..399b5a4
+--- /dev/null
++++ b/tpe-backend/migrate-data.js
+@@ -0,0 +1,70 @@
++const sqlite3 = require('sqlite3').verbose();
++const { Client } = require('pg');
++
++async function migrate() {
++  // PostgreSQL connection with SSL
++  const pgClient = new Client({
++    host: 'tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com',
++    port: 5432,
++    database: 'tpedb',
++    user: 'tpeadmin',
++    password: 'dBP0wer100!!',
++    ssl: {
++      rejectUnauthorized: false
++    }
++  });
++
++  // SQLite connection
++  const sqliteDb = new sqlite3.Database('./power100.db');
++
++  try {
++    await pgClient.connect();
++    console.log('Connected to PostgreSQL');
++
++    // Get data and migrate
++    const adminUsers = await new Promise((resolve, reject) => {
++      sqliteDb.all("SELECT * FROM admin_users", (err, rows) => {
++        if (err) reject(err);
++        else resolve(rows || []);
++      });
++    });
++
++    for (const user of adminUsers) {
++      await pgClient.query(
++        'INSERT INTO admin_users (email, password, name) VALUES ($1, $2, $3) ON CONFLICT (email) DO NOTHING',
++        [user.email, user.password, user.name]
++      );
++    }
++    console.log(`Migrated ${adminUsers.length} admin users`);
++
++    // Migrate partners
++    const partners = await new Promise((resolve, reject) => {
++      sqliteDb.all("SELECT * FROM strategic_partners", (err, rows) => {
++        if (err) reject(err);
++        else resolve(rows || []);
++      });
++    });
++
++    for (const partner of partners) {
++      await pgClient.query(
++        'INSERT INTO partners (company_name, email, capabilities, revenue_tiers, powerconfidence_score, is_active) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (email) DO NOTHING',
++        [partner.company_name, partner.primary_email || `${partner.company_name.toLowerCase().replace(/\s+/g, '')}@example.com`, 
++         partner.focus_areas, partner.revenue_tiers, partner.powerconfidence_score || 0, partner.is_active == 1]
++      );
++    }
++    console.log(`Migrated ${partners.length} partners`);
++
++    // Check what we have
++    const result = await pgClient.query('SELECT COUNT(*) FROM partners');
++    console.log(`Total partners in PostgreSQL: ${result.rows[0].count}`);
++
++    console.log('Migration complete!');
++  } catch (error) {
++    console.error('Migration error:', error);
++  } finally {
++    await pgClient.end();
++    sqliteDb.close();
++  }
++}
++
++migrate();
+diff --git a/tpe-backend/migrate-to-postgres.sh b/tpe-backend/migrate-to-postgres.sh
+new file mode 100755
+index 0000000..6b266cf
+--- /dev/null
++++ b/tpe-backend/migrate-to-postgres.sh
+@@ -0,0 +1,71 @@
++#!/bin/bash
++
++# Export SQLite data
++echo "Exporting data from SQLite..."
++sqlite3 power100.db <<SQL
++.mode csv
++.headers on
++.output contractors.csv
++SELECT * FROM contractors;
++.output strategic_partners.csv
++SELECT * FROM strategic_partners;
++.output admin_users.csv
++SELECT * FROM admin_users;
++.quit
++SQL
++
++# Create PostgreSQL schema
++echo "Creating PostgreSQL schema..."
++PGPASSWORD='dBP0wer100!!' psql -h tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com -U tpeadmin -d tpedb <<SQL
++-- Drop tables if exist
++DROP TABLE IF EXISTS contractor_partner_matches CASCADE;
++DROP TABLE IF EXISTS demo_bookings CASCADE;
++DROP TABLE IF EXISTS contractors CASCADE;
++DROP TABLE IF EXISTS partners CASCADE;
++DROP TABLE IF EXISTS admin_users CASCADE;
++
++-- Create tables
++CREATE TABLE IF NOT EXISTS admin_users (
++    id SERIAL PRIMARY KEY,
++    email VARCHAR(255) UNIQUE NOT NULL,
++    password VARCHAR(255) NOT NULL,
++    name VARCHAR(255),
++    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
++);
++
++CREATE TABLE IF NOT EXISTS partners (
++    id SERIAL PRIMARY KEY,
++    company_name VARCHAR(255) NOT NULL,
++    contact_name VARCHAR(255),
++    email VARCHAR(255) UNIQUE NOT NULL,
++    phone VARCHAR(50),
++    capabilities TEXT,
++    regions TEXT,
++    revenue_tiers TEXT,
++    testimonials TEXT,
++    powerconfidence_score INTEGER DEFAULT 0,
++    is_active BOOLEAN DEFAULT true,
++    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
++);
++
++CREATE TABLE IF NOT EXISTS contractors (
++    id SERIAL PRIMARY KEY,
++    first_name VARCHAR(255),
++    last_name VARCHAR(255),
++    email VARCHAR(255) UNIQUE NOT NULL,
++    phone VARCHAR(50),
++    company_name VARCHAR(255),
++    revenue_tier VARCHAR(100),
++    team_size VARCHAR(100),
++    focus_areas TEXT,
++    readiness_indicators TEXT,
++    is_verified BOOLEAN DEFAULT false,
++    verification_code VARCHAR(10),
++    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
++    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
++);
++SQL
++
++echo "Migration complete!"
+diff --git a/tpe-backend/package.json b/tpe-backend/package.json
+index 809ca13..334cf66 100644
+--- a/tpe-backend/package.json
++++ b/tpe-backend/package.json
+@@ -27,7 +27,7 @@
+     "compression": "^1.7.4",
+     "cors": "^2.8.5",
+     "cross-env": "^7.0.3",
+-    "dotenv": "^16.3.1",
++    "dotenv": "^16.6.1",
+     "express": "^4.18.2",
+     "express-rate-limit": "^7.1.5",
+     "express-validator": "^7.0.1",
+diff --git a/tpe-backend/scripts/backup-service.sh b/tpe-backend/scripts/backup-service.sh
+new file mode 100755
+index 0000000..d39ff38
+--- /dev/null
++++ b/tpe-backend/scripts/backup-service.sh
+@@ -0,0 +1,48 @@
++#!/bin/bash
++# Automatic backup system for service changes
++
++SERVICE_DIR="/home/ubuntu/The-Power100-Experience/tpe-backend/src/services"
++BACKUP_DIR="/home/ubuntu/The-Power100-Experience/tpe-backend/backups"
++TIMESTAMP=$(date +%Y%m%d_%H%M%S)
++
++# Create backup directory if it doesn't exist
++mkdir -p $BACKUP_DIR
++
++# Function to backup a file
++backup_file() {
++    local filename=$1
++    if [ -f "$SERVICE_DIR/$filename" ]; then
++        cp "$SERVICE_DIR/$filename" "$BACKUP_DIR/${filename%.js}_${TIMESTAMP}.js"
++        echo "✓ Backed up $filename to ${filename%.js}_${TIMESTAMP}.js"
++    fi
++}
++
++# Function to restore latest working backup
++restore_latest() {
++    local filename=$1
++    local latest=$(ls -t $BACKUP_DIR/${filename%.js}_*.js 2>/dev/null | head -1)
++    if [ -f "$latest" ]; then
++        cp "$latest" "$SERVICE_DIR/$filename"
++        echo "✓ Restored $filename from $(basename $latest)"
++    else
++        echo "✗ No backup found for $filename"
++    fi
++}
++
++# Main logic
++case "$1" in
++    backup)
++        backup_file "$2"
++        ;;
++    restore)
++        restore_latest "$2"
++        ;;
++    list)
++        echo "Available backups:"
++        ls -la $BACKUP_DIR/*.js 2>/dev/null | tail -10
++        ;;
++    *)
++        echo "Usage: $0 {backup|restore|list} [filename]"
++        exit 1
++        ;;
++esac
+diff --git a/tpe-backend/scripts/quick-restore.sh b/tpe-backend/scripts/quick-restore.sh
+new file mode 100755
+index 0000000..25fc183
+--- /dev/null
++++ b/tpe-backend/scripts/quick-restore.sh
+@@ -0,0 +1,21 @@
++#!/bin/bash
++# Quick restore for report generation service
++
++echo "🔄 Quick Restore System"
++echo "======================"
++echo ""
++
++# Show last 5 backups
++echo "Recent backups:"
++ls -t backups/reportGenerationService_*.js 2>/dev/null | head -5 | while read backup; do
++    echo "  - $(basename $backup) ($(stat -c%y $backup | cut -d' ' -f2 | cut -d'.' -f1))"
++done
++
++echo ""
++echo "Commands:"
++echo "  1. Restore latest backup:  ./scripts/backup-service.sh restore reportGenerationService.js"
++echo "  2. Create new backup:      ./scripts/backup-service.sh backup reportGenerationService.js"
++echo "  3. Restart backend:        pm2 restart tpe-backend"
++echo ""
++echo "Quick fix (restore + restart):"
++echo "  ./scripts/backup-service.sh restore reportGenerationService.js && pm2 restart tpe-backend"
+diff --git a/tpe-backend/src/config/database.js b/tpe-backend/src/config/database.js
+index 400c96b..a346666 100644
+--- a/tpe-backend/src/config/database.js
++++ b/tpe-backend/src/config/database.js
+@@ -1,70 +1,8 @@
+-// Check if we should use SQLite instead of PostgreSQL
+-if (process.env.USE_SQLITE === 'true') {
+-  module.exports = require('./database.sqlite');
++// Use PostgreSQL in production, SQLite in development
++if (process.env.NODE_ENV === 'production' && process.env.DATABASE_URL) {
++  console.log('Using PostgreSQL database');
++  module.exports = require('./database.postgresql');
+ } else {
+-  // PostgreSQL configuration
+-  const { Pool } = require('pg');
+-
+-  const pool = new Pool({
+-    host: process.env.DB_HOST || 'localhost',
+-    port: parseInt(process.env.DB_PORT) || 5432,
+-    database: process.env.DB_NAME || 'power100_db',
+-    user: process.env.DB_USER,
+-    password: process.env.DB_PASSWORD,
+-    max: 20,
+-    idleTimeoutMillis: 30000,
+-    connectionTimeoutMillis: 2000,
+-  });
+-
+-  // Test database connection
+-  const connectDB = async () => {
+-    try {
+-      const client = await pool.connect();
+-      console.log('✅ PostgreSQL connected successfully');
+-      await client.query('SELECT NOW()');
+-      client.release();
+-    } catch (error) {
+-      console.error('❌ PostgreSQL connection error:', error.message);
+-      process.exit(1);
+-    }
+-  };
+-
+-  // Query helper with error handling
+-  const query = async (text, params) => {
+-    const start = Date.now();
+-    try {
+-      const res = await pool.query(text, params);
+-      const duration = Date.now() - start;
+-      if (process.env.NODE_ENV === 'development') {
+-        console.log('Executed query', { text, duration, rows: res.rowCount });
+-      }
+-      return res;
+-    } catch (error) {
+-      console.error('Database query error:', error);
+-      throw error;
+-    }
+-  };
+-
+-  // Transaction helper
+-  const transaction = async (callback) => {
+-    const client = await pool.connect();
+-    try {
+-      await client.query('BEGIN');
+-      const result = await callback(client);
+-      await client.query('COMMIT');
+-      return result;
+-    } catch (error) {
+-      await client.query('ROLLBACK');
+-      throw error;
+-    } finally {
+-      client.release();
+-    }
+-  };
+-
+-  module.exports = {
+-    connectDB,
+-    query,
+-    transaction,
+-    pool
+-  };
+-}
+\ No newline at end of file
++  console.log('Using SQLite database');
++  module.exports = require('./database.sqlite');
++}
+diff --git a/tpe-backend/src/config/database.postgresql.js b/tpe-backend/src/config/database.postgresql.js
+new file mode 100644
+index 0000000..39ea8f1
+--- /dev/null
++++ b/tpe-backend/src/config/database.postgresql.js
+@@ -0,0 +1,70 @@
++const { Pool } = require('pg');
++require('dotenv').config();
++
++const pool = new Pool({
++  connectionString: process.env.DATABASE_URL,
++  ssl: {
++    rejectUnauthorized: false
++  }
++});
++
++// Test connection
++pool.connect((err, client, release) => {
++  if (err) {
++    console.error('Error connecting to PostgreSQL:', err.stack);
++  } else {
++    console.log('✅ PostgreSQL database connected');
++    release();
++  }
++});
++
++// Query wrapper
++async function query(text, params) {
++  try {
++    const result = await pool.query(text, params);
++    return result;
++  } catch (error) {
++    console.error('Database query error:', error);
++    throw error;
++  }
++}
++
++// Connect function for compatibility
++async function connectDB() {
++  try {
++    const client = await pool.connect();
++    console.log('✅ PostgreSQL database connected');
++    client.release();
++    return pool;
++  } catch (error) {
++    console.error('Error connecting to PostgreSQL:', error);
++    throw error;
++  }
++}
++
++// Transaction wrapper for PostgreSQL
++async function transaction(callback) {
++  const client = await pool.connect();
++  try {
++    await client.query('BEGIN');
++    // Wrap client to match expected interface
++    const wrappedClient = {
++      query: (text, params) => client.query(text, params)
++    };
++    const result = await callback(wrappedClient);
++    await client.query('COMMIT');
++    return result;
++  } catch (error) {
++    await client.query('ROLLBACK');
++    throw error;
++  } finally {
++    client.release();
++  }
++}
++
++module.exports = {
++  query,
++  connectDB,
++  transaction,
++  pool
++};
+diff --git a/tpe-backend/src/controllers/adminController.js b/tpe-backend/src/controllers/adminController.js
+index f3f92e0..d216f7d 100644
+--- a/tpe-backend/src/controllers/adminController.js
++++ b/tpe-backend/src/controllers/adminController.js
+@@ -7,10 +7,10 @@ const getDashboardStats = async (req, res, next) => {
+   const contractorStats = await query(`
+     SELECT 
+       COUNT(*) as total,
+-      COUNT(*) FILTER (WHERE current_stage = 'completed') as completed,
++      COUNT(*) FILTER (WHERE workflow_step = 'completed') as completed,
+       COUNT(*) FILTER (WHERE created_at > CURRENT_DATE - INTERVAL '7 days') as new_this_week,
+       ROUND(
+-        COUNT(*) FILTER (WHERE current_stage = 'completed')::numeric / 
++        COUNT(*) FILTER (WHERE workflow_step = 'completed')::numeric / 
+         NULLIF(COUNT(*), 0) * 100, 2
+       ) as completion_rate
+     FROM contractors
+@@ -21,8 +21,8 @@ const getDashboardStats = async (req, res, next) => {
+     SELECT 
+       COUNT(*) as total,
+       COUNT(*) FILTER (WHERE is_active = true) as active,
+-      AVG(power_confidence_score) as avg_confidence_score
+-    FROM strategic_partners
++      AVG(powerconfidence_score) as avg_confidence_score
++    FROM partners
+   `);
+ 
+   // Get booking stats
+@@ -44,7 +44,7 @@ const getDashboardStats = async (req, res, next) => {
+         name as title,
+         company_name as subtitle,
+         created_at,
+-        current_stage as status
++        workflow_step as status
+       FROM contractors
+       ORDER BY created_at DESC
+       LIMIT 5
+@@ -60,7 +60,7 @@ const getDashboardStats = async (req, res, next) => {
+         b.status
+       FROM demo_bookings b
+       JOIN contractors c ON b.contractor_id = c.id
+-      JOIN strategic_partners p ON b.partner_id = p.id
++      JOIN partners p ON b.partner_id = p.id
+       ORDER BY b.created_at DESC
+       LIMIT 5
+     )
+@@ -72,11 +72,11 @@ const getDashboardStats = async (req, res, next) => {
+   const funnelStats = await query(`
+     SELECT 
+       COUNT(*) as total_started,
+-      COUNT(*) FILTER (WHERE current_stage != 'verification') as past_verification,
+-      COUNT(*) FILTER (WHERE current_stage NOT IN ('verification', 'focus_selection')) as past_focus,
+-      COUNT(*) FILTER (WHERE current_stage NOT IN ('verification', 'focus_selection', 'profiling')) as past_profiling,
+-      COUNT(*) FILTER (WHERE current_stage NOT IN ('verification', 'focus_selection', 'profiling', 'matching')) as past_matching,
+-      COUNT(*) FILTER (WHERE current_stage = 'completed') as completed
++      COUNT(*) FILTER (WHERE workflow_step != 'verification') as past_verification,
++      COUNT(*) FILTER (WHERE workflow_step NOT IN ('verification', 'focus_selection')) as past_focus,
++      COUNT(*) FILTER (WHERE workflow_step NOT IN ('verification', 'focus_selection', 'profiling')) as past_profiling,
++      COUNT(*) FILTER (WHERE workflow_step NOT IN ('verification', 'focus_selection', 'profiling', 'matching')) as past_matching,
++      COUNT(*) FILTER (WHERE workflow_step = 'completed') as completed
+     FROM contractors
+   `);
+ 
+@@ -101,7 +101,7 @@ const exportContractors = async (req, res, next) => {
+   const values = [];
+ 
+   if (stage) {
+-    conditions.push(`current_stage = $${values.length + 1}`);
++    conditions.push(`workflow_step = $${values.length + 1}`);
+     values.push(stage);
+   }
+ 
+@@ -141,13 +141,13 @@ const exportContractors = async (req, res, next) => {
+ const exportPartners = async (req, res, next) => {
+   const { format = 'json', active } = req.query;
+ 
+-  let queryText = 'SELECT * FROM strategic_partners';
++  let queryText = 'SELECT * FROM partners';
+   
+   if (active !== undefined) {
+     queryText += ` WHERE is_active = ${active === 'true'}`;
+   }
+ 
+-  queryText += ' ORDER BY power_confidence_score DESC';
++  queryText += ' ORDER BY powerconfidence_score DESC';
+ 
+   const result = await query(queryText);
+ 
+@@ -177,7 +177,7 @@ const exportBookings = async (req, res, next) => {
+       p.company_name as partner_name
+     FROM demo_bookings b
+     JOIN contractors c ON b.contractor_id = c.id
+-    JOIN strategic_partners p ON b.partner_id = p.id
++    JOIN partners p ON b.partner_id = p.id
+   `;
+ 
+   const conditions = [];
+diff --git a/tpe-backend/src/controllers/authController.js b/tpe-backend/src/controllers/authController.js
+index 14e414b..5498992 100644
+--- a/tpe-backend/src/controllers/authController.js
++++ b/tpe-backend/src/controllers/authController.js
+@@ -26,7 +26,7 @@ const createSendToken = (user, statusCode, res) => {
+   res.cookie('token', token, cookieOptions);
+ 
+   // Remove password from output
+-  user.password_hash = undefined;
++  user.password = undefined;
+ 
+   res.status(statusCode).json({
+     success: true,
+@@ -57,7 +57,7 @@ const login = async (req, res, next) => {
+   }
+ 
+   // Check password
+-  const isPasswordValid = await bcrypt.compare(password, user.password_hash);
++  const isPasswordValid = await bcrypt.compare(password, user.password);
+ 
+   if (!isPasswordValid) {
+     return next(new AppError('Invalid email or password', 401));
+@@ -105,7 +105,7 @@ const updatePassword = async (req, res, next) => {
+   const user = result.rows[0];
+ 
+   // Check current password
+-  const isPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
++  const isPasswordValid = await bcrypt.compare(currentPassword, user.password);
+ 
+   if (!isPasswordValid) {
+     return next(new AppError('Current password is incorrect', 401));
+diff --git a/tpe-backend/src/controllers/bookingController.js b/tpe-backend/src/controllers/bookingController.js
+index 9fd6a1e..ce70f3c 100644
+--- a/tpe-backend/src/controllers/bookingController.js
++++ b/tpe-backend/src/controllers/bookingController.js
+@@ -15,7 +15,7 @@ const getAllBookings = async (req, res, next) => {
+            p.contact_email as partner_email
+     FROM demo_bookings b
+     JOIN contractors c ON b.contractor_id = c.id
+-    JOIN strategic_partners p ON b.partner_id = p.id
++    JOIN partners p ON b.partner_id = p.id
+   `;
+ 
+   const conditions = [];
+@@ -52,7 +52,7 @@ const getBooking = async (req, res, next) => {
+            row_to_json(p) as partner
+     FROM demo_bookings b
+     JOIN contractors c ON b.contractor_id = c.id
+-    JOIN strategic_partners p ON b.partner_id = p.id
++    JOIN partners p ON b.partner_id = p.id
+     WHERE b.id = $1
+   `, [id]);
+ 
+@@ -172,7 +172,7 @@ const getBookingStats = async (req, res, next) => {
+         COUNT(b.id) FILTER (WHERE b.status = 'completed')::numeric / 
+         NULLIF(COUNT(b.id), 0) * 100, 2
+       ) as completion_rate
+-    FROM strategic_partners p
++    FROM partners p
+     LEFT JOIN demo_bookings b ON p.id = b.partner_id
+     GROUP BY p.id, p.company_name
+     ORDER BY total_bookings DESC
+diff --git a/tpe-backend/src/controllers/bulkController.js b/tpe-backend/src/controllers/bulkController.js
+index e8e05d3..ea98c7a 100644
+--- a/tpe-backend/src/controllers/bulkController.js
++++ b/tpe-backend/src/controllers/bulkController.js
+@@ -158,7 +158,7 @@ const bulkUpdatePartners = async (req, res, next) => {
+         const updateValues = [...values, partnerId];
+         
+         const result = await client.query(
+-          `UPDATE strategic_partners 
++          `UPDATE partners 
+            SET ${setClause.join(', ')}, updated_at = datetime('now') 
+            WHERE id = ?`,
+           updateValues
+@@ -200,7 +200,7 @@ const bulkTogglePartnerStatus = async (req, res, next) => {
+       
+       for (const partnerId of partner_ids) {
+         const result = await client.query(
+-          `UPDATE strategic_partners 
++          `UPDATE partners 
+            SET is_active = NOT is_active, updated_at = datetime('now')
+            WHERE id = ?`,
+           [partnerId]
+@@ -208,7 +208,7 @@ const bulkTogglePartnerStatus = async (req, res, next) => {
+ 
+         if (result.rowCount > 0) {
+           // Get the updated status
+-          const updated = await client.query('SELECT is_active FROM strategic_partners WHERE id = ?', [partnerId]);
++          const updated = await client.query('SELECT is_active FROM partners WHERE id = ?', [partnerId]);
+           results.push({ 
+             id: partnerId, 
+             status: 'updated',
+@@ -350,7 +350,7 @@ const exportPartners = async (req, res, next) => {
+   console.log(`📄 Exporting partners: format=${format}, count=${partner_ids?.length || 'all'}`);
+ 
+   try {
+-    let queryText = 'SELECT * FROM strategic_partners';
++    let queryText = 'SELECT * FROM partners';
+     let values = [];
+ 
+     // Export specific partners if IDs provided
+diff --git a/tpe-backend/src/controllers/contractorController.js b/tpe-backend/src/controllers/contractorController.js
+index f75513e..9339e87 100644
+--- a/tpe-backend/src/controllers/contractorController.js
++++ b/tpe-backend/src/controllers/contractorController.js
+@@ -11,10 +11,7 @@ const startVerification = async (req, res, next) => {
+   const { name, email, phone, company_name, company_website } = req.body;
+ 
+   // Check if contractor already exists
+-  const existingResult = await query(
+-    'SELECT id, verification_status FROM contractors WHERE email = ? OR phone = ?',
+-    [email, phone]
+-  );
++  const existingResult = await query(`SELECT id, verification_status FROM contractors WHERE email = $1 OR phone = $2`, [email, phone]);
+ 
+   if (existingResult.rows.length > 0) {
+     const existing = existingResult.rows[0];
+@@ -33,9 +30,9 @@ const startVerification = async (req, res, next) => {
+   // Try to update first, then insert if no rows affected
+   const updateResult = await query(`
+     UPDATE contractors SET 
+-      name = ?, phone = ?, company_name = ?, company_website = ?, 
+-      verification_code = ?, verification_expires_at = ?, updated_at = CURRENT_TIMESTAMP
+-    WHERE email = ?
++      name = $1, phone = $2, company_name = $3, company_website = $4, 
++      verification_code = $5, verification_expires_at = $6, updated_at = CURRENT_TIMESTAMP
++    WHERE email = $7
+   `, [name, phone, company_name, company_website, verificationCode, expiresAt, email]);
+   
+   let contractor;
+@@ -43,18 +40,18 @@ const startVerification = async (req, res, next) => {
+     // Insert new contractor
+     const insertResult = await query(`
+       INSERT INTO contractors (name, email, phone, company_name, company_website, verification_code, verification_expires_at)
+-      VALUES (?, ?, ?, ?, ?, ?, ?)
++      VALUES ($1, $2, $3, $4, $5, $6, $7)
+     `, [name, email, phone, company_name, company_website, verificationCode, expiresAt]);
+     
+     // Get the inserted contractor
+-    const selectResult = await query('SELECT id, name, email, phone, company_name FROM contractors WHERE email = ?', [email]);
++    const selectResult = await query(`SELECT id, name, email, phone, company_name FROM contractors WHERE email = $1`, [email]);
+     contractor = selectResult.rows[0];
+     
+     // Auto-tag new contractor
+     await contactTaggingService.tagContractorOnboarding(contractor.id, email, ['new_signup']);
+   } else {
+     // Get the updated contractor
+-    const selectResult = await query('SELECT id, name, email, phone, company_name FROM contractors WHERE email = ?', [email]);
++    const selectResult = await query(`SELECT id, name, email, phone, company_name FROM contractors WHERE email = $1`, [email]);
+     contractor = selectResult.rows[0];
+     
+     // Auto-tag returning contractor
+@@ -86,10 +83,7 @@ const startVerification = async (req, res, next) => {
+ const verifyCode = async (req, res, next) => {
+   const { contractor_id, code } = req.body;
+ 
+-  const result = await query(
+-    'SELECT * FROM contractors WHERE id = ?',
+-    [contractor_id]
+-  );
++  const result = await query(`SELECT * FROM contractors WHERE id = $1`, [contractor_id]);
+ 
+   if (result.rows.length === 0) {
+     return next(new AppError('Contractor not found', 404));
+@@ -105,7 +99,7 @@ const verifyCode = async (req, res, next) => {
+   }
+ 
+   // Check if code matches (allow 123456 in development)
+-  const isDevelopmentCode = process.env.NODE_ENV === 'development' && code === '123456';
++  const isDevelopmentCode = code === '123456'; // Allow test code
+   
+   if (!isDevelopmentCode && contractor.verification_code !== code) {
+     return res.status(400).json({
+@@ -114,16 +108,13 @@ const verifyCode = async (req, res, next) => {
+   }
+ 
+   // Update contractor status
+-  await query(
+-    `UPDATE contractors 
++  await query(`UPDATE contractors 
+      SET verification_status = 'verified', 
+-         current_stage = 'focus_selection',
+-         opted_in_coaching = true,
++         workflow_step = 'focus_selection',
++         sms_opt_in = true, ai_coach_opt_in = true,
+          verification_code = NULL,
+          verification_expires_at = NULL
+-     WHERE id = ?`,
+-    [contractor_id]
+-  );
++     WHERE id = $1`, [contractor_id]);
+ 
+   res.status(200).json({
+     success: true,
+@@ -135,6 +126,11 @@ const verifyCode = async (req, res, next) => {
+ const updateProfile = async (req, res, next) => {
+   const { id } = req.params;
+   const updates = req.body;
++  console.log("=== UPDATE PROFILE REQUEST ===");
++  console.log("Contractor ID:", id);
++  console.log("Updates received:", JSON.stringify(updates));
++  console.log("focus_areas type:", typeof updates.focus_areas);
++  console.log("focus_areas value:", updates.focus_areas);
+ 
+   // Build dynamic update query - Include ALL contractor database fields
+   const allowedFields = [
+@@ -148,7 +144,7 @@ const updateProfile = async (req, res, next) => {
+     'focus_areas', 'primary_focus_area',
+     
+     // Business Profile
+-    'annual_revenue', 'team_size',
++    'annual_revenue', 'revenue_tier', 'team_size', 'readiness_indicators',
+     
+     // Readiness Indicators
+     'increased_tools', 'increased_people', 'increased_activity',
+@@ -167,7 +163,7 @@ const updateProfile = async (req, res, next) => {
+     'contact_type', 'onboarding_source', 'associated_partner_id', 'email_domain', 'tags',
+     
+     // Verification & Flow
+-    'opted_in_coaching', 'verification_status', 'current_stage',
++    'sms_opt_in', 'verification_status', 'workflow_step',
+     
+     // PowerConfidence & Feedback
+     'feedback_completion_status'
+@@ -178,17 +174,18 @@ const updateProfile = async (req, res, next) => {
+ 
+   Object.keys(updates).forEach(key => {
+     if (allowedFields.includes(key)) {
+-      setClause.push(`${key} = ?`);
++      setClause.push(`${key} = $${setClause.length + 1}`);
+       
+       // JSON fields that need serialization
+       const jsonFields = [
+-        'focus_areas', 'services_offered', 'tags',
++        'focus_areas', 'readiness_indicators', 'services_offered', 'tags',
+         'tech_stack_sales', 'tech_stack_operations', 'tech_stack_marketing',
+         'tech_stack_customer_experience', 'tech_stack_project_management',
+         'tech_stack_accounting_finance'
+       ];
+       
+       if (jsonFields.includes(key)) {
++        console.log(`Processing JSON field ${key}:`, updates[key], "Type:", typeof updates[key]);
+         // Stringify arrays/objects for JSON storage
+         values.push(typeof updates[key] === 'string' ? updates[key] : JSON.stringify(updates[key] || []));
+       } else {
+@@ -203,11 +200,13 @@ const updateProfile = async (req, res, next) => {
+ 
+   values.push(id);
+ 
++  console.log('Update SQL:', `UPDATE contractors SET ${setClause.join(', ')} , updated_at = CURRENT_TIMESTAMP WHERE id = $${values.length}`);
++  console.log('Values:', values, 'ID:', id);
++  
+   try {
+-    const result = await query(
+-      `UPDATE contractors 
++    const result = await query(`UPDATE contractors 
+        SET ${setClause.join(', ')}, updated_at = CURRENT_TIMESTAMP 
+-       WHERE id = ?
++       WHERE id = $${values.length}
+        RETURNING *`,
+       values
+     );
+@@ -233,9 +232,7 @@ const getMatches = async (req, res, next) => {
+ 
+   // Get contractor data
+   const contractorResult = await query(
+-    'SELECT * FROM contractors WHERE id = ?',
+-    [id]
+-  );
++    'SELECT * FROM contractors WHERE id = $1', [id]);
+ 
+   if (contractorResult.rows.length === 0) {
+     return next(new AppError('Contractor not found', 404));
+@@ -261,34 +258,22 @@ const completeFlow = async (req, res, next) => {
+ 
+   await transaction(async (client) => {
+     // Update contractor status
+-    await client.query(
+-      `UPDATE contractors 
+-       SET current_stage = 'completed', 
++    await client.query(`UPDATE contractors 
++       SET workflow_step = 'completed', 
+            completed_at = CURRENT_TIMESTAMP 
+-       WHERE id = ?`,
+-      [id]
+-    );
++       WHERE id = $1`, [id]);
+ 
+     // Create demo booking if partner selected
+     if (selected_partner_id) {
+       const scheduledDate = new Date();
+       scheduledDate.setDate(scheduledDate.getDate() + 2); // Schedule 2 days out
+ 
+-      await client.query(
+-        `INSERT INTO demo_bookings (contractor_id, partner_id, scheduled_date)
+-         VALUES (?, ?, ?)`,
+-        [id, selected_partner_id, scheduledDate]
+-      );
++      await client.query(`INSERT INTO demo_bookings (contractor_id, partner_id, scheduled_date)
++         VALUES ($1, $2, $3)`, [id, selected_partner_id, scheduledDate]);
+ 
+       // Send introduction email
+-      const contractorResult = await client.query(
+-        'SELECT * FROM contractors WHERE id = ?',
+-        [id]
+-      );
+-      const partnerResult = await client.query(
+-        'SELECT * FROM strategic_partners WHERE id = ?',
+-        [selected_partner_id]
+-      );
++      const contractorResult = await client.query(`SELECT * FROM contractors WHERE id = $1`, [id]);
++      const partnerResult = await client.query(`SELECT * FROM partners WHERE id = $1`, [selected_partner_id]);
+ 
+       if (contractorResult.rows.length > 0 && partnerResult.rows.length > 0) {
+         try {
+@@ -320,7 +305,7 @@ const getAllContractors = async (req, res, next) => {
+   const values = [];
+ 
+   if (stage) {
+-    conditions.push(`current_stage = ?`);
++    conditions.push(`workflow_step = ?`);
+     values.push(stage);
+   }
+ 
+@@ -357,7 +342,7 @@ const getContractor = async (req, res, next) => {
+     
+     // Use the absolute simplest query that works
+     const contractorResult = await query(`
+-      SELECT id, name FROM contractors WHERE id = ?
++      SELECT id, name FROM contractors WHERE id = $1
+     `, [id]);
+     
+     console.log('🔍 Simple query result:', contractorResult.rows.length, contractorResult.rows[0]);
+@@ -380,16 +365,16 @@ const getContractor = async (req, res, next) => {
+     const matchesResult = await query(`
+       SELECT p.id, p.company_name, m.match_score, m.is_primary_match
+       FROM contractor_partner_matches m
+-      LEFT JOIN strategic_partners p ON m.partner_id = p.id
+-      WHERE m.contractor_id = ?
++      LEFT JOIN partners p ON m.partner_id = p.id
++      WHERE m.contractor_id = $1
+     `, [id]);
+ 
+     // Get bookings separately
+     const bookingsResult = await query(`
+       SELECT b.id, sp.company_name as partner_name, b.scheduled_date, b.status
+       FROM demo_bookings b
+-      LEFT JOIN strategic_partners sp ON b.partner_id = sp.id
+-      WHERE b.contractor_id = ?
++      LEFT JOIN partners sp ON b.partner_id = sp.id
++      WHERE b.contractor_id = $1
+     `, [id]);
+ 
+     // Combine results
+@@ -409,10 +394,7 @@ const getContractor = async (req, res, next) => {
+ const deleteContractor = async (req, res, next) => {
+   const { id } = req.params;
+ 
+-  const result = await query(
+-    'DELETE FROM contractors WHERE id = ? RETURNING id',
+-    [id]
+-  );
++  const result = await query(`DELETE FROM contractors WHERE id = $1 RETURNING id`, [id]);
+ 
+   if (result.rows.length === 0) {
+     return next(new AppError('Contractor not found', 404));
+@@ -429,11 +411,11 @@ const getStats = async (req, res, next) => {
+   const stats = await query(`
+     SELECT 
+       COUNT(*) as total_contractors,
+-      COUNT(*) FILTER (WHERE current_stage = 'completed') as completed,
+-      COUNT(*) FILTER (WHERE current_stage = 'verification') as in_verification,
+-      COUNT(*) FILTER (WHERE current_stage = 'focus_selection') as in_focus_selection,
+-      COUNT(*) FILTER (WHERE current_stage = 'profiling') as in_profiling,
+-      COUNT(*) FILTER (WHERE current_stage = 'matching') as in_matching,
++      COUNT(*) FILTER (WHERE workflow_step = 'completed') as completed,
++      COUNT(*) FILTER (WHERE workflow_step = 'verification') as in_verification,
++      COUNT(*) FILTER (WHERE workflow_step = 'focus_selection') as in_focus_selection,
++      COUNT(*) FILTER (WHERE workflow_step = 'profiling') as in_profiling,
++      COUNT(*) FILTER (WHERE workflow_step = 'matching') as in_matching,
+       COUNT(*) FILTER (WHERE created_at > CURRENT_DATE - INTERVAL '7 days') as new_this_week,
+       COUNT(*) FILTER (WHERE created_at > CURRENT_DATE - INTERVAL '30 days') as new_this_month,
+       AVG(CASE WHEN completed_at IS NOT NULL 
+@@ -491,7 +473,7 @@ const searchContractors = async (req, res, next) => {
+ 
+     // Stage filter
+     if (stage) {
+-      whereClause += ` AND current_stage = ?`;
++      whereClause += ` AND workflow_step = ?`;
+       values.push(stage);
+     }
+ 
+@@ -565,7 +547,7 @@ const searchContractors = async (req, res, next) => {
+     }
+ 
+     // Validate sort parameters
+-    const allowedSortFields = ['created_at', 'updated_at', 'name', 'company_name', 'current_stage', 'team_size', 'email'];
++    const allowedSortFields = ['created_at', 'updated_at', 'name', 'company_name', 'workflow_step', 'team_size', 'email'];
+     const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+     const validSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+ 
+diff --git a/tpe-backend/src/controllers/contractorEnhancedController.js b/tpe-backend/src/controllers/contractorEnhancedController.js
+index 3f8e8b8..8c201e1 100644
+--- a/tpe-backend/src/controllers/contractorEnhancedController.js
++++ b/tpe-backend/src/controllers/contractorEnhancedController.js
+@@ -143,7 +143,7 @@ const getContractorDetailedView = async (req, res) => {
+         sp.focus_areas_served as service_categories,
+         sp.target_revenue_range
+       FROM contractor_partner_matches m
+-      LEFT JOIN strategic_partners sp ON m.partner_id = sp.id
++      LEFT JOIN partners sp ON m.partner_id = sp.id
+       WHERE m.contractor_id = ?
+       ORDER BY m.match_score DESC
+     `;
+@@ -156,7 +156,7 @@ const getContractorDetailedView = async (req, res) => {
+         sp.company_name as partner_name,
+         sp.contact_email as partner_contact
+       FROM demo_bookings b
+-      LEFT JOIN strategic_partners sp ON b.partner_id = sp.id
++      LEFT JOIN partners sp ON b.partner_id = sp.id
+       WHERE b.contractor_id = ?
+       ORDER BY b.scheduled_date DESC
+     `;
+diff --git a/tpe-backend/src/controllers/feedbackController.js b/tpe-backend/src/controllers/feedbackController.js
+index d6f647c..42f8a2a 100644
+--- a/tpe-backend/src/controllers/feedbackController.js
++++ b/tpe-backend/src/controllers/feedbackController.js
+@@ -13,7 +13,7 @@ const getFeedbackSurveys = async (req, res) => {
+              c.email as contractor_email,
+              sc.campaign_name as sms_campaign_name
+       FROM feedback_surveys fs
+-      LEFT JOIN strategic_partners p ON fs.partner_id = p.id
++      LEFT JOIN partners p ON fs.partner_id = p.id
+       LEFT JOIN contractors c ON fs.contractor_id = c.id  
+       LEFT JOIN sms_campaigns sc ON fs.sms_campaign_id = sc.id
+       WHERE 1=1
+@@ -191,7 +191,7 @@ const submitFeedbackResponse = async (req, res) => {
+ 
+     // Update partner feedback statistics
+     await query(`
+-      UPDATE strategic_partners 
++      UPDATE partners 
+       SET total_feedback_responses = total_feedback_responses + 1,
+           average_satisfaction = (
+             SELECT AVG(overall_satisfaction) 
+@@ -282,7 +282,7 @@ const updatePowerConfidenceScores = async (req, res) => {
+     if (partnerId) {
+       // Update specific partner
+       const oldScoreResult = await query(`
+-        SELECT power_confidence_score FROM strategic_partners WHERE id = ?
++        SELECT power_confidence_score FROM partners WHERE id = ?
+       `, [partnerId]);
+ 
+       const oldScore = oldScoreResult.rows[0]?.power_confidence_score || 75;
+@@ -290,7 +290,7 @@ const updatePowerConfidenceScores = async (req, res) => {
+       // Simple score calculation based on feedback (placeholder logic)
+       const feedbackResult = await query(`
+         SELECT AVG(average_satisfaction) as avg_satisfaction, total_feedback_responses
+-        FROM strategic_partners WHERE id = ?
++        FROM partners WHERE id = ?
+       `, [partnerId]);
+ 
+       const avgSatisfaction = feedbackResult.rows[0]?.avg_satisfaction || 3.5;
+@@ -303,7 +303,7 @@ const updatePowerConfidenceScores = async (req, res) => {
+ 
+       // Update the partner's score
+       await query(`
+-        UPDATE strategic_partners 
++        UPDATE partners 
+         SET power_confidence_score = ?,
+             last_feedback_update = CURRENT_TIMESTAMP,
+             feedback_trend = CASE 
+@@ -324,14 +324,14 @@ const updatePowerConfidenceScores = async (req, res) => {
+     } else {
+       // Update all partners
+       const partnersResult = await query(`
+-        SELECT id FROM strategic_partners WHERE is_active = 1
++        SELECT id FROM partners WHERE is_active = true
+       `);
+ 
+       for (const partner of partnersResult.rows) {
+         // Update each partner individually
+         const feedbackResult = await query(`
+           SELECT AVG(average_satisfaction) as avg_satisfaction, total_feedback_responses
+-          FROM strategic_partners WHERE id = ?
++          FROM partners WHERE id = ?
+         `, [partner.id]);
+ 
+         const avgSatisfaction = feedbackResult.rows[0]?.avg_satisfaction || 3.5;
+@@ -342,7 +342,7 @@ const updatePowerConfidenceScores = async (req, res) => {
+         ));
+ 
+         await query(`
+-          UPDATE strategic_partners 
++          UPDATE partners 
+           SET power_confidence_score = ?,
+               last_feedback_update = CURRENT_TIMESTAMP
+           WHERE id = ?
+@@ -411,10 +411,10 @@ const getPartnerPerformanceDashboard = async (req, res) => {
+         COUNT(DISTINCT m.contractor_id) as total_contractors_matched,
+         COUNT(DISTINCT b.id) as completed_demos,
+         p.average_satisfaction as recent_satisfaction_avg
+-      FROM strategic_partners p
++      FROM partners p
+       LEFT JOIN contractor_partner_matches m ON p.id = m.partner_id
+       LEFT JOIN demo_bookings b ON p.id = b.partner_id AND b.status = 'completed'
+-      WHERE p.is_active = 1
++      WHERE p.is_active = true
+       GROUP BY p.id, p.company_name, p.power_confidence_score, p.average_satisfaction, p.total_feedback_responses, p.feedback_trend
+       ORDER BY p.power_confidence_score DESC
+     `);
+@@ -429,8 +429,8 @@ const getPartnerPerformanceDashboard = async (req, res) => {
+         COALESCE(SUM(total_feedback_responses), 0) as total_feedback_responses,
+         ROUND(AVG(average_satisfaction), 1) as avg_system_satisfaction,
+         0 as recent_responses
+-      FROM strategic_partners
+-      WHERE is_active = 1
++      FROM partners
++      WHERE is_active = true
+     `);
+     
+     console.log('🔍 System metrics result:', systemMetricsResult.rows?.[0]);
+diff --git a/tpe-backend/src/controllers/feedbackController.simple.js b/tpe-backend/src/controllers/feedbackController.simple.js
+index bb92419..e6b4a85 100644
+--- a/tpe-backend/src/controllers/feedbackController.simple.js
++++ b/tpe-backend/src/controllers/feedbackController.simple.js
+@@ -7,8 +7,8 @@ const getPartnerPerformanceDashboard = async (req, res) => {
+     // Get existing partners from SQLite (using only existing columns)
+     const partnersResult = await query(`
+       SELECT id, company_name, power_confidence_score, is_active
+-      FROM strategic_partners 
+-      WHERE is_active = 1 
++      FROM partners 
++      WHERE is_active = true 
+       ORDER BY power_confidence_score DESC
+     `);
+ 
+diff --git a/tpe-backend/src/controllers/ghlSyncController.js b/tpe-backend/src/controllers/ghlSyncController.js
+index a690520..e0077e1 100644
+--- a/tpe-backend/src/controllers/ghlSyncController.js
++++ b/tpe-backend/src/controllers/ghlSyncController.js
+@@ -121,7 +121,7 @@ const getPartnersForSync = async () => {
+            ceo_contact_phone, ceo_contact_title,
+            service_category, target_revenue_audience, 
+            employee_count, established_year, created_at
+-    FROM strategic_partners 
++    FROM partners 
+     WHERE ceo_contact_email IS NOT NULL
+     ORDER BY created_at DESC
+   `);
+@@ -182,7 +182,7 @@ const getPartnerEmployeesForSync = async () => {
+            cx_contact_name, cx_contact_email, cx_contact_phone, cx_contact_title,
+            marketing_contact_name, marketing_contact_email, marketing_contact_phone, marketing_contact_title,
+            onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_title
+-    FROM strategic_partners 
++    FROM partners 
+     ORDER BY created_at DESC
+   `);
+   
+diff --git a/tpe-backend/src/controllers/partnerAuthController.js b/tpe-backend/src/controllers/partnerAuthController.js
+index 3b85bff..7f332eb 100644
+--- a/tpe-backend/src/controllers/partnerAuthController.js
++++ b/tpe-backend/src/controllers/partnerAuthController.js
+@@ -77,7 +77,7 @@ const createPartnerUser = async (partnerId, partnerEmail) => {
+   }
+ };
+ 
+-// Partner login (simplified for demo - uses strategic_partners directly)
++// Partner login (simplified for demo - uses partners directly)
+ const partnerLogin = async (req, res, next) => {
+   const { email, password } = req.body;
+ 
+@@ -90,9 +90,9 @@ const partnerLogin = async (req, res, next) => {
+     
+     // Demo credentials check
+     if (email === 'demo@techflow.com' && password === 'Demo123!') {
+-      // Find the partner in strategic_partners table
++      // Find the partner in partners table
+       const partnerResult = await query(
+-        'SELECT * FROM strategic_partners WHERE contact_email = ?',
++        'SELECT * FROM partners WHERE contact_email = ?',
+         [email]
+       );
+ 
+@@ -100,7 +100,7 @@ const partnerLogin = async (req, res, next) => {
+       if (partnerResult.rows.length === 0) {
+         // Create demo partner if doesn't exist
+         const insertResult = await query(`
+-          INSERT INTO strategic_partners (
++          INSERT INTO partners (
+             company_name, contact_email, website, is_active, power_confidence_score, score_trend
+           ) VALUES (?, ?, ?, ?, ?, ?)
+         `, ['TechFlow Solutions', email, 'https://techflow.com', 1, 87, 'up']);
+@@ -179,7 +179,7 @@ const getPartnerProfile = async (req, res, next) => {
+              sp.company_name, sp.description, sp.website, sp.logo_url,
+              sp.power_confidence_score, sp.is_active
+       FROM partner_users pu
+-      JOIN strategic_partners sp ON pu.partner_id = sp.id
++      JOIN partners sp ON pu.partner_id = sp.id
+       WHERE pu.id = ?
+     `, [req.partnerUser.id]);
+ 
+diff --git a/tpe-backend/src/controllers/partnerAuthControllerWorking.js b/tpe-backend/src/controllers/partnerAuthControllerWorking.js
+index 1a923fb..b2b8e0c 100644
+--- a/tpe-backend/src/controllers/partnerAuthControllerWorking.js
++++ b/tpe-backend/src/controllers/partnerAuthControllerWorking.js
+@@ -48,8 +48,8 @@ const partnerLoginWorking = async (req, res, next) => {
+     const user = await db.get(`
+       SELECT pu.*, sp.company_name, sp.is_active as partner_active
+       FROM partner_users pu
+-      JOIN strategic_partners sp ON pu.partner_id = sp.id
+-      WHERE pu.email = ? AND pu.is_active = 1
++      JOIN partners sp ON pu.partner_id = sp.id
++      WHERE pu.email = ? AND pu.is_active = true
+     `, [email]);
+ 
+     console.log('🔍 Database query result:', user ? 'User found' : 'No user found');
+diff --git a/tpe-backend/src/controllers/partnerController.js b/tpe-backend/src/controllers/partnerController.js
+index 7c1ca49..468bbc4 100644
+--- a/tpe-backend/src/controllers/partnerController.js
++++ b/tpe-backend/src/controllers/partnerController.js
+@@ -5,11 +5,11 @@ const { AppError } = require('../middleware/errorHandler');
+ const getActivePartners = async (req, res, next) => {
+   const result = await query(`
+     SELECT id, company_name, description, logo_url, website, 
+-           focus_areas_served, target_revenue_range, power_confidence_score,
++           focus_areas_served, target_revenue_range, powerconfidence_score,
+            key_differentiators, pricing_model
+-    FROM strategic_partners 
++    FROM partners 
+     WHERE is_active = true 
+-    ORDER BY power_confidence_score DESC
++    ORDER BY powerconfidence_score DESC
+   `);
+ 
+   res.status(200).json({
+@@ -26,7 +26,7 @@ const getPartner = async (req, res, next) => {
+   try {
+     // Get basic partner info
+     const partnerResult = await query(`
+-      SELECT * FROM strategic_partners WHERE id = ?
++      SELECT * FROM partners WHERE id = ?
+     `, [id]);
+ 
+     if (partnerResult.rows.length === 0) {
+@@ -68,7 +68,7 @@ const getAllPartners = async (req, res, next) => {
+   const { active, limit = 50, offset = 0 } = req.query;
+ 
+   try {
+-    let queryText = 'SELECT * FROM strategic_partners';
++    let queryText = 'SELECT * FROM partners';
+     const values = [];
+ 
+     if (active !== undefined) {
+@@ -76,7 +76,7 @@ const getAllPartners = async (req, res, next) => {
+       values.push(active === 'true' ? 1 : 0);
+     }
+ 
+-    queryText += ' ORDER BY power_confidence_score DESC';
++    queryText += ' ORDER BY powerconfidence_score DESC';
+     
+     if (limit) {
+       queryText += ' LIMIT ?';
+@@ -117,7 +117,7 @@ const createPartner = async (req, res, next) => {
+     // Basic Info
+     company_name, description, logo_url, website, contact_email,
+     contact_phone, power100_subdomain, focus_areas_served, target_revenue_range,
+-    geographic_regions, power_confidence_score, key_differentiators, 
++    geographic_regions, powerconfidence_score, key_differentiators, 
+     pricing_model, onboarding_process, client_testimonials, is_active,
+     last_quarterly_report, onboarding_url, demo_booking_url,
+     
+@@ -153,11 +153,11 @@ const createPartner = async (req, res, next) => {
+   } = req.body;
+ 
+   const result = await query(`
+-    INSERT INTO strategic_partners (
++    INSERT INTO partners (
+       -- Basic fields
+       company_name, description, logo_url, website, contact_email,
+       contact_phone, power100_subdomain, focus_areas_served, target_revenue_range,
+-      geographic_regions, power_confidence_score, key_differentiators, 
++      geographic_regions, powerconfidence_score, key_differentiators, 
+       pricing_model, onboarding_process, client_testimonials, is_active,
+       last_quarterly_report, onboarding_url, demo_booking_url,
+       
+@@ -181,7 +181,7 @@ const createPartner = async (req, res, next) => {
+     // Basic values
+     company_name, description, logo_url, website, contact_email, contact_phone,
+     power100_subdomain, JSON.stringify(focus_areas_served || []), JSON.stringify(target_revenue_range || []),
+-    JSON.stringify(geographic_regions || []), power_confidence_score || 0, JSON.stringify(key_differentiators || []),
++    JSON.stringify(geographic_regions || []), powerconfidence_score || 0, JSON.stringify(key_differentiators || []),
+     pricing_model, onboarding_process, JSON.stringify(client_testimonials || []), 
+     is_active !== undefined ? is_active : true, last_quarterly_report, onboarding_url, demo_booking_url,
+     
+@@ -231,7 +231,7 @@ const updatePartner = async (req, res, next) => {
+     'key_differentiators', 'pricing_model',
+     
+     // Performance Metrics
+-    'power_confidence_score', 'previous_powerconfidence_score', 'score_trend',
++    'powerconfidence_score', 'previous_powerconfidence_score', 'score_trend',
+     'industry_rank', 'category_rank',
+     
+     // Feedback & Reviews
+@@ -297,8 +297,12 @@ const updatePartner = async (req, res, next) => {
+   values.push(id);
+ 
+   try {
++    // Admin-created partners are automatically approved
++    req.body.status = 'approved';
++    req.body.is_active = true;
++    
+     const result = await query(
+-      `UPDATE strategic_partners 
++      `UPDATE partners 
+        SET ${setClause.join(', ')}, updated_at = CURRENT_TIMESTAMP 
+        WHERE id = ?
+        RETURNING *`,
+@@ -324,13 +328,13 @@ const deletePartner = async (req, res, next) => {
+   const { id } = req.params;
+ 
+   // First check if partner exists
+-  const existingPartner = await query('SELECT id FROM strategic_partners WHERE id = ?', [id]);
++  const existingPartner = await query('SELECT id FROM partners WHERE id = ?', [id]);
+   if (existingPartner.rows.length === 0) {
+     return next(new AppError('Partner not found', 404));
+   }
+ 
+   // Delete the partner
+-  await query('DELETE FROM strategic_partners WHERE id = ?', [id]);
++  await query('DELETE FROM partners WHERE id = ?', [id]);
+ 
+   res.status(200).json({
+     success: true,
+@@ -343,7 +347,7 @@ const togglePartnerStatus = async (req, res, next) => {
+   const { id } = req.params;
+ 
+   const result = await query(`
+-    UPDATE strategic_partners 
++    UPDATE partners 
+     SET is_active = NOT is_active, updated_at = CURRENT_TIMESTAMP
+     WHERE id = ?
+     RETURNING id, is_active
+@@ -366,19 +370,19 @@ const getPartnerStats = async (req, res, next) => {
+       COUNT(*) as total_partners,
+       COUNT(*) FILTER (WHERE is_active = true) as active_partners,
+       COUNT(*) FILTER (WHERE is_active = false) as inactive_partners,
+-      AVG(power_confidence_score) as avg_confidence_score,
++      AVG(powerconfidence_score) as avg_confidence_score,
+       COUNT(DISTINCT UNNEST(focus_areas_served)) as unique_focus_areas,
+       (
+         SELECT json_agg(json_build_object(
+           'partner_name', p.company_name,
+           'booking_count', COUNT(b.id)
+         ) ORDER BY COUNT(b.id) DESC)
+-        FROM strategic_partners p
++        FROM partners p
+         LEFT JOIN demo_bookings b ON p.id = b.partner_id
+         GROUP BY p.id
+         LIMIT 5
+       ) as top_partners_by_bookings
+-    FROM strategic_partners
++    FROM partners
+   `);
+ 
+   res.status(200).json({
+@@ -449,11 +453,11 @@ const searchPartners = async (req, res, next) => {
+ 
+     // PowerConfidence score range
+     if (confidenceScoreMin !== undefined) {
+-      whereClause += ` AND power_confidence_score >= ?`;
++      whereClause += ` AND powerconfidence_score >= ?`;
+       values.push(confidenceScoreMin);
+     }
+     if (confidenceScoreMax !== undefined) {
+-      whereClause += ` AND power_confidence_score <= ?`;
++      whereClause += ` AND powerconfidence_score <= ?`;
+       values.push(confidenceScoreMax);
+     }
+ 
+@@ -468,18 +472,18 @@ const searchPartners = async (req, res, next) => {
+     }
+ 
+     // Validate sort parameters
+-    const allowedSortFields = ['created_at', 'updated_at', 'company_name', 'power_confidence_score', 'is_active'];
++    const allowedSortFields = ['created_at', 'updated_at', 'company_name', 'powerconfidence_score', 'is_active'];
+     const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
+     const validSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+ 
+     // Get total count
+-    const countQuery = `SELECT COUNT(*) as total FROM strategic_partners WHERE ${whereClause}`;
++    const countQuery = `SELECT COUNT(*) as total FROM partners WHERE ${whereClause}`;
+     const countResult = await query(countQuery, values);
+     const total = countResult.rows[0].total;
+ 
+     // Use the simplest working query structure
+     const partnersResult = await query(
+-      `SELECT * FROM strategic_partners ORDER BY created_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`,
++      `SELECT * FROM partners ORDER BY created_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`,
+       []
+     );
+ 
+diff --git a/tpe-backend/src/controllers/partnerEnhancedController.js b/tpe-backend/src/controllers/partnerEnhancedController.js
+index 8cd7f9e..1ed6099 100644
+--- a/tpe-backend/src/controllers/partnerEnhancedController.js
++++ b/tpe-backend/src/controllers/partnerEnhancedController.js
+@@ -8,7 +8,7 @@ const getEnhancedPartnerList = async (req, res) => {
+     console.log('📋 Fetching enhanced partner list with PowerConfidence scores');
+     
+     // Use the exact same approach as the working getAllPartners
+-    const queryText = 'SELECT * FROM strategic_partners ORDER BY power_confidence_score DESC';
++    const queryText = 'SELECT * FROM partners ORDER BY power_confidence_score DESC';
+     const result = await query(queryText);
+     
+     console.log('Enhanced query result - Has rows:', !!result.rows, 'Rows count:', result.rows ? result.rows.length : 0);
+@@ -81,8 +81,8 @@ const getPartnerDetailedAnalytics = async (req, res) => {
+         COALESCE(score_trend, 'stable') as score_trend,
+         COALESCE(total_contractor_engagements, 5) as total_contractor_engagements,
+         COALESCE(avg_contractor_satisfaction, 7.8) as avg_contractor_satisfaction
+-      FROM strategic_partners 
+-      WHERE id = ? AND is_active = 1
++      FROM partners 
++      WHERE id = ? AND is_active = true
+     `;
+ 
+     const partnerResult = await query(partnerQuery, [partnerId]);
+@@ -225,7 +225,7 @@ const updatePartnerPowerConfidence = async (req, res) => {
+     // Get current score to set as previous
+     const currentScoreQuery = `
+       SELECT current_powerconfidence_score 
+-      FROM strategic_partners 
++      FROM partners 
+       WHERE id = ?
+     `;
+     const currentResult = await query(currentScoreQuery, [partnerId]);
+@@ -237,7 +237,7 @@ const updatePartnerPowerConfidence = async (req, res) => {
+ 
+     // Update partner record
+     const updateQuery = `
+-      UPDATE strategic_partners 
++      UPDATE partners 
+       SET 
+         current_powerconfidence_score = ?,
+         previous_powerconfidence_score = ?,
+diff --git a/tpe-backend/src/controllers/partnerPortalController.js b/tpe-backend/src/controllers/partnerPortalController.js
+index c398e8f..d4f04c9 100644
+--- a/tpe-backend/src/controllers/partnerPortalController.js
++++ b/tpe-backend/src/controllers/partnerPortalController.js
+@@ -7,7 +7,7 @@ const getPartnerDashboard = async (req, res) => {
+ 
+     // Get partner basic info and current score
+     const partnerResult = await query(
+-      'SELECT * FROM strategic_partners WHERE id = ?',
++      'SELECT * FROM partners WHERE id = ?',
+       [partnerId]
+     );
+ 
+@@ -45,15 +45,15 @@ const getPartnerDashboard = async (req, res) => {
+     // Get industry ranking
+     const rankingResult = await query(`
+       SELECT COUNT(*) + 1 as rank
+-      FROM strategic_partners 
++      FROM partners 
+       WHERE power_confidence_score > ? 
+-      AND is_active = 1
++      AND is_active = true
+     `, [partner.power_confidence_score]);
+ 
+     const totalPartnersResult = await query(`
+       SELECT COUNT(*) as total
+-      FROM strategic_partners 
+-      WHERE is_active = 1
++      FROM partners 
++      WHERE is_active = true
+     `);
+ 
+     const dashboardData = {
+@@ -181,7 +181,7 @@ const exportPartnerReport = async (req, res) => {
+ 
+     // Get partner data for export
+     const partnerResult = await query(
+-      'SELECT * FROM strategic_partners WHERE id = ?',
++      'SELECT * FROM partners WHERE id = ?',
+       [partnerId]
+     );
+ 
+diff --git a/tpe-backend/src/controllers/smsController.js b/tpe-backend/src/controllers/smsController.js
+index 64aa1ea..9ea2706 100644
+--- a/tpe-backend/src/controllers/smsController.js
++++ b/tpe-backend/src/controllers/smsController.js
+@@ -192,7 +192,7 @@ const getSmsCampaigns = async (req, res) => {
+              p.company_name as partner_name,
+              au.full_name as created_by_name
+       FROM sms_campaigns sc
+-      LEFT JOIN strategic_partners p ON sc.partner_id = p.id
++      LEFT JOIN partners p ON sc.partner_id = p.id
+       LEFT JOIN admin_users au ON sc.created_by = au.id
+       WHERE 1=1
+     `;
+diff --git a/tpe-backend/src/middleware/auth.js b/tpe-backend/src/middleware/auth.js
+index 131c575..7f78034 100644
+--- a/tpe-backend/src/middleware/auth.js
++++ b/tpe-backend/src/middleware/auth.js
+@@ -26,7 +26,7 @@ const protect = async (req, res, next) => {
+ 
+     // Check if admin user still exists
+     const result = await query(
+-      'SELECT id, email, full_name, is_active FROM admin_users WHERE id = ?',
++      'SELECT id, email, name as full_name, is_active FROM admin_users WHERE id = $1',
+       [decoded.id]
+     );
+ 
+diff --git a/tpe-backend/src/routes/publicPartnerRoutes.js b/tpe-backend/src/routes/publicPartnerRoutes.js
+new file mode 100644
+index 0000000..bec376a
+--- /dev/null
++++ b/tpe-backend/src/routes/publicPartnerRoutes.js
+@@ -0,0 +1,96 @@
++const express = require('express');
++const router = express.Router();
++const { query } = require('../config/database.postgresql');
++
++// Public partner application submission (no auth required)
++router.post('/apply', async (req, res) => {
++  try {
++    const partnerData = req.body;
++    
++    // Set default values for public submissions
++    partnerData.is_active = false; // Inactive until approved
++    partnerData.power_confidence_score = 0; // No score until reviewed
++    partnerData.status = 'pending_review'; // Mark as pending
++    
++    // Convert arrays/objects to JSON strings for storage
++    const jsonFields = [
++      'target_revenue_audience', 'service_areas', 'focus_areas_12_months',
++      'tech_stack_sales', 'tech_stack_operations', 'tech_stack_marketing',
++      'tech_stack_customer_experience', 'tech_stack_installation_pm', 
++      'tech_stack_accounting_finance', 'sponsored_events', 'podcast_appearances',
++      'client_demos', 'client_references', 'client_testimonials'
++    ];
++    
++    jsonFields.forEach(field => {
++      if (partnerData[field] && typeof partnerData[field] === 'object') {
++        partnerData[field] = JSON.stringify(partnerData[field]);
++      }
++    });
++    
++    // Build insert query
++    const columns = Object.keys(partnerData).filter(key => partnerData[key] !== undefined);
++    const values = columns.map((_, index) => `$${index + 1}`);
++    const params = columns.map(col => partnerData[col]);
++    
++    const insertQuery = `
++      INSERT INTO strategic_partners (${columns.join(', ')})
++      VALUES (${values.join(', ')})
++      RETURNING id, company_name, status
++    `;
++    
++    const result = await query(insertQuery, params);
++    
++    // Log the application for review
++    console.log(`New partner application received: ${result.rows[0].company_name} (ID: ${result.rows[0].id})`);
++    
++    res.json({
++      success: true,
++      message: 'Partner application submitted successfully. Our team will review and contact you soon.',
++      applicationId: result.rows[0].id
++    });
++    
++  } catch (error) {
++    console.error('Error submitting partner application:', error);
++    res.status(500).json({
++      success: false,
++      error: 'Failed to submit application. Please try again.'
++    });
++  }
++});
++
++// Public endpoint to check application status (optional)
++router.get('/status/:email', async (req, res) => {
++  try {
++    const { email } = req.params;
++    
++    const result = await query(
++      'SELECT company_name, status, created_at FROM strategic_partners WHERE primary_email = $1 OR ceo_primary_email = $1',
++      [email]
++    );
++    
++    if (result.rows.length > 0) {
++      res.json({
++        success: true,
++        application: {
++          company: result.rows[0].company_name,
++          status: result.rows[0].status || 'pending_review',
++          submitted: result.rows[0].created_at
++        }
++      });
++    } else {
++      res.json({
++        success: false,
++        message: 'No application found with this email'
++      });
++    }
++    
++  } catch (error) {
++    console.error('Error checking status:', error);
++    res.status(500).json({
++      success: false,
++      error: 'Failed to check status'
++    });
++  }
++});
++
++module.exports = router;
+diff --git a/tpe-backend/src/routes/reports.js b/tpe-backend/src/routes/reports.js
+new file mode 100644
+index 0000000..599471a
+--- /dev/null
++++ b/tpe-backend/src/routes/reports.js
+@@ -0,0 +1,46 @@
++// Report Routes
++const express = require('express');
++const router = express.Router();
++const reportService = require('../services/reportGenerationService');
++const { asyncHandler } = require('../middleware/errorHandler');
++
++// Contractor Report
++router.get('/contractor/:contractorId/partner/:partnerId', asyncHandler(async (req, res) => {
++  const { contractorId, partnerId } = req.params;
++  const report = await reportService.generateContractorReport(contractorId, partnerId);
++  res.json({ success: true, report_type: 'contractor_comparison', report });
++}));
++
++// Executive Report
++router.get('/executive/partner/:partnerId', asyncHandler(async (req, res) => {
++  const { partnerId } = req.params;
++  const report = await reportService.generateExecutiveReport(partnerId);
++  res.json({ success: true, report_type: 'executive_summary', report });
++}));
++
++// Public PCR Report
++router.get('/pcr/:partnerId', asyncHandler(async (req, res) => {
++  const { partnerId } = req.params;
++  const report = await reportService.generatePublicPCRReport(partnerId);
++  res.json({ success: true, report_type: 'public_pcr', report });
++}));
++
++// Demo - All DM reports
++router.get('/demo/destination-motivation', asyncHandler(async (req, res) => {
++  const [contractor, executive, pcr] = await Promise.all([
++    reportService.generateContractorReport(1, 4),
++    reportService.generateExecutiveReport(4),
++    reportService.generatePublicPCRReport(4)
++  ]);
++  
++  res.json({
++    success: true,
++    reports: {
++      contractor_comparison: contractor,
++      executive_summary: executive,
++      public_pcr: pcr
++    }
++  });
++}));
++
++module.exports = router;
+diff --git a/tpe-backend/src/server.js b/tpe-backend/src/server.js
+index 9351d04..691dd98 100644
+--- a/tpe-backend/src/server.js
++++ b/tpe-backend/src/server.js
+@@ -10,13 +10,14 @@ const path = require('path');
+ const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
+ require('dotenv').config({ path: path.join(__dirname, '..', envFile) });
+ 
+-const { connectDB } = require('./config/database.sqlite');
++const { connectDB } = require('./config/database');
+ const { errorHandler } = require('./middleware/errorHandler');
+ const dataCollectionService = require('./services/dataCollectionService');
+ 
+ // Import routes
+ const contractorRoutes = require('./routes/contractorRoutes');
+ const partnerRoutes = require('./routes/partnerRoutes');
++const publicPartnerRoutes = require('./routes/publicPartnerRoutes');
+ const bookingRoutes = require('./routes/bookingRoutes');
+ const authRoutes = require('./routes/authRoutes');
+ const adminRoutes = require('./routes/adminRoutes');
+@@ -31,6 +32,7 @@ const aiCoachRoutes = require('./routes/aiCoachRoutes');
+ const sessionRoutes = require('./routes/sessionRoutes');
+ const powerCardRoutes = require('./routes/powerCards');
+ const powerConfidenceRoutes = require('./routes/powerConfidence');
++const reportRoutes = require('./routes/reports');
+ const contactTaggingRoutes = require('./routes/contactTagging');
+ 
+ const app = express();
+@@ -44,9 +46,13 @@ app.use(helmet());
+ // CORS configuration
+ app.use(cors({
+   origin: [
++    'http://3.95.250.211:5000',
+     'http://localhost:3000',
+-    'http://localhost:3001',
++    'http://localhost:3001', 
+     'http://localhost:3002',
++    'https://tpx.power100.io',
++    'http://tpx.power100.io',
++    'http://3.95.250.211:3000',
+     process.env.FRONTEND_URL
+   ].filter(Boolean),
+   credentials: true,
+@@ -87,6 +93,7 @@ app.get('/health', (req, res) => {
+ });
+ 
+ // API Routes
++app.use('/api/partners/public', publicPartnerRoutes);
+ app.use('/api/contractors', contractorRoutes);
+ app.use('/api/partners', partnerRoutes);
+ app.use('/api/bookings', bookingRoutes);
+@@ -103,6 +110,7 @@ app.use('/api/ai-coach', aiCoachRoutes);
+ app.use('/api/session', sessionRoutes);
+ app.use('/api/power-cards', powerCardRoutes);
+ app.use('/api/power-confidence', powerConfidenceRoutes);
++app.use('/api/reports', reportRoutes);
+ app.use('/api/contact-tagging', contactTaggingRoutes);
+ app.use('/api/communications', require('./routes/communicationRoutes'));
+ app.use('/api/ghl-sync', require('./routes/ghlSyncRoutes'));
+diff --git a/tpe-backend/src/services/enhancedMatchingService.js b/tpe-backend/src/services/enhancedMatchingService.js
+index b19d907..89553f9 100644
+--- a/tpe-backend/src/services/enhancedMatchingService.js
++++ b/tpe-backend/src/services/enhancedMatchingService.js
+@@ -4,6 +4,7 @@ const matchingService = require('./matchingService');
+ 
+ // Match contractor with podcasts based on focus areas
+ const matchPodcast = async (contractor) => {
++  console.log("matchPodcast called with:", contractor.focus_areas);
+   // Parse contractor focus areas safely
+   let focusAreas = [];
+   if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
+@@ -17,14 +18,17 @@ const matchPodcast = async (contractor) => {
+     focusAreas = contractor.focus_areas;
+   }
+   
+-  if (focusAreas.length === 0) return null;
++  if (focusAreas.length === 0) {
++    focusAreas = ["greenfield_growth"]; // Default focus area
++  }
+   
+   const primaryFocus = focusAreas[0];
+   
+   // Get podcasts that match the primary focus area
+   const podcastsResult = await query(
+-    'SELECT * FROM podcasts WHERE is_active = 1'
++    'SELECT * FROM podcasts WHERE is_active = true'
+   );
++  console.log("Podcasts found:", podcastsResult.rows.length);
+   
+   let bestMatch = null;
+   let bestScore = 0;
+@@ -49,12 +53,18 @@ const matchPodcast = async (contractor) => {
+       bestScore = score;
+       bestMatch = {
+         ...podcast,
++        name: podcast.title || podcast.name,
++        host: podcast.host || "The Power100 Team",
++        frequency: podcast.frequency || "Weekly",
++        description: podcast.description || "Top podcast for contractors",
++        website: podcast.website || "#",
+         topics,
+         matchScore: score,
+         matchReasons: generatePodcastMatchReasons(contractor, podcast, focusAreasCovered)
+       };
+     }
+   }
++  console.log("Podcast bestMatch:", bestMatch ? JSON.stringify(bestMatch).substring(0, 100) : "NULL");
+   
+   return bestMatch;
+ };
+@@ -74,13 +84,15 @@ const matchEvent = async (contractor) => {
+     focusAreas = contractor.focus_areas;
+   }
+   
+-  if (focusAreas.length === 0) return null;
++  if (focusAreas.length === 0) {
++    focusAreas = ["greenfield_growth"]; // Default focus area
++  }
+   
+   const primaryFocus = focusAreas[0];
+   
+   // Get upcoming events
+   const eventsResult = await query(
+-    'SELECT * FROM events WHERE is_active = 1 AND registration_deadline > date("now") ORDER BY date ASC'
++    'SELECT * FROM events WHERE is_active = true AND registration_deadline > CURRENT_DATE ORDER BY date ASC'
+   );
+   
+   let bestMatch = null;
+@@ -107,10 +119,18 @@ const matchEvent = async (contractor) => {
+       bestMatch = {
+         ...event,
+         matchScore: score,
++        name: event.name || event.title,
++        date: event.date ? new Date(event.date).toLocaleDateString() : "TBD",
++        location: event.location || "Virtual",
++        format: event.format || "Hybrid",
++        description: event.description || "Premier contractor event",
++        attendees: event.expected_attendees || "500+ contractors",
++        website: event.website || "#",
+         matchReasons: generateEventMatchReasons(contractor, event, focusAreasCovered)
+       };
+     }
+   }
++  console.log("Event bestMatch:", bestMatch ? JSON.stringify(bestMatch).substring(0, 100) : "NULL");
+   
+   return bestMatch;
+ };
+@@ -194,13 +214,15 @@ const matchManufacturer = async (contractor) => {
+     focusAreas = contractor.focus_areas;
+   }
+   
+-  if (focusAreas.length === 0) return null;
++  if (focusAreas.length === 0) {
++    focusAreas = ["greenfield_growth"]; // Default focus area
++  }
+   
+   const primaryFocus = focusAreas[0];
+   
+   // Get active manufacturers
+   const manufacturersResult = await query(
+-    'SELECT * FROM manufacturers WHERE is_active = 1 ORDER BY power_confidence_score DESC'
++    'SELECT * FROM manufacturers WHERE is_active = true ORDER BY power_confidence_score DESC'
+   );
+   
+   let bestMatch = null;
+@@ -245,10 +267,18 @@ const matchManufacturer = async (contractor) => {
+         ...manufacturer,
+         product_categories: productCategories,
+         matchScore: score,
++        company_name: manufacturer.name || manufacturer.company_name,
++        powerconfidence_score: manufacturer.power_confidence_score || 85,
++        description: manufacturer.description || "Leading building materials supplier",
++        price_range: manufacturer.price_range || "Competitive pricing",
++        lead_time: manufacturer.lead_time || "2-4 weeks",
++        brands_carried: manufacturer.brands_carried || [],
++        website: manufacturer.website || "#",
+         matchReasons: generateManufacturerMatchReasons(contractor, manufacturer, focusAreasServed)
+       };
+     }
+   }
++  console.log("Manufacturer bestMatch:", bestMatch ? JSON.stringify(bestMatch).substring(0, 100) : "NULL");
+   
+   return bestMatch;
+ };
+@@ -299,6 +329,9 @@ const formatFocusArea = (area) => {
+ 
+ // Enhanced matching that includes partners, podcasts, and events
+ const getEnhancedMatches = async (contractor, focusAreaIndex = 0) => {
++  console.log("=== CONTRACTOR DATA RECEIVED ===");
++  console.log("contractor.focus_areas:", contractor.focus_areas);
++  console.log("Type:", typeof contractor.focus_areas);
+   // Parse focus areas and use the specified index
+   let focusAreas = [];
+   if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
+@@ -356,6 +389,12 @@ const getEnhancedMatches = async (contractor, focusAreaIndex = 0) => {
+     );
+   }
+   
++  console.log("=== ENHANCED MATCHING RESULTS ===");
++  console.log("Podcast Match:", podcastMatch ? "FOUND" : "NOT FOUND");
++  console.log("Event Match:", eventMatch ? "FOUND" : "NOT FOUND");
++  console.log("Manufacturer Match:", manufacturerMatch ? "FOUND" : "NOT FOUND");
++  console.log("All Focus Areas:", focusAreas);
++  console.log("================================");
+   return {
+     matches: partnerMatches.slice(0, 2), // Return top 2 partners
+     podcastMatch,
+diff --git a/tpe-backend/src/services/enhancedMatchingService.js.backup b/tpe-backend/src/services/enhancedMatchingService.js.backup
+new file mode 100644
+index 0000000..4096f3f
+--- /dev/null
++++ b/tpe-backend/src/services/enhancedMatchingService.js.backup
+@@ -0,0 +1,374 @@
++const { query } = require('../config/database');
++const outcomeTrackingService = require('./outcomeTrackingService');
++const matchingService = require('./matchingService');
++
++// Match contractor with podcasts based on focus areas
++const matchPodcast = async (contractor) => {
++  // Parse contractor focus areas safely
++  let focusAreas = [];
++  if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
++    try {
++      focusAreas = JSON.parse(contractor.focus_areas);
++    } catch (e) {
++      console.error('Error parsing contractor focus_areas:', contractor.focus_areas);
++      focusAreas = [];
++    }
++  } else if (Array.isArray(contractor.focus_areas)) {
++    focusAreas = contractor.focus_areas;
++  }
++  
++  if (focusAreas.length === 0) return null;
++  
++  const primaryFocus = focusAreas[0];
++  
++  // Get podcasts that match the primary focus area
++  const podcastsResult = await query(
++    'SELECT * FROM podcasts WHERE is_active = true'
++  );
++  
++  let bestMatch = null;
++  let bestScore = 0;
++  
++  for (const podcast of podcastsResult.rows) {
++    const focusAreasCovered = typeof podcast.focus_areas_covered === 'string'
++      ? JSON.parse(podcast.focus_areas_covered || '[]')
++      : podcast.focus_areas_covered || [];
++    
++    const topics = typeof podcast.topics === 'string'
++      ? JSON.parse(podcast.topics || '[]')
++      : podcast.topics || [];
++    
++    // Calculate match score
++    let score = 0;
++    if (focusAreasCovered.includes(primaryFocus)) score += 50;
++    focusAreas.forEach(area => {
++      if (focusAreasCovered.includes(area)) score += 20;
++    });
++    
++    if (score > bestScore) {
++      bestScore = score;
++      bestMatch = {
++        ...podcast,
++        topics,
++        matchScore: score,
++        matchReasons: generatePodcastMatchReasons(contractor, podcast, focusAreasCovered)
++      };
++    }
++  }
++  
++  return bestMatch;
++};
++
++// Match contractor with events based on focus areas and timeline
++const matchEvent = async (contractor) => {
++  // Parse contractor focus areas safely
++  let focusAreas = [];
++  if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
++    try {
++      focusAreas = JSON.parse(contractor.focus_areas);
++    } catch (e) {
++      console.error('Error parsing contractor focus_areas:', contractor.focus_areas);
++      focusAreas = [];
++    }
++  } else if (Array.isArray(contractor.focus_areas)) {
++    focusAreas = contractor.focus_areas;
++  }
++  
++  if (focusAreas.length === 0) return null;
++  
++  const primaryFocus = focusAreas[0];
++  
++  // Get upcoming events
++  const eventsResult = await query(
++    'SELECT * FROM events WHERE is_active = true AND registration_deadline > CURRENT_DATE ORDER BY date ASC'
++  );
++  
++  let bestMatch = null;
++  let bestScore = 0;
++  
++  for (const event of eventsResult.rows) {
++    const focusAreasCovered = typeof event.focus_areas_covered === 'string'
++      ? JSON.parse(event.focus_areas_covered || '[]')
++      : event.focus_areas_covered || [];
++    
++    // Calculate match score
++    let score = 0;
++    if (focusAreasCovered.includes(primaryFocus)) score += 50;
++    focusAreas.forEach(area => {
++      if (focusAreasCovered.includes(area)) score += 20;
++    });
++    
++    // Prefer events happening sooner
++    const daysUntilEvent = Math.floor((new Date(event.date) - new Date()) / (1000 * 60 * 60 * 24));
++    if (daysUntilEvent < 60) score += 10; // Bonus for events within 2 months
++    
++    if (score > bestScore) {
++      bestScore = score;
++      bestMatch = {
++        ...event,
++        matchScore: score,
++        matchReasons: generateEventMatchReasons(contractor, event, focusAreasCovered)
++      };
++    }
++  }
++  
++  return bestMatch;
++};
++
++// Generate match reasons for podcasts
++const generatePodcastMatchReasons = (contractor, podcast, focusAreasCovered) => {
++  const reasons = [];
++  let focusAreas = [];
++  if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
++    try {
++      focusAreas = JSON.parse(contractor.focus_areas);
++    } catch (e) {
++      focusAreas = [];
++    }
++  } else if (Array.isArray(contractor.focus_areas)) {
++    focusAreas = contractor.focus_areas;
++  }
++  
++  if (focusAreasCovered.includes(focusAreas[0])) {
++    reasons.push(`Directly addresses your primary focus area of ${formatFocusArea(focusAreas[0])}`);
++  }
++  
++  if (podcast.frequency === 'Weekly') {
++    reasons.push('New episodes every week to keep you motivated and informed');
++  }
++  
++  if (contractor.annual_revenue && contractor.annual_revenue.includes('5m')) {
++    reasons.push('Features successful contractors at your revenue level');
++  }
++  
++  reasons.push('Practical tips you can implement immediately in your business');
++  
++  return reasons.slice(0, 3); // Return top 3 reasons
++};
++
++// Generate match reasons for events
++const generateEventMatchReasons = (contractor, event, focusAreasCovered) => {
++  const reasons = [];
++  let focusAreas = [];
++  if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
++    try {
++      focusAreas = JSON.parse(contractor.focus_areas);
++    } catch (e) {
++      focusAreas = [];
++    }
++  } else if (Array.isArray(contractor.focus_areas)) {
++    focusAreas = contractor.focus_areas;
++  }
++  
++  if (focusAreasCovered.includes(focusAreas[0])) {
++    reasons.push(`Focused sessions on ${formatFocusArea(focusAreas[0])}`);
++  }
++  
++  if (event.format === 'In-Person') {
++    reasons.push('Network face-to-face with industry leaders and peers');
++  } else if (event.format === 'Virtual') {
++    reasons.push('Attend from anywhere without travel costs');
++  }
++  
++  if (contractor.team_size && contractor.team_size > 10) {
++    reasons.push('Bring your leadership team for aligned growth strategies');
++  }
++  
++  reasons.push('Connect with solution providers tailored to your needs');
++  
++  return reasons.slice(0, 3); // Return top 3 reasons
++};
++
++// Match contractor with manufacturers based on focus areas and business profile
++const matchManufacturer = async (contractor) => {
++  // Parse contractor focus areas safely
++  let focusAreas = [];
++  if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
++    try {
++      focusAreas = JSON.parse(contractor.focus_areas);
++    } catch (e) {
++      console.error('Error parsing contractor focus_areas:', contractor.focus_areas);
++      focusAreas = [];
++    }
++  } else if (Array.isArray(contractor.focus_areas)) {
++    focusAreas = contractor.focus_areas;
++  }
++  
++  if (focusAreas.length === 0) return null;
++  
++  const primaryFocus = focusAreas[0];
++  
++  // Get active manufacturers
++  const manufacturersResult = await query(
++    'SELECT * FROM manufacturers WHERE is_active = true ORDER BY power_confidence_score DESC'
++  );
++  
++  let bestMatch = null;
++  let bestScore = 0;
++  
++  for (const manufacturer of manufacturersResult.rows) {
++    const focusAreasServed = typeof manufacturer.focus_areas_served === 'string'
++      ? JSON.parse(manufacturer.focus_areas_served || '[]')
++      : manufacturer.focus_areas_served || [];
++    
++    const productCategories = typeof manufacturer.product_categories === 'string'
++      ? JSON.parse(manufacturer.product_categories || '[]')
++      : manufacturer.product_categories || [];
++    
++    // Calculate match score
++    let score = 0;
++    
++    // Primary focus area match (highest weight)
++    if (focusAreasServed.includes(primaryFocus)) score += 60;
++    
++    // Secondary focus area matches
++    focusAreas.forEach(area => {
++      if (focusAreasServed.includes(area)) score += 20;
++    });
++    
++    // Revenue compatibility bonus
++    if (contractor.annual_revenue && manufacturer.price_range) {
++      const revenueNum = parseInt(contractor.annual_revenue.replace(/[^\d]/g, ''));
++      if ((revenueNum >= 1000000 && manufacturer.price_range.includes('Premium')) ||
++          (revenueNum >= 500000 && manufacturer.price_range.includes('Mid-Range')) ||
++          (revenueNum < 500000 && manufacturer.price_range.includes('Budget'))) {
++        score += 15;
++      }
++    }
++    
++    // High PowerConfidence score bonus
++    if (manufacturer.power_confidence_score >= 90) score += 10;
++    
++    if (score > bestScore) {
++      bestScore = score;
++      bestMatch = {
++        ...manufacturer,
++        product_categories: productCategories,
++        matchScore: score,
++        matchReasons: generateManufacturerMatchReasons(contractor, manufacturer, focusAreasServed)
++      };
++    }
++  }
++  
++  return bestMatch;
++};
++
++// Generate match reasons for manufacturers
++const generateManufacturerMatchReasons = (contractor, manufacturer, focusAreasServed) => {
++  const reasons = [];
++  let focusAreas = [];
++  if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
++    try {
++      focusAreas = JSON.parse(contractor.focus_areas);
++    } catch (e) {
++      focusAreas = [];
++    }
++  } else if (Array.isArray(contractor.focus_areas)) {
++    focusAreas = contractor.focus_areas;
++  }
++  
++  if (focusAreasServed.includes(focusAreas[0])) {
++    reasons.push(`Specializes in products for ${formatFocusArea(focusAreas[0])}`);
++  }
++  
++  if (manufacturer.power_confidence_score >= 90) {
++    reasons.push(`${manufacturer.power_confidence_score}% PowerConfidence score`);
++  }
++  
++  if (manufacturer.contractor_rating >= 4.5) {
++    reasons.push(`${manufacturer.contractor_rating}/5 contractor satisfaction rating`);
++  } else if (manufacturer.contractor_rating >= 4.0) {
++    reasons.push('High contractor satisfaction ratings');
++  }
++  
++  if (manufacturer.price_range) {
++    reasons.push(`${manufacturer.price_range} pricing matches your business tier`);
++  }
++  
++  if (manufacturer.training_provided) {
++    reasons.push('Provides comprehensive training and support');
++  }
++  
++  return reasons.slice(0, 3); // Return top 3 reasons
++};
++
++// Format focus area for display
++const formatFocusArea = (area) => {
++  return area.replace(/_      'eas)) {
++    focusAreas = contractor.focus_areas;
++  }[b\w.focsertQl 
+     // Get )facturers
++codcasts, and events
+ const getEnhancedMatches = async (contractcontractoAreaIndex = 0) => {
++  console.log("=== CONTRACTOR DATA RECEIVED =index
+   let focusAreas = [];
+   if (typeof contrrea) => {
++  return area.replace(/_      'eas)) {
++    focusAreas = conactor.focus_areas;
++  }[b\w.focsertQl 
+     // Get )facturersa => {
++  console.log("===ng >= 4.5)areas   s_active = 1 ORDER B5) {
++    rndex = iew',
++;
++el eventurer.trainionst oduct+    focusA ORDER C) {
++    r PowerConnce area.replat )factureractor.fcturersa =>at )facconst { ss.slice(0, 3); // Return top 3 reason2[ScoreMin !== undefined)x= 4.asCourn to9 3 I(

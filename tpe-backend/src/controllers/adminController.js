@@ -21,7 +21,7 @@ const getDashboardStats = async (req, res, next) => {
     SELECT 
       COUNT(*) as total,
       COUNT(*) FILTER (WHERE is_active = true) as active,
-      AVG(power_confidence_score) as avg_confidence_score
+      AVG(powerconfidence_score) as avg_confidence_score
     FROM strategic_partners
   `);
 

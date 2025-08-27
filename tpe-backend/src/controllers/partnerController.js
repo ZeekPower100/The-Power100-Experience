@@ -5,11 +5,11 @@ const { AppError } = require('../middleware/errorHandler');
 const getActivePartners = async (req, res, next) => {
   const result = await query(`
     SELECT id, company_name, description, logo_url, website, 
-           focus_areas_served, target_revenue_range, power_confidence_score,
+           focus_areas_served, target_revenue_range, powerconfidence_score,
            key_differentiators, pricing_model
     FROM strategic_partners 
     WHERE is_active = true 
-    ORDER BY power_confidence_score DESC
+    ORDER BY powerconfidence_score DESC
   `);
 
   res.status(200).json({
@@ -26,7 +26,7 @@ const getPartner = async (req, res, next) => {
   try {
     // Get basic partner info
     const partnerResult = await query(`
-      SELECT * FROM strategic_partners WHERE id = ?
+      SELECT * FROM strategic_partners WHERE id = $1
     `, [id]);
 
     if (partnerResult.rows.length === 0) {
@@ -40,13 +40,13 @@ const getPartner = async (req, res, next) => {
       SELECT 
         COUNT(*) as total_bookings,
         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_bookings
-      FROM demo_bookings WHERE partner_id = ?
+      FROM demo_bookings WHERE partner_id = $1
     `, [id]);
 
     // Get match stats
     const matchStats = await query(`
       SELECT COUNT(DISTINCT contractor_id) as total_matches
-      FROM contractor_partner_matches WHERE partner_id = ?
+      FROM contractor_partner_matches WHERE partner_id = $1
     `, [id]);
 
     // Combine stats
@@ -70,22 +70,26 @@ const getAllPartners = async (req, res, next) => {
   try {
     let queryText = 'SELECT * FROM strategic_partners';
     const values = [];
+    let parameterIndex = 1;
 
     if (active !== undefined) {
-      queryText += ' WHERE is_active = ?';
-      values.push(active === 'true' ? 1 : 0);
+      queryText += ` WHERE is_active = $${parameterIndex}`;
+      values.push(active === 'true');
+      parameterIndex++;
     }
 
-    queryText += ' ORDER BY power_confidence_score DESC';
+    queryText += ' ORDER BY powerconfidence_score DESC';
     
     if (limit) {
-      queryText += ' LIMIT ?';
+      queryText += ` LIMIT $${parameterIndex}`;
       values.push(parseInt(limit));
+      parameterIndex++;
     }
     
     if (offset) {
-      queryText += ' OFFSET ?';
+      queryText += ` OFFSET $${parameterIndex}`;
       values.push(parseInt(offset));
+      parameterIndex++;
     }
 
     const result = await query(queryText, values);
@@ -175,7 +179,7 @@ const createPartner = async (req, res, next) => {
       tech_stack_analytics, tech_stack_marketing, tech_stack_financial,
       sponsored_events, podcast_appearances, books_read_recommended, best_working_partnerships,
       client_demos, client_references
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63)
     RETURNING *
   `, [
     // Basic values
@@ -265,11 +269,13 @@ const updatePartner = async (req, res, next) => {
 
   const setClause = [];
   const values = [];
+  let parameterIndex = 1;
 
   // Process each field
   Object.keys(updates).forEach(key => {
     if (allowedFields.includes(key)) {
-      setClause.push(`${key} = ?`);
+      setClause.push(`${key} = $${parameterIndex}`);
+      parameterIndex++;
       
       // Handle JSON fields - Arrays and objects need to be stringified
       const jsonFields = [
@@ -300,7 +306,7 @@ const updatePartner = async (req, res, next) => {
     const result = await query(
       `UPDATE strategic_partners 
        SET ${setClause.join(', ')}, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = ?
+       WHERE id = $${parameterIndex}
        RETURNING *`,
       values
     );
@@ -324,13 +330,13 @@ const deletePartner = async (req, res, next) => {
   const { id } = req.params;
 
   // First check if partner exists
-  const existingPartner = await query('SELECT id FROM strategic_partners WHERE id = ?', [id]);
+  const existingPartner = await query('SELECT id FROM strategic_partners WHERE id = $1', [id]);
   if (existingPartner.rows.length === 0) {
     return next(new AppError('Partner not found', 404));
   }
 
   // Delete the partner
-  await query('DELETE FROM strategic_partners WHERE id = ?', [id]);
+  await query('DELETE FROM strategic_partners WHERE id = $1', [id]);
 
   res.status(200).json({
     success: true,
@@ -345,7 +351,7 @@ const togglePartnerStatus = async (req, res, next) => {
   const result = await query(`
     UPDATE strategic_partners 
     SET is_active = NOT is_active, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
+    WHERE id = $1
     RETURNING id, is_active
   `, [id]);
 

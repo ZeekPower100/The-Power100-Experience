@@ -12,7 +12,7 @@ const startVerification = async (req, res, next) => {
 
   // Check if contractor already exists
   const existingResult = await query(
-    'SELECT id, verification_status FROM contractors WHERE email = ? OR phone = ?',
+    'SELECT id, verification_status FROM contractors WHERE email = $1 OR phone = $2',
     [email, phone]
   );
 
@@ -33,9 +33,9 @@ const startVerification = async (req, res, next) => {
   // Try to update first, then insert if no rows affected
   const updateResult = await query(`
     UPDATE contractors SET 
-      name = ?, phone = ?, company_name = ?, company_website = ?, 
-      verification_code = ?, verification_expires_at = ?, updated_at = CURRENT_TIMESTAMP
-    WHERE email = ?
+      name = $1, phone = $2, company_name = $3, company_website = $4, 
+      verification_code = $5, verification_expires_at = $6, updated_at = CURRENT_TIMESTAMP
+    WHERE email = $7
   `, [name, phone, company_name, company_website, verificationCode, expiresAt, email]);
   
   let contractor;
@@ -43,18 +43,18 @@ const startVerification = async (req, res, next) => {
     // Insert new contractor
     const insertResult = await query(`
       INSERT INTO contractors (name, email, phone, company_name, company_website, verification_code, verification_expires_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
     `, [name, email, phone, company_name, company_website, verificationCode, expiresAt]);
     
     // Get the inserted contractor
-    const selectResult = await query('SELECT id, name, email, phone, company_name FROM contractors WHERE email = ?', [email]);
+    const selectResult = await query('SELECT id, name, email, phone, company_name FROM contractors WHERE email = $1', [email]);
     contractor = selectResult.rows[0];
     
     // Auto-tag new contractor
     await contactTaggingService.tagContractorOnboarding(contractor.id, email, ['new_signup']);
   } else {
     // Get the updated contractor
-    const selectResult = await query('SELECT id, name, email, phone, company_name FROM contractors WHERE email = ?', [email]);
+    const selectResult = await query('SELECT id, name, email, phone, company_name FROM contractors WHERE email = $1', [email]);
     contractor = selectResult.rows[0];
     
     // Auto-tag returning contractor
@@ -87,7 +87,7 @@ const verifyCode = async (req, res, next) => {
   const { contractor_id, code } = req.body;
 
   const result = await query(
-    'SELECT * FROM contractors WHERE id = ?',
+    'SELECT * FROM contractors WHERE id = $1',
     [contractor_id]
   );
 
@@ -121,7 +121,7 @@ const verifyCode = async (req, res, next) => {
          opted_in_coaching = true,
          verification_code = NULL,
          verification_expires_at = NULL
-     WHERE id = ?`,
+     WHERE id = $1`,
     [contractor_id]
   );
 
@@ -175,10 +175,12 @@ const updateProfile = async (req, res, next) => {
 
   const setClause = [];
   const values = [];
+  let parameterIndex = 1;
 
   Object.keys(updates).forEach(key => {
     if (allowedFields.includes(key)) {
-      setClause.push(`${key} = ?`);
+      setClause.push(`${key} = $${parameterIndex}`);
+      parameterIndex++;
       
       // JSON fields that need serialization
       const jsonFields = [
@@ -207,7 +209,7 @@ const updateProfile = async (req, res, next) => {
     const result = await query(
       `UPDATE contractors 
        SET ${setClause.join(', ')}, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = ?
+       WHERE id = $${parameterIndex}
        RETURNING *`,
       values
     );
@@ -276,17 +278,17 @@ const completeFlow = async (req, res, next) => {
 
       await client.query(
         `INSERT INTO demo_bookings (contractor_id, partner_id, scheduled_date)
-         VALUES (?, ?, ?)`,
+         VALUES ($1, $2, $3)`,
         [id, selected_partner_id, scheduledDate]
       );
 
       // Send introduction email
       const contractorResult = await client.query(
-        'SELECT * FROM contractors WHERE id = ?',
+        'SELECT * FROM contractors WHERE id = $1',
         [id]
       );
       const partnerResult = await client.query(
-        'SELECT * FROM strategic_partners WHERE id = ?',
+        'SELECT * FROM strategic_partners WHERE id = $1',
         [selected_partner_id]
       );
 
@@ -318,17 +320,19 @@ const getAllContractors = async (req, res, next) => {
   let queryText = `SELECT * FROM contractors`;
   const conditions = [];
   const values = [];
+  let parameterIndex = 1;
 
   if (stage) {
-    conditions.push(`current_stage = ?`);
+    conditions.push(`current_stage = $${parameterIndex}`);
     values.push(stage);
+    parameterIndex++;
   }
 
   if (conditions.length > 0) {
     queryText += ' WHERE ' + conditions.join(' AND ');
   }
 
-  queryText += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
+  queryText += ` ORDER BY created_at DESC LIMIT $${parameterIndex} OFFSET $${parameterIndex + 1}`;
   values.push(limit, offset);
 
   console.log('🔍 Final query:', queryText);
@@ -357,7 +361,7 @@ const getContractor = async (req, res, next) => {
     
     // Use the absolute simplest query that works
     const contractorResult = await query(`
-      SELECT id, name FROM contractors WHERE id = ?
+      SELECT id, name FROM contractors WHERE id = $1
     `, [id]);
     
     console.log('🔍 Simple query result:', contractorResult.rows.length, contractorResult.rows[0]);
@@ -381,7 +385,7 @@ const getContractor = async (req, res, next) => {
       SELECT p.id, p.company_name, m.match_score, m.is_primary_match
       FROM contractor_partner_matches m
       LEFT JOIN strategic_partners p ON m.partner_id = p.id
-      WHERE m.contractor_id = ?
+      WHERE m.contractor_id = $1
     `, [id]);
 
     // Get bookings separately
@@ -389,7 +393,7 @@ const getContractor = async (req, res, next) => {
       SELECT b.id, sp.company_name as partner_name, b.scheduled_date, b.status
       FROM demo_bookings b
       LEFT JOIN strategic_partners sp ON b.partner_id = sp.id
-      WHERE b.contractor_id = ?
+      WHERE b.contractor_id = $1
     `, [id]);
 
     // Combine results
@@ -410,7 +414,7 @@ const deleteContractor = async (req, res, next) => {
   const { id } = req.params;
 
   const result = await query(
-    'DELETE FROM contractors WHERE id = ? RETURNING id',
+    'DELETE FROM contractors WHERE id = $1 RETURNING id',
     [id]
   );
 

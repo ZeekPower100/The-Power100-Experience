@@ -10,7 +10,7 @@ const path = require('path');
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
 require('dotenv').config({ path: path.join(__dirname, '..', envFile) });
 
-const { connectDB } = require('./config/database.sqlite');
+const { connectDB } = require('./config/database');
 const { errorHandler } = require('./middleware/errorHandler');
 const dataCollectionService = require('./services/dataCollectionService');
 

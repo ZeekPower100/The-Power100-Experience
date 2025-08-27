@@ -1,8 +1,10 @@
 {
   "mcpServers": {
     "github": {
-      "command": "npx",
+      "command": "cmd",
       "args": [
+        "/c",
+        "npx",
         "-y",
         "@anthropic-ai/mcp-server-github"
       ],
@@ -11,16 +13,20 @@
       }
     },
     "filesystem": {
-      "command": "npx",
+      "command": "cmd",
       "args": [
+        "/c",
+        "npx",
         "-y",
         "@anthropic-ai/mcp-server-filesystem",
         "."
       ]
     },
     "brave-search": {
-      "command": "npx",
+      "command": "cmd",
       "args": [
+        "/c",
+        "npx",
         "-y",
         "@anthropic-ai/mcp-server-brave-search"
       ],
@@ -29,19 +35,36 @@
       }
     },
     "puppeteer": {
-      "command": "npx",
+      "command": "cmd",
       "args": [
+        "/c",
+        "npx",
         "-y",
         "@anthropic-ai/mcp-server-puppeteer"
       ]
     },
     "gohighlevel": {
       "type": "http",
-      "url": "https://services.leadconnectorhq.com/mcp/",
+      "url": "https://services.leadconnectorhq.com/mcp",
       "headers": {
         "Authorization": "Bearer pit-47d8d6fc-d175-4c59-a7e4-54c50237d56c",
         "locationId": "Jlq8gw3IEjAQu39n4c0s"
       }
+    },
+    "aws-production": {
+      "type": "stdio",
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "ssh-mcp",
+        "--",
+        "--host=3.95.250.211",
+        "--user=ubuntu",
+        "--key=C:\\Users\\broac\\CascadeProjects\\The-Power100-Experience\\deploy\\aws\\tpe-working-key.pem"
+      ],
+      "env": {}
     }
   }
 }

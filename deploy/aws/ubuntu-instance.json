@@ -1,0 +1,133 @@
+{
+    "ReservationId": "r-0663e25f205eec92d",
+    "OwnerId": "492267598792",
+    "Groups": [],
+    "Instances": [
+        {
+            "Architecture": "x86_64",
+            "BlockDeviceMappings": [],
+            "ClientToken": "7e30d3ac-32de-4a3a-b641-c95336f59670",
+            "EbsOptimized": false,
+            "EnaSupport": true,
+            "Hypervisor": "xen",
+            "NetworkInterfaces": [
+                {
+                    "Attachment": {
+                        "AttachTime": "2025-08-24T04:32:32+00:00",
+                        "AttachmentId": "eni-attach-06383c6ffe07b7d74",
+                        "DeleteOnTermination": true,
+                        "DeviceIndex": 0,
+                        "Status": "attaching",
+                        "NetworkCardIndex": 0
+                    },
+                    "Description": "",
+                    "Groups": [
+                        {
+                            "GroupId": "sg-0a6a4ed08f1dedc2e",
+                            "GroupName": "TPE-Production-EC2SecurityGroup-Ve7UhXYbUcKg"
+                        }
+                    ],
+                    "Ipv6Addresses": [],
+                    "MacAddress": "0a:ff:db:d4:f4:ef",
+                    "NetworkInterfaceId": "eni-02bf63b670c2b7c13",
+                    "OwnerId": "492267598792",
+                    "PrivateDnsName": "ip-10-0-1-248.ec2.internal",
+                    "PrivateIpAddress": "10.0.1.248",
+                    "PrivateIpAddresses": [
+                        {
+                            "Primary": true,
+                            "PrivateDnsName": "ip-10-0-1-248.ec2.internal",
+                            "PrivateIpAddress": "10.0.1.248"
+                        }
+                    ],
+                    "SourceDestCheck": true,
+                    "Status": "in-use",
+                    "SubnetId": "subnet-0a948f68b24acce63",
+                    "VpcId": "vpc-028f67a675f47aaa3",
+                    "InterfaceType": "interface",
+                    "Operator": {
+                        "Managed": false
+                    }
+                }
+            ],
+            "RootDeviceName": "/dev/sda1",
+            "RootDeviceType": "ebs",
+            "SecurityGroups": [
+                {
+                    "GroupId": "sg-0a6a4ed08f1dedc2e",
+                    "GroupName": "TPE-Production-EC2SecurityGroup-Ve7UhXYbUcKg"
+                }
+            ],
+            "SourceDestCheck": true,
+            "StateReason": {
+                "Code": "pending",
+                "Message": "pending"
+            },
+            "Tags": [
+                {
+                    "Key": "Name",
+                    "Value": "TPE-UBUNTU-WORKING"
+                }
+            ],
+            "VirtualizationType": "hvm",
+            "CpuOptions": {
+                "CoreCount": 1,
+                "ThreadsPerCore": 2
+            },
+            "CapacityReservationSpecification": {
+                "CapacityReservationPreference": "open"
+            },
+            "MetadataOptions": {
+                "State": "pending",
+                "HttpTokens": "required",
+                "HttpPutResponseHopLimit": 2,
+                "HttpEndpoint": "enabled",
+                "HttpProtocolIpv6": "disabled",
+                "InstanceMetadataTags": "disabled"
+            },
+            "EnclaveOptions": {
+                "Enabled": false
+            },
+            "BootMode": "uefi-preferred",
+            "PrivateDnsNameOptions": {
+                "HostnameType": "ip-name",
+                "EnableResourceNameDnsARecord": false,
+                "EnableResourceNameDnsAAAARecord": false
+            },
+            "MaintenanceOptions": {
+                "AutoRecovery": "default",
+                "RebootMigration": "default"
+            },
+            "CurrentInstanceBootMode": "uefi",
+            "Operator": {
+                "Managed": false
+            },
+            "InstanceId": "i-02fc62e00d42a85b6",
+            "ImageId": "ami-0e2c8caa4b6378d8c",
+            "State": {
+                "Code": 0,
+                "Name": "pending"
+            },
+            "PrivateDnsName": "ip-10-0-1-248.ec2.internal",
+            "PublicDnsName": "",
+            "StateTransitionReason": "",
+            "KeyName": "tpe-working-key",
+            "AmiLaunchIndex": 0,
+            "ProductCodes": [],
+            "InstanceType": "t3.medium",
+            "LaunchTime": "2025-08-24T04:32:32+00:00",
+            "Placement": {
+                "AvailabilityZoneId": "use1-az4",
+                "GroupName": "",
+                "Tenancy": "default",
+                "AvailabilityZone": "us-east-1a"
+            },
+            "Monitoring": {
+                "State": "disabled"
+            },
+            "SubnetId": "subnet-0a948f68b24acce63",
+            "VpcId": "vpc-028f67a675f47aaa3",
+            "PrivateIpAddress": "10.0.1.248"
+        }
+    ]
+}

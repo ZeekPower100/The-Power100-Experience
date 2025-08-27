@@ -1,5 +1,12 @@
 # The Power100 Experience (TPE) - Full-Stack Project Context
 
+## ⚠️ IMPORTANT: PRODUCTION DATABASE
+**PRODUCTION USES PostgreSQL on AWS RDS** 
+- Host: tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com  
+- Database: tpedb
+- User: tpeadmin
+- **DO NOT use SQLite commands in production - SQLite is for local development ONLY**
+
 ## 🏗️ Project Overview
 
 The Power100 Experience is a comprehensive full-stack web application that connects contractors with strategic partners through an AI-driven matching system. The platform guides contractors through a personalized experience to identify business goals and connects them with verified partners.
@@ -179,7 +186,7 @@ the-power100-experience/          # Project root
 - **Icons**: Lucide React
 - **UI Components**: shadcn/ui
 - **Backend**: Node.js with Express.js (✅ COMPLETE)
-- **Database**: SQLite for development, PostgreSQL for production (✅ COMPLETE)
+- **Database**: PostgreSQL for PRODUCTION (AWS RDS), SQLite for local development only (✅ COMPLETE)
 - **Authentication**: JWT with bcrypt (✅ COMPLETE)
 - **API**: RESTful endpoints with comprehensive error handling (✅ COMPLETE)
 
@@ -198,7 +205,7 @@ the-power100-experience/          # Project root
 
 #### Backend ✅ COMPLETE  
 - **API Design & Setup**: RESTful API with Express.js, JWT authentication, rate limiting
-- **Database**: SQLite development setup with comprehensive schema
+- **Database**: PostgreSQL PRODUCTION database on AWS RDS (tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com)
 - **Core API Endpoints**: 
   - `/api/contractors` - Full CRUD operations ✅
   - `/api/partners` - Complete partner management ✅
@@ -275,7 +282,7 @@ the-power100-experience/          # Project root
 **Timeline**: Week 7-8 | **Priority**: Low
 
 #### Production Infrastructure
-- PostgreSQL production database setup
+- PostgreSQL production database ALREADY DEPLOYED on AWS RDS
 - Docker containerization and deployment
 - CI/CD pipeline implementation
 - Environment configuration and secrets management
@@ -349,7 +356,7 @@ The Power100 Experience platform is now fully functional with the following capa
 - **Authentication**: Secure admin access with JWT tokens
 
 #### **Technical Infrastructure**
-- **Database**: SQLite with comprehensive schema, ready for production PostgreSQL
+- **Database**: PostgreSQL PRODUCTION on AWS RDS (tpedb database, tpeadmin user)
 - **API Layer**: RESTful endpoints with authentication, validation, error handling
 - **Search & Bulk APIs**: Advanced search endpoints and bulk operation services
 - **Frontend**: Responsive Next.js application with modern UI components
@@ -363,6 +370,7 @@ The Power100 Experience platform is now fully functional with the following capa
 - **Performance**: Optimized for real-time matching and responsive user experience
 
 ### 🔧 Development Environment
+- **PRODUCTION**: PostgreSQL on AWS RDS + Next.js on AWS EC2 (https://tpx.power100.io)
 - **Local Development**: SQLite backend + Next.js frontend on ports 5000/3002
 - **Authentication**: Admin access via admin@power100.io / admin123
 - **Testing**: Comprehensive manual testing of all flows and features
@@ -385,9 +393,9 @@ The Power100 Experience includes a comprehensive plan for evolving from a basic 
 4. **Phase 4**: Public Partner Directory (Contractor-facing search and discovery)
 5. **Phase 5**: Intelligent Matching & Analytics (AI-driven matching, comprehensive analytics)
 
-### Current Schema State (August 2025)
-- **Contractors**: 18+ records with complete schema (25+ fields) including verification, profiling, focus areas, readiness indicators
-- **Strategic Partners**: 11+ records with comprehensive profiles (20+ fields) including capabilities, testimonials, PowerConfidence scores
+### Current Schema State (August 2025) - PRODUCTION PostgreSQL on AWS RDS
+- **Contractors**: Complete schema (25+ fields) including verification, profiling, focus areas, readiness indicators
+- **Strategic Partners**: Comprehensive profiles (20+ fields) including capabilities, testimonials, PowerConfidence scores
 - **Admin Users**: Authentication system with JWT token management
 - **Contractor-Partner Matches**: Working matching system with scores, reasons, and primary match tracking
 - **Demo Bookings**: Scheduling system for contractor-partner introductions
@@ -431,3 +439,5 @@ The Power100 Experience includes a comprehensive plan for evolving from a basic 
 - Demo booking conversion rates
 - Time to successful partner connection
 - User retention and repeat usage
+- wait for fresh build to finish if we have to build fresh for changes to be picked up and applied. Do NOT restart the front end in development mode to pick up the changes faster
+- always check data and database schema before migrating or pulling elements over into production
