@@ -19,6 +19,7 @@ import SearchResults from '@/components/admin/SearchResults';
 import BulkOperations from '@/components/admin/BulkOperations';
 import ContractorDetailModal from '@/components/admin/ContractorDetailModal';
 import PartnerDetailModal from '@/components/admin/PartnerDetailModal';
+import { contractorApi, partnerApi } from '@/lib/api';
 import PartnerForm from '@/components/admin/PartnerForm';
 
 interface SearchResult {
@@ -179,19 +180,33 @@ export default function AdminSearchPage() {
     }
   };
 
-  const handleDeleteContractor = (id: string) => {
+  const handleDeleteContractor = async (id: string) => {
     if (confirm('Are you sure you want to delete this contractor?')) {
-      // Handle delete logic
-      console.log('Delete contractor:', id);
-      // Refresh results after deletion
+      try {
+        await contractorApi.delete(id);
+        // Refresh results after deletion
+        if (activeTab === 'contractors' && searchParams) {
+          performSearch();
+        }
+      } catch (error) {
+        console.error('Failed to delete contractor:', error);
+        alert('Failed to delete contractor. Please try again.');
+      }
     }
   };
 
-  const handleDeletePartner = (id: string) => {
+  const handleDeletePartner = async (id: string) => {
     if (confirm('Are you sure you want to delete this partner?')) {
-      // Handle delete logic
-      console.log('Delete partner:', id);
-      // Refresh results after deletion
+      try {
+        await partnerApi.delete(id);
+        // Refresh results after deletion
+        if (activeTab === 'partners' && searchParams) {
+          performSearch();
+        }
+      } catch (error) {
+        console.error('Failed to delete partner:', error);
+        alert('Failed to delete partner. Please try again.');
+      }
     }
   };
 

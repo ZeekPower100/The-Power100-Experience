@@ -113,6 +113,11 @@ export const contractorApi = {
       method: 'POST',
       body: JSON.stringify(params)
     }),
+
+  // Delete contractor (admin)
+  delete: (id: string) => apiRequest(`/contractors/${id}`, {
+    method: 'DELETE'
+  }),
 };
 
 // Partner API
