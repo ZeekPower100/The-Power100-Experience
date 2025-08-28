@@ -3,10 +3,10 @@ name: Deploy to AWS Production
 on:
   push:
     branches:
-      - feature/aws-deployment-infrastructure
+      - master
   pull_request:
     branches:
-      - feature/aws-deployment-infrastructure
+      - master
     types: [closed]
 
 env:
