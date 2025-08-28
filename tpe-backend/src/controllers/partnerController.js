@@ -7,7 +7,7 @@ const getActivePartners = async (req, res, next) => {
     SELECT id, company_name, description, logo_url, website, 
            focus_areas_served, target_revenue_range, powerconfidence_score,
            key_differentiators, pricing_model
-    FROM partners 
+    FROM strategic_partners 
     WHERE is_active = true 
     ORDER BY powerconfidence_score DESC
   `);
@@ -26,7 +26,7 @@ const getPartner = async (req, res, next) => {
   try {
     // Get basic partner info
     const partnerResult = await query(`
-      SELECT * FROM partners WHERE id = ?
+      SELECT * FROM strategic_partners WHERE id = $1
     `, [id]);
 
     if (partnerResult.rows.length === 0) {
@@ -154,7 +154,7 @@ const createPartner = async (req, res, next) => {
   } = req.body;
 
   const result = await query(`
-    INSERT INTO partners (
+    INSERT INTO strategic_partners (
       -- Basic fields
       company_name, description, logo_url, website, contact_email,
       contact_phone, power100_subdomain, focus_areas_served, target_revenue_range,
@@ -176,7 +176,7 @@ const createPartner = async (req, res, next) => {
       tech_stack_analytics, tech_stack_marketing, tech_stack_financial,
       sponsored_events, podcast_appearances, books_read_recommended, best_working_partnerships,
       client_demos, client_references
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63)
     RETURNING *
   `, [
     // Basic values
@@ -266,11 +266,13 @@ const updatePartner = async (req, res, next) => {
 
   const setClause = [];
   const values = [];
+  let paramCounter = 1;
 
   // Process each field
   Object.keys(updates).forEach(key => {
     if (allowedFields.includes(key)) {
-      setClause.push(`${key} = ?`);
+      setClause.push(`${key} = $${paramCounter}`);
+      paramCounter++;
       
       // Handle JSON fields - Arrays and objects need to be stringified
       const jsonFields = [
@@ -303,9 +305,9 @@ const updatePartner = async (req, res, next) => {
     req.body.is_active = true;
     
     const result = await query(
-      `UPDATE partners 
+      `UPDATE strategic_partners 
        SET ${setClause.join(', ')}, updated_at = CURRENT_TIMESTAMP 
-       WHERE id = ?
+       WHERE id = $${paramCounter}
        RETURNING *`,
       values
     );
@@ -329,13 +331,13 @@ const deletePartner = async (req, res, next) => {
   const { id } = req.params;
 
   // First check if partner exists
-  const existingPartner = await query('SELECT id FROM partners WHERE id = ?', [id]);
+  const existingPartner = await query('SELECT id FROM strategic_partners WHERE id = $1', [id]);
   if (existingPartner.rows.length === 0) {
     return next(new AppError('Partner not found', 404));
   }
 
   // Delete the partner
-  await query('DELETE FROM partners WHERE id = ?', [id]);
+  await query('DELETE FROM strategic_partners WHERE id = $1', [id]);
 
   res.status(200).json({
     success: true,
@@ -348,9 +350,9 @@ const togglePartnerStatus = async (req, res, next) => {
   const { id } = req.params;
 
   const result = await query(`
-    UPDATE partners 
+    UPDATE strategic_partners 
     SET is_active = NOT is_active, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ?
+    WHERE id = $1
     RETURNING id, is_active
   `, [id]);
 
@@ -378,12 +380,12 @@ const getPartnerStats = async (req, res, next) => {
           'partner_name', p.company_name,
           'booking_count', COUNT(b.id)
         ) ORDER BY COUNT(b.id) DESC)
-        FROM partners p
+        FROM strategic_partners p
         LEFT JOIN demo_bookings b ON p.id = b.partner_id
         GROUP BY p.id
         LIMIT 5
       ) as top_partners_by_bookings
-    FROM partners
+    FROM strategic_partners
   `);
 
   res.status(200).json({
@@ -409,67 +411,86 @@ const searchPartners = async (req, res, next) => {
     offset = 0 
   } = req.body;
 
-  console.log('🔍 searchPartners called with:', req.body);
+  console.log('🔍 searchPartners called with:', JSON.stringify(req.body, null, 2));
 
   try {
     let whereClause = '1=1';
     const values = [];
-    let paramCount = 1;
+    let paramCounter = 1;
 
-    // Text search across multiple fields
+    // Text search across multiple fields - use correct column names
     if (searchQuery && searchQuery.trim()) {
       whereClause += ` AND (
-        company_name LIKE ? OR 
-        description LIKE ? OR 
-        contact_email LIKE ? OR 
-        website LIKE ?
+        company_name ILIKE $${paramCounter} OR 
+        description ILIKE $${paramCounter + 1} OR 
+        company_description ILIKE $${paramCounter + 2} OR 
+        contact_email ILIKE $${paramCounter + 3} OR 
+        website ILIKE $${paramCounter + 4}
       )`;
       const searchPattern = `%${searchQuery.trim()}%`;
-      values.push(searchPattern, searchPattern, searchPattern, searchPattern);
+      values.push(searchPattern, searchPattern, searchPattern, searchPattern, searchPattern);
+      paramCounter += 5;
     }
 
     // Active status filter
     if (isActive !== undefined) {
-      whereClause += ` AND is_active = ?`;
-      values.push(isActive ? 1 : 0);
+      whereClause += ` AND is_active = $${paramCounter}`;
+      values.push(isActive);
+      paramCounter++;
     }
 
-    // Focus areas filter (JSON field)
+    // Focus areas filter (JSON field) - use correct column name
     if (focusAreas && focusAreas.length > 0) {
-      const focusConditions = focusAreas.map(() => `focus_areas_served LIKE ?`).join(' OR ');
+      console.log('🔍 Focus areas filter:', focusAreas);
+      const focusConditions = focusAreas.map(() => {
+        const condition = `(focus_areas_served IS NOT NULL AND focus_areas_served::text ILIKE $${paramCounter})`;
+        paramCounter++;
+        return condition;
+      }).join(' OR ');
       whereClause += ` AND (${focusConditions})`;
       focusAreas.forEach(area => {
-        values.push(`%"${area}"%`);
+        // Try both formats - with quotes and without
+        values.push(`%${area}%`);
+        console.log('🔍 Searching for focus area:', area, 'with pattern:', `%${area}%`);
       });
     }
 
-    // Revenue ranges filter (JSON field)
+    // Revenue ranges filter (JSON field) - use correct column name
     if (revenueRanges && revenueRanges.length > 0) {
-      const revenueConditions = revenueRanges.map(() => `target_revenue_range LIKE ?`).join(' OR ');
+      const revenueConditions = revenueRanges.map(() => {
+        const condition = `(target_revenue_range IS NOT NULL AND target_revenue_range::text ILIKE $${paramCounter})`;
+        paramCounter++;
+        return condition;
+      }).join(' OR ');
       whereClause += ` AND (${revenueConditions})`;
       revenueRanges.forEach(range => {
-        values.push(`%"${range}"%`);
+        values.push(`%${range}%`);
+        console.log('🔍 Searching for revenue range:', range);
       });
     }
 
     // PowerConfidence score range
     if (confidenceScoreMin !== undefined) {
-      whereClause += ` AND powerconfidence_score >= ?`;
+      whereClause += ` AND powerconfidence_score >= $${paramCounter}`;
       values.push(confidenceScoreMin);
+      paramCounter++;
     }
     if (confidenceScoreMax !== undefined) {
-      whereClause += ` AND powerconfidence_score <= ?`;
+      whereClause += ` AND powerconfidence_score <= $${paramCounter}`;
       values.push(confidenceScoreMax);
+      paramCounter++;
     }
 
     // Date range filter
     if (dateFrom) {
-      whereClause += ` AND created_at >= ?`;
+      whereClause += ` AND created_at >= $${paramCounter}`;
       values.push(dateFrom);
+      paramCounter++;
     }
     if (dateTo) {
-      whereClause += ` AND created_at <= ?`;
+      whereClause += ` AND created_at <= $${paramCounter}`;
       values.push(dateTo + ' 23:59:59'); // Include full day
+      paramCounter++;
     }
 
     // Validate sort parameters
@@ -478,19 +499,24 @@ const searchPartners = async (req, res, next) => {
     const validSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
     // Get total count
-    const countQuery = `SELECT COUNT(*) as total FROM partners WHERE ${whereClause}`;
+    const countQuery = `SELECT COUNT(*) as total FROM strategic_partners WHERE ${whereClause}`;
+    console.log('🔍 Partner count query:', countQuery);
+    console.log('🔍 Partner count values:', values);
     const countResult = await query(countQuery, values);
     const total = countResult.rows[0].total;
 
-    // Use the simplest working query structure
+    // Apply search filters and sorting
     const partnersResult = await query(
-      `SELECT * FROM partners ORDER BY created_at DESC LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`,
-      []
+      `SELECT * FROM strategic_partners WHERE ${whereClause} ORDER BY ${validSortBy} ${validSortOrder} LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`,
+      values
     );
 
-    // Parse JSON fields safely
+    // Parse JSON fields safely and map database fields to frontend expectations
     const partners = partnersResult.rows.map(partner => ({
       ...partner,
+      // Map database fields to frontend expectations (if frontend uses different names)
+      power_confidence_score: partner.powerconfidence_score || 0,
+      // Parse JSON fields
       focus_areas_served: partner.focus_areas_served ? 
         (partner.focus_areas_served === '[object Object]' ? [] : 
          (typeof partner.focus_areas_served === 'string' ? 

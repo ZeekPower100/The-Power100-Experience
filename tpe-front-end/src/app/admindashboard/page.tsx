@@ -512,14 +512,8 @@ export default function AdminDashboard() {
                 </Link>
                 <Link href="/admindashboard/partners-enhanced" className="block">
                   <Button variant="outline" className="w-full justify-start h-11">
-                    <Handshake className="w-4 h-4 mr-2" />
-                    Manage Partners
-                  </Button>
-                </Link>
-                <Link href="/admindashboard/partners-enhanced" className="block">
-                  <Button variant="outline" className="w-full justify-start h-11">
                     <Shield className="w-4 h-4 mr-2" />
-                    Enhanced Partners
+                    Manage Partners
                   </Button>
                 </Link>
                 <Link href="/admindashboard/bookings" className="block">

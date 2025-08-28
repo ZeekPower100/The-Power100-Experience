@@ -441,3 +441,5 @@ The Power100 Experience includes a comprehensive plan for evolving from a basic 
 - User retention and repeat usage
 - wait for fresh build to finish if we have to build fresh for changes to be picked up and applied. Do NOT restart the front end in development mode to pick up the changes faster
 - always check data and database schema before migrating or pulling elements over into production
+- when restarting the backend of the development server always find where the port is being used then kill the server specifying the id of where it is being used then restart the server
+- always use syntax for windows when taskkill command is used

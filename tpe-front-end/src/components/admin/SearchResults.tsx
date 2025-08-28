@@ -209,7 +209,7 @@ export default function SearchResults({
               onClick={() => {
                 console.log('🔍 Viewing contractor with ID:', contractor.id, 'Type:', typeof contractor.id);
                 console.log('🔍 Full contractor object:', contractor);
-                onViewDetail(contractor.id);
+                onViewDetail(String(contractor.id));
               }}
             >
               <Eye className="w-4 h-4 mr-1" />
@@ -219,7 +219,7 @@ export default function SearchResults({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => onEdit(contractor.id)}
+                onClick={() => onEdit(String(contractor.id))}
               >
                 <Edit className="w-4 h-4 mr-1" />
                 Edit
@@ -230,7 +230,7 @@ export default function SearchResults({
                 size="sm"
                 variant="outline"
                 className="text-red-600 hover:text-red-700"
-                onClick={() => onDelete(contractor.id)}
+                onClick={() => onDelete(String(contractor.id))}
               >
                 <Trash2 className="w-4 h-4" />
               </Button>
@@ -360,7 +360,7 @@ export default function SearchResults({
           <Button
             size="sm"
             variant="outline"
-            onClick={() => onViewDetail(partner.id)}
+            onClick={() => onViewDetail(String(partner.id))}
           >
             <Eye className="w-4 h-4 mr-1" />
             View
@@ -369,7 +369,7 @@ export default function SearchResults({
             <Button
               size="sm"
               variant="outline"
-              onClick={() => onEdit(partner.id)}
+              onClick={() => onEdit(String(partner.id))}
             >
               <Edit className="w-4 h-4 mr-1" />
               Edit
@@ -380,7 +380,7 @@ export default function SearchResults({
               size="sm"
               variant="outline"
               className="text-red-600 hover:text-red-700"
-              onClick={() => onDelete(partner.id)}
+              onClick={() => onDelete(String(partner.id))}
             >
               <Trash2 className="w-4 h-4" />
             </Button>

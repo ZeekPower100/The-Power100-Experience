@@ -412,11 +412,11 @@ const getStats = async (req, res, next) => {
   const stats = await query(`
     SELECT 
       COUNT(*) as total_contractors,
-      COUNT(*) FILTER (WHERE workflow_step = 'completed') as completed,
-      COUNT(*) FILTER (WHERE workflow_step = 'verification') as in_verification,
-      COUNT(*) FILTER (WHERE workflow_step = 'focus_selection') as in_focus_selection,
-      COUNT(*) FILTER (WHERE workflow_step = 'profiling') as in_profiling,
-      COUNT(*) FILTER (WHERE workflow_step = 'matching') as in_matching,
+      COUNT(*) FILTER (WHERE current_stage = 'completed') as completed,
+      COUNT(*) FILTER (WHERE current_stage = 'verification') as in_verification,
+      COUNT(*) FILTER (WHERE current_stage = 'focus_selection') as in_focus_selection,
+      COUNT(*) FILTER (WHERE current_stage = 'profiling') as in_profiling,
+      COUNT(*) FILTER (WHERE current_stage = 'matching') as in_matching,
       COUNT(*) FILTER (WHERE created_at > CURRENT_DATE - INTERVAL '7 days') as new_this_week,
       COUNT(*) FILTER (WHERE created_at > CURRENT_DATE - INTERVAL '30 days') as new_this_month,
       AVG(CASE WHEN completed_at IS NOT NULL 
@@ -453,52 +453,62 @@ const searchContractors = async (req, res, next) => {
     offset = 0 
   } = req.body;
 
-  console.log('🔍 searchContractors called with:', req.body);
+  console.log('🔍 searchContractors called with:', JSON.stringify(req.body, null, 2));
 
   try {
     let whereClause = '1=1';
     const values = [];
-    console.log('🔍 DEBUG - Starting search with whereClause:', whereClause);
+    let paramCounter = 1;
+    console.log('🔍 DEBUG - Starting search');
 
     // Text search across multiple fields
     if (searchQuery && searchQuery.trim()) {
       whereClause += ` AND (
-        name LIKE ? OR 
-        email LIKE ? OR 
-        company_name LIKE ? OR 
-        phone LIKE ?
+        name ILIKE $${paramCounter} OR 
+        email ILIKE $${paramCounter + 1} OR 
+        company_name ILIKE $${paramCounter + 2} OR 
+        phone ILIKE $${paramCounter + 3}
       )`;
       const searchPattern = `%${searchQuery.trim()}%`;
       values.push(searchPattern, searchPattern, searchPattern, searchPattern);
+      paramCounter += 4;
     }
 
     // Stage filter
     if (stage) {
-      whereClause += ` AND workflow_step = ?`;
+      whereClause += ` AND current_stage = $${paramCounter}`;
       values.push(stage);
+      paramCounter++;
     }
 
     // Verification status filter
     if (verificationStatus) {
-      whereClause += ` AND verification_status = ?`;
+      whereClause += ` AND verification_status = $${paramCounter}`;
       values.push(verificationStatus);
+      paramCounter++;
     }
 
     // Contact type filter (new)
     if (contact_type) {
-      whereClause += ` AND contact_type = ?`;
+      whereClause += ` AND contact_type = $${paramCounter}`;
       values.push(contact_type);
+      paramCounter++;
     }
 
     // Onboarding source filter (new)
     if (onboarding_source) {
-      whereClause += ` AND onboarding_source = ?`;
+      whereClause += ` AND onboarding_source = $${paramCounter}`;
       values.push(onboarding_source);
+      paramCounter++;
     }
 
     // Tags filter (new) - check if any of the provided tags exist in the JSON tags field
     if (tags && tags.length > 0) {
-      const tagConditions = tags.map(() => `tags LIKE ?`).join(' OR ');
+      const tagConditions = tags.map(() => {
+        const condition = `tags::text ILIKE $${paramCounter}`;
+        paramCounter++;
+        return condition;
+      }).join(' OR ');
       whereClause += ` AND (${tagConditions})`;
       tags.forEach(tag => {
         values.push(`%"${tag}"%`);
@@ -507,53 +517,70 @@ const searchContractors = async (req, res, next) => {
 
     // Focus areas filter (JSON field)
     if (focusAreas && focusAreas.length > 0) {
-      const focusConditions = focusAreas.map(() => `focus_areas LIKE ?`).join(' OR ');
+      console.log('🔍 Contractor focus areas filter:', focusAreas);
+      const focusConditions = focusAreas.map(() => {
+        const condition = `(focus_areas IS NOT NULL AND focus_areas::text ILIKE $${paramCounter})`;
+        paramCounter++;
+        return condition;
+      }).join(' OR ');
       whereClause += ` AND (${focusConditions})`;
       focusAreas.forEach(area => {
-        values.push(`%"${area}"%`);
+        // Try simpler pattern matching
+        values.push(`%${area}%`);
+        console.log('🔍 Searching for contractor focus area:', area, 'with pattern:', `%${area}%`);
       });
     }
 
     // Revenue range filter
     if (revenueRange && revenueRange.length > 0) {
-      const revenueConditions = revenueRange.map(() => `annual_revenue = ?`).join(' OR ');
+      const revenueConditions = revenueRange.map(() => {
+        const condition = `annual_revenue = $${paramCounter}`;
+        paramCounter++;
+        return condition;
+      }).join(' OR ');
       whereClause += ` AND (${revenueConditions})`;
       values.push(...revenueRange);
     }
 
     // Team size range
     if (teamSizeMin !== undefined) {
-      whereClause += ` AND team_size >= ?`;
+      whereClause += ` AND team_size >= $${paramCounter}`;
       values.push(teamSizeMin);
+      paramCounter++;
     }
     if (teamSizeMax !== undefined) {
-      whereClause += ` AND team_size <= ?`;
+      whereClause += ` AND team_size <= $${paramCounter}`;
       values.push(teamSizeMax);
+      paramCounter++;
     }
 
     // Readiness indicators (boolean fields)
     if (readinessIndicators && readinessIndicators.length > 0) {
-      const readinessConditions = readinessIndicators.map(indicator => `${indicator} = 1`).join(' OR ');
+      const readinessConditions = readinessIndicators.map(indicator => `${indicator} = true`).join(' OR ');
       whereClause += ` AND (${readinessConditions})`;
     }
 
     // Date range filter
     if (dateFrom) {
-      whereClause += ` AND created_at >= ?`;
+      whereClause += ` AND created_at >= $${paramCounter}`;
       values.push(dateFrom);
+      paramCounter++;
     }
     if (dateTo) {
-      whereClause += ` AND created_at <= ?`;
+      whereClause += ` AND created_at <= $${paramCounter}`;
       values.push(dateTo + ' 23:59:59'); // Include full day
+      paramCounter++;
     }
 
     // Validate sort parameters
-    const allowedSortFields = ['created_at', 'updated_at', 'name', 'company_name', 'workflow_step', 'team_size', 'email'];
+    const allowedSortFields = ['created_at', 'updated_at', 'name', 'company_name', 'current_stage', 'team_size', 'email'];
     const validSortBy = allowedSortFields.includes(sortBy) ? sortBy : 'created_at';
     const validSortOrder = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
     // Get total count
     const countQuery = `SELECT COUNT(*) as total FROM contractors WHERE ${whereClause}`;
+    console.log('🔍 Count query:', countQuery);
+    console.log('🔍 Count values:', values);
     const countResult = await query(countQuery, values);
     const total = countResult.rows[0].total;
 

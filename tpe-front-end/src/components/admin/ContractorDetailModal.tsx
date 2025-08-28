@@ -162,7 +162,7 @@ const ContractorDetailModal: React.FC<ContractorDetailModalProps> = ({ contracto
                 {contractor.annual_revenue && (
                   <div>
                     <p className="text-sm text-power100-grey">Annual Revenue</p>
-                    <p className="font-medium">{contractor.annual_revenue.replace(/_/g, ' ')}</p>
+                    <p className="font-medium">{(contractor.annual_revenue || '').replace(/_/g, ' ')}</p>
                   </div>
                 )}
                 {contractor.team_size && (
@@ -176,13 +176,13 @@ const ContractorDetailModal: React.FC<ContractorDetailModalProps> = ({ contracto
           )}
 
           {/* Focus Areas */}
-          {contractor.focus_areas.length > 0 && (
+          {contractor.focus_areas && contractor.focus_areas.length > 0 && (
             <div>
               <h3 className="font-semibold mb-3">Focus Areas</h3>
               <div className="flex flex-wrap gap-2">
                 {contractor.focus_areas.map((area, index) => (
                   <Badge key={index} variant="secondary">
-                    {area.replace(/_/g, ' ')}
+                    {typeof area === 'string' ? area.replace(/_/g, ' ') : area}
                   </Badge>
                 ))}
               </div>
@@ -190,7 +190,7 @@ const ContractorDetailModal: React.FC<ContractorDetailModalProps> = ({ contracto
           )}
 
           {/* Tags */}
-          {contractor.tags.length > 0 && (
+          {contractor.tags && contractor.tags.length > 0 && (
             <div>
               <h3 className="font-semibold mb-3">Tags</h3>
               <div className="flex flex-wrap gap-2">
@@ -209,11 +209,11 @@ const ContractorDetailModal: React.FC<ContractorDetailModalProps> = ({ contracto
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div>
                 <p className="text-power100-grey">Contact Type</p>
-                <p className="font-medium">{contractor.contact_type}</p>
+                <p className="font-medium">{contractor.contact_type || 'Not specified'}</p>
               </div>
               <div>
                 <p className="text-power100-grey">Onboarding Source</p>
-                <p className="font-medium">{contractor.onboarding_source.replace(/_/g, ' ')}</p>
+                <p className="font-medium">{(contractor.onboarding_source || '').replace(/_/g, ' ')}</p>
               </div>
               <div>
                 <p className="text-power100-grey">Created</p>

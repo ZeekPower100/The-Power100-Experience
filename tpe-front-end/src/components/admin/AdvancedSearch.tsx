@@ -223,16 +223,14 @@ export default function AdvancedSearch({ searchType, onResults, onError }: Advan
     performSearch(page);
   };
 
-  // Auto-search when query changes (debounced)
+  // Auto-search when filters change (debounced)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (filters.query.length >= 2 || filters.query.length === 0) {
-        performSearch(currentPage);
-      }
+      performSearch(1); // Always go to first page when filters change
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [filters.query]);
+  }, [filters]); // Watch all filter changes
 
   const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
     if (key === 'query' || key === 'sortBy' || key === 'sortOrder') return false;

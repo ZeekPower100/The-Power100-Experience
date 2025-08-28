@@ -1,22 +1,22 @@
-// Simplified PowerConfidence Feedback Controller for SQLite
-const { query } = require('../config/database.sqlite');
+// Simplified PowerConfidence Feedback Controller
+const { query } = require('../config/database');
 
 // Get partner performance dashboard data (simplified for SQLite)
 const getPartnerPerformanceDashboard = async (req, res) => {
   try {
-    // Get existing partners from SQLite (using only existing columns)
+    // Get existing partners from PostgreSQL (using correct table name)
     const partnersResult = await query(`
-      SELECT id, company_name, power_confidence_score, is_active
-      FROM partners 
+      SELECT id, company_name, powerconfidence_score, is_active
+      FROM strategic_partners 
       WHERE is_active = true 
-      ORDER BY power_confidence_score DESC
+      ORDER BY powerconfidence_score DESC
     `);
 
     // Transform partners data for frontend
     const partnerSummary = partnersResult.rows.map(partner => ({
       id: partner.id,
       company_name: partner.company_name,
-      power_confidence_score: partner.power_confidence_score || 75,
+      power_confidence_score: partner.powerconfidence_score || 75,
       average_satisfaction: (Math.random() * 2 + 8).toFixed(1), // Mock data
       total_feedback_responses: Math.floor(Math.random() * 10) + 2, // Mock data  
       feedback_trend: ['improving', 'stable', 'declining'][Math.floor(Math.random() * 3)], // Mock data
@@ -28,7 +28,7 @@ const getPartnerPerformanceDashboard = async (req, res) => {
     // Calculate system metrics based on actual partners
     const totalPartners = partnersResult.rows.length;
     const avgScore = totalPartners > 0 ? 
-      partnersResult.rows.reduce((sum, p) => sum + (p.power_confidence_score || 75), 0) / totalPartners : 75;
+      partnersResult.rows.reduce((sum, p) => sum + (p.powerconfidence_score || 75), 0) / totalPartners : 75;
     const totalResponses = Math.floor(Math.random() * 50) + 10; // Mock data
     
     const systemMetrics = {

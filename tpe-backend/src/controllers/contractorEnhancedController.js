@@ -1,6 +1,6 @@
 // Enhanced Contractor Controller for Advanced Search and Management
 // Using the same working pattern as Enhanced Partners
-const { query } = require('../config/database.sqlite');
+const { query } = require('../config/database');
 
 // Get enhanced contractor list for admin dashboard
 const getEnhancedContractorList = async (req, res) => {
@@ -117,7 +117,7 @@ const getContractorDetailedView = async (req, res) => {
     console.log(`🔍 Fetching detailed view for contractor ID: ${contractorId}`);
 
     // Use simple query that works (same pattern as enhanced list)
-    const contractorQuery = 'SELECT * FROM contractors WHERE id = ?';
+    const contractorQuery = 'SELECT * FROM contractors WHERE id = $1';
     const contractorResult = await query(contractorQuery, [contractorId]);
     
     console.log('Contractor query result:', {
@@ -140,11 +140,11 @@ const getContractorDetailedView = async (req, res) => {
       SELECT 
         m.*, 
         sp.company_name as partner_name,
-        sp.focus_areas_served as service_categories,
-        sp.target_revenue_range
+        sp.focus_areas as service_categories,
+        sp.revenue_tiers as target_revenue_range
       FROM contractor_partner_matches m
-      LEFT JOIN partners sp ON m.partner_id = sp.id
-      WHERE m.contractor_id = ?
+      LEFT JOIN strategic_partners sp ON m.partner_id = sp.id
+      WHERE m.contractor_id = $1
       ORDER BY m.match_score DESC
     `;
     const matchesResult = await query(matchesQuery, [contractorId]);
@@ -154,10 +154,10 @@ const getContractorDetailedView = async (req, res) => {
       SELECT 
         b.*,
         sp.company_name as partner_name,
-        sp.contact_email as partner_contact
+        sp.primary_email as partner_contact
       FROM demo_bookings b
-      LEFT JOIN partners sp ON b.partner_id = sp.id
-      WHERE b.contractor_id = ?
+      LEFT JOIN strategic_partners sp ON b.partner_id = sp.id
+      WHERE b.contractor_id = $1
       ORDER BY b.scheduled_date DESC
     `;
     const bookingsResult = await query(bookingsQuery, [contractorId]);
