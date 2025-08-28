@@ -184,13 +184,19 @@ export default function AdminSearchPage() {
     if (confirm('Are you sure you want to delete this contractor?')) {
       try {
         await contractorApi.delete(id);
-        // Refresh results after deletion
-        if (activeTab === 'contractors' && searchParams) {
-          performSearch();
+        // Remove the deleted contractor from the results
+        if (contractorResults && contractorResults.contractors) {
+          const updatedContractors = contractorResults.contractors.filter(c => String(c.id) !== id);
+          setContractorResults({
+            ...contractorResults,
+            contractors: updatedContractors,
+            total: contractorResults.total - 1
+          });
         }
+        handleSuccess('Contractor deleted successfully');
       } catch (error) {
         console.error('Failed to delete contractor:', error);
-        alert('Failed to delete contractor. Please try again.');
+        handleError('Failed to delete contractor. Please try again.');
       }
     }
   };
@@ -199,13 +205,19 @@ export default function AdminSearchPage() {
     if (confirm('Are you sure you want to delete this partner?')) {
       try {
         await partnerApi.delete(id);
-        // Refresh results after deletion
-        if (activeTab === 'partners' && searchParams) {
-          performSearch();
+        // Remove the deleted partner from the results
+        if (partnerResults && partnerResults.partners) {
+          const updatedPartners = partnerResults.partners.filter(p => String(p.id) !== id);
+          setPartnerResults({
+            ...partnerResults,
+            partners: updatedPartners,
+            total: partnerResults.total - 1
+          });
         }
+        handleSuccess('Partner deleted successfully');
       } catch (error) {
         console.error('Failed to delete partner:', error);
-        alert('Failed to delete partner. Please try again.');
+        handleError('Failed to delete partner. Please try again.');
       }
     }
   };
