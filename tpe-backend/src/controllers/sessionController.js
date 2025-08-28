@@ -28,7 +28,7 @@ const createSession = async (req, res, next) => {
 
     // Verify contractor exists
     const contractorResult = await query(
-      'SELECT id, name, email, current_stage FROM contractors WHERE id = ?',
+      'SELECT id, name, email, current_stage FROM contractors WHERE id = $1',
       [contractorId]
     );
 
@@ -43,7 +43,7 @@ const createSession = async (req, res, next) => {
 
     // Update contractor's last active timestamp
     await query(
-      'UPDATE contractors SET updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE contractors SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
       [contractorId]
     );
 
@@ -92,7 +92,7 @@ const restoreSession = async (req, res, next) => {
 
     // Get contractor data
     const contractorResult = await query(
-      'SELECT * FROM contractors WHERE id = ?',
+      'SELECT * FROM contractors WHERE id = $1',
       [decoded.contractorId]
     );
 
@@ -152,7 +152,7 @@ const restoreSession = async (req, res, next) => {
 
     // Update contractor's last active timestamp
     await query(
-      'UPDATE contractors SET updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      'UPDATE contractors SET updated_at = CURRENT_TIMESTAMP WHERE id = $1',
       [decoded.contractorId]
     );
 
@@ -192,7 +192,7 @@ const refreshSession = async (req, res, next) => {
 
     // Verify contractor still exists
     const contractorResult = await query(
-      'SELECT id, current_stage FROM contractors WHERE id = ?',
+      'SELECT id, current_stage FROM contractors WHERE id = $1',
       [decoded.contractorId]
     );
 
