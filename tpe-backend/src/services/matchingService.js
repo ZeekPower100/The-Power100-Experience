@@ -48,14 +48,14 @@ const matchContractorWithPartners = async (contractor) => {
   const partners = partnersResult.rows.map(partner => ({
     ...partner,
     focus_areas_served: typeof partner.focus_areas_served === 'string' && partner.focus_areas_served !== '[object Object]'
-      $1 JSON.parse(partner.focus_areas_served || '[]')
-      : Array.isArray(partner.focus_areas_served) $2 partner.focus_areas_served : [],
+      ? JSON.parse(partner.focus_areas_served || '[]')
+      : Array.isArray(partner.focus_areas_served) ? partner.focus_areas_served : [],
     target_revenue_range: typeof partner.target_revenue_range === 'string' && partner.target_revenue_range !== '[object Object]'
-      $3 JSON.parse(partner.target_revenue_range || '[]')
-      : Array.isArray(partner.target_revenue_range) $4 partner.target_revenue_range : [],
+      ? JSON.parse(partner.target_revenue_range || '[]')
+      : Array.isArray(partner.target_revenue_range) ? partner.target_revenue_range : [],
     geographic_regions: typeof partner.geographic_regions === 'string' && partner.geographic_regions !== '[object Object]'
-      $5 JSON.parse(partner.geographic_regions || '[]')
-      : Array.isArray(partner.geographic_regions) $6 partner.geographic_regions : [],
+      ? JSON.parse(partner.geographic_regions || '[]')
+      : Array.isArray(partner.geographic_regions) ? partner.geographic_regions : [],
     key_differentiators: partner.key_differentiators || ''
   }));
 

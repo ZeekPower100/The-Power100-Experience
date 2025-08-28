@@ -23,7 +23,6 @@ const validateContractor = [
 // Public routes
 router.post('/verify-start', validateContractor, asyncHandler(contractorController.startVerification));
 router.post('/verify-code', asyncHandler(contractorController.verifyCode));
-router.put('/:id/profile', asyncHandler(contractorController.updateProfile));
 router.get('/:id/matches', asyncHandler(contractorController.getMatches));
 router.post('/:id/complete', asyncHandler(contractorController.completeFlow));
 
@@ -31,8 +30,10 @@ router.post('/:id/complete', asyncHandler(contractorController.completeFlow));
 router.use(protect);
 router.get('/', asyncHandler(contractorController.getAllContractors));
 router.post('/search', asyncHandler(contractorController.searchContractors));
-router.get('/:id', asyncHandler(contractorController.getContractor));
-router.delete('/:id', asyncHandler(contractorController.deleteContractor));
 router.get('/stats/overview', asyncHandler(contractorController.getStats));
+router.get('/:id', asyncHandler(contractorController.getContractor));
+router.put('/:id', asyncHandler(contractorController.updateProfile));
+router.put('/:id/profile', asyncHandler(contractorController.updateProfile));
+router.delete('/:id', asyncHandler(contractorController.deleteContractor));
 
 module.exports = router;

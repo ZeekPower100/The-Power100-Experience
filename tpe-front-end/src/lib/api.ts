@@ -26,10 +26,14 @@ async function apiRequest<T>(
   }
 
   try {
+    console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
+    console.log(`📡 Auth token: ${config.headers?.['Authorization'] ? 'Present' : 'Missing'}`);
+    
     const response = await fetch(url, config);
     
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error(`❌ API Error Response:`, response.status, errorData);
       throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
     }
 
@@ -70,7 +74,7 @@ export const contractorApi = {
 
   // Update contractor (admin)
   update: (contractorId: string, data: Record<string, unknown>) =>
-    apiRequest(`/contractors/${contractorId}/profile`, {
+    apiRequest(`/contractors/${contractorId}`, {
       method: 'PUT',
       body: JSON.stringify(data)
     }),

@@ -63,14 +63,14 @@ const getPartnerDashboard = async (req, res) => {
         contact_email: partner.contact_email,
         power_confidence_score: partner.power_confidence_score || 87,
         score_trend: partner.score_trend || 'up',
-        industry_rank: rankingResult.rows[0]$1.rank || 4,
-        total_partners_in_category: totalPartnersResult.rows[0]$2.total || 16,
+        industry_rank: rankingResult.rows[0]?.rank || 4,
+        total_partners_in_category: totalPartnersResult.rows[0]?.total || 16,
         recent_feedback_count: Math.floor(Math.random() * 15) + 5,
         avg_satisfaction: (Math.random() * 2 + 8).toFixed(1),
         total_contractors: Math.floor(Math.random() * 40) + 30,
         active_contractors: Math.floor(Math.random() * 20) + 20
       },
-      scoreHistory: historyResult.rows.length > 0 $3 historyResult.rows : [
+      scoreHistory: historyResult.rows.length > 0 ? historyResult.rows : [
         { quarter: 'Q1 2024', score: 82, feedback_count: 15 },
         { quarter: 'Q2 2024', score: 85, feedback_count: 18 },
         { quarter: 'Q3 2024', score: 83, feedback_count: 12 },
