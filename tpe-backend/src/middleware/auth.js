@@ -16,6 +16,8 @@ const protect = async (req, res, next) => {
     token = req.cookies.token;
   }
 
+  console.log('🔐 Auth check - Token present:', !!token, 'Path:', req.path, 'Method:', req.method);
+
   if (!token) {
     return next(new AppError('Not authorized to access this route', 401));
   }

@@ -59,13 +59,16 @@ interface AdvancedSearchProps {
   onError: (error: string) => void;
 }
 
-const FOCUS_AREAS = [
-  'Revenue Growth', 'Lead Generation', 'Digital Marketing', 'Operations',
-  'Technology', 'Team Building', 'Financial Management', 'Strategic Planning',
-  'Customer Service', 'Sales Process', 'Brand Development', 'Market Expansion'
+// Contractor focus areas (matching database values)
+const CONTRACTOR_FOCUS_AREAS = [
+  'hiring_sales_leadership', 'controlling_lead_flow', 'closing_higher_percentage',
+  'installation_quality', 'customer_retention', 'greenfield_growth',
+  'digital_marketing', 'operational_efficiency', 'recession_proofing',
+  'sales_training', 'business_development', 'team_building',
+  'technology_integration', 'financial_management', 'strategic_planning'
 ];
 
-// Partner focus areas use different internal values
+// Partner focus areas use same internal values
 const PARTNER_FOCUS_AREAS = [
   'controlling_lead_flow', 'hiring_sales_leadership', 'installation_quality', 
   'digital_marketing', 'operational_efficiency', 'recession_proofing',
@@ -73,18 +76,23 @@ const PARTNER_FOCUS_AREAS = [
   'business_development', 'closing_higher_percentage'
 ];
 
+// Revenue ranges that match database values
 const REVENUE_RANGES = [
-  'Under $100K', '$100K-$500K', '$500K-$1M', '$1M-$5M', '$5M-$10M', 'Over $10M'
+  'Under $500K', '$500K-$1M', '$1M-$5M', '$5M-$10M', '$11M-$20M', 
+  '$21M-$30M', '$31M-$50M', '$51M-$75M', 'Over $75M'
 ];
 
-// Mapping display names to database values
+// Mapping display names to database values (matching actual DB values)
 const REVENUE_MAPPING = {
-  'Under $100K': 'under_100k',
-  '$100K-$500K': '100k_500k', 
-  '$500K-$1M': '500k_1m',
-  '$1M-$5M': '1m_5m',
-  '$5M-$10M': '5m_10m',
-  'Over $10M': 'over_10m'
+  'Under $500K': 'under_500k',
+  '$500K-$1M': '500k_1_million',
+  '$1M-$5M': '1_5_million',
+  '$5M-$10M': '5_10_million',
+  '$11M-$20M': '11_20_million',
+  '$21M-$30M': '21_30_million',
+  '$31M-$50M': '31_50_million',
+  '$51M-$75M': '51_75_million',
+  'Over $75M': 'over_75_million'
 };
 
 const CONTRACTOR_STAGES = [
@@ -563,7 +571,7 @@ export default function AdvancedSearch({ searchType, onResults, onError }: Advan
             <div>
               <label className="block text-sm font-medium mb-2">Focus Areas</label>
               <div className="flex flex-wrap gap-2">
-                {(searchType === 'contractors' ? FOCUS_AREAS : PARTNER_FOCUS_AREAS).map(area => (
+                {(searchType === 'contractors' ? CONTRACTOR_FOCUS_AREAS : PARTNER_FOCUS_AREAS).map(area => (
                   <Button
                     key={area}
                     variant={filters.focusAreas.includes(area) ? "default" : "outline"}

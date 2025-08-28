@@ -1,5 +1,9 @@
 // API Service Layer for The Power100 Experience - Updated for port 5000
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+// Use relative URL in production if NEXT_PUBLIC_API_URL is not set
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
+  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
+    ? '/api'  // Use relative path in production
+    : 'http://localhost:5000/api'); // Use localhost for development
 
 // Generic API request function
 async function apiRequest<T>(

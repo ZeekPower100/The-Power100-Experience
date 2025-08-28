@@ -92,6 +92,14 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Request logger for debugging
+app.use((req, res, next) => {
+  if (req.method === 'PUT' || req.method === 'DELETE') {
+    console.log(`🔍 ${req.method} ${req.originalUrl} - Auth: ${req.headers.authorization ? 'Present' : 'Missing'}`);
+  }
+  next();
+});
+
 // API Routes
 app.use('/api/partners/public', publicPartnerRoutes);
 app.use('/api/contractors', contractorRoutes);

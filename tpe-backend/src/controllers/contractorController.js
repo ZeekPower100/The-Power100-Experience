@@ -554,9 +554,9 @@ const searchContractors = async (req, res, next) => {
       paramCounter++;
     }
 
-    // Readiness indicators (boolean fields)
+    // Readiness indicators (stored as text 'true'/'false')
     if (readinessIndicators && readinessIndicators.length > 0) {
-      const readinessConditions = readinessIndicators.map(indicator => `${indicator} = true`).join(' OR ');
+      const readinessConditions = readinessIndicators.map(indicator => `${indicator} = 'true'`).join(' OR ');
       whereClause += ` AND (${readinessConditions})`;
     }
 
