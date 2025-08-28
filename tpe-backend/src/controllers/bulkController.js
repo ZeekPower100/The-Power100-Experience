@@ -46,7 +46,7 @@ const bulkUpdateContractors = async (req, res, next) => {
         const result = await client.query(
           `UPDATE contractors 
            SET ${setClause.join(', ')}, updated_at = datetime('now') 
-           WHERE id = ?`,
+           WHERE id = $1`,
           updateValues
         );
 
@@ -87,13 +87,13 @@ const bulkDeleteContractors = async (req, res, next) => {
       // Delete related records first to maintain referential integrity
       for (const contractorId of contractor_ids) {
         // Delete matches
-        await client.query('DELETE FROM contractor_partner_matches WHERE contractor_id = ?', [contractorId]);
+        await client.query('DELETE FROM contractor_partner_matches WHERE contractor_id = $2', [contractorId]);
         
         // Delete bookings
-        await client.query('DELETE FROM demo_bookings WHERE contractor_id = ?', [contractorId]);
+        await client.query('DELETE FROM demo_bookings WHERE contractor_id = $1', [contractorId]);
         
         // Delete contractor
-        const result = await client.query('DELETE FROM contractors WHERE id = ?', [contractorId]);
+        const result = await client.query('DELETE FROM contractors WHERE id = $1', [contractorId]);
         
         if (result.rowCount > 0) {
           results.push({ id: contractorId, status: 'deleted' });
@@ -160,7 +160,7 @@ const bulkUpdatePartners = async (req, res, next) => {
         const result = await client.query(
           `UPDATE partners 
            SET ${setClause.join(', ')}, updated_at = datetime('now') 
-           WHERE id = ?`,
+           WHERE id = $1`,
           updateValues
         );
 
@@ -202,13 +202,13 @@ const bulkTogglePartnerStatus = async (req, res, next) => {
         const result = await client.query(
           `UPDATE partners 
            SET is_active = NOT is_active, updated_at = datetime('now')
-           WHERE id = ?`,
+           WHERE id = $2`,
           [partnerId]
         );
 
         if (result.rowCount > 0) {
           // Get the updated status
-          const updated = await client.query('SELECT is_active FROM partners WHERE id = ?', [partnerId]);
+          const updated = await client.query('SELECT is_active FROM partners WHERE id = $1', [partnerId]);
           results.push({ 
             id: partnerId, 
             status: 'updated',

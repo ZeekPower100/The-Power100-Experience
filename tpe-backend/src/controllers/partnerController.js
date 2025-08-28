@@ -40,13 +40,13 @@ const getPartner = async (req, res, next) => {
       SELECT 
         COUNT(*) as total_bookings,
         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_bookings
-      FROM demo_bookings WHERE partner_id = ?
+      FROM demo_bookings WHERE partner_id = $1
     `, [id]);
 
     // Get match stats
     const matchStats = await query(`
       SELECT COUNT(DISTINCT contractor_id) as total_matches
-      FROM contractor_partner_matches WHERE partner_id = ?
+      FROM contractor_partner_matches WHERE partner_id = $1
     `, [id]);
 
     // Combine stats

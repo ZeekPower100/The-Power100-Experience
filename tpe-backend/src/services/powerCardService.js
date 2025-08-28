@@ -32,7 +32,7 @@ class PowerCardService {
         metric_2_name, metric_2_question, metric_2_type,
         metric_3_name, metric_3_question, metric_3_type,
         include_satisfaction_score, include_recommendation_score, include_culture_questions
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     `, [
       partner_id, partner_type,
       metric_1_name, metric_1_question, metric_1_type,
@@ -53,7 +53,7 @@ class PowerCardService {
       SELECT t.*, p.company_name as partner_name
       FROM power_card_templates t
       LEFT JOIN strategic_partners p ON t.partner_id = p.id
-      WHERE t.id = ?
+      WHERE t.id = $1
     `, [templateId]);
 
     return result.rows[0] || null;
@@ -63,7 +63,7 @@ class PowerCardService {
   async getTemplatesByPartner(partnerId, partnerType = 'strategic_partner') {
     const result = await query(`
       SELECT * FROM power_card_templates
-      WHERE partner_id = ? AND partner_type = ? AND is_active = 1
+      WHERE partner_id = $1 AND partner_type = $2 AND is_active = 1
       ORDER BY created_at DESC
     `, [partnerId, partnerType]);
 
@@ -87,7 +87,7 @@ class PowerCardService {
     const result = await query(`
       INSERT INTO power_card_campaigns (
         campaign_name, quarter, year, start_date, end_date, reminder_date, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
     `, [campaign_name, quarter, year, start_date, end_date, reminder_date, status]);
 
     if (result.rowCount > 0) {
@@ -99,7 +99,7 @@ class PowerCardService {
   // Get campaign by ID
   async getCampaignById(campaignId) {
     const result = await query(`
-      SELECT * FROM power_card_campaigns WHERE id = ?
+      SELECT * FROM power_card_campaigns WHERE id = $1
     `, [campaignId]);
 
     return result.rows[0] || null;
@@ -130,7 +130,7 @@ class PowerCardService {
           campaign_id, template_id, recipient_type, recipient_id,
           recipient_email, recipient_name, company_id, company_type,
           revenue_tier, survey_link
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       `, [
         campaignId, templateId, recipient.recipient_type, recipient.recipient_id,
         recipient.recipient_email, recipient.recipient_name,
@@ -185,7 +185,7 @@ class PowerCardService {
     return transaction(async (client) => {
       // First, get the recipient info from survey link
       const recipientResult = await client.query(`
-        SELECT * FROM power_card_recipients WHERE survey_link = ?
+        SELECT * FROM power_card_recipients WHERE survey_link = $1
       `, [surveyLink]);
 
       if (recipientResult.rows.length === 0) {
@@ -210,7 +210,7 @@ class PowerCardService {
           culture_score, leadership_score, growth_opportunity_score,
           additional_feedback, improvement_suggestions,
           time_to_complete, device_type
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       `, [
         recipient.id, recipient.campaign_id, recipient.template_id,
         responseData.metric_1_response, responseData.metric_1_score,
@@ -226,7 +226,7 @@ class PowerCardService {
       await client.query(`
         UPDATE power_card_recipients 
         SET status = 'completed', completed_at = CURRENT_TIMESTAMP
-        WHERE id = ?
+        WHERE id = $1
       `, [recipient.id]);
 
       // Update campaign stats
@@ -234,7 +234,7 @@ class PowerCardService {
         UPDATE power_card_campaigns 
         SET total_responses = total_responses + 1,
             response_rate = (total_responses + 1) * 100.0 / NULLIF(total_sent, 0)
-        WHERE id = ?
+        WHERE id = $1
       `, [recipient.campaign_id]);
 
       return {
@@ -256,7 +256,7 @@ class PowerCardService {
       FROM power_card_responses pr
       JOIN power_card_recipients pcr ON pr.recipient_id = pcr.id
       JOIN power_card_templates pt ON pr.template_id = pt.id
-      WHERE pt.partner_id = ? AND pr.campaign_id = ?
+      WHERE pt.partner_id = $1 AND pr.campaign_id = $2
     `, [partnerId, campaignId]);
 
     const responses = responseResult.rows;
@@ -288,7 +288,7 @@ class PowerCardService {
     // Get previous score for comparison
     const previousScoreResult = await query(`
       SELECT new_score FROM power_confidence_history_v2
-      WHERE partner_id = ? AND partner_type = ?
+      WHERE partner_id = $1 AND partner_type = $2
       ORDER BY calculated_at DESC LIMIT 1
     `, [partnerId, partnerType]);
 
@@ -303,7 +303,7 @@ class PowerCardService {
         customer_satisfaction_avg, nps_score,
         metric_1_avg, metric_2_avg, metric_3_avg,
         employee_satisfaction_avg, response_count, response_rate
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
     `, [
       partnerId, partnerType, campaignId,
       previousScore, powerConfidenceScore, scoreChange,
@@ -316,11 +316,11 @@ class PowerCardService {
     // Update partner's PowerConfidence score
     await query(`
       UPDATE strategic_partners 
-      SET power_confidence_score = ?,
+      SET power_confidence_score = $1,
           last_feedback_update = CURRENT_TIMESTAMP,
-          total_feedback_responses = ?,
-          average_satisfaction = ?
-      WHERE id = ?
+          total_feedback_responses = $2,
+          average_satisfaction = $3
+      WHERE id = $4
     `, [powerConfidenceScore, responses.length, averages.satisfaction, partnerId]);
 
     return {
@@ -349,7 +349,7 @@ class PowerCardService {
       SELECT COUNT(*) as total_sent
       FROM power_card_recipients pcr
       JOIN power_card_templates pt ON pcr.template_id = pt.id
-      WHERE pt.partner_id = ? AND pcr.campaign_id = ? AND pcr.status != 'pending'
+      WHERE pt.partner_id = $1 AND pcr.campaign_id = $2 AND pcr.status != 'pending'
     `, [partnerId, campaignId]);
 
     return result.rows[0]?.total_sent || 0;
@@ -368,7 +368,7 @@ class PowerCardService {
         AVG(CASE WHEN completed_at IS NOT NULL THEN 
           (julianday(completed_at) - julianday(sent_at)) * 24 * 60 END) as avg_completion_time_minutes
       FROM power_card_recipients
-      WHERE campaign_id = ?
+      WHERE campaign_id = $1
     `, [campaignId]);
 
     const stats = result.rows[0];
@@ -394,7 +394,7 @@ class PowerCardService {
       JOIN power_card_recipients pcr ON pr.recipient_id = pcr.id
       JOIN power_card_templates pt ON pr.template_id = pt.id
       JOIN strategic_partners sp ON pt.partner_id = sp.id
-      WHERE pcr.revenue_tier = ? AND pr.campaign_id = ?
+      WHERE pcr.revenue_tier = $1 AND pr.campaign_id = $2
       GROUP BY pt.partner_id, sp.company_name
       HAVING response_count >= 3
       ORDER BY avg_satisfaction DESC

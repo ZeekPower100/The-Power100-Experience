@@ -22,7 +22,7 @@ class PowerConfidenceService {
         JOIN power_card_recipients pcr ON pr.recipient_id = pcr.id
         JOIN power_card_templates pt ON pr.template_id = pt.id
         LEFT JOIN strategic_partners sp ON pt.partner_id = sp.id
-        WHERE pr.campaign_id = ?
+        WHERE pr.campaign_id = $1
         GROUP BY pt.partner_id, pt.partner_type
         HAVING response_count >= 3
         ORDER BY response_count DESC
@@ -73,7 +73,7 @@ class PowerConfidenceService {
         FROM power_card_responses pr
         JOIN power_card_recipients pcr ON pr.recipient_id = pcr.id
         JOIN power_card_templates pt ON pr.template_id = pt.id
-        WHERE pt.partner_id = ? AND pr.campaign_id = ?
+        WHERE pt.partner_id = $1 AND pr.campaign_id = $2
       `, [partnerId, campaignId]);
 
       const responses = responseResult.rows;
@@ -113,7 +113,7 @@ class PowerConfidenceService {
           metric_1_avg, metric_2_avg, metric_3_avg,
           employee_satisfaction_avg, response_count, response_rate,
           revenue_tier, variance_from_peer_avg
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       `, [
         partnerId, partnerType, campaignId,
         previousScore, powerConfidenceScore, scoreChange,
@@ -128,12 +128,12 @@ class PowerConfidenceService {
       if (partnerType === 'strategic_partner') {
         await client.query(`
           UPDATE strategic_partners 
-          SET power_confidence_score = ?,
+          SET power_confidence_score = $1,
               last_feedback_update = CURRENT_TIMESTAMP,
-              total_feedback_responses = total_feedback_responses + ?,
-              average_satisfaction = ?,
-              feedback_trend = ?
-          WHERE id = ?
+              total_feedback_responses = total_feedback_responses + $2,
+              average_satisfaction = $3,
+              feedback_trend = $4
+          WHERE id = $5
         `, [
           powerConfidenceScore, 
           responses.length, 
@@ -197,7 +197,7 @@ class PowerConfidenceService {
   async getPreviousScore(partnerId, partnerType, client) {
     const result = await client.query(`
       SELECT new_score FROM power_confidence_history_v2
-      WHERE partner_id = ? AND partner_type = ?
+      WHERE partner_id = $1 AND partner_type = $2
       ORDER BY calculated_at DESC LIMIT 1
     `, [partnerId, partnerType]);
 
@@ -211,9 +211,9 @@ class PowerConfidenceService {
     const result = await client.query(`
       SELECT AVG(pch.new_score) as peer_average
       FROM power_confidence_history_v2 pch
-      WHERE pch.campaign_id = ? 
-        AND pch.revenue_tier = ? 
-        AND pch.partner_id != ?
+      WHERE pch.campaign_id = $1 
+        AND pch.revenue_tier = $2 
+        AND pch.partner_id != $3
     `, [campaignId, revenueTier, excludePartnerId]);
 
     return result.rows[0]?.peer_average || null;
@@ -227,7 +227,7 @@ class PowerConfidenceService {
         COUNT(CASE WHEN pcr.status = 'completed' THEN 1 END) as completed
       FROM power_card_recipients pcr
       JOIN power_card_templates pt ON pcr.template_id = pt.id
-      WHERE pt.partner_id = ? AND pcr.campaign_id = ?
+      WHERE pt.partner_id = $1 AND pcr.campaign_id = $2
     `, [partnerId, campaignId]);
 
     const { total_sent, completed } = result.rows[0];
@@ -253,7 +253,7 @@ class PowerConfidenceService {
         SELECT DISTINCT pcr.revenue_tier
         FROM power_card_recipients pcr
         JOIN power_card_responses pr ON pcr.id = pr.recipient_id
-        WHERE pr.campaign_id = ? AND pcr.revenue_tier IS NOT NULL
+        WHERE pr.campaign_id = $1 AND pcr.revenue_tier IS NOT NULL
         GROUP BY pcr.revenue_tier
         HAVING COUNT(pr.id) >= 5
       `, [campaignId]);
@@ -285,7 +285,7 @@ class PowerConfidenceService {
         MAX(pr.satisfaction_score) as max_satisfaction
       FROM power_card_responses pr
       JOIN power_card_recipients pcr ON pr.recipient_id = pcr.id
-      WHERE pr.campaign_id = ? AND pcr.revenue_tier = ?
+      WHERE pr.campaign_id = $1 AND pcr.revenue_tier = $2
     `, [campaignId, revenueTier]);
 
     const stats = result.rows[0];
@@ -294,7 +294,7 @@ class PowerConfidenceService {
       // Calculate variance from previous quarter
       const previousResult = await query(`
         SELECT avg_satisfaction FROM power_card_analytics
-        WHERE revenue_tier = ?
+        WHERE revenue_tier = $1
         ORDER BY created_at DESC LIMIT 1
       `, [revenueTier]);
 
@@ -309,7 +309,7 @@ class PowerConfidenceService {
           avg_satisfaction, avg_nps, avg_metric_1, avg_metric_2, avg_metric_3,
           variance_from_last_quarter, trend_direction,
           percentile_25, percentile_50, percentile_75
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       `, [
         campaignId, revenueTier, stats.total_responses,
         stats.avg_satisfaction, stats.avg_nps, 
@@ -342,7 +342,7 @@ class PowerConfidenceService {
   // Get campaign information
   async getCampaignInfo(campaignId) {
     const result = await query(`
-      SELECT * FROM power_card_campaigns WHERE id = ?
+      SELECT * FROM power_card_campaigns WHERE id = $1
     `, [campaignId]);
 
     return result.rows[0];
@@ -360,7 +360,7 @@ class PowerConfidenceService {
         pch.variance_from_peer_avg
       FROM power_confidence_history_v2 pch
       LEFT JOIN strategic_partners sp ON pch.partner_id = sp.id
-      WHERE pch.campaign_id = ?
+      WHERE pch.campaign_id = $1
       ORDER BY pch.new_score DESC
     `, [campaignId]);
 
@@ -377,7 +377,7 @@ class PowerConfidenceService {
         total_responses,
         trend_direction
       FROM power_card_analytics
-      WHERE campaign_id = ?
+      WHERE campaign_id = $1
       ORDER BY 
         CASE revenue_tier
           WHEN 'under_500k' THEN 1
@@ -406,7 +406,7 @@ class PowerConfidenceService {
         MAX(score_change) as biggest_improvement,
         MIN(score_change) as biggest_decline
       FROM power_confidence_history_v2
-      WHERE campaign_id = ?
+      WHERE campaign_id = $1
     `, [campaignId]);
 
     return result.rows[0];
@@ -423,7 +423,7 @@ class PowerConfidenceService {
         pch.nps_score
       FROM power_confidence_history_v2 pch
       LEFT JOIN strategic_partners sp ON pch.partner_id = sp.id
-      WHERE pch.campaign_id = ?
+      WHERE pch.campaign_id = $1
       ORDER BY pch.new_score DESC
       LIMIT 5
     `, [campaignId]);
@@ -448,7 +448,7 @@ class PowerConfidenceService {
         END as improvement_area
       FROM power_confidence_history_v2 pch
       LEFT JOIN strategic_partners sp ON pch.partner_id = sp.id
-      WHERE pch.campaign_id = ? AND (
+      WHERE pch.campaign_id = $1 AND (
         pch.customer_satisfaction_avg < 6 OR
         pch.nps_score < 5 OR
         pch.score_change < -5

@@ -44,7 +44,7 @@ const createPartnerUser = async (partnerId, partnerEmail) => {
   try {
     // Check if partner user already exists
     const existingUser = await query(
-      'SELECT id FROM partner_users WHERE partner_id = ?',
+      'SELECT id FROM partner_users WHERE partner_id = $1',
       [partnerId]
     );
 
@@ -59,7 +59,7 @@ const createPartnerUser = async (partnerId, partnerEmail) => {
     // Create partner user
     const result = await query(`
       INSERT INTO partner_users (partner_id, email, password_hash, is_active)
-      VALUES (?, ?, ?, 1)
+      VALUES ($1, $2, $3, 1)
     `, [partnerId, partnerEmail, passwordHash]);
 
     console.log(`🔐 Created partner user account for partner ${partnerId}`);
@@ -92,7 +92,7 @@ const partnerLogin = async (req, res, next) => {
     if (email === 'demo@techflow.com' && password === 'Demo123!') {
       // Find the partner in partners table
       const partnerResult = await query(
-        'SELECT * FROM partners WHERE contact_email = ?',
+        'SELECT * FROM partners WHERE contact_email = $1',
         [email]
       );
 
@@ -102,7 +102,7 @@ const partnerLogin = async (req, res, next) => {
         const insertResult = await query(`
           INSERT INTO partners (
             company_name, contact_email, website, is_active, power_confidence_score, score_trend
-          ) VALUES (?, ?, ?, ?, ?, ?)
+          ) VALUES ($1, $2, $3, $4, $5, $6)
         `, ['TechFlow Solutions', email, 'https://techflow.com', 1, 87, 'up']);
         
         partner = {

@@ -61,7 +61,7 @@ const checkAICoachAccess = async (req, res, next) => {
           ELSE 0
         END as has_ai_access
       FROM contractors c 
-      WHERE c.id = ?
+      WHERE c.id = $1
     `, [contractorId]);
 
     if (contractorResult.rows.length === 0) {
@@ -135,9 +135,9 @@ router.get('/conversations', protect, checkAICoachAccess, async (req, res, next)
         media_url,
         created_at
       FROM ai_coach_conversations 
-      WHERE contractor_id = ?
+      WHERE contractor_id = $1
       ORDER BY created_at DESC
-      LIMIT ? OFFSET ?
+      LIMIT $2 OFFSET $3
     `, [contractorId, parseInt(limit), parseInt(offset)]);
 
     // Mock conversation for demo
@@ -183,7 +183,7 @@ router.post('/message', protect, checkAICoachAccess, upload.single('media'), asy
         media_type,
         media_url,
         created_at
-      ) VALUES (?, ?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, $3, $4, $5, $6)
     `, [
       contractorId,
       'user',
@@ -237,7 +237,7 @@ router.post('/message', protect, checkAICoachAccess, upload.single('media'), asy
         content, 
         media_type,
         created_at
-      ) VALUES (?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, $3, $4, $5)
     `, [
       contractorId,
       'ai',
@@ -354,7 +354,7 @@ router.delete('/conversations', protect, checkAICoachAccess, async (req, res, ne
 
     await query(`
       DELETE FROM ai_coach_conversations 
-      WHERE contractor_id = ?
+      WHERE contractor_id = $1
     `, [contractorId]);
 
     res.json({

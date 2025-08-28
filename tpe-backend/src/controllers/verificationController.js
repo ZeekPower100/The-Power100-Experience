@@ -26,16 +26,16 @@ const sendVerificationCode = async (req, res) => {
     // Store verification code in database
     await query(
       `UPDATE contractors 
-       SET verification_code = ?, 
-           verification_expires_at = ?,
+       SET verification_code = $1, 
+           verification_expires_at = $2,
            verification_status = 'pending'
-       WHERE id = ?`,
+       WHERE id = $3`,
       [verificationCode, expiresAt.toISOString(), contractorId]
     );
 
     // Get contractor details
     const contractorResult = await query(
-      'SELECT name, email, phone FROM contractors WHERE id = ?',
+      'SELECT name, email, phone FROM contractors WHERE id = $1',
       [contractorId]
     );
 
@@ -107,7 +107,7 @@ const verifyCode = async (req, res) => {
     const result = await query(
       `SELECT verification_code, verification_expires_at, verification_status 
        FROM contractors 
-       WHERE id = ?`,
+       WHERE id = $1`,
       [contractorId]
     );
 
@@ -157,7 +157,7 @@ const verifyCode = async (req, res) => {
            opted_in_coaching = 1,
            current_stage = 'focus_selection',
            updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
+       WHERE id = $1`,
       [contractorId]
     );
 
@@ -165,7 +165,7 @@ const verifyCode = async (req, res) => {
     await query(
       `INSERT INTO communication_logs 
        (message_id, contractor_id, type, direction, status, body, metadata, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
       [
         `verify_${contractorId}_${Date.now()}`,
         contractorId,
@@ -209,7 +209,7 @@ const resendVerificationCode = async (req, res) => {
 
     // Get contractor phone
     const result = await query(
-      'SELECT phone FROM contractors WHERE id = ?',
+      'SELECT phone FROM contractors WHERE id = $1',
       [contractorId]
     );
 
@@ -263,7 +263,7 @@ const handleVerificationReply = async (req, res) => {
     const cleanPhone = phone.replace(/[^0-9+]/g, '');
     const result = await query(
       `SELECT id FROM contractors 
-       WHERE REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '(', '') LIKE ?
+       WHERE REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '(', '') LIKE $1
        AND verification_status = 'pending'
        ORDER BY created_at DESC
        LIMIT 1`,

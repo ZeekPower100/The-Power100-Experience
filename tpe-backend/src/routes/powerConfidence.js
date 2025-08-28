@@ -215,9 +215,9 @@ router.get('/partners/:partnerId/history', protect, async (req, res) => {
         pcc.quarter
       FROM power_confidence_history_v2 pch
       JOIN power_card_campaigns pcc ON pch.campaign_id = pcc.id
-      WHERE pch.partner_id = ? AND pch.partner_type = ?
+      WHERE pch.partner_id = $1 AND pch.partner_type = $2
       ORDER BY pch.calculated_at DESC
-      LIMIT ?
+      LIMIT $3
     `, [partnerId, partner_type, parseInt(limit)]);
     
     res.json({
@@ -251,7 +251,7 @@ router.get('/partners/:partnerId/current', protect, async (req, res) => {
           average_satisfaction,
           feedback_trend
         FROM strategic_partners
-        WHERE id = ?
+        WHERE id = $1
       `, [partnerId]);
       
       if (result.rows.length === 0) {
@@ -274,7 +274,7 @@ router.get('/partners/:partnerId/current', protect, async (req, res) => {
           response_count,
           customer_satisfaction_avg as average_satisfaction
         FROM power_confidence_history_v2
-        WHERE partner_id = ? AND partner_type = ?
+        WHERE partner_id = $1 AND partner_type = $2
         ORDER BY calculated_at DESC
         LIMIT 1
       `, [partnerId, partner_type]);

@@ -31,7 +31,7 @@ class ContactTaggingService {
     // If they came through partner portal, they're likely an employee
     if (onboardingSource === 'partner_portal' && associatedPartnerId) {
       // Get partner domain to cross-reference
-      const partner = await query('SELECT contact_email, website FROM strategic_partners WHERE id = ?', [associatedPartnerId]);
+      const partner = await query('SELECT contact_email, website FROM strategic_partners WHERE id = $1', [associatedPartnerId]);
       
       let tags = ['employee'];
       
@@ -91,12 +91,12 @@ class ContactTaggingService {
       
       await query(`
         UPDATE contractors 
-        SET contact_type = ?, 
-            onboarding_source = ?, 
-            email_domain = ?, 
-            tags = ?,
+        SET contact_type = $1, 
+            onboarding_source = $2, 
+            email_domain = $3, 
+            tags = $4,
             updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
+        WHERE id = $5
       `, [
         taggingData.contact_type,
         taggingData.onboarding_source,
@@ -204,7 +204,7 @@ class ContactTaggingService {
    */
   async addTagsToContact(contractorId, newTags = []) {
     try {
-      const result = await query('SELECT tags FROM contractors WHERE id = ?', [contractorId]);
+      const result = await query('SELECT tags FROM contractors WHERE id = $1', [contractorId]);
       
       if (result.rows.length === 0) {
         throw new Error('Contact not found');
@@ -213,7 +213,7 @@ class ContactTaggingService {
       const existingTags = JSON.parse(result.rows[0].tags || '[]');
       const updatedTags = [...new Set([...existingTags, ...newTags])]; // Remove duplicates
       
-      await query('UPDATE contractors SET tags = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [
+      await query('UPDATE contractors SET tags = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [
         JSON.stringify(updatedTags),
         contractorId
       ]);

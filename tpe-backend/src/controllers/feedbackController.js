@@ -85,7 +85,7 @@ const createFeedbackSurvey = async (req, res) => {
       INSERT INTO feedback_surveys (
         partner_id, contractor_id, survey_type, quarter, 
         survey_url, expires_at, sms_campaign_id, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending')
       RETURNING *
     `, [partnerId, contractorId, surveyType, quarter, surveyUrl, expiresAt, smsCampaignId]);
 
@@ -94,7 +94,7 @@ const createFeedbackSurvey = async (req, res) => {
       await query(`
         UPDATE sms_campaigns 
         SET total_recipients = total_recipients + 1
-        WHERE id = ?
+        WHERE id = $1
       `, [smsCampaignId]);
     }
 
@@ -141,7 +141,7 @@ const submitFeedbackResponse = async (req, res) => {
 
     // Get survey details
     const surveyResult = await query(`
-      SELECT partner_id, contractor_id, status FROM feedback_surveys WHERE id = ?
+      SELECT partner_id, contractor_id, status FROM feedback_surveys WHERE id = $1
     `, [surveyId]);
 
     if (surveyResult.rows.length === 0) {
@@ -169,7 +169,7 @@ const submitFeedbackResponse = async (req, res) => {
         positive_feedback, improvement_areas, additional_comments,
         would_use_again, meeting_expectations, response_time_acceptable,
         response_source, ip_address, user_agent
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
       RETURNING *
     `, [
       surveyId, survey.partner_id, survey.contractor_id,
@@ -186,7 +186,7 @@ const submitFeedbackResponse = async (req, res) => {
     await query(`
       UPDATE feedback_surveys 
       SET status = 'responded', responded_at = CURRENT_TIMESTAMP
-      WHERE id = ?
+      WHERE id = $1
     `, [surveyId]);
 
     // Update partner feedback statistics
@@ -196,9 +196,9 @@ const submitFeedbackResponse = async (req, res) => {
           average_satisfaction = (
             SELECT AVG(overall_satisfaction) 
             FROM feedback_responses 
-            WHERE partner_id = ?
+            WHERE partner_id = $1
           )
-      WHERE id = ?
+      WHERE id = $2
     `, [survey.partner_id, survey.partner_id]);
 
     res.status(201).json({
@@ -282,7 +282,7 @@ const updatePowerConfidenceScores = async (req, res) => {
     if (partnerId) {
       // Update specific partner
       const oldScoreResult = await query(`
-        SELECT power_confidence_score FROM partners WHERE id = ?
+        SELECT power_confidence_score FROM partners WHERE id = $1
       `, [partnerId]);
 
       const oldScore = oldScoreResult.rows[0]?.power_confidence_score || 75;
@@ -290,7 +290,7 @@ const updatePowerConfidenceScores = async (req, res) => {
       // Simple score calculation based on feedback (placeholder logic)
       const feedbackResult = await query(`
         SELECT AVG(average_satisfaction) as avg_satisfaction, total_feedback_responses
-        FROM partners WHERE id = ?
+        FROM partners WHERE id = $1
       `, [partnerId]);
 
       const avgSatisfaction = feedbackResult.rows[0]?.avg_satisfaction || 3.5;
@@ -304,14 +304,14 @@ const updatePowerConfidenceScores = async (req, res) => {
       // Update the partner's score
       await query(`
         UPDATE partners 
-        SET power_confidence_score = ?,
+        SET power_confidence_score = $1,
             last_feedback_update = CURRENT_TIMESTAMP,
             feedback_trend = CASE 
-              WHEN ? > ? + 5 THEN 'improving'
-              WHEN ? < ? - 5 THEN 'declining'
+              WHEN $2 > $3 + 5 THEN 'improving'
+              WHEN $4 < $5 - 5 THEN 'declining'
               ELSE 'stable'
             END
-        WHERE id = ?
+        WHERE id = $6
       `, [calculatedScore, calculatedScore, oldScore, calculatedScore, oldScore, partnerId]);
 
       res.json({
@@ -331,7 +331,7 @@ const updatePowerConfidenceScores = async (req, res) => {
         // Update each partner individually
         const feedbackResult = await query(`
           SELECT AVG(average_satisfaction) as avg_satisfaction, total_feedback_responses
-          FROM partners WHERE id = ?
+          FROM partners WHERE id = $1
         `, [partner.id]);
 
         const avgSatisfaction = feedbackResult.rows[0]?.avg_satisfaction || 3.5;
@@ -343,9 +343,9 @@ const updatePowerConfidenceScores = async (req, res) => {
 
         await query(`
           UPDATE partners 
-          SET power_confidence_score = ?,
+          SET power_confidence_score = $1,
               last_feedback_update = CURRENT_TIMESTAMP
-          WHERE id = ?
+          WHERE id = $2
         `, [calculatedScore, partner.id]);
       }
 

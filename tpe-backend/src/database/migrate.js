@@ -90,7 +90,7 @@ async function runMigrations() {
 
       // Mark migration as executed
       await query(
-        'INSERT INTO schema_migrations (migration_name) VALUES (?)',
+        'INSERT INTO schema_migrations (migration_name) VALUES ($1)',
         [migrationName]
       );
 
