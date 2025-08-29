@@ -34,6 +34,11 @@ const focusAreaOptions: { id: FocusArea; title: string; description: string }[] 
 
 export default function FocusSelectionStep({ data, onNext, onPrev, onUpdate }: StepProps) {
   const [selectedAreas, setSelectedAreas] = useState<FocusArea[]>(data.focus_areas || []);
+  const [readinessIndicators, setReadinessIndicators] = useState({
+    increased_tools: data.increased_tools || false,
+    increased_people: data.increased_people || false,
+    increased_activity: data.increased_activity || false,
+  });
   const [error, setError] = useState('');
 
   const toggleFocusArea = (areaId: FocusArea) => {
@@ -50,6 +55,13 @@ export default function FocusSelectionStep({ data, onNext, onPrev, onUpdate }: S
     });
   };
 
+  const handleReadinessToggle = (indicator: keyof typeof readinessIndicators) => {
+    setReadinessIndicators(prev => ({
+      ...prev,
+      [indicator]: !prev[indicator],
+    }));
+  };
+
   const handleContinue = async () => {
     if (selectedAreas.length === 0) {
       setError('Please select at least one focus area.');
@@ -61,6 +73,9 @@ export default function FocusSelectionStep({ data, onNext, onPrev, onUpdate }: S
     const updateData = { 
       focus_areas: selectedAreas, 
       primary_focus_area: selectedAreas[0],
+      increased_tools: readinessIndicators.increased_tools,
+      increased_people: readinessIndicators.increased_people,
+      increased_activity: readinessIndicators.increased_activity,
       current_stage: 'focus_selection'
     };
 
@@ -163,6 +178,29 @@ export default function FocusSelectionStep({ data, onNext, onPrev, onUpdate }: S
                 })}
               </div>
             </motion.div>
+          )}
+
+          {/* Readiness Indicators Section */}
+          {selectedAreas.length > 0 && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
+              <h3 className="font-semibold text-gray-800 mb-4">For Your Selected Focus Areas, Have You Recently:</h3>
+              <div className="space-y-3">
+                {[
+                  { key: 'increased_tools', label: 'Increased tools or technology investments' },
+                  { key: 'increased_people', label: 'Added new team members or dedicated resources' },
+                  { key: 'increased_activity', label: 'Increased activity or initiatives in these areas' }
+                ].map((indicator) => (
+                  <div 
+                    key={indicator.key} 
+                    className="flex items-center space-x-3 cursor-pointer" 
+                    onClick={() => handleReadinessToggle(indicator.key as keyof typeof readinessIndicators)}
+                  >
+                    <Checkbox checked={readinessIndicators[indicator.key as keyof typeof readinessIndicators]} />
+                    <span className="text-gray-700">{indicator.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
 
           <div className="flex gap-4 pt-6">

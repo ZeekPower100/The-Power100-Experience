@@ -24,7 +24,6 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
   const [matchedPartners, setMatchedPartners] = useState<StrategicPartner[]>([]);
   const [podcastMatch, setPodcastMatch] = useState<any>(null);
   const [eventMatch, setEventMatch] = useState<any>(null);
-  const [bookMatch, setBookMatch] = useState<any>(null);
   const [manufacturerMatch, setManufacturerMatch] = useState<any>(null);
   const [isMatching, setIsMatching] = useState(true);
   const [primaryFocusArea, setPrimaryFocusArea] = useState('');
@@ -56,16 +55,9 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
     }, 200);
 
     try {
-      // Call both matching APIs - original and new one with all entities
-      const [matchResponse, allMatchesResponse] = await Promise.all([
-        contractorApi.getMatches(data.id, focusIndex),
-        contractorApi.getAllMatches(data.id).catch(err => {
-          console.log('getAllMatches failed, continuing with original data:', err);
-          return null;
-        })
-      ]);
+      // Call the real backend matching API with focus area index
+      const matchResponse = await contractorApi.getMatches(data.id, focusIndex);
       console.log('Match response:', matchResponse);
-      console.log('All matches response:', allMatchesResponse);
       
       if (matchResponse.matches && matchResponse.matches.length > 0) {
         // Parse all partner matches
@@ -93,20 +85,23 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
         setMatchedPartners([]);
       }
       
-      // Set podcast, event, book, and manufacturer matches
-      // Use new API response if available, fallback to original
-      if (allMatchesResponse) {
-        console.log('Setting matches from new API');
-        setBookMatch(allMatchesResponse.book || null);
-        setPodcastMatch(allMatchesResponse.podcast || matchResponse.podcastMatch || null);
-        setEventMatch(allMatchesResponse.event || matchResponse.eventMatch || null);
-      } else {
-        // Fallback to original API response
-        console.log('Using original API response for podcast/event');
-        setPodcastMatch(matchResponse.podcastMatch || null);
-        setEventMatch(matchResponse.eventMatch || null);
-      }
+      // Set podcast, event, and manufacturer matches
+      console.log('Podcast match data:', matchResponse.podcastMatch);
+      console.log('Event match data:', matchResponse.eventMatch);
+      console.log('Manufacturer match data:', matchResponse.manufacturerMatch);
       
+      if (matchResponse.podcastMatch) {
+        console.log('Setting podcast match:', matchResponse.podcastMatch);
+        setPodcastMatch(matchResponse.podcastMatch);
+      } else {
+        console.log('No podcast match found');
+      }
+      if (matchResponse.eventMatch) {
+        console.log('Setting event match:', matchResponse.eventMatch);
+        setEventMatch(matchResponse.eventMatch);
+      } else {
+        console.log('No event match found');
+      }
       if (matchResponse.manufacturerMatch) {
         console.log('Setting manufacturer match:', matchResponse.manufacturerMatch);
         setManufacturerMatch(matchResponse.manufacturerMatch);
@@ -304,51 +299,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                     )}
                 </div>
                 
-                {/* Book Match - FIRST */}
-                {bookMatch && (
-                  <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.05 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
-                    <div className="flex items-center space-x-4 mb-6">
-                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
-                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/>
-                        </svg>
-                      </div>
-                      <div>
-                        <h3 className="text-2xl font-bold text-power100-black">{bookMatch.title}</h3>
-                        <p className="text-gray-600">by {bookMatch.author}</p>
-                        <Badge className="bg-blue-100 text-blue-700 bg-opacity-100 mt-1">
-                          Must-Read Book
-                        </Badge>
-                      </div>
-                    </div>
-                    <p className="text-gray-700 mb-4">{bookMatch.description}</p>
-                    
-                    {bookMatch.key_takeaways && (
-                      <div className="mb-4">
-                        <h4 className="font-semibold text-power100-black mb-2">Key Takeaways:</h4>
-                        <div className="space-y-2">
-                          {(typeof bookMatch.key_takeaways === 'string' ? JSON.parse(bookMatch.key_takeaways) : bookMatch.key_takeaways).slice(0, 3).map((takeaway: string, index: number) => (
-                            <div key={index} className="flex items-start space-x-2">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                              <span className="text-gray-700">{takeaway}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    <Button 
-                      variant="outline" 
-                      onClick={() => window.open(bookMatch.amazon_url || '#', '_blank')} 
-                      className="w-full"
-                    >
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      View on Amazon
-                    </Button>
-                  </motion.div>
-                )}
-                
-                {/* Podcast Match - SECOND */}
+                {/* Podcast Match - FIRST */}
                 {podcastMatch && (
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
                     <div className="flex items-center space-x-4 mb-6">
@@ -368,29 +319,25 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                       </div>
                     </div>
                     <p className="text-gray-700 mb-4">{podcastMatch.description}</p>
-                    {podcastMatch.matchReasons && (
-                      <div className="mb-4">
-                        <h4 className="font-semibold text-power100-black mb-2">Why This Podcast Is Perfect For You:</h4>
-                        <div className="space-y-2">
-                          {podcastMatch.matchReasons.map((reason: string, index: number) => (
-                            <div key={index} className="flex items-start space-x-2">
-                              <div className="w-2 h-2 bg-purple-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                              <span className="text-gray-700">{reason}</span>
-                            </div>
-                          ))}
-                        </div>
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-power100-black mb-2">Why This Podcast Is Perfect For You:</h4>
+                      <div className="space-y-2">
+                        {podcastMatch.matchReasons.map((reason: string, index: number) => (
+                          <div key={index} className="flex items-start space-x-2">
+                            <div className="w-2 h-2 bg-purple-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                            <span className="text-gray-700">{reason}</span>
+                          </div>
+                        ))}
                       </div>
-                    )}
-                    {podcastMatch.topics && (
-                      <div className="mb-4">
-                        <h4 className="font-semibold text-power100-black mb-2">Topics Covered:</h4>
-                        <div className="flex flex-wrap gap-2">
-                          {(typeof podcastMatch.topics === 'string' ? JSON.parse(podcastMatch.topics) : podcastMatch.topics)?.map((topic: string, index: number) => (
-                            <Badge key={index} className="bg-gray-100 text-gray-700 bg-opacity-100">{topic}</Badge>
-                          ))}
-                        </div>
+                    </div>
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-power100-black mb-2">Topics Covered:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {podcastMatch.topics.map((topic: string, index: number) => (
+                          <Badge key={index} className="bg-gray-100 text-gray-700 bg-opacity-100">{topic}</Badge>
+                        ))}
                       </div>
-                    )}
+                    </div>
                     {podcastMatch.website && <Button variant="outline" onClick={() => window.open(podcastMatch.website, '_blank')} className="w-full"><ExternalLink className="w-4 h-4 mr-2" />Listen to Episodes</Button>}
                   </motion.div>
                 )}
@@ -409,41 +356,29 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                         </div>
                       )}
                       <div>
-                        <h3 className="text-2xl font-bold text-power100-black">{eventMatch.name || eventMatch.title}</h3>
-                        <p className="text-gray-600">{eventMatch.date || 'Coming Soon'}</p>
+                        <h3 className="text-2xl font-bold text-power100-black">{eventMatch.name}</h3>
+                        <p className="text-gray-600">{eventMatch.date}</p>
                         <div className="flex flex-wrap gap-2 mt-1">
-                          <Badge className="bg-blue-100 text-blue-700 bg-opacity-100">
-                            {eventMatch.location || 'Virtual Conference'}
-                          </Badge>
-                          <Badge className="bg-green-100 text-green-700 bg-opacity-100">
-                            {eventMatch.format || 'Live Event'}
-                          </Badge>
+                          <Badge className="bg-blue-100 text-blue-700 bg-opacity-100">{eventMatch.location}</Badge>
+                          <Badge className="bg-green-100 text-green-700 bg-opacity-100">{eventMatch.format}</Badge>
                         </div>
                       </div>
                     </div>
-                    <p className="text-gray-700 mb-4">
-                      {eventMatch.description || 'The premier event for ambitious contractors ready to 10x their business.'}
-                    </p>
-                    {eventMatch.matchReasons && (
-                      <div className="mb-4">
-                        <h4 className="font-semibold text-power100-black mb-2">Why You Should Attend:</h4>
-                        <div className="space-y-2">
-                          {eventMatch.matchReasons.map((reason: string, index: number) => (
-                            <div key={index} className="flex items-start space-x-2">
-                              <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                              <span className="text-gray-700">{reason}</span>
-                            </div>
-                          ))}
-                        </div>
+                    <p className="text-gray-700 mb-4">{eventMatch.description}</p>
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-power100-black mb-2">Why You Should Attend:</h4>
+                      <div className="space-y-2">
+                        {eventMatch.matchReasons.map((reason: string, index: number) => (
+                          <div key={index} className="flex items-start space-x-2">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                            <span className="text-gray-700">{reason}</span>
+                          </div>
+                        ))}
                       </div>
-                    )}
-                    {eventMatch.attendees && (
-                      <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                        <p className="text-gray-700">
-                          <strong>Expected Attendees:</strong> {eventMatch.attendees || '500+ Top Contractors'}
-                        </p>
-                      </div>
-                    )}
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                      <p className="text-gray-700"><strong>Expected Attendees:</strong> {eventMatch.attendees}</p>
+                    </div>
                     {eventMatch.website && <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white" onClick={() => window.open(eventMatch.website, '_blank')}><Calendar className="w-4 h-4 mr-2" />Register for Event</Button>}
                   </motion.div>
                 )}
@@ -486,26 +421,24 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                       <div className="mb-4">
                         <h4 className="font-semibold text-power100-black mb-2">Product Categories:</h4>
                         <div className="flex flex-wrap gap-2">
-                          {manufacturerMatch.product_categories?.map((category: string, index: number) => (
+                          {manufacturerMatch.product_categories.map((category: string, index: number) => (
                             <Badge key={index} className="bg-gray-100 text-gray-700 bg-opacity-100">{category}</Badge>
                           ))}
                         </div>
                       </div>
                     )}
                     
-                    {manufacturerMatch.matchReasons && (
-                      <div className="mb-4">
-                        <h4 className="font-semibold text-power100-black mb-2">Why This Manufacturer Is Perfect For You:</h4>
-                        <div className="space-y-2">
-                          {manufacturerMatch.matchReasons.map((reason: string, index: number) => (
-                            <div key={index} className="flex items-start space-x-2">
-                              <div className="w-2 h-2 bg-orange-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                              <span className="text-gray-700">{reason}</span>
-                            </div>
-                          ))}
-                        </div>
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-power100-black mb-2">Why This Manufacturer Is Perfect For You:</h4>
+                      <div className="space-y-2">
+                        {manufacturerMatch.matchReasons.map((reason: string, index: number) => (
+                          <div key={index} className="flex items-start space-x-2">
+                            <div className="w-2 h-2 bg-orange-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                            <span className="text-gray-700">{reason}</span>
+                          </div>
+                        ))}
                       </div>
-                    )}
+                    </div>
                     
                     {manufacturerMatch.brands_carried && (
                       <div className="bg-gray-50 rounded-lg p-4 mb-4">

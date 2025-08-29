@@ -34,14 +34,11 @@ export default function ProfilingStep({ data, onNext, onPrev, onUpdate }: StepPr
     services_offered: data.services_offered || [],
     annual_revenue: data.annual_revenue || '',
     team_size: data.team_size?.toString() || '',
-    readiness_indicators: data.readiness_indicators || {
-      increased_tools: false, increased_people: false, increased_activity: false
-    },
     opted_in_coaching: data.opted_in_coaching || false,
   });
   const [error, setError] = useState('');
 
-  const handleInputChange = (field: keyof typeof formData, value: string | number | { increased_tools: boolean; increased_people: boolean; increased_activity: boolean }) => {
+  const handleInputChange = (field: keyof typeof formData, value: string | number | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setError('');
   };
@@ -55,15 +52,6 @@ export default function ProfilingStep({ data, onNext, onPrev, onUpdate }: StepPr
     }));
   };
 
-  const handleReadinessToggle = (indicator: keyof typeof formData.readiness_indicators) => {
-    setFormData(prev => ({
-      ...prev,
-      readiness_indicators: {
-        ...prev.readiness_indicators,
-        [indicator]: !prev.readiness_indicators[indicator],
-      },
-    }));
-  };
 
   const handleContinue = async () => {
     if (!formData.service_area || !formData.annual_revenue || !formData.team_size) {
@@ -80,9 +68,6 @@ export default function ProfilingStep({ data, onNext, onPrev, onUpdate }: StepPr
     const updateData = {
       ...formData,
       team_size: parseInt(formData.team_size, 10) || 0, // Ensure team_size is a number
-      increased_tools: formData.readiness_indicators.increased_tools,
-      increased_people: formData.readiness_indicators.increased_people,
-      increased_activity: formData.readiness_indicators.increased_activity,
       current_stage: 'profiling'
     };
 
@@ -157,27 +142,12 @@ export default function ProfilingStep({ data, onNext, onPrev, onUpdate }: StepPr
               ))}
             </div>
           </div>
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-6">
-            <h3 className="font-semibold text-gray-800 mb-4">For your selected focus areas, have you recently:</h3>
-            <div className="space-y-3">
-              {[
-                { key: 'increased_tools', label: 'Increased tools or technology investments' },
-                { key: 'increased_people', label: 'Added new team members or dedicated resources' },
-                { key: 'increased_activity', label: 'Increased activity or initiatives in these areas' }
-              ].map((indicator) => (
-                <div key={indicator.key} className="flex items-center space-x-3 cursor-pointer" onClick={() => handleReadinessToggle(indicator.key as keyof typeof formData.readiness_indicators)}>
-                  <Checkbox checked={formData.readiness_indicators[indicator.key as keyof typeof formData.readiness_indicators]} />
-                  <span className="text-gray-700">{indicator.label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
           <div className="bg-red-50 border border-red-200 rounded-lg p-6">
             <div className="flex items-start space-x-3 cursor-pointer" onClick={() => handleInputChange('opted_in_coaching', !formData.opted_in_coaching)}>
               <Checkbox checked={formData.opted_in_coaching} className="mt-1" />
               <div>
-                <h4 className="font-semibold text-red-900">Weekly AI Coaching (Optional)</h4>
-                <p className="text-sm text-red-800 mt-1">Get weekly check-ins with our AI Concierge to review wins, challenges, and receive strategic introductions.</p>
+                <h4 className="font-semibold text-red-900">Concierge Access (Optional)</h4>
+                <p className="text-sm text-red-800 mt-1">Get 24/7 AI Concierge access to review wins, challenges, and receive strategic introductions tailored to your business goals.</p>
               </div>
             </div>
           </div>
@@ -185,7 +155,7 @@ export default function ProfilingStep({ data, onNext, onPrev, onUpdate }: StepPr
           <div className="flex gap-4 pt-6">
             {onPrev && <Button variant="outline" onClick={onPrev} className="flex-1 h-12 text-lg">Back</Button>}
             <Button onClick={handleContinue} className="flex-1 bg-power100-green hover:brightness-90 transition-all duration-300 text-white shadow-lg h-12 text-lg font-semibold group">
-              Find My Match
+              Continue
               <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
             </Button>
           </div>

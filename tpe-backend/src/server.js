@@ -124,6 +124,7 @@ app.use('/api/communications', require('./routes/communicationRoutes'));
 app.use('/api/ghl-sync', require('./routes/ghlSyncRoutes'));
 app.use('/api/verification', require('./routes/verificationRoutes'));
 app.use('/api/emails', require('./routes/emailRoutes'));
+app.use('/api/matching', require('./routes/matchingRoutes'));
 
 // 404 handler
 app.use((req, res) => {

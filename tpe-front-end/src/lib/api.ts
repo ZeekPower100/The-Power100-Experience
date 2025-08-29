@@ -87,6 +87,10 @@ export const contractorApi = {
   getMatches: (contractorId: string, focusAreaIndex: number = 0) =>
     apiRequest(`/contractors/${contractorId}/matches?focusAreaIndex=${focusAreaIndex}`),
 
+  // Get all matched content (books, podcasts, events, partners)
+  getAllMatches: (contractorId: string) =>
+    apiRequest(`/matching/contractors/${contractorId}/matches/all`),
+
   // Complete contractor flow
   completeFlow: (contractorId: string, selectedPartnerId?: string) =>
     apiRequest(`/contractors/${contractorId}/complete`, {
