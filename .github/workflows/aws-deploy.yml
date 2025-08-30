@@ -202,6 +202,55 @@ jobs:
           echo "Demo data loaded for Destination Motivation"
           echo "================================"
 
+      - name: Deploy to EC2 Server
+        if: success()
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          EC2_USER: ${{ secrets.EC2_USER }}
+          EC2_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          echo "🚀 Deploying to EC2 server..."
+          
+          # Only proceed if EC2 credentials are configured
+          if [ -n "$EC2_HOST" ] && [ -n "$EC2_KEY" ]; then
+            # Setup SSH key
+            echo "$EC2_KEY" > ec2_key
+            chmod 600 ec2_key
+            
+            # Deploy to EC2
+            ssh -o StrictHostKeyChecking=no -i ec2_key ${EC2_USER:-ubuntu}@${EC2_HOST} << 'ENDSSH'
+              set -e
+              cd /home/ubuntu/The-Power100-Experience
+              
+              echo "🔄 Pulling latest code from GitHub..."
+              git pull origin main
+              
+              echo "📦 Installing any new dependencies..."
+              npm install --legacy-peer-deps
+              
+              echo "🏗️ Building frontend..."
+              cd tpe-front-end
+              npm run build
+              cd ..
+              
+              echo "♻️ Restarting PM2 services..."
+              pm2 restart all
+              pm2 save
+              
+              echo "✅ EC2 deployment complete!"
+              pm2 status
+          ENDSSH
+            
+            rm -f ec2_key
+            echo "✅ Successfully deployed to EC2"
+          else
+            echo "⚠️ EC2 deployment skipped - no EC2 credentials configured"
+            echo "To enable EC2 deployment, set the following secrets in GitHub:"
+            echo "  - EC2_HOST (e.g., 3.95.250.211)"
+            echo "  - EC2_SSH_KEY (private key content)"
+            echo "  - EC2_USER (optional, defaults to 'ubuntu')"
+          fi
+
       - name: Health Check
         run: |
           echo "Waiting for application to be ready..."
