@@ -228,6 +228,9 @@ jobs:
               echo "📦 Installing any new dependencies..."
               npm install --legacy-peer-deps
               
+              echo "🔧 FORCE installing critical backend dependencies (Express keeps disappearing!)..."
+              npm install express pg jsonwebtoken bcryptjs cors dotenv express-rate-limit morgan helmet --save --legacy-peer-deps
+              
               echo "🏗️ Building frontend..."
               cd tpe-front-end
               # Fix for caniuse-lite issue
