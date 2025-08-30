@@ -48,6 +48,11 @@ jobs:
           # This is a monorepo - install at root then symlink
           cd /home/ubuntu/The-Power100-Experience
           
+          # Clean and reinstall dependencies
+          echo "🧹 Cleaning node_modules and reinstalling..."
+          rm -rf node_modules package-lock.json
+          npm install
+          
           # Ensure critical backend dependencies are installed at root
           npm install express pg jsonwebtoken bcryptjs cors dotenv express-rate-limit --save
           
