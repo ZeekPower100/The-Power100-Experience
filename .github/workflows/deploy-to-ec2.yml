@@ -83,7 +83,8 @@ jobs:
           sleep 10
           
           # Check if site is responding (using HTTP since we're checking via IP)
-          response=$(curl -s -o /dev/null -w "%{http_code}" http://${HOST}:3002/)
+          # Production frontend runs on port 3000 (not 3002 which is for local dev)
+          response=$(curl -s -o /dev/null -w "%{http_code}" http://${HOST}:3000/)
           if [ $response -eq 200 ] || [ $response -eq 301 ] || [ $response -eq 302 ]; then
             echo "✅ Site is up and running! (Status: $response)"
           else

@@ -1,5 +1,14 @@
 # The Power100 Experience (TPE) - Full-Stack Project Context
 
+## 🔌 IMPORTANT: PORT CONFIGURATION
+**PRODUCTION PORTS:**
+- Frontend: **3000** (Next.js on https://tpx.power100.io)
+- Backend: **5000** (Express.js API)
+
+**LOCAL DEVELOPMENT PORTS:**
+- Frontend: **3002** (Next.js on http://localhost:3002)
+- Backend: **5000** (Express.js API on http://localhost:5000)
+
 ## ⚠️ IMPORTANT: DATABASE CONFIGURATION
 **BOTH Development AND Production use PostgreSQL** 
 
@@ -385,7 +394,11 @@ The Power100 Experience platform is now fully functional with the following capa
 
 ### 🔧 Development Environment
 - **PRODUCTION**: PostgreSQL on AWS RDS + Next.js on AWS EC2 (https://tpx.power100.io)
-- **Local Development**: SQLite backend + Next.js frontend on ports 5000/3002
+  - Frontend Port: 3000
+  - Backend Port: 5000
+- **Local Development**: PostgreSQL backend + Next.js frontend
+  - Frontend Port: 3002
+  - Backend Port: 5000
 - **Authentication**: Admin access via admin@power100.io / admin123
 - **Testing**: Comprehensive manual testing of all flows and features
 - **Version Control**: Git with feature branches and comprehensive commit history
