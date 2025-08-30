@@ -45,16 +45,19 @@ jobs:
           
           # Backend setup
           echo "🔧 Setting up backend..."
-          # This is a monorepo - install at root then symlink
           cd /home/ubuntu/The-Power100-Experience
           
-          # Clean and reinstall dependencies
-          echo "🧹 Cleaning node_modules and reinstalling..."
-          rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
-          
-          # Ensure critical backend dependencies are installed at root
-          npm install express pg jsonwebtoken bcryptjs cors dotenv express-rate-limit --save
+          # Only clean install if package.json changed or node_modules is corrupted
+          if [ ! -d "node_modules/express" ] || [ ! -d "node_modules/pg" ]; then
+            echo "🧹 Dependencies missing, reinstalling..."
+            rm -rf node_modules package-lock.json
+            npm install --legacy-peer-deps
+            
+            # Ensure critical backend dependencies are installed at root
+            npm install express pg jsonwebtoken bcryptjs cors dotenv express-rate-limit --save --legacy-peer-deps
+          else
+            echo "✅ Dependencies already installed"
+          fi
           
           # Create symlink for backend to find node_modules
           cd tpe-backend
@@ -70,9 +73,14 @@ jobs:
           fi
           echo "✅ Backend dependencies verified"
           
-          # Run health check AFTER symlink is created
-          echo "🏥 Running health check..."
+          # Ensure dependencies are properly set up
+          echo "🔧 Ensuring backend dependencies..."
           cd /home/ubuntu/The-Power100-Experience/tpe-backend
+          chmod +x ensure-dependencies.sh
+          ./ensure-dependencies.sh || exit 1
+          
+          # Run health check AFTER dependencies are verified
+          echo "🏥 Running health check..."
           node health-check.js || exit 1
           
           # Frontend setup and build
@@ -87,11 +95,24 @@ jobs:
           pm2 reload ecosystem.config.js --update-env
           
           # Verify services are running
-          pm2 list
-          pm2 show tpe-backend | grep "status.*online" || exit 1
+          echo "🔍 Verifying services..."
+          sleep 10  # Give services time to start
           
-          # Wait for services to stabilize
-          sleep 5
+          # Check backend status
+          if ! pm2 show tpe-backend | grep -q "status.*online"; then
+            echo "❌ Backend failed to start"
+            pm2 logs tpe-backend --lines 20 --nostream
+            exit 1
+          fi
+          
+          # Check frontend status
+          if ! pm2 show tpe-frontend | grep -q "status.*online"; then
+            echo "⚠️ Frontend not running, attempting restart..."
+            pm2 delete tpe-frontend || true
+            cd /home/ubuntu/The-Power100-Experience/tpe-front-end
+            pm2 start npm --name "tpe-frontend" -- start
+            sleep 5
+          fi
           
           # Check service status
           pm2 list

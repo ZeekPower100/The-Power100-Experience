@@ -41,7 +41,7 @@ module.exports = {
     },
     {
       name: 'tpe-frontend',
-      script: 'npm',
+      script: 'node_modules/.bin/next',
       args: 'start',
       cwd: '/home/ubuntu/The-Power100-Experience/tpe-front-end',
       instances: 1,
@@ -51,7 +51,10 @@ module.exports = {
       env: {
         NODE_ENV: 'production',
         PORT: 3000
-      }
+      },
+      interpreter: 'node',
+      error_file: '/home/ubuntu/.pm2/logs/tpe-frontend-error.log',
+      out_file: '/home/ubuntu/.pm2/logs/tpe-frontend-out.log'
     }
   ]
 };
