@@ -47,8 +47,18 @@ jobs:
           echo "🔧 Setting up backend..."
           # Install dependencies at project root (monorepo structure)
           cd /home/ubuntu/The-Power100-Experience
-          npm install
+          npm install --legacy-peer-deps
+          
+          # CRITICAL: Create symlink for backend to find node_modules
           cd tpe-backend
+          ln -sf ../node_modules node_modules
+          
+          # Verify Express is available
+          if [ ! -d "../node_modules/express" ]; then
+            echo "❌ ERROR: Express not found after install!"
+            exit 1
+          fi
+          echo "✅ Backend dependencies verified"
           
           # Frontend setup and build
           echo "🎨 Building frontend..."
@@ -56,10 +66,19 @@ jobs:
           npm ci
           npm run build
           
-          # Restart services
+          # Run health check before restart
+          echo "🏥 Running health check..."
+          cd /home/ubuntu/The-Power100-Experience/tpe-backend
+          node health-check.js || exit 1
+          
+          # Restart services using ecosystem file
           echo "♻️  Restarting services..."
-          pm2 restart tpe-backend
-          pm2 restart tpe-frontend
+          cd /home/ubuntu/The-Power100-Experience
+          pm2 reload ecosystem.config.js --update-env
+          
+          # Verify services are running
+          pm2 list
+          pm2 show tpe-backend | grep "status.*online" || exit 1
           
           # Wait for services to stabilize
           sleep 5
