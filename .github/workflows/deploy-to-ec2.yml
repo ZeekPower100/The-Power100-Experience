@@ -65,16 +65,16 @@ jobs:
           fi
           echo "✅ Backend dependencies verified"
           
+          # Run health check AFTER symlink is created
+          echo "🏥 Running health check..."
+          cd /home/ubuntu/The-Power100-Experience/tpe-backend
+          node health-check.js || exit 1
+          
           # Frontend setup and build
           echo "🎨 Building frontend..."
           cd ../tpe-front-end
           npm ci
           npm run build
-          
-          # Run health check before restart
-          echo "🏥 Running health check..."
-          cd /home/ubuntu/The-Power100-Experience/tpe-backend
-          node health-check.js || exit 1
           
           # Restart services using ecosystem file
           echo "♻️  Restarting services..."
