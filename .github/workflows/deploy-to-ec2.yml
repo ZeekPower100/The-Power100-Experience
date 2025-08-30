@@ -45,16 +45,21 @@ jobs:
           
           # Backend setup
           echo "🔧 Setting up backend..."
-          # Install dependencies at project root (monorepo structure)
+          # This is a monorepo - install at root then symlink
           cd /home/ubuntu/The-Power100-Experience
-          npm install --legacy-peer-deps
           
-          # CRITICAL: Create symlink for backend to find node_modules
+          # Ensure critical backend dependencies are installed at root
+          npm install express pg jsonwebtoken bcryptjs cors dotenv express-rate-limit --save
+          
+          # Create symlink for backend to find node_modules
           cd tpe-backend
+          # Remove any existing node_modules (file, directory, or symlink)
+          rm -rf node_modules
+          # Create symlink to parent node_modules
           ln -sf ../node_modules node_modules
           
           # Verify Express is available
-          if [ ! -d "../node_modules/express" ]; then
+          if [ ! -d "node_modules/express" ]; then
             echo "❌ ERROR: Express not found after install!"
             exit 1
           fi

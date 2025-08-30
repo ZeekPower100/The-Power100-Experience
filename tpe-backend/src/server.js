@@ -37,6 +37,9 @@ const contactTaggingRoutes = require('./routes/contactTagging');
 
 const app = express();
 
+// Trust proxy for rate limiting behind reverse proxy
+app.set("trust proxy", true);
+
 // Connect to database
 connectDB();
 
