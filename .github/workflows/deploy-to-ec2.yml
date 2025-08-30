@@ -45,8 +45,10 @@ jobs:
           
           # Backend setup
           echo "🔧 Setting up backend..."
+          # Install dependencies at project root (monorepo structure)
+          cd /home/ubuntu/The-Power100-Experience
+          npm install
           cd tpe-backend
-          npm ci --production
           
           # Frontend setup and build
           echo "🎨 Building frontend..."
