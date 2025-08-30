@@ -1,0 +1,91 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - master
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to EC2
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Deploy to EC2
+        env:
+          PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+          HOST: ${{ secrets.EC2_HOST }}
+          USER: ubuntu
+        run: |
+          # Setup SSH
+          echo "$PRIVATE_KEY" > private_key
+          chmod 600 private_key
+          
+          # Create deployment script
+          cat > deploy.sh << 'EOF'
+          #!/bin/bash
+          set -e
+          
+          echo "🚀 Starting deployment..."
+          cd /home/ubuntu/The-Power100-Experience
+          
+          # Check for uncommitted changes
+          if [[ -n $(git status --porcelain) ]]; then
+            echo "⚠️  Uncommitted changes detected, stashing..."
+            git stash
+          fi
+          
+          # Pull latest code
+          echo "📥 Pulling latest code..."
+          git pull origin master
+          
+          # Backend setup
+          echo "🔧 Setting up backend..."
+          cd tpe-backend
+          npm ci --production
+          
+          # Frontend setup and build
+          echo "🎨 Building frontend..."
+          cd ../tpe-front-end
+          npm ci
+          npm run build
+          
+          # Restart services
+          echo "♻️  Restarting services..."
+          pm2 restart tpe-backend
+          pm2 restart tpe-frontend
+          
+          # Wait for services to stabilize
+          sleep 5
+          
+          # Check service status
+          pm2 list
+          
+          echo "✅ Deployment complete!"
+          EOF
+          
+          # Copy and execute deployment script on EC2
+          scp -o StrictHostKeyChecking=no -i private_key deploy.sh ${USER}@${HOST}:/tmp/
+          ssh -o StrictHostKeyChecking=no -i private_key ${USER}@${HOST} 'bash /tmp/deploy.sh'
+          
+          # Cleanup
+          rm -f private_key deploy.sh
+          
+      - name: Health Check
+        env:
+          HOST: ${{ secrets.EC2_HOST }}
+        run: |
+          echo "🏥 Running health checks..."
+          sleep 10
+          
+          # Check if site is responding
+          response=$(curl -s -o /dev/null -w "%{http_code}" https://${HOST}/)
+          if [ $response -eq 200 ]; then
+            echo "✅ Site is up and running!"
+          else
+            echo "⚠️  Site returned status code: $response"
+          fi

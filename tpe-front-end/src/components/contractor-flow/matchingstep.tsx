@@ -97,6 +97,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
       // Use new API response if available, fallback to original
       if (allMatchesResponse) {
         console.log('Setting matches from new API');
+        console.log('Book from API:', allMatchesResponse.book);
         setBookMatch(allMatchesResponse.book || null);
         setPodcastMatch(allMatchesResponse.podcast || matchResponse.podcastMatch || null);
         setEventMatch(allMatchesResponse.event || matchResponse.eventMatch || null);
@@ -114,10 +115,38 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
         console.log('No manufacturer match found');
       }
       
-      // Store all focus areas and current focus area from the response
-      if (matchResponse.allFocusAreas) {
+      // Store all focus areas and current focus area from the response with debugging
+      console.log('Full matchResponse:', matchResponse);
+      console.log('data.focus_areas:', data.focus_areas);
+      
+      // Handle allFocusAreas - fallback to data.focus_areas if backend doesn't provide it
+      if (matchResponse.allFocusAreas && Array.isArray(matchResponse.allFocusAreas) && matchResponse.allFocusAreas.length > 0) {
+        console.log('Set allFocusAreas from response:', matchResponse.allFocusAreas);
         setAllFocusAreas(matchResponse.allFocusAreas);
+      } else if (data.focus_areas) {
+        // Fallback to using the contractor's focus areas from frontend data
+        let focusAreasArray = [];
+        if (Array.isArray(data.focus_areas)) {
+          focusAreasArray = data.focus_areas;
+        } else if (typeof data.focus_areas === 'string') {
+          try {
+            const parsed = JSON.parse(data.focus_areas);
+            if (Array.isArray(parsed)) {
+              focusAreasArray = parsed;
+            }
+          } catch (e) {
+            console.log('Could not parse focus_areas string:', e);
+          }
+        }
+        console.log('Set allFocusAreas from data.focus_areas:', focusAreasArray);
+        setAllFocusAreas(focusAreasArray);
+      } else {
+        console.log('No focus areas available, using empty array');
+        setAllFocusAreas([]);
       }
+      
+      console.log('allFocusAreas length:', allFocusAreas.length);
+      
       if (matchResponse.currentFocusArea) {
         setPrimaryFocusArea(matchResponse.currentFocusArea);
       } else {
@@ -308,11 +337,18 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                 {bookMatch && (
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.05 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
                     <div className="flex items-center space-x-4 mb-6">
-                      <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
-                        <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/>
-                        </svg>
-                      </div>
+                      {console.log('Rendering book with cover_image_url:', bookMatch.cover_image_url)}
+                      {bookMatch.cover_image_url ? (
+                        <div className="w-16 h-20 rounded-lg overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center">
+                          <img src={bookMatch.cover_image_url} alt={bookMatch.title} className="w-full h-full object-cover" />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                          <svg className="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM6 4h5v8l-2.5-1.5L6 12V4z"/>
+                          </svg>
+                        </div>
+                      )}
                       <div>
                         <h3 className="text-2xl font-bold text-power100-black">{bookMatch.title}</h3>
                         <p className="text-gray-600">by {bookMatch.author}</p>
@@ -352,6 +388,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                 {podcastMatch && (
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
                     <div className="flex items-center space-x-4 mb-6">
+                      {console.log('Podcast logo_url:', podcastMatch.logo_url)}
                       {podcastMatch.logo_url ? (
                         <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center p-2">
                           <img src={getLogoUrl(podcastMatch.logo_url)} alt={podcastMatch.name} className="max-w-full max-h-full object-contain" />
@@ -399,6 +436,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                 {eventMatch && (
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
                     <div className="flex items-center space-x-4 mb-6">
+                      {console.log('Event logo_url:', eventMatch.logo_url)}
                       {eventMatch.logo_url ? (
                         <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center p-2">
                           <img src={getLogoUrl(eventMatch.logo_url)} alt={eventMatch.name} className="max-w-full max-h-full object-contain" />
@@ -448,10 +486,11 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                   </motion.div>
                 )}
                 
-                {/* Manufacturer Match - THIRD */}
-                {manufacturerMatch && (
+                {/* Manufacturer Match - THIRD - TEMPORARILY HIDDEN */}
+                {/* manufacturerMatch && (
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="bg-white border-2 border-power100-red rounded-xl p-8 shadow-lg">
                     <div className="flex items-center space-x-4 mb-6">
+                      {console.log('Manufacturer logo_url:', manufacturerMatch.logo_url)}
                       {manufacturerMatch.logo_url ? (
                         <div className="w-16 h-16 rounded-xl overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center p-2">
                           <img src={getLogoUrl(manufacturerMatch.logo_url)} alt={manufacturerMatch.company_name} className="max-w-full max-h-full object-contain" />
@@ -535,7 +574,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                       </Button>
                     </div>
                   </motion.div>
-                )}
+                )} */}
                 
                 {/* Partner Matches - FOURTH (Side by Side) */}
                 {matchedPartners.length > 0 && (
@@ -544,6 +583,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                     <motion.div key={partner.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.3 + idx * 0.1 }} className="bg-white border-2 border-power100-red rounded-xl p-6 shadow-lg">
                         <div className="flex flex-col items-start mb-4">
                             <div className="flex items-center space-x-3 mb-3">
+                                {console.log('Partner', partner.company_name, 'logo_url:', partner.logo_url)}
                                 {partner.logo_url ? (
                                     <div className="w-14 h-14 rounded-lg overflow-hidden bg-white border-2 border-gray-200 flex items-center justify-center p-2">
                                         <img src={getLogoUrl(partner.logo_url)} alt={partner.company_name} className="max-w-full max-h-full object-contain" />

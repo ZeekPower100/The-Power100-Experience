@@ -287,14 +287,30 @@ const matchManufacturer = async (contractor) => {
 const generateManufacturerMatchReasons = (contractor, manufacturer, focusAreasServed) => {
   const reasons = [];
   let focusAreas = [];
-  if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
-    try {
-      focusAreas = JSON.parse(contractor.focus_areas);
-    } catch (e) {
-      focusAreas = [];
-    }
-  } else if (Array.isArray(contractor.focus_areas)) {
+  
+  // Use the same robust parsing logic
+  if (Array.isArray(contractor.focus_areas)) {
     focusAreas = contractor.focus_areas;
+  } else if (typeof contractor.focus_areas === 'string') {
+    const trimmed = contractor.focus_areas.trim();
+    if (trimmed && trimmed !== '[object Object]') {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          focusAreas = parsed;
+        } else if (typeof parsed === 'string') {
+          focusAreas = [parsed];
+        }
+      } catch (e) {
+        if (trimmed.includes(',')) {
+          focusAreas = trimmed.split(',').map(area => area.trim());
+        } else {
+          focusAreas = [trimmed];
+        }
+      }
+    }
+  } else if (contractor.focus_areas) {
+    focusAreas = [String(contractor.focus_areas)];
   }
   
   if (focusAreasServed.includes(focusAreas[0])) {
@@ -332,17 +348,58 @@ const getEnhancedMatches = async (contractor, focusAreaIndex = 0) => {
   console.log("=== CONTRACTOR DATA RECEIVED ===");
   console.log("contractor.focus_areas:", contractor.focus_areas);
   console.log("Type:", typeof contractor.focus_areas);
-  // Parse focus areas and use the specified index
+  console.log("Raw value:", JSON.stringify(contractor.focus_areas));
+  
+  // Parse focus areas with more robust handling for production edge cases
   let focusAreas = [];
-  if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
-    try {
-      focusAreas = JSON.parse(contractor.focus_areas);
-    } catch (e) {
-      focusAreas = [];
-    }
-  } else if (Array.isArray(contractor.focus_areas)) {
+  
+  if (Array.isArray(contractor.focus_areas)) {
+    // Already an array - use it directly
     focusAreas = contractor.focus_areas;
+    console.log("Focus areas is already an array:", focusAreas);
+  } else if (typeof contractor.focus_areas === 'string') {
+    const trimmed = contractor.focus_areas.trim();
+    
+    // Skip empty strings and '[object Object]' strings
+    if (trimmed && trimmed !== '[object Object]') {
+      try {
+        // Try to parse as JSON
+        const parsed = JSON.parse(trimmed);
+        // Ensure we got an array after parsing
+        if (Array.isArray(parsed)) {
+          focusAreas = parsed;
+          console.log("Successfully parsed focus areas from JSON string:", focusAreas);
+        } else {
+          console.log("Parsed value is not an array:", parsed);
+          // If it's a single string value, wrap it in an array
+          if (typeof parsed === 'string') {
+            focusAreas = [parsed];
+            console.log("Wrapped single string value in array:", focusAreas);
+          }
+        }
+      } catch (e) {
+        console.log("Failed to parse focus_areas as JSON:", e.message);
+        // If parsing fails, check if it's a comma-separated string
+        if (trimmed.includes(',')) {
+          focusAreas = trimmed.split(',').map(area => area.trim());
+          console.log("Split comma-separated string into array:", focusAreas);
+        } else {
+          // Single focus area as string
+          focusAreas = [trimmed];
+          console.log("Used single string value as array:", focusAreas);
+        }
+      }
+    } else {
+      console.log("Focus areas is empty or '[object Object]'");
+    }
+  } else if (contractor.focus_areas) {
+    // Handle other unexpected types
+    console.log("Focus areas has unexpected type, converting to string:", contractor.focus_areas);
+    focusAreas = [String(contractor.focus_areas)];
   }
+  
+  console.log("Final parsed focusAreas:", focusAreas);
+  console.log("Focus areas count:", focusAreas.length);
   
   // Create a modified contractor object with the selected focus area as primary
   const modifiedContractor = {

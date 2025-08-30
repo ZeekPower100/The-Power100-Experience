@@ -20,6 +20,8 @@ export default function Layout({ children, currentPageName }: LayoutProps) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <title>{currentPageName ? `Power100 Experience | ${currentPageName}` : 'Power100 Experience'}</title>
+        <link rel="icon" type="image/png" href="/power100-logo.png" />
+        <link rel="apple-touch-icon" href="/power100-logo.png" />
       </head>
       <body className="min-h-screen bg-power100-bg-grey" suppressHydrationWarning>
       <nav className="bg-black shadow-md sticky top-0 z-50">

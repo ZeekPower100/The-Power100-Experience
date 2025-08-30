@@ -86,8 +86,8 @@ exports.getMatchedContent = async (req, res) => {
     // Get matched events
     const eventsQuery = `
       SELECT id, name, description, 
-             '' as logo_url,
-             '' as website,
+             COALESCE(logo_url, '') as logo_url,
+             COALESCE(website, '') as website,
              date, location, format, 
              COALESCE(expected_attendees, '') as attendees, 
              focus_areas_covered, 
