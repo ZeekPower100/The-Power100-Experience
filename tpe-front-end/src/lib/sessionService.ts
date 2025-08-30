@@ -1,7 +1,10 @@
 import { Contractor } from './types/contractor';
 
 const SESSION_TOKEN_KEY = 'tpe_contractor_session';
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
+  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' 
+    ? '/api'  // Use relative path in production
+    : 'http://localhost:5000/api'); // Use localhost for development
 
 export interface SessionData {
   token: string;
