@@ -230,6 +230,8 @@ jobs:
               
               echo "🏗️ Building frontend..."
               cd tpe-front-end
+              # Fix for caniuse-lite issue
+              npm update caniuse-lite browserslist --legacy-peer-deps || true
               npm run build
               cd ..
               
