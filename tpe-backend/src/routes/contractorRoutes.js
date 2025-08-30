@@ -25,6 +25,7 @@ router.post('/verify-start', validateContractor, asyncHandler(contractorControll
 router.post('/verify-code', asyncHandler(contractorController.verifyCode));
 router.get('/:id/matches', asyncHandler(contractorController.getMatches));
 router.post('/:id/complete', asyncHandler(contractorController.completeFlow));
+router.put('/:id/profile', asyncHandler(contractorController.updateProfile));
 
 // Protected routes (admin only)
 router.use(protect);
@@ -33,7 +34,6 @@ router.post('/search', asyncHandler(contractorController.searchContractors));
 router.get('/stats/overview', asyncHandler(contractorController.getStats));
 router.get('/:id', asyncHandler(contractorController.getContractor));
 router.put('/:id', asyncHandler(contractorController.updateProfile));
-router.put('/:id/profile', asyncHandler(contractorController.updateProfile));
 router.delete('/:id', asyncHandler(contractorController.deleteContractor));
 
 module.exports = router;

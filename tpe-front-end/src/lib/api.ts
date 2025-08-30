@@ -21,7 +21,23 @@ async function apiRequest<T>(
   };
 
   // Add auth token if available
-  const token = localStorage.getItem('authToken');
+  // Check for contractor session token first, then fall back to admin token
+  const sessionData = localStorage.getItem('tpe_contractor_session');
+  let token = null;
+  
+  if (sessionData) {
+    try {
+      const parsed = JSON.parse(sessionData);
+      token = parsed.token;
+    } catch (e) {
+      // Fall back to admin token if session parse fails
+      token = localStorage.getItem('authToken');
+    }
+  } else {
+    // Check for admin token
+    token = localStorage.getItem('authToken');
+  }
+  
   if (token) {
     config.headers = {
       ...config.headers,

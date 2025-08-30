@@ -1,11 +1,25 @@
 # The Power100 Experience (TPE) - Full-Stack Project Context
 
-## ⚠️ IMPORTANT: PRODUCTION DATABASE
-**PRODUCTION USES PostgreSQL on AWS RDS** 
-- Host: tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com  
-- Database: tpedb
-- User: tpeadmin
-- **DO NOT use SQLite commands in production - SQLite is for local development ONLY**
+## ⚠️ IMPORTANT: DATABASE CONFIGURATION
+**BOTH Development AND Production use PostgreSQL** 
+
+### LOCAL DEVELOPMENT Database
+- **Host**: localhost
+- **Database**: tpedb  
+- **User**: postgres
+- **Password**: TPXP0stgres!!
+- **Port**: 5432
+- **Connection**: See tpe-backend/.env for configuration
+
+### PRODUCTION Database (AWS RDS)
+- **Host**: tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com
+- **Database**: tpedb
+- **User**: tpeadmin  
+- **Password**: dBP0wer100!!
+- **Port**: 5432
+- **SSL Required**: Yes
+
+**SQLite is NOT used** - USE_SQLITE=false in all environments
 
 ## 🏗️ Project Overview
 
@@ -186,7 +200,7 @@ the-power100-experience/          # Project root
 - **Icons**: Lucide React
 - **UI Components**: shadcn/ui
 - **Backend**: Node.js with Express.js (✅ COMPLETE)
-- **Database**: PostgreSQL for PRODUCTION (AWS RDS), SQLite for local development only (✅ COMPLETE)
+- **Database**: PostgreSQL for BOTH development and production (✅ COMPLETE)
 - **Authentication**: JWT with bcrypt (✅ COMPLETE)
 - **API**: RESTful endpoints with comprehensive error handling (✅ COMPLETE)
 
