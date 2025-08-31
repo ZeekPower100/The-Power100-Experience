@@ -377,6 +377,9 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
   };
   
   const isStepValid = (step: number): boolean => {
+    // Skip validation for editing existing partners
+    if (partner) return true;
+    
     switch (step) {
       case 1: // Company Info
         return !!(formData.company_name && formData.established_year && formData.website);
@@ -421,27 +424,30 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
     setError(null);
 
     try {
-      // Validate required fields across all steps
-      if (!formData.company_name.trim()) {
-        throw new Error('Company name is required');
-      }
-      if (!formData.established_year) {
-        throw new Error('Established year is required');
-      }
-      if (!formData.ceo_name || !formData.ceo_email) {
-        throw new Error('CEO contact information is required');
-      }
-      if (formData.target_revenue_audience.length === 0) {
-        throw new Error('At least one target revenue range is required');
-      }
-      if (formData.target_revenue_audience.length > 3) {
-        throw new Error('Maximum 3 target revenue ranges allowed');
-      }
-      if (formData.service_areas.length === 0) {
-        throw new Error('At least one service area is required');
-      }
-      if (formData.focus_areas_12_months.length === 0) {
-        throw new Error('At least one focus area for next 12 months is required');
+      // Skip validation for editing existing partners (admin can save partial updates)
+      if (!partner) {
+        // Only validate required fields for new partner creation
+        if (!formData.company_name.trim()) {
+          throw new Error('Company name is required');
+        }
+        if (!formData.established_year) {
+          throw new Error('Established year is required');
+        }
+        if (!formData.ceo_name || !formData.ceo_email) {
+          throw new Error('CEO contact information is required');
+        }
+        if (formData.target_revenue_audience.length === 0) {
+          throw new Error('At least one target revenue range is required');
+        }
+        if (formData.target_revenue_audience.length > 3) {
+          throw new Error('Maximum 3 target revenue ranges allowed');
+        }
+        if (formData.service_areas.length === 0) {
+          throw new Error('At least one service area is required');
+        }
+        if (formData.focus_areas_12_months.length === 0) {
+          throw new Error('At least one focus area for next 12 months is required');
+        }
       }
       if (formData.focus_areas_12_months.length > 3) {
         throw new Error('Maximum 3 focus areas for next 12 months allowed');
@@ -1219,6 +1225,18 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                 className="mt-1"
                 maxItems={5}
               />
+            </div>
+
+            {/* Landing Page Videos - Added for Edit Mode */}
+            <div>
+              <VideoManager
+                videos={formData.landing_page_videos || []}
+                onChange={(videos) => handleInputChange('landing_page_videos', videos)}
+                label="Landing Page Videos"
+              />
+              <p className="text-sm text-gray-500 mt-2">
+                These videos will appear on your public landing page. You can add YouTube links and custom thumbnails.
+              </p>
             </div>
           </div>
         </div>
