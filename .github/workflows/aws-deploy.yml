@@ -226,16 +226,18 @@ jobs:
               echo "🔄 Pulling latest code from GitHub..."
               git pull origin master
               
-              echo "📦 Installing any new dependencies..."
-              npm install --legacy-peer-deps
+              echo "🧹 Cleaning old dependencies to prevent version conflicts..."
+              rm -rf node_modules package-lock.json
+              rm -rf tpe-backend/node_modules tpe-front-end/node_modules
               
-              echo "🔧 FORCE installing critical backend dependencies (Express keeps disappearing!)..."
-              npm install express pg jsonwebtoken bcryptjs cors dotenv express-rate-limit morgan helmet --save --legacy-peer-deps
+              echo "🔧 Clearing npm cache..."
+              npm cache clean --force
+              
+              echo "📦 Installing dependencies with workspaces..."
+              npm install --legacy-peer-deps
               
               echo "🏗️ Building frontend..."
               cd tpe-front-end
-              # Fix for caniuse-lite issue
-              npm update caniuse-lite browserslist --legacy-peer-deps || true
               npm run build
               cd ..
               
