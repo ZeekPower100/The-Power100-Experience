@@ -53,33 +53,38 @@ export default function PublicPCRLanding({ partnerId }: PublicPCRProps) {
     return url; // Return original if no match
   };
 
-  // Video configuration - can use full YouTube URLs or just IDs
-  const videos = [
+  // Video configuration - use from API if available, otherwise use defaults
+  const defaultVideos = [
     {
-      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Can use full URL
+      url: 'https://www.youtube.com/watch?v=SI-q7Cwqut8',
       title: 'Introduction to Destination Motivation',
-      duration: '3:45',
-      thumbnail: '/images/dm-intro-thumbnail.jpg' // Custom thumbnail (optional)
+      duration: '2:45',
+      thumbnail: null
     },
     {
-      url: 'dQw4w9WgXcQ', // Or just video ID
+      url: 'https://www.youtube.com/watch?v=Z3VoZ0V_H8k',
       title: 'Success Stories & Case Studies',
-      duration: '5:12',
-      thumbnail: null // Will use YouTube thumbnail if null
+      duration: '4:12',
+      thumbnail: null
     },
     {
-      url: 'https://youtu.be/dQw4w9WgXcQ', // Supports short URLs too
+      url: 'https://www.youtube.com/watch?v=Zj7QnujoHiA',
       title: 'Team Building Strategies That Work',
-      duration: '4:28',
-      thumbnail: '/images/dm-strategies-thumbnail.jpg'
+      duration: '3:28',
+      thumbnail: null
     },
     {
-      url: 'dQw4w9WgXcQ',
+      url: 'https://www.youtube.com/watch?v=y1Ry6gRKf10',
       title: 'What Our Clients Say',
-      duration: '6:15',
+      duration: '5:15',
       thumbnail: null
     }
   ];
+  
+  // Use videos from API if available, otherwise use defaults
+  const videos = report?.partner?.videos && report.partner.videos.length > 0 
+    ? report.partner.videos 
+    : defaultVideos;
 
   useEffect(() => {
     fetchReport();

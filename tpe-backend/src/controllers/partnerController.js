@@ -261,7 +261,10 @@ const updatePartner = async (req, res, next) => {
     // Administrative
     'is_active', 'dashboard_access_enabled', 'last_dashboard_login',
     'onboarding_url', 'demo_booking_url', 'onboarding_process',
-    'last_quarterly_report'
+    'last_quarterly_report',
+    
+    // Landing Page Content
+    'landing_page_videos'
   ];
 
   const setClause = [];
@@ -281,7 +284,7 @@ const updatePartner = async (req, res, next) => {
         'focus_areas_12_months', 'tech_stack_crm', 'tech_stack_project_management',
         'tech_stack_communication', 'tech_stack_analytics', 'tech_stack_marketing',
         'tech_stack_financial', 'sponsored_events', 'podcast_appearances',
-        'client_demos', 'client_references', 'client_testimonials'
+        'client_demos', 'client_references', 'client_testimonials', 'landing_page_videos'
       ];
       
       if (jsonFields.includes(key)) {

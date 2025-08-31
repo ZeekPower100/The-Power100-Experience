@@ -275,10 +275,23 @@ class ReportGenerationService {
   // ===== PUBLIC PCR REPORT =====
   async generatePublicPCRReport(partnerId) {
     try {
+      // Get partner data from database if available
+      let partnerData = null;
+      try {
+        const { query } = require('../config/database');
+        const result = await query('SELECT * FROM strategic_partners WHERE id = $1', [partnerId]);
+        if (result.rows.length > 0) {
+          partnerData = result.rows[0];
+        }
+      } catch (err) {
+        console.log('Could not fetch partner data:', err);
+      }
+
       const report = {
         partner: {
-          name: 'Destination Motivation',
-          tagline: 'Building Winning Teams That Stay'
+          name: partnerData?.company_name || 'Destination Motivation',
+          tagline: partnerData?.value_proposition || 'Building Winning Teams That Stay',
+          videos: partnerData?.landing_page_videos || []
         },
         
         powerconfidence_score: {
