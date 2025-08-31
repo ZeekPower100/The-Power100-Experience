@@ -60,9 +60,8 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install Backend Dependencies
-        working-directory: ./tpe-backend
-        run: npm ci --production
+      - name: Install Dependencies (Workspaces)
+        run: npm ci --legacy-peer-deps
 
       - name: Create Backend Environment File
         working-directory: ./tpe-backend
@@ -103,9 +102,8 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install Frontend Dependencies
-        working-directory: ./tpe-front-end
-        run: npm ci
+      # Frontend dependencies already installed with workspaces
+      # - name: Install Frontend Dependencies (included in workspaces)
 
       - name: Create Frontend Environment File
         working-directory: ./tpe-front-end
