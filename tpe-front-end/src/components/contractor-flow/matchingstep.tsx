@@ -630,7 +630,18 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                           >
                             <span className="text-sm">View Quarterly Reports</span>
                           </Button>
-                          <Button className="w-full bg-green-500 hover:bg-green-600 text-white">
+                          <Button 
+                            className="w-full bg-green-500 hover:bg-green-600 text-white"
+                            onClick={() => {
+                              // For Destination Motivation (ID 4), redirect to contractor report
+                              if (partner.id === 4 || partner.name === 'Destination Motivation') {
+                                window.open('/demo/dm-reports?report=contractor', '_blank');
+                              } else {
+                                // For other partners, could show a message or different action
+                                alert('Customer stories coming soon for this partner');
+                              }
+                            }}
+                          >
                             <span className="text-sm">Hear from Similar Customers</span>
                           </Button>
                           <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white">

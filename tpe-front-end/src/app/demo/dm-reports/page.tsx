@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import ContractorComparisonReport from '@/components/reports/ContractorComparisonReport';
 import ExecutiveReport from '@/components/reports/ExecutiveReport';
 import PublicPCRLanding from '@/components/reports/PublicPCRLanding';
@@ -9,7 +10,15 @@ import { Card } from '@/components/ui/card';
 import { FileText, Lock, Globe, ChevronRight } from 'lucide-react';
 
 export default function DMReportsDemo() {
+  const searchParams = useSearchParams();
   const [activeReport, setActiveReport] = useState<'contractor' | 'executive' | 'public'>('public');
+
+  useEffect(() => {
+    const reportParam = searchParams.get('report');
+    if (reportParam && ['contractor', 'executive', 'public'].includes(reportParam)) {
+      setActiveReport(reportParam as 'contractor' | 'executive' | 'public');
+    }
+  }, [searchParams]);
 
   const reports = [
     {

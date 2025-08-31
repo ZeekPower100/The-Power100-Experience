@@ -15,7 +15,8 @@ import {
   Download,
   Calendar,
   Award,
-  CheckCircle
+  CheckCircle,
+  PlayCircle
 } from 'lucide-react';
 
 interface PublicPCRProps {
@@ -26,6 +27,31 @@ export default function PublicPCRLanding({ partnerId }: PublicPCRProps) {
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeVideo, setActiveVideo] = useState<string | null>(null);
+
+  // Video configuration - replace these with actual YouTube video IDs
+  const videos = [
+    {
+      id: 'dQw4w9WgXcQ', // Replace with actual video ID
+      title: 'Introduction to Destination Motivation',
+      duration: '3:45'
+    },
+    {
+      id: 'dQw4w9WgXcQ', // Replace with actual video ID
+      title: 'Success Stories & Case Studies',
+      duration: '5:12'
+    },
+    {
+      id: 'dQw4w9WgXcQ', // Replace with actual video ID
+      title: 'Team Building Strategies That Work',
+      duration: '4:28'
+    },
+    {
+      id: 'dQw4w9WgXcQ', // Replace with actual video ID
+      title: 'What Our Clients Say',
+      duration: '6:15'
+    }
+  ];
 
   useEffect(() => {
     fetchReport();
@@ -201,6 +227,46 @@ export default function PublicPCRLanding({ partnerId }: PublicPCRProps) {
           </div>
         </div>
       )}
+
+      {/* Video Section - Get To Know More About Destination Motivation */}
+      <div className="py-16 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-12">Get To Know More About Destination Motivation</h2>
+          <div className="grid md:grid-cols-2 gap-8">
+            {videos.map((video, idx) => (
+              <div 
+                key={idx} 
+                className="relative group cursor-pointer"
+                onClick={() => window.open(`https://www.youtube.com/watch?v=${video.id}`, '_blank')}
+              >
+                <div className="relative overflow-hidden rounded-xl shadow-lg bg-black aspect-video">
+                  {/* YouTube Thumbnail */}
+                  <img 
+                    src={`https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`}
+                    alt={video.title}
+                    className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                    onError={(e) => {
+                      // Fallback to default quality if maxres not available
+                      (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`;
+                    }}
+                  />
+                  {/* Play Button Overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-power100-red/90 group-hover:bg-power100-red rounded-full p-4 transform group-hover:scale-110 transition-all shadow-2xl">
+                      <PlayCircle className="h-12 w-12 text-white" fill="white" />
+                    </div>
+                  </div>
+                  {/* Video Title Overlay */}
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                    <h3 className="text-white font-semibold text-lg">{video.title}</h3>
+                    <p className="text-white/80 text-sm">{video.duration}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Case Studies */}
       {report.case_studies && report.case_studies.length > 0 && (
