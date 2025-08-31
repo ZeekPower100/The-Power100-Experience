@@ -12,9 +12,10 @@ import { DynamicList } from '@/components/ui/dynamic-list';
 import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
 import { ClientReferenceList, type ClientReference } from '@/components/ui/client-reference-list';
 import { DemoUploadList, type DemoItem } from '@/components/ui/demo-upload-list';
+import VideoManager from '@/components/admin/VideoManager';
 import { partnerApi } from '@/lib/api';
 import { StrategicPartner } from '@/lib/types/strategic_partner';
-import { ArrowLeft, Save, Building2, AlertTriangle, Users, FileText, Star, Target } from 'lucide-react';
+import { ArrowLeft, Save, Building2, AlertTriangle, Users, FileText, Star, Target, PlayCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface PartnerFormProps {
@@ -156,6 +157,9 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
     // Client Demos & References - Updated structure
     client_demos: [] as DemoItem[],
     client_references: [] as ClientReference[],
+    
+    // Landing Page Content
+    landing_page_videos: [] as any[],
     
     // Legacy fields for backward compatibility
     description: '',
@@ -338,6 +342,19 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         client_references: (() => {
           try {
             return JSON.parse(partner.client_references || '[]');
+          } catch {
+            return [];
+          }
+        })(),
+        
+        // Landing Page Content
+        landing_page_videos: (() => {
+          try {
+            const videos = partner.landing_page_videos;
+            if (typeof videos === 'string') {
+              return JSON.parse(videos || '[]');
+            }
+            return videos || [];
           } catch {
             return [];
           }
@@ -2047,6 +2064,18 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                         onChange={(items) => handleInputChange('client_references', items)}
                         maxItems={5}
                       />
+                    </div>
+
+                    {/* Landing Page Videos */}
+                    <div className="pt-8 border-t">
+                      <VideoManager
+                        videos={formData.landing_page_videos || []}
+                        onChange={(videos) => handleInputChange('landing_page_videos', videos)}
+                        label="Landing Page Videos"
+                      />
+                      <p className="text-sm text-gray-500 mt-2">
+                        These videos will appear on your public landing page. You can add YouTube links and custom thumbnails.
+                      </p>
                     </div>
                   </div>
                 </CardContent>
