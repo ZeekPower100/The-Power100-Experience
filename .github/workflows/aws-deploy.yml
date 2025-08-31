@@ -61,7 +61,7 @@ jobs:
           node-version: '18'
 
       - name: Install Dependencies (Workspaces)
-        run: npm ci --legacy-peer-deps
+        run: npm install --legacy-peer-deps
 
       - name: Create Backend Environment File
         working-directory: ./tpe-backend
