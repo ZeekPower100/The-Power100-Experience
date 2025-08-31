@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, Star, ArrowRight, ArrowLeft, Calendar, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { contractorApi } from '@/lib/api';
+import Image from 'next/image';
 
 // Real matching will be done via API call to backend
 
@@ -274,8 +275,14 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
             <Card className="bg-white/70 border-0 shadow-2xl rounded-xl">
                 <CardHeader className="text-center pb-8">
-                    <div className="w-16 h-16 bg-gradient-to-br from-power100-red-deep to-power100-red rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-                        <Sparkles className="w-8 h-8 text-white animate-pulse" />
+                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg p-2">
+                        <Image 
+                            src="/power100-logo.png" 
+                            alt="Power100 Logo" 
+                            width={48} 
+                            height={48}
+                            className="animate-pulse"
+                        />
                     </div>
                     <CardTitle className="text-3xl font-bold text-power100-black mb-3">Finding Your Perfect Matches...</CardTitle>
                     <p className="text-lg text-power100-grey">Our AI is analyzing thousands of potential partners to find the best fit for your business.</p>
@@ -307,8 +314,13 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }}>
         <Card className="bg-white/70 border-0 shadow-2xl rounded-xl">
             <CardHeader className="text-center pb-8">
-                <div className="w-16 h-16 bg-gradient-to-br from-power100-red-deep to-power100-red rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-                    <Sparkles className="w-8 h-8 text-white" />
+                <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg p-2">
+                    <Image 
+                        src="/power100-logo.png" 
+                        alt="Power100 Logo" 
+                        width={48} 
+                        height={48}
+                    />
                 </div>
                 <CardTitle className="text-3xl font-bold text-power100-black mb-3">We Found Your Perfect Matches!</CardTitle>
                 <p className="text-lg text-power100-grey">Based on your focused areas selected, business profile, and current tech stack, here is the top Podcast, Event, and ideal Partners for Greenfield Growth.</p>

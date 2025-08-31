@@ -112,8 +112,8 @@ export default function ProfilingStep({ data, onNext, onPrev, onUpdate }: StepPr
             <div>
               <Label htmlFor="annual_revenue" className="text-sm font-semibold text-gray-700">Annual Revenue Range *</Label>
               <Select value={formData.annual_revenue} onValueChange={(value) => handleInputChange('annual_revenue', value)}>
-                <SelectTrigger className="mt-2 h-12"><SelectValue placeholder="Select revenue range" /></SelectTrigger>
-                <SelectContent>
+                <SelectTrigger className="mt-2 h-12 bg-white"><SelectValue placeholder="Select revenue range" /></SelectTrigger>
+                <SelectContent className="bg-white">
                   <SelectItem value="0_5_million">$0 - $5M</SelectItem>
                   <SelectItem value="5_10_million">$5M - $10M</SelectItem>
                   <SelectItem value="11_20_million">$11M - $20M</SelectItem>
