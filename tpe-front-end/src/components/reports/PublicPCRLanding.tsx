@@ -16,7 +16,8 @@ import {
   Calendar,
   Award,
   CheckCircle,
-  PlayCircle
+  PlayCircle,
+  X
 } from 'lucide-react';
 
 interface PublicPCRProps {
@@ -29,33 +30,80 @@ export default function PublicPCRLanding({ partnerId }: PublicPCRProps) {
   const [error, setError] = useState<string | null>(null);
   const [activeVideo, setActiveVideo] = useState<string | null>(null);
 
-  // Video configuration - replace these with actual YouTube video IDs
+  // Helper function to extract YouTube video ID from various URL formats
+  const extractYouTubeId = (url: string): string => {
+    // If it's already just an ID, return it
+    if (!url.includes('youtube.com') && !url.includes('youtu.be')) {
+      return url;
+    }
+    
+    // Handle various YouTube URL formats
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtube\.com\/embed\/|youtu\.be\/)([^&\n?#]+)/,
+      /youtube\.com\/watch\?.*v=([^&\n?#]+)/
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match && match[1]) {
+        return match[1];
+      }
+    }
+    
+    return url; // Return original if no match
+  };
+
+  // Video configuration - can use full YouTube URLs or just IDs
   const videos = [
     {
-      id: 'dQw4w9WgXcQ', // Replace with actual video ID
+      url: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', // Can use full URL
       title: 'Introduction to Destination Motivation',
-      duration: '3:45'
+      duration: '3:45',
+      thumbnail: '/images/dm-intro-thumbnail.jpg' // Custom thumbnail (optional)
     },
     {
-      id: 'dQw4w9WgXcQ', // Replace with actual video ID
+      url: 'dQw4w9WgXcQ', // Or just video ID
       title: 'Success Stories & Case Studies',
-      duration: '5:12'
+      duration: '5:12',
+      thumbnail: null // Will use YouTube thumbnail if null
     },
     {
-      id: 'dQw4w9WgXcQ', // Replace with actual video ID
+      url: 'https://youtu.be/dQw4w9WgXcQ', // Supports short URLs too
       title: 'Team Building Strategies That Work',
-      duration: '4:28'
+      duration: '4:28',
+      thumbnail: '/images/dm-strategies-thumbnail.jpg'
     },
     {
-      id: 'dQw4w9WgXcQ', // Replace with actual video ID
+      url: 'dQw4w9WgXcQ',
       title: 'What Our Clients Say',
-      duration: '6:15'
+      duration: '6:15',
+      thumbnail: null
     }
   ];
 
   useEffect(() => {
     fetchReport();
   }, [partnerId]);
+
+  // Handle ESC key to close video modal
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveVideo(null);
+      }
+    };
+    
+    if (activeVideo) {
+      document.addEventListener('keydown', handleEsc);
+      // Prevent body scroll when modal is open
+      document.body.style.overflow = 'hidden';
+    }
+    
+    return () => {
+      document.removeEventListener('keydown', handleEsc);
+      document.body.style.overflow = 'unset';
+    };
+  }, [activeVideo]);
 
   const fetchReport = async () => {
     try {
@@ -233,37 +281,45 @@ export default function PublicPCRLanding({ partnerId }: PublicPCRProps) {
         <div className="max-w-7xl mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-12">Get To Know More About Destination Motivation</h2>
           <div className="grid md:grid-cols-2 gap-8">
-            {videos.map((video, idx) => (
-              <div 
-                key={idx} 
-                className="relative group cursor-pointer"
-                onClick={() => window.open(`https://www.youtube.com/watch?v=${video.id}`, '_blank')}
-              >
-                <div className="relative overflow-hidden rounded-xl shadow-lg bg-black aspect-video">
-                  {/* YouTube Thumbnail */}
-                  <img 
-                    src={`https://img.youtube.com/vi/${video.id}/maxresdefault.jpg`}
-                    alt={video.title}
-                    className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
-                    onError={(e) => {
-                      // Fallback to default quality if maxres not available
-                      (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`;
-                    }}
-                  />
-                  {/* Play Button Overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="bg-power100-red/90 group-hover:bg-power100-red rounded-full p-4 transform group-hover:scale-110 transition-all shadow-2xl">
-                      <PlayCircle className="h-12 w-12 text-white" fill="white" />
+            {videos.map((video, idx) => {
+              const videoId = extractYouTubeId(video.url);
+              return (
+                <div 
+                  key={idx} 
+                  className="relative group cursor-pointer"
+                  onClick={() => setActiveVideo(videoId)}
+                >
+                  <div className="relative overflow-hidden rounded-xl shadow-lg bg-black aspect-video">
+                    {/* Custom Thumbnail or YouTube Thumbnail */}
+                    <img 
+                      src={video.thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`}
+                      alt={video.title}
+                      className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                      onError={(e) => {
+                        // Fallback to YouTube thumbnail if custom thumbnail fails
+                        if (video.thumbnail) {
+                          (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+                        } else {
+                          // Fallback to default quality if maxres not available
+                          (e.target as HTMLImageElement).src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                        }
+                      }}
+                    />
+                    {/* Play Button Overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="bg-power100-red/90 group-hover:bg-power100-red rounded-full p-4 transform group-hover:scale-110 transition-all shadow-2xl">
+                        <PlayCircle className="h-12 w-12 text-white" fill="white" />
+                      </div>
+                    </div>
+                    {/* Video Title Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+                      <h3 className="text-white font-semibold text-lg">{video.title}</h3>
+                      <p className="text-white/80 text-sm">{video.duration}</p>
                     </div>
                   </div>
-                  {/* Video Title Overlay */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                    <h3 className="text-white font-semibold text-lg">{video.title}</h3>
-                    <p className="text-white/80 text-sm">{video.duration}</p>
-                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
@@ -313,6 +369,46 @@ export default function PublicPCRLanding({ partnerId }: PublicPCRProps) {
           </div>
         </div>
       </div>
+
+      {/* Video Modal */}
+      {activeVideo && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setActiveVideo(null)}
+        >
+          <div 
+            className="relative w-full max-w-5xl mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setActiveVideo(null)}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors"
+            >
+              <X className="h-8 w-8" />
+            </button>
+            
+            {/* YouTube Embed */}
+            <div className="relative aspect-video bg-black rounded-lg overflow-hidden shadow-2xl">
+              <iframe
+                src={`https://www.youtube.com/embed/${activeVideo}?autoplay=1&rel=0&modestbranding=1`}
+                title="YouTube video player"
+                className="absolute inset-0 w-full h-full"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+            
+            {/* Optional: Video Title Below */}
+            <div className="mt-4 text-center">
+              <p className="text-white text-lg font-semibold">
+                {videos.find(v => extractYouTubeId(v.url) === activeVideo)?.title}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
