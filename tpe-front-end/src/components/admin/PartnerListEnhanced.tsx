@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Eye, Edit, MessageCircle, TrendingUp, TrendingDown, Minus, Download, FileText, FileSpreadsheet } from 'lucide-react';
-import PartnerDetailModal from './PartnerDetailModal';
+import PartnerDetailsEditor from './PartnerDetailsEditor';
 import { exportToExcel, exportToCSV, exportToPDF } from '@/utils/exportReports';
 
 interface Partner {
@@ -365,12 +365,22 @@ const PartnerListEnhanced: React.FC<PartnerListEnhancedProps> = ({ onPartnerSele
         </CardContent>
       </Card>
 
-      {/* Partner Detail Modal */}
-      <PartnerDetailModal
-        partner={selectedPartner}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
+      {/* Partner Details Editor */}
+      {selectedPartner && isModalOpen && (
+        <PartnerDetailsEditor
+          partnerId={selectedPartner.id.toString()}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedPartner(null);
+          }}
+          onSave={() => {
+            setIsModalOpen(false);
+            setSelectedPartner(null);
+            // Trigger refresh of partner list
+            fetchEnhancedPartners();
+          }}
+        />
+      )}
     </div>
   );
 };

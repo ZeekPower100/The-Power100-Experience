@@ -91,15 +91,15 @@ export default function DMReportsDemo() {
       {/* Report Display */}
       <div className="relative">
         {activeReport === 'contractor' && (
-          <ContractorComparisonReport contractorId="1" partnerId="4" />
+          <ContractorComparisonReport contractorId="1" partnerId="1" />
         )}
         
         {activeReport === 'executive' && (
-          <ExecutiveReport partnerId="4" />
+          <ExecutiveReport partnerId="1" />
         )}
         
         {activeReport === 'public' && (
-          <PublicPCRLanding partnerId="4" />
+          <PublicPCRLanding partnerId="1" />
         )}
       </div>
 

@@ -16,7 +16,6 @@ import {
   Calendar,
   Award,
   CheckCircle,
-  PlayCircle,
   X
 } from 'lucide-react';
 
@@ -294,12 +293,13 @@ export default function PublicPCRLanding({ partnerId }: PublicPCRProps) {
                   className="relative group cursor-pointer"
                   onClick={() => setActiveVideo(videoId)}
                 >
-                  <div className="relative overflow-hidden rounded-xl shadow-lg bg-black aspect-video">
-                    {/* Custom Thumbnail or YouTube Thumbnail */}
+                  <div className="relative overflow-hidden rounded-xl shadow-lg bg-gray-900" style={{ paddingBottom: '56.25%' }}>
+                    {/* Custom Thumbnail or YouTube Thumbnail - Force 16:9 aspect ratio */}
                     <img 
                       src={video.thumbnail || `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`}
                       alt={video.title}
-                      className="w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-0 left-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity"
+                      style={{ objectFit: 'cover', objectPosition: 'center' }}
                       onError={(e) => {
                         // Fallback to YouTube thumbnail if custom thumbnail fails
                         if (video.thumbnail) {
@@ -312,8 +312,19 @@ export default function PublicPCRLanding({ partnerId }: PublicPCRProps) {
                     />
                     {/* Play Button Overlay */}
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="bg-power100-red/90 group-hover:bg-power100-red rounded-full p-4 transform group-hover:scale-110 transition-all shadow-2xl">
-                        <PlayCircle className="h-12 w-12 text-white" fill="white" />
+                      <div className="w-20 h-20 bg-white/90 group-hover:bg-white rounded-full flex items-center justify-center transform group-hover:scale-110 transition-all shadow-2xl">
+                        {/* Custom triangular play button */}
+                        <svg 
+                          viewBox="0 0 24 24" 
+                          className="w-8 h-8 ml-1"
+                          fill="none"
+                        >
+                          <path 
+                            d="M8 5.14v13.72c0 .9 1 1.45 1.76.97l10.48-6.86a1.1 1.1 0 0 0 0-1.94L9.76 4.17A1.11 1.11 0 0 0 8 5.14Z" 
+                            fill="currentColor"
+                            className="text-power100-red"
+                          />
+                        </svg>
                       </div>
                     </div>
                     {/* Video Title Overlay */}
