@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { connectDB, query } = require('../src/config/database.sqlite');
+const { connectDB, query } = require('../src/config/database');
 
 async function runMigration() {
   try {

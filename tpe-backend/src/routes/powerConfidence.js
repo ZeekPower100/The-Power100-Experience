@@ -206,7 +206,7 @@ router.get('/partners/:partnerId/history', protect, async (req, res) => {
     const { partnerId } = req.params;
     const { partner_type = 'strategic_partner', limit = 12 } = req.query;
     
-    const { query } = require('../config/database.sqlite');
+    const { query } = require('../config/database');
     
     const result = await query(`
       SELECT 
@@ -240,7 +240,7 @@ router.get('/partners/:partnerId/current', protect, async (req, res) => {
     const { partnerId } = req.params;
     const { partner_type = 'strategic_partner' } = req.query;
     
-    const { query } = require('../config/database.sqlite');
+    const { query } = require('../config/database');
     
     if (partner_type === 'strategic_partner') {
       const result = await query(`

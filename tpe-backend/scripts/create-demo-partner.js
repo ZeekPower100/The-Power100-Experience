@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
-const { connectDB, query } = require('../src/config/database.sqlite');
+const { connectDB, query } = require('../src/config/database');
 
 async function createDemoPartner() {
   try {

@@ -1,4 +1,4 @@
-const { query } = require('../config/database.sqlite');
+const { query } = require('../config/database');
 
 // Get partner's own PowerConfidence data
 const getPartnerDashboard = async (req, res) => {

@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { query, connectDB } = require('../src/config/database.sqlite');
+const { query, connectDB } = require('../src/config/database');
 
 async function applyEnhancements() {
   try {

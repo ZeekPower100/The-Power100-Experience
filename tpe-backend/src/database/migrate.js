@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { query, connectDB } = require('../config/database.sqlite');
+const { query, connectDB } = require('../config/database');
 
 // Migration runner for Partner Portal database schema
 async function runMigrations() {

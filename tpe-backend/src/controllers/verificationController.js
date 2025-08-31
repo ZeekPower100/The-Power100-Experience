@@ -1,5 +1,5 @@
 // Verification Controller - Handles SMS verification codes via GHL
-const { query } = require('../config/database.sqlite');
+const { query } = require('../config/database');
 const crypto = require('crypto');
 
 // Generate 6-digit verification code

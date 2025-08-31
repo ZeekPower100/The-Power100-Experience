@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { query } = require('../config/database.sqlite');
+const { query } = require('../config/database');
 const { AppError } = require('./errorHandler');
 
 // Protect partner routes - require partner authentication

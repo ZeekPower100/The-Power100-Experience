@@ -1,5 +1,5 @@
 // Quick script to check GHL-ready data
-const { connectDB, query } = require('./src/config/database.sqlite');
+const { connectDB, query } = require('./src/config/database');
 
 async function checkData() {
   await connectDB();

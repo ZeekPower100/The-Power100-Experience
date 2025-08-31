@@ -1,5 +1,5 @@
 // Test query directly
-const { connectDB, query } = require('./src/config/database.sqlite');
+const { connectDB, query } = require('./src/config/database');
 
 async function test() {
   await connectDB();

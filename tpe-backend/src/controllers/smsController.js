@@ -1,5 +1,5 @@
 // SMS Campaign and Subscription Management Controller  
-const { query } = require('../config/database.sqlite');
+const { query } = require('../config/database');
 
 // Get SMS subscriptions
 const getSmsSubscriptions = async (req, res) => {

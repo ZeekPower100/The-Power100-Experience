@@ -1,5 +1,5 @@
 // Test the query function directly
-const { query } = require('./src/config/database.sqlite');
+const { query } = require('./src/config/database');
 
 async function testQuery() {
   try {

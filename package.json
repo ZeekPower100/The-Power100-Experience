@@ -3,8 +3,8 @@
     "version": "1.0.0",
     "description": "Power100 Experience - Full Stack Application",
     "scripts": {
-      "dev:frontend": "cd tpe-front-end && npm run dev",
-      "dev:backend": "cd tpe-backend && npm run dev",
+      "dev:frontend": "cd tpe-front-end && node ../node_modules/next/dist/bin/next dev --port 3002",
+      "dev:backend": "node tpe-backend/src/server.js",
       "build:all": "npm run build:frontend && npm run build:backend",
       "build:frontend": "cd tpe-front-end && npm run build",
       "build:backend": "cd tpe-backend && npm run build",

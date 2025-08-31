@@ -1,5 +1,5 @@
 // Power Cards Service - Manages quarterly feedback surveys and PowerConfidence scoring
-const { query, transaction } = require('../config/database.sqlite');
+const { query, transaction } = require('../config/database');
 const crypto = require('crypto');
 
 class PowerCardService {

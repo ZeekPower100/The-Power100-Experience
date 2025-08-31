@@ -1,5 +1,5 @@
 // GHL Sync Controller - Manages contact synchronization between TPE and GHL
-const { query } = require('../config/database.sqlite');
+const { query } = require('../config/database');
 
 // Sync all contacts (contractors, partners, employees) to GHL
 const syncAllContactsToGHL = async (req, res) => {

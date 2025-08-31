@@ -1,5 +1,5 @@
 // Contact Tagging Service - Automatic contact classification and tagging
-const { query } = require('../config/database.sqlite');
+const { query } = require('../config/database');
 
 class ContactTaggingService {
   

@@ -1,5 +1,5 @@
 // PowerConfidence Feedback System Controller
-const { query } = require('../config/database.sqlite');
+const { query } = require('../config/database');
 
 // Get all feedback surveys for a partner or contractor
 const getFeedbackSurveys = async (req, res) => {

@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { query } = require('../config/database.sqlite');
+const { query } = require('../config/database');
 const { protect } = require('../middleware/auth');
 const { AppError } = require('../middleware/errorHandler');
 const multer = require('multer');

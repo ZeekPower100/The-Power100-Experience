@@ -1,5 +1,5 @@
 // PowerConfidence Integration Service - Connects Power Cards feedback to scoring
-const { query, transaction } = require('../config/database.sqlite');
+const { query, transaction } = require('../config/database');
 const powerCardService = require('./powerCardService');
 
 class PowerConfidenceService {

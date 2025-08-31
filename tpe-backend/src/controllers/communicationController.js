@@ -1,5 +1,5 @@
 // Communication Controller - Handles webhooks from n8n/GHL for SMS/Email tracking
-const { query } = require('../config/database.sqlite');
+const { query } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
 
 // Webhook endpoint to receive communication data from n8n/GHL

@@ -1,4 +1,4 @@
-const { query, transaction } = require('../config/database.sqlite');
+const { query, transaction } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
 
 // Bulk operations for contractors
