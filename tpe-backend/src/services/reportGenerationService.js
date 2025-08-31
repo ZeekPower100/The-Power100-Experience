@@ -110,7 +110,7 @@ class ReportGenerationService {
           powerconfidence_score: 99,
           previous_score: 97,
           score_change: '+2',
-          total_clients_served: 142,
+          total_clients_served: 500,
           active_clients: 89,
           avg_client_satisfaction: 9.2,
           nps_score: 87
@@ -240,7 +240,7 @@ class ReportGenerationService {
             },
             {
               area: 'Client Distribution Balance',
-              current_performance: '142 total clients, heavily weighted $11M-$20M',
+              current_performance: '500+ total clients, heavily weighted $11M-$20M',
               target: 'More even distribution across tiers',
               action_plan: 'Targeted outreach to underserved revenue segments'
             }
@@ -289,10 +289,10 @@ class ReportGenerationService {
         },
         
         key_metrics: [
-          { metric: '+12%', label: 'Avg Closing Rate Improvement' },
-          { metric: '-6.8%', label: 'Cancellation Rate Reduction' },
+          { metric: '+12%', label: 'Avg. Closing Rate Increase' },
+          { metric: '-6.8%', label: 'Avg. Cancel Rate Reduction' },
           { metric: '9.2/10', label: 'Customer Experience Score' },
-        { metric: '142', label: 'Contractors Transformed' }
+        { metric: '500+', label: 'Verified Contractors Helped' }
         ],
         
         testimonials: [
