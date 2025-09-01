@@ -98,8 +98,7 @@ export default function AdminSearchPage() {
   const handleViewContractorDetail = async (id: string) => {
     try {
       // Use the contractors-enhanced endpoint that works
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
-      const response = await fetch(`${apiUrl}/contractors-enhanced/${id}/view`, {
+      const response = await fetch(getApiUrl(`api/contractors-enhanced/${id}/view`), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },
@@ -122,8 +121,7 @@ export default function AdminSearchPage() {
     try {
       // For now, use the existing enhanced partner functionality pattern
       // First get all partners and find the specific one (batch approach that works)
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
-      const response = await fetch(`${apiUrl}/partners-enhanced/list`, {
+      const response = await fetch(getApiUrl('api/partners-enhanced/list'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },

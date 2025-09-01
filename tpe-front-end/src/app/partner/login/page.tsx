@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Eye, EyeOff, LogIn, Shield, TrendingUp, Award } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { getApiUrl } from '@/utils/api';
 
 export default function PartnerLoginPage() {
   const router = useRouter();
@@ -23,8 +24,7 @@ export default function PartnerLoginPage() {
     setLoading(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
-      const response = await fetch(`${apiUrl}/partner-auth/login`, {
+      const response = await fetch(getApiUrl('api/partner-auth/login'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

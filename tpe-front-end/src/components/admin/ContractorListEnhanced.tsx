@@ -7,6 +7,7 @@ import { Button } from '../ui/button';
 import { Eye, Edit, Users, TrendingUp, Calendar, CheckCircle, XCircle, Clock, Download, FileText, FileSpreadsheet } from 'lucide-react';
 import ContractorDetailModal from './ContractorDetailModal';
 import { exportToExcel, exportToCSV } from '@/utils/exportReports';
+import { getApiUrl } from '@/utils/api';
 
 interface Contractor {
   id: number;
@@ -68,8 +69,7 @@ const ContractorListEnhanced: React.FC<ContractorListEnhancedProps> = ({ onContr
   const fetchEnhancedContractors = async () => {
     try {
       setLoading(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
-      const response = await fetch(`${apiUrl}/contractors-enhanced/list`, {
+      const response = await fetch(getApiUrl('api/contractors-enhanced/list'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },

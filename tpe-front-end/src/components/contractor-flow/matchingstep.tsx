@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, Star, ArrowRight, ArrowLeft, Calendar, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { contractorApi } from '@/lib/api';
+import { getApiUrl } from '@/utils/api';
 import Image from 'next/image';
 
 // Real matching will be done via API call to backend
@@ -176,7 +177,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
     if (nextIndex < allFocusAreas.length) {
       // Track focus area exploration
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/data-collection/interaction`, {
+        await fetch(getApiUrl('api/data-collection/interaction'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -204,7 +205,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
     if (prevIndex >= 0) {
       // Track focus area exploration
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/data-collection/interaction`, {
+        await fetch(getApiUrl('api/data-collection/interaction'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

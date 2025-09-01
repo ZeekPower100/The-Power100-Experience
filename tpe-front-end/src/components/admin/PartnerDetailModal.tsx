@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { exportToPDF, exportToExcel, exportToCSV } from '@/utils/exportReports';
+import { getApiUrl } from '@/utils/api';
 
 interface PartnerDetailModalProps {
   partner: any;
@@ -27,7 +28,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
         setLoading(true);
         try {
           // Use the partners-enhanced API to get all partner data
-          const response = await fetch(`http://localhost:5000/api/partners-enhanced/list`, {
+          const response = await fetch(getApiUrl('api/partners-enhanced/list'), {
             headers: {
               'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
             },

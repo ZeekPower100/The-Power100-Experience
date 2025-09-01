@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, ArrowRight, ArrowLeft, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { getApiUrl } from '@/utils/api';
 
 interface PowerCardTemplate {
   id: string;
@@ -196,7 +197,7 @@ const PowerCardSurvey: React.FC<PowerCardSurveyProps> = ({ surveyLink, onComplet
         time_to_complete: timeToComplete
       };
 
-      const response = await fetch(`http://localhost:5000/api/power-cards/survey/${surveyLink}/response`, {
+      const response = await fetch(getApiUrl(`api/power-cards/survey/${surveyLink}/response`), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

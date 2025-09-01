@@ -30,6 +30,7 @@ import {
   Shield
 } from 'lucide-react';
 import { contractorApi } from '@/lib/api';
+import { getApiUrl } from '@/utils/api';
 
 interface ContractorEditData {
   // Basic Information
@@ -196,8 +197,7 @@ export default function ContractorEditPage() {
       setError(null);
       
       // Use contractors-enhanced endpoint that works reliably
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
-      const response = await fetch(`${apiUrl}/contractors-enhanced/${contractorId}/view`, {
+      const response = await fetch(getApiUrl(`api/contractors-enhanced/${contractorId}/view`), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },
