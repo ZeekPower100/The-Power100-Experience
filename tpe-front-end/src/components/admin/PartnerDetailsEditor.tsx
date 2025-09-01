@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import VideoManager from './VideoManager';
+import LogoManager from './LogoManager';
 import { 
   Building2, 
   Save, 
@@ -246,6 +247,14 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                       onChange={(e) => updateField('description', e.target.value)}
                       className="mt-1"
                       rows={6}
+                    />
+                  </div>
+
+                  <div>
+                    <LogoManager
+                      logoUrl={partner.logo_url || null}
+                      onChange={(url) => updateField('logo_url', url)}
+                      label="Company Logo"
                     />
                   </div>
                 </TabsContent>

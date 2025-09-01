@@ -7,10 +7,56 @@ router.post('/apply', async (req, res) => {
   try {
     const partnerData = req.body;
     
+    // Map frontend field names to database column names
+    const fieldMapping = {
+      // Contact mappings
+      'ceo_name': 'ceo_contact_name',
+      'ceo_email': 'ceo_contact_email', 
+      'ceo_phone': 'ceo_contact_phone',
+      'ceo_primary_email': 'ceo_contact_email',
+      'ceo_primary_phone': 'ceo_contact_phone',
+      
+      'cx_name': 'cx_contact_name',
+      'cx_email': 'cx_contact_email',
+      'cx_phone': 'cx_contact_phone',
+      'cx_primary_email': 'cx_contact_email',
+      'cx_primary_phone': 'cx_contact_phone',
+      
+      'sales_name': 'sales_contact_name',
+      'sales_email': 'sales_contact_email',
+      'sales_phone': 'sales_contact_phone',
+      'sales_primary_email': 'sales_contact_email',
+      'sales_primary_phone': 'sales_contact_phone',
+      
+      'onboarding_name': 'onboarding_contact_name',
+      'onboarding_email': 'onboarding_contact_email',
+      'onboarding_phone': 'onboarding_contact_phone',
+      'onboarding_primary_email': 'onboarding_contact_email',
+      'onboarding_primary_phone': 'onboarding_contact_phone',
+      
+      'marketing_name': 'marketing_contact_name',
+      'marketing_email': 'marketing_contact_email',
+      'marketing_phone': 'marketing_contact_phone',
+      'marketing_primary_email': 'marketing_contact_email',
+      'marketing_primary_phone': 'marketing_contact_phone',
+      
+      // Other field mappings
+      'contact_person': 'primary_contact',
+      'email': 'contact_email',
+      'phone': 'contact_phone'
+    };
+    
+    // Apply field mappings
+    const mappedData = {};
+    for (const [key, value] of Object.entries(partnerData)) {
+      const mappedKey = fieldMapping[key] || key;
+      mappedData[mappedKey] = value;
+    }
+    
     // Set default values for public submissions
-    partnerData.is_active = false; // Inactive until approved
-    partnerData.power_confidence_score = 0; // No score until reviewed
-    partnerData.status = 'pending_review'; // Mark as pending
+    mappedData.is_active = false; // Inactive until approved
+    mappedData.powerconfidence_score = 0; // No score until reviewed
+    mappedData.status = 'pending_review'; // Mark as pending
     
     // Convert arrays/objects to JSON strings for storage
     const jsonFields = [
@@ -18,19 +64,43 @@ router.post('/apply', async (req, res) => {
       'tech_stack_sales', 'tech_stack_operations', 'tech_stack_marketing',
       'tech_stack_customer_experience', 'tech_stack_installation_pm', 
       'tech_stack_accounting_finance', 'sponsored_events', 'podcast_appearances',
-      'client_demos', 'client_references', 'client_testimonials'
+      'client_demos', 'client_references', 'client_testimonials', 'focus_areas_served',
+      'target_revenue_range', 'geographic_regions', 'key_differentiators'
     ];
     
     jsonFields.forEach(field => {
-      if (partnerData[field] && typeof partnerData[field] === 'object') {
-        partnerData[field] = JSON.stringify(partnerData[field]);
+      if (mappedData[field] && typeof mappedData[field] === 'object') {
+        mappedData[field] = JSON.stringify(mappedData[field]);
       }
     });
     
-    // Build insert query
-    const columns = Object.keys(partnerData).filter(key => partnerData[key] !== undefined);
+    // Get actual columns from the database that we collected earlier
+    const validColumns = [
+      'company_name', 'description', 'website', 'logo_url', 'primary_email', 'contact_email', 'contact_phone',
+      'focus_areas_served', 'target_revenue_range', 'geographic_regions', 'powerconfidence_score',
+      'is_active', 'status', 'established_year', 'employee_count', 'ownership_type',
+      'ceo_contact_name', 'ceo_contact_email', 'ceo_contact_phone', 
+      'cx_contact_name', 'cx_contact_email', 'cx_contact_phone',
+      'sales_contact_name', 'sales_contact_email', 'sales_contact_phone', 
+      'onboarding_contact_name', 'onboarding_contact_email', 'onboarding_contact_phone',
+      'marketing_contact_name', 'marketing_contact_email', 'marketing_contact_phone',
+      'target_revenue_audience', 'service_areas', 'sponsored_events', 'podcast_appearances',
+      'value_proposition', 'why_clients_choose_you', 'focus_areas_12_months',
+      'tech_stack_marketing', 'tech_stack_crm', 'tech_stack_analytics', 'tech_stack_communication',
+      'tech_stack_financial', 'tech_stack_project_management',
+      'client_demos', 'client_references', 'landing_page_videos',
+      'primary_contact', 'secondary_contact', 'company_description'
+    ];
+    
+    // Filter to only include valid columns
+    const columns = Object.keys(mappedData)
+      .filter(key => mappedData[key] !== undefined && validColumns.includes(key));
     const values = columns.map((_, index) => `$${index + 1}`);
-    const params = columns.map(col => partnerData[col]);
+    const params = columns.map(col => mappedData[col]);
+    
+    if (columns.length === 0) {
+      throw new Error('No valid columns to insert. Check field mappings.');
+    }
     
     const insertQuery = `
       INSERT INTO strategic_partners (${columns.join(', ')})

@@ -11,7 +11,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
 import { ClientReferenceList, type ClientReference } from '@/components/ui/client-reference-list';
 import { DemoUploadList, type DemoItem } from '@/components/ui/demo-upload-list';
+import LogoManager from '@/components/admin/LogoManager';
 import { partnerApi } from '@/lib/api';
+import { getApiUrl } from '@/utils/api';
 import { Building2, AlertTriangle, Users, FileText, Star, Target, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -86,6 +88,7 @@ export default function PartnerOnboardingForm() {
     employee_count: '',
     client_count: '',
     website: '',
+    logo_url: null as string | null,
     ownership_type: '',
     
     // Contact Information
@@ -244,6 +247,7 @@ export default function PartnerOnboardingForm() {
         company_name: formData.company_name,
         description: formData.value_proposition || '',
         website: formData.website,
+        logo_url: formData.logo_url,
         primary_email: formData.ceo_email,
         contact_phone: formData.ceo_phone,
         
@@ -251,7 +255,7 @@ export default function PartnerOnboardingForm() {
         focus_areas_served: formData.service_areas,
         target_revenue_range: formData.target_revenue_audience,
         geographic_regions: [],
-        power_confidence_score: 0,
+        powerconfidence_score: 0,
         pricing_model: '',
         onboarding_process: '',
         key_differentiators: [],
@@ -322,7 +326,7 @@ export default function PartnerOnboardingForm() {
 
       // Submit to API
       // Use public endpoint for submissions
-      const response = await fetch('/api/partners/public/apply', {
+      const response = await fetch(getApiUrl('api/partners/public/apply'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(apiData)
@@ -1278,15 +1282,27 @@ export default function PartnerOnboardingForm() {
                   {/* Title */}
                   <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-power100-black mb-2">
-                      Client Demos & References
+                      Portfolio & Branding
                     </h2>
                     <p className="text-power100-grey">
-                      Provide recorded demos and client references that fit your target audience
+                      Upload your company logo and provide demos and references
                     </p>
                   </div>
                   
                   {/* Form Fields */}
                   <div className="space-y-8">
+                    {/* Company Logo */}
+                    <div>
+                      <LogoManager
+                        logoUrl={formData.logo_url}
+                        onChange={(url) => handleInputChange('logo_url', url)}
+                        label="Company Logo"
+                      />
+                      <p className="text-sm text-power100-grey mt-2">
+                        Your logo will be displayed on your partner profile and in marketing materials
+                      </p>
+                    </div>
+
                     <div>
                       <Label>Client Demos (Up to 5)</Label>
                       <p className="text-sm text-power100-grey mt-1 mb-4">
