@@ -470,3 +470,4 @@ The Power100 Experience includes a comprehensive plan for evolving from a basic 
 - always check data and database schema before migrating or pulling elements over into production
 - when restarting the backend of the development server always find where the port is being used then kill the server specifying the id of where it is being used then restart the server
 - always use syntax for windows when taskkill command is used
+- use dev-manager.js to handle all developer server maintenance actions.

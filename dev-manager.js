@@ -348,7 +348,7 @@ class DevManager {
       switch(args[0]) {
         case 'start':
           await this.startAll();
-          // Keep process alive
+          // Keep process alive for attached mode
           setInterval(() => {}, 1000);
           break;
         case 'stop':
@@ -370,6 +370,11 @@ class DevManager {
           break;
         default:
           console.log('Usage: node dev-manager.js [start|stop|restart|clean|status]');
+          console.log('  start     - Start servers');
+          console.log('  stop      - Stop all servers');
+          console.log('  restart   - Restart all servers');
+          console.log('  clean     - Clean build artifacts');
+          console.log('  status    - Check server status');
           process.exit(1);
       }
     }
