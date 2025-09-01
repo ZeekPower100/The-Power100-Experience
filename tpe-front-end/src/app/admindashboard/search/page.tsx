@@ -20,6 +20,7 @@ import BulkOperations from '@/components/admin/BulkOperations';
 import ContractorDetailModal from '@/components/admin/ContractorDetailModal';
 import PartnerDetailModal from '@/components/admin/PartnerDetailModal';
 import { contractorApi, partnerApi } from '@/lib/api';
+import { getApiUrl } from '@/utils/api';
 import PartnerForm from '@/components/admin/PartnerForm';
 
 interface SearchResult {
@@ -155,8 +156,7 @@ export default function AdminSearchPage() {
   const handleEditPartner = async (id: string) => {
     try {
       // Get full partner data for editing (using enhanced approach)
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
-      const response = await fetch(`${apiUrl}/partners-enhanced/list`, {
+      const response = await fetch(getApiUrl('api/partners-enhanced/list'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },

@@ -7,6 +7,7 @@ import { Button } from '../ui/button';
 import { Eye, Edit, MessageCircle, TrendingUp, TrendingDown, Minus, Download, FileText, FileSpreadsheet } from 'lucide-react';
 import PartnerDetailsEditor from './PartnerDetailsEditor';
 import { exportToExcel, exportToCSV, exportToPDF } from '@/utils/exportReports';
+import { getApiUrl } from '@/utils/api';
 
 interface Partner {
   id: number;
@@ -59,8 +60,7 @@ const PartnerListEnhanced: React.FC<PartnerListEnhancedProps> = ({ onPartnerSele
   const fetchEnhancedPartners = async () => {
     try {
       setLoading(true);
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:5000/api';
-      const response = await fetch(`${apiUrl}/partners-enhanced/list`, {
+      const response = await fetch(getApiUrl('api/partners-enhanced/list'), {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
         },
