@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ContractorComparisonReport from '@/components/reports/ContractorComparisonReport';
 import ExecutiveReport from '@/components/reports/ExecutiveReport';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FileText, Lock, Globe, ChevronRight } from 'lucide-react';
 
-export default function DMReportsDemo() {
+function DMReportsDemoContent() {
   const searchParams = useSearchParams();
   const [activeReport, setActiveReport] = useState<'contractor' | 'executive' | 'public'>('public');
 
@@ -130,5 +130,17 @@ export default function DMReportsDemo() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DMReportsDemo() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-power100-red"></div>
+      </div>
+    }>
+      <DMReportsDemoContent />
+    </Suspense>
   );
 }
