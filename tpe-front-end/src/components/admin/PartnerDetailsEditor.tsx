@@ -500,6 +500,89 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
 ]'
                     />
                   </div>
+
+                  <div className="border-t pt-6">
+                    <h3 className="text-lg font-semibold mb-4 text-red-600">PowerConfidence References (Minimum 5 Each)</h3>
+                    
+                    <div className="grid grid-cols-2 gap-6">
+                      <div>
+                        <Label>Client References (At least 5 for PowerConfidence)</Label>
+                        <Textarea
+                          value={partner.client_references ? JSON.stringify(partner.client_references, null, 2) : '[]'}
+                          onChange={(e) => {
+                            try {
+                              const references = JSON.parse(e.target.value);
+                              updateField('client_references', references);
+                            } catch (err) {
+                              // Invalid JSON
+                            }
+                          }}
+                          className="mt-1 font-mono text-sm"
+                          rows={10}
+                          placeholder='[
+  {
+    "name": "John Smith",
+    "email": "john@example.com",
+    "phone": "555-0100",
+    "website": "www.example.com"
+  }
+]'
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          {(() => {
+                            try {
+                              const refs = JSON.parse(partner.client_references || '[]');
+                              return `${Array.isArray(refs) ? refs.length : 0} / 5 minimum clients`;
+                            } catch {
+                              return '0 / 5 minimum clients';
+                            }
+                          })()}
+                        </p>
+                      </div>
+
+                      <div>
+                        <Label>Employee References (At least 5 for PowerConfidence)</Label>
+                        <Textarea
+                          value={partner.employee_references ? JSON.stringify(partner.employee_references, null, 2) : '[]'}
+                          onChange={(e) => {
+                            try {
+                              const references = JSON.parse(e.target.value);
+                              updateField('employee_references', references);
+                            } catch (err) {
+                              // Invalid JSON
+                            }
+                          }}
+                          className="mt-1 font-mono text-sm"
+                          rows={10}
+                          placeholder='[
+  {
+    "name": "Jane Doe",
+    "email": "jane@example.com",
+    "phone": "555-0200",
+    "website": "www.example.com"
+  }
+]'
+                        />
+                        <p className="text-xs text-gray-500 mt-1">
+                          {(() => {
+                            try {
+                              const emps = JSON.parse(partner.employee_references || '[]');
+                              return `${Array.isArray(emps) ? emps.length : 0} / 5 minimum employees`;
+                            } catch {
+                              return '0 / 5 minimum employees';
+                            }
+                          })()}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                      <p className="text-sm text-yellow-800">
+                        <strong>PowerConfidence Requirement:</strong> We need at least 5 client references and 5 employee references 
+                        to generate the initial PowerConfidence ranking. PowerCards will be sent to these contacts for evaluation.
+                      </p>
+                    </div>
+                  </div>
                 </TabsContent>
 
                 {/* Analytics Tab */}
