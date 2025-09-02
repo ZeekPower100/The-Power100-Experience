@@ -119,7 +119,6 @@ function ComprehensivePartnerForm({ partner, onSuccess, onCancel }: PartnerFormP
     books_recommended: '',
     
     // Partnerships
-    referral_partnerships: '',
     
     // Category of Service & Value Proposition
     service_category: '',
@@ -322,7 +321,7 @@ function ComprehensivePartnerForm({ partner, onSuccess, onCancel }: PartnerFormP
       'Sponsorships & Media',
       'Competitive Analysis',
       'Focus Areas',
-      'Tech Stack',
+      'Partner Relationships',
       'Client Demos & References'
     ];
     return titles[step] || 'Unknown Step';
@@ -822,21 +821,6 @@ function ComprehensivePartnerForm({ partner, onSuccess, onCancel }: PartnerFormP
                     className="mt-1"
                   />
                 </div>
-
-                <div>
-                  <Label htmlFor="referral_partnerships">Best Working/Referral Partnerships</Label>
-                  <p className="text-sm text-power100-grey mb-2">
-                    Your most successful partnership relationships
-                  </p>
-                  <Textarea
-                    id="referral_partnerships"
-                    value={formData.referral_partnerships}
-                    onChange={(e) => handleInputChange('referral_partnerships', e.target.value)}
-                    placeholder="Describe your key partnerships and referral relationships"
-                    rows={3}
-                    className="mt-1"
-                  />
-                </div>
               </CardContent>
             </Card>
           )}
@@ -956,45 +940,31 @@ function ComprehensivePartnerForm({ partner, onSuccess, onCancel }: PartnerFormP
             </Card>
           )}
 
-          {/* Step 7: Tech Stack */}
+          {/* Step 7: Partner Relationships */}
           {currentStep === 7 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   {getStepIcon(7)}
-                  Current Tech Stack
+                  Partner Relationships
                 </CardTitle>
-                <p className="text-sm text-power100-grey">What tools and platforms are you currently using?</p>
+                <p className="text-sm text-power100-grey">Strategic partners selected during onboarding</p>
               </CardHeader>
               <CardContent className="space-y-6">
-                {Object.entries(TECH_STACK_CATEGORIES).map(([category, options]) => {
-                  const displayName = category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                  const fieldName = `tech_stack_${category}` as keyof typeof formData;
-                  
-                  return (
-                    <div key={category}>
-                      <Label>{displayName}</Label>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                        {options.map(option => (
-                          <label key={option} className="flex items-center space-x-2 cursor-pointer">
-                            <Checkbox
-                              checked={(formData[fieldName] as string[]).includes(option)}
-                              onCheckedChange={(checked) => {
-                                const currentValues = formData[fieldName] as string[];
-                                if (checked) {
-                                  handleInputChange(fieldName, [...currentValues, option]);
-                                } else {
-                                  handleInputChange(fieldName, currentValues.filter(item => item !== option));
-                                }
-                              }}
-                            />
-                            <span className="text-sm text-gray-700">{option}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
+                <div>
+                  <Label>Partner Relationships Data</Label>
+                  <Textarea
+                    value={formData.best_working_partnerships || ''}
+                    onChange={(e) => handleInputChange('best_working_partnerships', e.target.value)}
+                    placeholder="Partner relationships from onboarding will appear here"
+                    className="mt-2"
+                    rows={6}
+                    readOnly
+                  />
+                  <p className="text-sm text-gray-500 mt-2">
+                    This field contains the strategic partners selected during the onboarding process
+                  </p>
+                </div>
               </CardContent>
             </Card>
           )}

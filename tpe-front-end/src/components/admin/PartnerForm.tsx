@@ -393,7 +393,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         return !!(formData.value_proposition && formData.why_clients_choose_you);
       case 6: // Focus Areas
         return formData.focus_areas_12_months.length > 0;
-      case 7: // Tech Stack
+      case 7: // Partner Relationships
         return true; // Optional step
       case 8: // Client Demos
         return true; // Optional step
@@ -512,7 +512,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
       'Sponsorships & Media',
       'Competitive Analysis',
       'Focus Areas',
-      'Tech Stack',
+      'Partner Relationships',
       'Client Demos & References'
     ];
     return titles[step] || 'Unknown Step';
@@ -541,7 +541,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
     { number: 4, title: "Media & Events", component: null },
     { number: 5, title: "Positioning", component: null },
     { number: 6, title: "Focus Areas", component: null },
-    { number: 7, title: "Tech Stack", component: null },
+    { number: 7, title: "Partner Relationships", component: null },
     { number: 8, title: "Portfolio", component: null }
   ];
 
@@ -1118,78 +1118,64 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
               </p>
             </div>
 
-            <div>
-              <Label htmlFor="best_working_partnerships">Best Working/Referral Partnerships</Label>
-              <Textarea
-                id="best_working_partnerships"
-                value={formData.best_working_partnerships || ''}
-                onChange={(e) => handleInputChange('best_working_partnerships', e.target.value)}
-                placeholder="Describe your most valuable business partnerships and referral relationships..."
-                className="mt-1"
-                rows={4}
-              />
-              <p className="text-sm text-power100-grey mt-2">
-                Include partnerships with suppliers, other contractors, or business referral sources
-              </p>
-            </div>
           </div>
         </div>
 
-        {/* Section 7: Tech Stack */}
+        {/* Section 7: Partner Relationships */}
         <div className="col-span-2 mt-8">
           <h3 className="text-xl font-semibold text-power100-black mb-4 flex items-center gap-2">
             <Building2 className="h-5 w-5 text-power100-red" />
-            Tech Stack
+            Partner Relationships
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {Object.entries(TECH_STACK_CATEGORIES).map(([category, options]) => {
-              const categoryKey = `tech_stack_${category}` as keyof typeof formData;
-              return (
-                <div key={category}>
-                  <h4 className="font-semibold text-lg mb-3 capitalize">
-                    {category.replace('_', ' & ')}
-                  </h4>
-                  <div className="space-y-2">
-                    {options.map(option => (
-                      <div key={option} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`tech-${category}-${option}`}
-                          checked={Array.isArray(formData[categoryKey]) && (formData[categoryKey] as string[]).includes(option)}
-                          onCheckedChange={(checked) => {
-                            const currentArray = Array.isArray(formData[categoryKey]) ? formData[categoryKey] as string[] : [];
-                            if (checked) {
-                              setFormData(prev => ({
-                                ...prev,
-                                [categoryKey]: [...currentArray, option]
-                              }));
-                            } else {
-                              setFormData(prev => ({
-                                ...prev,
-                                [categoryKey]: currentArray.filter((item: string) => item !== option)
-                              }));
-                            }
-                          }}
-                        />
-                        <Label htmlFor={`tech-${category}-${option}`} className="text-sm cursor-pointer">
-                          {option}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                  {Array.isArray(formData[categoryKey]) && (formData[categoryKey] as string[]).includes('Other') && (
-                    <div className="mt-2">
-                      <Input
-                        placeholder={`Other ${category.replace('_', ' ')} tools`}
-                        value={formData[`tech_stack_${category}_other` as keyof typeof formData] as string || ''}
-                        onChange={(e) => handleInputChange(`tech_stack_${category}_other`, e.target.value)}
-                        className="text-sm"
-                      />
-                    </div>
-                  )}
+          <div className="space-y-4">
+            {formData.best_working_partnerships ? (
+              <div>
+                <Label>Current Partner Relationships</Label>
+                <div className="mt-2 p-4 bg-gray-50 rounded-lg">
+                  {(() => {
+                    try {
+                      const partnerships = typeof formData.best_working_partnerships === 'string' 
+                        ? JSON.parse(formData.best_working_partnerships)
+                        : formData.best_working_partnerships;
+                      
+                      if (!partnerships || partnerships.length === 0) {
+                        return <p className="text-gray-500">No partner relationships recorded</p>;
+                      }
+                      
+                      return (
+                        <div className="space-y-3">
+                          {partnerships.map((partner: any, index: number) => (
+                            <div key={index} className="p-3 bg-white rounded border">
+                              <div className="font-medium">{partner.company_name}</div>
+                              {partner.contact_name && (
+                                <div className="text-sm text-gray-600 mt-1">
+                                  Contact: {partner.contact_name}
+                                  {partner.contact_email && ` (${partner.contact_email})`}
+                                  {partner.contact_phone && ` - ${partner.contact_phone}`}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    } catch (e) {
+                      return <p className="text-gray-500">No partner relationships recorded</p>;
+                    }
+                  })()}
                 </div>
-              );
-            })}
+                <p className="text-sm text-gray-500 mt-2">
+                  Partner relationships are managed through the partner onboarding process.
+                </p>
+              </div>
+            ) : (
+              <div className="p-4 bg-gray-50 rounded-lg">
+                <p className="text-gray-500">No partner relationships have been added yet.</p>
+                <p className="text-sm text-gray-400 mt-1">
+                  Partner relationships are captured during the partner onboarding process.
+                </p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1981,45 +1967,66 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
             </Card>
           )}
 
-          {/* Step 7: Tech Stack */}
+          {/* Step 7: Partner Relationships */}
           {currentStep === 7 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   {getStepIcon(7)}
-                  Current Tech Stack
+                  Partner Relationships
                 </CardTitle>
-                <p className="text-sm text-power100-grey">What tools and platforms are you currently using?</p>
+                <p className="text-sm text-power100-grey">Your strategic partner relationships</p>
               </CardHeader>
               <CardContent className="space-y-6">
-                {Object.entries(TECH_STACK_CATEGORIES).map(([category, options]) => {
-                  const displayName = category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                  const fieldName = `tech_stack_${category}` as keyof typeof formData;
-                  
-                  return (
-                    <div key={category}>
-                      <Label>{displayName}</Label>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                        {options.map(option => (
-                          <label key={option} className="flex items-center space-x-2 cursor-pointer">
-                            <Checkbox
-                              checked={(formData[fieldName] as string[]).includes(option)}
-                              onCheckedChange={(checked) => {
-                                const currentValues = formData[fieldName] as string[];
-                                if (checked) {
-                                  handleInputChange(fieldName, [...currentValues, option]);
-                                } else {
-                                  handleInputChange(fieldName, currentValues.filter(item => item !== option));
-                                }
-                              }}
-                            />
-                            <span className="text-sm text-gray-700">{option}</span>
-                          </label>
-                        ))}
+                <div className="space-y-4">
+                  {formData.best_working_partnerships ? (
+                    <div>
+                      <Label>Current Partner Relationships</Label>
+                      <div className="mt-2 p-4 bg-gray-50 rounded-lg">
+                        {(() => {
+                          try {
+                            const partnerships = typeof formData.best_working_partnerships === 'string' 
+                              ? JSON.parse(formData.best_working_partnerships)
+                              : formData.best_working_partnerships;
+                            
+                            if (!partnerships || partnerships.length === 0) {
+                              return <p className="text-gray-500">No partner relationships recorded</p>;
+                            }
+                            
+                            return (
+                              <div className="space-y-3">
+                                {partnerships.map((partner: any, index: number) => (
+                                  <div key={index} className="p-3 bg-white rounded border">
+                                    <div className="font-medium">{partner.company_name}</div>
+                                    {partner.contact_name && (
+                                      <div className="text-sm text-gray-600 mt-1">
+                                        Contact: {partner.contact_name}
+                                        {partner.contact_email && ` (${partner.contact_email})`}
+                                        {partner.contact_phone && ` - ${partner.contact_phone}`}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          } catch (e) {
+                            return <p className="text-gray-500">No partner relationships recorded</p>;
+                          }
+                        })()}
                       </div>
+                      <p className="text-sm text-gray-500 mt-2">
+                        Partner relationships are managed through the partner onboarding process.
+                      </p>
                     </div>
-                  );
-                })}
+                  ) : (
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <p className="text-gray-500">No partner relationships have been added yet.</p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Partner relationships are captured during the partner onboarding process.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           )}

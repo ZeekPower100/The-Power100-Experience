@@ -95,10 +95,10 @@ router.post('/apply', async (req, res) => {
     mappedData.powerconfidence_score = 0; // No score until reviewed
     mappedData.status = 'pending_review'; // Mark as pending
     
-    // Map strategic_partners to best_working_partnerships
-    if (mappedData.strategic_partners) {
-      mappedData.best_working_partnerships = JSON.stringify(mappedData.strategic_partners);
-      delete mappedData.strategic_partners;
+    // Map partner_relationships to best_working_partnerships
+    if (mappedData.partner_relationships) {
+      mappedData.best_working_partnerships = JSON.stringify(mappedData.partner_relationships);
+      delete mappedData.partner_relationships;
     }
     
     // Convert arrays/objects to JSON strings for storage

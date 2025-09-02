@@ -134,8 +134,8 @@ export default function PartnerOnboardingForm() {
     // Focus Areas for next 12 months (select 3)
     focus_areas_12_months: [] as string[],
     
-    // Strategic Partners (top 3)
-    strategic_partners: [] as Array<{
+    // Partner Relationships (top 3)
+    partner_relationships: [] as Array<{
       id?: string;
       company_name: string;
       is_new?: boolean;
@@ -188,7 +188,7 @@ export default function PartnerOnboardingForm() {
   }, [partnerSearchQuery]);
 
   const addPartner = (partner: any) => {
-    if (formData.strategic_partners.length >= 3) {
+    if (formData.partner_relationships.length >= 3) {
       setError('You can only add up to 3 strategic partners');
       return;
     }
@@ -199,7 +199,7 @@ export default function PartnerOnboardingForm() {
 
     setFormData(prev => ({
       ...prev,
-      strategic_partners: [...prev.strategic_partners, partnerData]
+      partner_relationships: [...prev.partner_relationships, partnerData]
     }));
     
     setPartnerSearchQuery('');
@@ -209,7 +209,7 @@ export default function PartnerOnboardingForm() {
   const removePartner = (index: number) => {
     setFormData(prev => ({
       ...prev,
-      strategic_partners: prev.strategic_partners.filter((_, i) => i !== index)
+      partner_relationships: prev.partner_relationships.filter((_, i) => i !== index)
     }));
   };
 
@@ -240,7 +240,7 @@ export default function PartnerOnboardingForm() {
       case 6: // Focus Areas
         return formData.focus_areas_12_months.length > 0;
       case 7: // Partners
-        return formData.strategic_partners.length > 0; // At least one partner required
+        return formData.partner_relationships.length > 0; // At least one partner required
       case 8: // Client Demos
         return true; // Optional step
       default:
@@ -374,7 +374,7 @@ export default function PartnerOnboardingForm() {
         books_read_recommended: formData.books_read_recommended,
         
         // Step 7: Strategic Partners
-        strategic_partners: formData.strategic_partners,
+        partner_relationships: formData.partner_relationships,
         
         // Step 8: Client Demos & References
         client_demos: formData.client_demos,
@@ -1262,7 +1262,7 @@ export default function PartnerOnboardingForm() {
                             value={partnerSearchQuery}
                             onChange={(e) => setPartnerSearchQuery(e.target.value)}
                             className="pl-10 pr-10"
-                            disabled={formData.strategic_partners.length >= 3}
+                            disabled={formData.partner_relationships.length >= 3}
                           />
                           {partnerSearchQuery && (
                             <button
@@ -1316,11 +1316,11 @@ export default function PartnerOnboardingForm() {
                     </div>
                     
                     {/* Selected Partners */}
-                    {formData.strategic_partners.length > 0 && (
+                    {formData.partner_relationships.length > 0 && (
                       <div>
-                        <Label>Selected Partners ({formData.strategic_partners.length}/3)</Label>
+                        <Label>Selected Partners ({formData.partner_relationships.length}/3)</Label>
                         <div className="space-y-2 mt-2">
-                          {formData.strategic_partners.map((partner, index) => (
+                          {formData.partner_relationships.map((partner, index) => (
                             <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                               <div className="flex items-center gap-2">
                                 <Building2 className="h-4 w-4 text-gray-400" />

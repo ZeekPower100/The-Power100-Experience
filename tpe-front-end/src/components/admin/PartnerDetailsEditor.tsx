@@ -431,6 +431,21 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                       />
                     </div>
                   </div>
+
+                  <div>
+                    <Label>Partner Relationships</Label>
+                    <Textarea
+                      value={partner.best_working_partnerships || ''}
+                      onChange={(e) => updateField('best_working_partnerships', e.target.value)}
+                      className="mt-1 font-mono text-sm"
+                      rows={4}
+                      placeholder='Partner relationships data from onboarding'
+                      readOnly
+                    />
+                    <p className="text-sm text-gray-500 mt-1">
+                      Strategic partners selected during onboarding
+                    </p>
+                  </div>
                 </TabsContent>
 
                 {/* Testimonials Tab */}
