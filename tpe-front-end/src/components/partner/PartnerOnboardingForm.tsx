@@ -124,7 +124,6 @@ export default function PartnerOnboardingForm() {
     podcast_appearances: [] as string[],
     other_podcast_appearances: [] as string[],
     books_read_recommended: '',
-    best_working_partnerships: '',
     
     // Competitive Analysis
     service_category: '',
@@ -373,7 +372,6 @@ export default function PartnerOnboardingForm() {
         sponsored_events: formData.sponsored_events,
         podcast_appearances: formData.podcast_appearances,
         books_read_recommended: formData.books_read_recommended,
-        best_working_partnerships: formData.best_working_partnerships,
         
         // Step 7: Strategic Partners
         strategic_partners: formData.strategic_partners,
@@ -1063,21 +1061,6 @@ export default function PartnerOnboardingForm() {
                       />
                       <p className="text-sm text-power100-grey mt-2">
                         Share books that have influenced your business or personal development
-                      </p>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="best_working_partnerships">Best Working/Referral Partnerships</Label>
-                      <Textarea
-                        id="best_working_partnerships"
-                        value={formData.best_working_partnerships || ''}
-                        onChange={(e) => handleInputChange('best_working_partnerships', e.target.value)}
-                        placeholder="Describe your most valuable business partnerships and referral relationships..."
-                        className="mt-1"
-                        rows={4}
-                      />
-                      <p className="text-sm text-power100-grey mt-2">
-                        Include partnerships with suppliers, other contractors, or business referral sources
                       </p>
                     </div>
                   </div>
