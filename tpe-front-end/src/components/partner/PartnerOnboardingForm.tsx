@@ -67,10 +67,34 @@ const FOCUS_AREAS_12_MONTHS = [
 
 export default function PartnerOnboardingForm() {
   const router = useRouter();
-  const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 8;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Check if coming back from delegation page to complete Step 8
+  const [currentStep, setCurrentStep] = useState(1);
+  
+  // Initialize step from URL parameter on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const stepParam = urlParams.get('step');
+      if (stepParam === '8') {
+        setCurrentStep(8);
+        
+        // Also restore the saved form data
+        const savedData = localStorage.getItem('partner_application_data');
+        if (savedData) {
+          try {
+            const restoredData = JSON.parse(savedData);
+            setFormData(restoredData);
+          } catch (error) {
+            console.error('Error restoring form data:', error);
+          }
+        }
+      }
+    }
+  }, []);
   
   // Partner search state
   const [partnerSearchQuery, setPartnerSearchQuery] = useState('');
@@ -159,6 +183,7 @@ export default function PartnerOnboardingForm() {
       [field]: value
     }));
   };
+
 
   // Search partners when query changes
   useEffect(() => {
@@ -270,8 +295,8 @@ export default function PartnerOnboardingForm() {
       e.preventDefault();
     }
     
-    // Only allow submission on Step 8
-    if (currentStep !== 8) {
+    // Allow submission on Step 7 (partner profile) or Step 8 (portfolio)
+    if (currentStep !== 7 && currentStep !== 8) {
       return;
     }
     
@@ -383,18 +408,70 @@ export default function PartnerOnboardingForm() {
         employee_references: formData.employee_references
       };
 
-      // Submit to API
-      // Use public endpoint for submissions
-      const response = await fetch(getApiUrl('api/partners/public/apply'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(apiData)
-      });
-      const result = await response.json();
-      if (!result.success) throw new Error(result.error);
-      
-      // Redirect to success page
-      router.push('/partner/onboarding/success');
+      // Submit to API based on current step
+      if (currentStep === 7) {
+        // Step 7: Submit partner profile (without portfolio data)
+        const profileData = {
+          ...apiData,
+          // Exclude portfolio data for initial submission
+          client_demos: [],
+          client_references: [],
+          employee_references: [],
+          submission_type: 'partial', // Flag for backend to handle partial submission
+          completed_steps: 7
+        };
+        
+        const response = await fetch(getApiUrl('api/partners/public/apply'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(profileData)
+        });
+        const result = await response.json();
+        if (!result.success) throw new Error(result.error);
+        
+        // Store the partner ID for portfolio submission
+        localStorage.setItem('partner_application_id', result.applicationId);
+        localStorage.setItem('partner_application_data', JSON.stringify(formData));
+        
+        // Redirect to delegation page after Step 7
+        router.push('/partner/onboarding/delegation');
+        
+      } else if (currentStep === 8) {
+        // Step 8: Submit portfolio data (update existing profile)
+        const partnerId = localStorage.getItem('partner_application_id');
+        
+        if (partnerId) {
+          // Update existing profile with portfolio data
+          const response = await fetch(getApiUrl(`api/partners/public/update-portfolio/${partnerId}`), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              client_demos: formData.client_demos,
+              client_references: formData.client_references,
+              employee_references: formData.employee_references,
+              logo_url: formData.logo_url
+            })
+          });
+          const result = await response.json();
+          if (!result.success) throw new Error(result.error);
+        } else {
+          // Full submission if no partner ID exists (fallback)
+          const response = await fetch(getApiUrl('api/partners/public/apply'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(apiData)
+          });
+          const result = await response.json();
+          if (!result.success) throw new Error(result.error);
+        }
+        
+        // Clear stored data
+        localStorage.removeItem('partner_application_id');
+        localStorage.removeItem('partner_application_data');
+        
+        // Redirect to final success page after portfolio completion
+        router.push('/partner/onboarding/success');
+      }
 
     } catch (err: any) {
       console.error('Onboarding submission error:', err);
@@ -412,7 +489,7 @@ export default function PartnerOnboardingForm() {
     { number: 5, title: "Positioning", component: null },
     { number: 6, title: "Focus Areas", component: null },
     { number: 7, title: "Partners", component: null },
-    { number: 8, title: "Portfolio", component: null }
+    { number: 8, title: "Pre-Onboarding", component: null }
   ];
 
   return (
@@ -423,7 +500,7 @@ export default function PartnerOnboardingForm() {
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-power100-black">
-                Partner Onboarding
+                Partner Profile
               </h1>
             </div>
             <div className="text-sm text-power100-grey">
@@ -1437,7 +1514,7 @@ export default function PartnerOnboardingForm() {
             </div>
           )}
 
-          {/* Step 8: Client Demos & References */}
+          {/* Step 8: Pre-Onboarding (Client Demos & References) */}
           {currentStep === 8 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -1457,7 +1534,7 @@ export default function PartnerOnboardingForm() {
                   {/* Title */}
                   <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-power100-black mb-2">
-                      Portfolio & Branding
+                      Pre-Onboarding
                     </h2>
                     <p className="text-power100-grey">
                       Upload your company logo and provide demos and references
@@ -1567,7 +1644,28 @@ export default function PartnerOnboardingForm() {
               </Button>
             )}
             
-            {currentStep < totalSteps ? (
+            {currentStep === 7 ? (
+              // Step 7: Submit Partner Profile (creates profile without portfolio)
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                disabled={loading || !isStepValid(currentStep)}
+                className="bg-power100-green hover:bg-green-700 text-white px-8 py-2 rounded-full font-semibold"
+              >
+                {loading ? 'Submitting...' : 'Submit Partner Profile'}
+              </Button>
+            ) : currentStep === 8 ? (
+              // Step 8: Submit pre-onboarding (updates existing profile with portfolio)
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                disabled={loading || !isStepValid(currentStep)}
+                className="bg-power100-green hover:bg-green-700 text-white px-8 py-2 rounded-full font-semibold"
+              >
+                {loading ? 'Submitting...' : 'Submit Pre-onboarding'}
+              </Button>
+            ) : (
+              // All other steps: Continue button
               <Button
                 type="button"
                 onClick={nextStep}
@@ -1575,15 +1673,6 @@ export default function PartnerOnboardingForm() {
                 className="bg-power100-green hover:bg-green-700 text-white px-8 py-2 rounded-full font-semibold"
               >
                 Continue
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                disabled={loading || !isStepValid(currentStep)}
-                className="bg-power100-green hover:bg-green-700 text-white px-8 py-2 rounded-full font-semibold"
-              >
-                {loading ? 'Submitting...' : 'Submit Application'}
               </Button>
             )}
           </div>

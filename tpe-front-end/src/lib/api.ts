@@ -31,11 +31,11 @@ async function apiRequest<T>(
       token = parsed.token;
     } catch (e) {
       // Fall back to admin token if session parse fails
-      token = localStorage.getItem('authToken');
+      token = localStorage.getItem('adminToken') || localStorage.getItem('authToken');
     }
   } else {
-    // Check for admin token
-    token = localStorage.getItem('authToken');
+    // Check for admin token - check both possible keys
+    token = localStorage.getItem('adminToken') || localStorage.getItem('authToken');
   }
   
   if (token) {
@@ -52,7 +52,18 @@ async function apiRequest<T>(
     const response = await fetch(url, config);
     
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      let errorData: any = {};
+      const contentType = response.headers.get('content-type');
+      
+      // Only try to parse JSON if the response is actually JSON
+      if (contentType && contentType.includes('application/json')) {
+        try {
+          errorData = await response.json();
+        } catch (e) {
+          console.error('Failed to parse error response as JSON');
+        }
+      }
+      
       console.error(`❌ API Error Response:`, response.status, errorData);
       throw new Error(errorData.error || errorData.message || `HTTP error! status: ${response.status}`);
     }
@@ -194,6 +205,14 @@ export const partnerApi = {
       method: 'POST',
       body: JSON.stringify(params)
     }),
+
+  // Get pending partners (admin)
+  getPendingPartners: () => apiRequest('/partners/pending/list'),
+
+  // Approve partner (admin)
+  approvePartner: (id: string) => apiRequest(`/partners/${id}/approve`, {
+    method: 'PUT'
+  }),
 };
 
 // Booking API

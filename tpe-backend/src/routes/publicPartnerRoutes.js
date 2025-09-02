@@ -93,7 +93,15 @@ router.post('/apply', async (req, res) => {
     // Set default values for public submissions
     mappedData.is_active = false; // Inactive until approved
     mappedData.powerconfidence_score = 0; // No score until reviewed
-    mappedData.status = 'pending_review'; // Mark as pending
+    
+    // Check if this is a partial submission (Step 7 only)
+    if (partnerData.submission_type === 'partial') {
+      mappedData.status = 'partial_submission'; // Mark as partial
+      mappedData.completed_steps = partnerData.completed_steps || 7;
+    } else {
+      mappedData.status = 'pending_review'; // Mark as complete pending review
+      mappedData.completed_steps = 8;
+    }
     
     // Map partner_relationships to best_working_partnerships
     if (mappedData.partner_relationships) {
@@ -132,7 +140,8 @@ router.post('/apply', async (req, res) => {
       'tech_stack_marketing', 'tech_stack_crm', 'tech_stack_analytics', 'tech_stack_communication',
       'tech_stack_financial', 'tech_stack_project_management',
       'client_demos', 'client_references', 'employee_references', 'landing_page_videos',
-      'primary_contact', 'secondary_contact', 'company_description', 'best_working_partnerships'
+      'primary_contact', 'secondary_contact', 'company_description', 'best_working_partnerships',
+      'completed_steps'
     ];
     
     // Filter to only include valid columns
@@ -167,6 +176,104 @@ router.post('/apply', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to submit application. Please try again.'
+    });
+  }
+});
+
+// Update pre-onboarding data for existing partner application
+router.post('/update-portfolio/:partnerId', async (req, res) => {
+  try {
+    const { partnerId } = req.params;
+    const preOnboardingData = req.body;
+    
+    // Convert arrays/objects to JSON strings for storage
+    const jsonFields = ['client_demos', 'client_references', 'employee_references'];
+    const updateData = {};
+    
+    jsonFields.forEach(field => {
+      if (preOnboardingData[field]) {
+        updateData[field] = typeof preOnboardingData[field] === 'object' 
+          ? JSON.stringify(preOnboardingData[field]) 
+          : preOnboardingData[field];
+      }
+    });
+    
+    // Add logo_url if provided
+    if (preOnboardingData.logo_url) {
+      updateData.logo_url = preOnboardingData.logo_url;
+    }
+    
+    // Update status to complete if portfolio is being added
+    updateData.status = 'pending_review';
+    updateData.completed_steps = 8;
+    
+    // Build UPDATE query
+    const updateColumns = Object.keys(updateData);
+    const setClause = updateColumns.map((col, index) => `${col} = $${index + 2}`).join(', ');
+    const values = [partnerId, ...updateColumns.map(col => updateData[col])];
+    
+    const updateQuery = `
+      UPDATE strategic_partners 
+      SET ${setClause}
+      WHERE id = $1
+      RETURNING id, company_name, status
+    `;
+    
+    const result = await query(updateQuery, values);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Partner application not found'
+      });
+    }
+    
+    console.log(`Pre-onboarding updated for partner: ${result.rows[0].company_name} (ID: ${result.rows[0].id})`);
+    
+    res.json({
+      success: true,
+      message: 'Pre-onboarding data updated successfully',
+      partner: result.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('Error updating pre-onboarding:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update pre-onboarding data'
+    });
+  }
+});
+
+// Delegate pre-onboarding completion to team member
+router.post('/delegate-portfolio', async (req, res) => {
+  try {
+    const { partnerId, delegateTo, companyName } = req.body;
+    
+    // In production, this would send an actual email
+    // For now, we'll just log and return success
+    console.log(`Delegating pre-onboarding for ${companyName} (ID: ${partnerId}) to ${delegateTo.name} (${delegateTo.email})`);
+    
+    // Generate a unique delegation token
+    const delegationToken = Buffer.from(`${partnerId}:${Date.now()}`).toString('base64');
+    
+    // Store delegation info in database (optional)
+    // You could create a delegations table to track these
+    
+    // Email would contain a link like:
+    // https://tpx.power100.io/partner/onboarding/complete-portfolio?token=${delegationToken}
+    
+    res.json({
+      success: true,
+      message: `Pre-onboarding delegation sent to ${delegateTo.name}`,
+      delegationToken: delegationToken
+    });
+    
+  } catch (error) {
+    console.error('Error delegating pre-onboarding:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delegate pre-onboarding'
     });
   }
 });

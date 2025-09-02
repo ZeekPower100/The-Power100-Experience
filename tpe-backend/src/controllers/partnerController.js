@@ -404,6 +404,7 @@ const searchPartners = async (req, res, next) => {
     focusAreas = [], 
     revenueRanges = [], 
     isActive, 
+    status,  // Add status filter
     confidenceScoreMin, 
     confidenceScoreMax, 
     dateFrom, 
@@ -440,6 +441,19 @@ const searchPartners = async (req, res, next) => {
       whereClause += ` AND is_active = $${paramCounter}`;
       values.push(isActive);
       paramCounter++;
+    }
+    
+    // Status filter (for pending/partial/approved partners)
+    if (status) {
+      if (Array.isArray(status)) {
+        const statusPlaceholders = status.map(() => `$${paramCounter++}`).join(',');
+        whereClause += ` AND status IN (${statusPlaceholders})`;
+        values.push(...status);
+      } else {
+        whereClause += ` AND status = $${paramCounter}`;
+        values.push(status);
+        paramCounter++;
+      }
     }
 
     // Focus areas filter (JSON field) - use correct column name
@@ -515,20 +529,35 @@ const searchPartners = async (req, res, next) => {
     );
 
     // Parse JSON fields safely and map database fields to frontend expectations
-    const partners = partnersResult.rows.map(partner => ({
-      ...partner,
-      // Map database fields to frontend expectations (if frontend uses different names)
-      power_confidence_score: partner.powerconfidence_score || 0,
-      // Parse JSON fields
-      focus_areas_served: partner.focus_areas_served ? 
-        (partner.focus_areas_served === '[object Object]' ? [] : 
-         (typeof partner.focus_areas_served === 'string' ? 
-          JSON.parse(partner.focus_areas_served || '[]') : partner.focus_areas_served)) : [],
-      target_revenue_range: partner.target_revenue_range ? 
-        (partner.target_revenue_range === '[object Object]' ? [] : 
-         (typeof partner.target_revenue_range === 'string' ? 
-          JSON.parse(partner.target_revenue_range || '[]') : partner.target_revenue_range)) : []
-    }));
+    const partners = partnersResult.rows.map(partner => {
+      // Safe JSON parsing helper
+      const safeParseJSON = (value, defaultValue = []) => {
+        if (!value) return defaultValue;
+        if (Array.isArray(value)) return value;
+        if (typeof value === 'object' && value !== null) return value;
+        if (typeof value === 'string') {
+          // Handle special cases
+          if (value === '[object Object]' || value === '{}' || value === '') return defaultValue;
+          try {
+            const parsed = JSON.parse(value);
+            return parsed || defaultValue;
+          } catch (e) {
+            console.warn(`Failed to parse JSON for partner ${partner.id}:`, value);
+            return defaultValue;
+          }
+        }
+        return defaultValue;
+      };
+
+      return {
+        ...partner,
+        // Map database fields to frontend expectations (if frontend uses different names)
+        power_confidence_score: partner.powerconfidence_score || 0,
+        // Parse JSON fields with better error handling
+        focus_areas_served: safeParseJSON(partner.focus_areas_served, []),
+        target_revenue_range: safeParseJSON(partner.target_revenue_range, [])
+      };
+    });
 
     // Calculate pagination info
     const totalPages = Math.ceil(total / limit);
@@ -566,6 +595,66 @@ const searchPartners = async (req, res, next) => {
   }
 };
 
+// Get pending partners (partial submissions)
+const getPendingPartners = async (req, res, next) => {
+  try {
+    const queryText = `
+      SELECT 
+        id, company_name, ceo_contact_name, ceo_contact_email,
+        status, completed_steps, created_at, is_active,
+        value_proposition, website
+      FROM strategic_partners
+      WHERE status IN ('partial_submission', 'pending_review')
+      ORDER BY created_at DESC
+    `;
+    
+    const result = await query(queryText);
+    
+    res.json({
+      success: true,
+      partners: result.rows,
+      total: result.rows.length
+    });
+  } catch (error) {
+    console.error('Error fetching pending partners:', error);
+    next(error);
+  }
+};
+
+// Approve a pending partner
+const approvePartner = async (req, res, next) => {
+  const { id } = req.params;
+  
+  try {
+    const queryText = `
+      UPDATE strategic_partners
+      SET is_active = true, 
+          status = 'approved',
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING id, company_name, status, is_active
+    `;
+    
+    const result = await query(queryText, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Partner not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Partner approved successfully',
+      partner: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error approving partner:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   getActivePartners,
   getPartner,
@@ -575,5 +664,7 @@ module.exports = {
   deletePartner,
   togglePartnerStatus,
   getPartnerStats,
-  searchPartners
+  searchPartners,
+  getPendingPartners,
+  approvePartner
 };

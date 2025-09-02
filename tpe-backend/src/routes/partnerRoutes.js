@@ -27,16 +27,20 @@ const validatePartner = [
 
 // Public routes
 router.get('/active', asyncHandler(partnerController.getActivePartners));
-router.get('/:id', asyncHandler(partnerController.getPartner));
 
-// Protected routes (admin only)
+// Protected routes (admin only)  
 router.use(protect);
-router.get('/', asyncHandler(partnerController.getAllPartners));
+router.get('/pending/list', asyncHandler(partnerController.getPendingPartners));
+router.get('/stats/overview', asyncHandler(partnerController.getPartnerStats));
 router.post('/search', asyncHandler(partnerController.searchPartners));
+router.get('/', asyncHandler(partnerController.getAllPartners));
 router.post('/', validatePartner, asyncHandler(partnerController.createPartner));
+router.put('/:id/toggle-status', asyncHandler(partnerController.togglePartnerStatus));
+router.put('/:id/approve', asyncHandler(partnerController.approvePartner));
 router.put('/:id', asyncHandler(partnerController.updatePartner));
 router.delete('/:id', asyncHandler(partnerController.deletePartner));
-router.put('/:id/toggle-status', asyncHandler(partnerController.togglePartnerStatus));
-router.get('/stats/overview', asyncHandler(partnerController.getPartnerStats));
+
+// Get partner by ID - must be last due to :id param catching all routes
+router.get('/:id', asyncHandler(partnerController.getPartner));
 
 module.exports = router;

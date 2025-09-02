@@ -21,6 +21,7 @@ import {
   Shield
 } from "lucide-react";
 import { motion } from "framer-motion";
+import PendingPartners from "@/components/admin/PendingPartners";
 
 interface DashboardStats {
   contractors: {
@@ -435,6 +436,11 @@ export default function AdminDashboard() {
               </Card>
             </Link>
           </div>
+        </div>
+
+        {/* Pending Partners Section */}
+        <div className="mb-8">
+          <PendingPartners />
         </div>
 
         {/* Main Content Grid */}
