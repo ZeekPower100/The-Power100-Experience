@@ -14,7 +14,7 @@ import { DemoUploadList, type DemoItem } from '@/components/ui/demo-upload-list'
 import LogoManager from '@/components/admin/LogoManager';
 import { partnerApi } from '@/lib/api';
 import { getApiUrl } from '@/utils/api';
-import { Building2, AlertTriangle, Users, FileText, Star, Target, CheckCircle } from 'lucide-react';
+import { Building2, AlertTriangle, Users, FileText, Star, Target, CheckCircle, Plus, X, Search, UserPlus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
@@ -65,21 +65,24 @@ const FOCUS_AREAS_12_MONTHS = [
   { value: 'financing', label: 'Financing' }
 ];
 
-const TECH_STACK_CATEGORIES = {
-  sales: ['HubSpot', 'Salesforce', 'Pipedrive', 'CompanyCam', 'Other'],
-  operations: ['JobNimbus', 'JobProgress', 'Buildertrend', 'Contractor Foreman', 'Other'],
-  marketing: ['Google Ads', 'Facebook Ads', 'Angi', 'Home Advisor', 'Other'],
-  customer_experience: ['Podium', 'ServiceTitan', 'Birdeye', 'ReviewBuzz', 'Other'],
-  installation_pm: ['Buildertrend', 'CoConstruct', 'BuilderCloud', 'Procore', 'Other'],
-  accounting_finance: ['QuickBooks', 'Sage', 'Xero', 'FreshBooks', 'Other']
-};
-
 export default function PartnerOnboardingForm() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 8;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Partner search state
+  const [partnerSearchQuery, setPartnerSearchQuery] = useState('');
+  const [partnerSearchResults, setPartnerSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showNewPartnerModal, setShowNewPartnerModal] = useState(false);
+  const [newPartnerData, setNewPartnerData] = useState({
+    company_name: '',
+    contact_name: '',
+    contact_email: '',
+    contact_phone: ''
+  });
 
   const [formData, setFormData] = useState({
     // Company Information
@@ -132,20 +135,15 @@ export default function PartnerOnboardingForm() {
     // Focus Areas for next 12 months (select 3)
     focus_areas_12_months: [] as string[],
     
-    // Tech Stack by Category
-    tech_stack_sales: [] as string[],
-    tech_stack_operations: [] as string[],
-    tech_stack_marketing: [] as string[],
-    tech_stack_customer_experience: [] as string[],
-    tech_stack_installation_pm: [] as string[],
-    tech_stack_accounting_finance: [] as string[],
-    
-    tech_stack_sales_other: '',
-    tech_stack_operations_other: '',
-    tech_stack_marketing_other: '',
-    tech_stack_customer_experience_other: '',
-    tech_stack_installation_pm_other: '',
-    tech_stack_accounting_finance_other: '',
+    // Strategic Partners (top 3)
+    strategic_partners: [] as Array<{
+      id?: string;
+      company_name: string;
+      is_new?: boolean;
+      contact_name?: string;
+      contact_email?: string;
+      contact_phone?: string;
+    }>,
     
     // Client Demos & References
     client_demos: [] as DemoItem[],
@@ -162,6 +160,72 @@ export default function PartnerOnboardingForm() {
     }));
   };
 
+  // Search partners when query changes
+  useEffect(() => {
+    const searchPartners = async () => {
+      if (partnerSearchQuery.trim().length < 2) {
+        setPartnerSearchResults([]);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        const response = await fetch(
+          `${getApiUrl('api/partners/public/search')}?q=${encodeURIComponent(partnerSearchQuery)}`
+        );
+        if (response.ok) {
+          const results = await response.json();
+          setPartnerSearchResults(results);
+        }
+      } catch (error) {
+        console.error('Error searching partners:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(searchPartners, 300);
+    return () => clearTimeout(debounceTimer);
+  }, [partnerSearchQuery]);
+
+  const addPartner = (partner: any) => {
+    if (formData.strategic_partners.length >= 3) {
+      setError('You can only add up to 3 strategic partners');
+      return;
+    }
+
+    const partnerData = partner.id 
+      ? { id: partner.id, company_name: partner.company_name }
+      : { ...partner, is_new: true };
+
+    setFormData(prev => ({
+      ...prev,
+      strategic_partners: [...prev.strategic_partners, partnerData]
+    }));
+    
+    setPartnerSearchQuery('');
+    setPartnerSearchResults([]);
+  };
+
+  const removePartner = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      strategic_partners: prev.strategic_partners.filter((_, i) => i !== index)
+    }));
+  };
+
+  const addNewPartner = () => {
+    // No validation required - all fields are optional
+    addPartner(newPartnerData);
+    setNewPartnerData({
+      company_name: '',
+      contact_name: '',
+      contact_email: '',
+      contact_phone: ''
+    });
+    setShowNewPartnerModal(false);
+  };
+
   const isStepValid = (step: number): boolean => {
     switch (step) {
       case 1: // Company Information
@@ -176,8 +240,8 @@ export default function PartnerOnboardingForm() {
         return !!(formData.value_proposition && formData.why_clients_choose_you);
       case 6: // Focus Areas
         return formData.focus_areas_12_months.length > 0;
-      case 7: // Tech Stack
-        return true; // Optional step
+      case 7: // Partners
+        return formData.strategic_partners.length > 0; // At least one partner required
       case 8: // Client Demos
         return true; // Optional step
       default:
@@ -305,19 +369,14 @@ export default function PartnerOnboardingForm() {
         // Step 5: Business Focus
         focus_areas_12_months: formData.focus_areas_12_months,
         
-        // Step 6: Technology Stack
-        tech_stack_crm: formData.tech_stack_crm,
-        tech_stack_project_management: formData.tech_stack_project_management,
-        tech_stack_communication: formData.tech_stack_communication,
-        tech_stack_analytics: formData.tech_stack_analytics,
-        tech_stack_marketing: formData.tech_stack_marketing,
-        tech_stack_financial: formData.tech_stack_financial,
-        
-        // Step 7: Marketing & Partnership
+        // Step 6: Marketing & Sponsorships
         sponsored_events: formData.sponsored_events,
         podcast_appearances: formData.podcast_appearances,
         books_read_recommended: formData.books_read_recommended,
         best_working_partnerships: formData.best_working_partnerships,
+        
+        // Step 7: Strategic Partners
+        strategic_partners: formData.strategic_partners,
         
         // Step 8: Client Demos & References
         client_demos: formData.client_demos,
@@ -352,7 +411,7 @@ export default function PartnerOnboardingForm() {
     { number: 4, title: "Media & Events", component: null },
     { number: 5, title: "Positioning", component: null },
     { number: 6, title: "Focus Areas", component: null },
-    { number: 7, title: "Tech Stack", component: null },
+    { number: 7, title: "Partners", component: null },
     { number: 8, title: "Portfolio", component: null }
   ];
 
@@ -1180,7 +1239,7 @@ export default function PartnerOnboardingForm() {
             </motion.div>
           )}
 
-          {/* Step 7: Tech Stack */}
+          {/* Step 7: Partners */}
           {currentStep === 7 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -1193,73 +1252,204 @@ export default function PartnerOnboardingForm() {
                   {/* Red circular icon at top */}
                   <div className="flex justify-center mb-8">
                     <div className="w-16 h-16 bg-power100-red rounded-full flex items-center justify-center">
-                      <Building2 className="h-8 w-8 text-white" />
+                      <Users className="h-8 w-8 text-white" />
                     </div>
                   </div>
                   
                   {/* Title */}
                   <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-power100-black mb-2">
-                      Tech Stack
+                      Strategic Partners
                     </h2>
                     <p className="text-power100-grey">
-                      What tools and platforms are you currently using?
+                      Who are your top 3 strategic partners for business collaborations and API integrations?
                     </p>
                   </div>
                   
-                  {/* Form Fields */}
+                  {/* Partner Search */}
                   <div className="space-y-6">
-                    {Object.entries(TECH_STACK_CATEGORIES).map(([category, options]) => {
-                      const displayName = category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-                      const fieldName = `tech_stack_${category}` as keyof typeof formData;
-                      
-                      return (
-                        <div key={category}>
-                          <Label>{displayName}</Label>
-                          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-2">
-                            {options.map(option => (
-                              <div key={option} className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={`tech-${category}-${option}`}
-                                  checked={Array.isArray(formData[fieldName]) && (formData[fieldName] as string[]).includes(option)}
-                                  onCheckedChange={(checked) => {
-                                    const currentArray = Array.isArray(formData[fieldName]) ? formData[fieldName] as string[] : [];
-                                    if (checked) {
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        [fieldName]: [...currentArray, option]
-                                      }));
-                                    } else {
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        [fieldName]: currentArray.filter((item: string) => item !== option)
-                                      }));
-                                    }
-                                  }}
-                                />
-                                <Label htmlFor={`tech-${category}-${option}`} className="text-sm cursor-pointer">
-                                  {option}
-                                </Label>
-                              </div>
-                            ))}
-                          </div>
-                          {Array.isArray(formData[fieldName]) && (formData[fieldName] as string[]).includes('Other') && (
-                            <div className="mt-2">
-                              <Input
-                                placeholder={`Other ${category.replace('_', ' ')} tools`}
-                                value={formData[`tech_stack_${category}_other` as keyof typeof formData] as string || ''}
-                                onChange={(e) => handleInputChange(`tech_stack_${category}_other`, e.target.value)}
-                                className="text-sm"
-                              />
-                            </div>
+                    <div>
+                      <Label>Search and add partners (up to 3) *</Label>
+                      <div className="relative mt-2">
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input
+                            type="text"
+                            placeholder="Start typing partner name..."
+                            value={partnerSearchQuery}
+                            onChange={(e) => setPartnerSearchQuery(e.target.value)}
+                            className="pl-10 pr-10"
+                            disabled={formData.strategic_partners.length >= 3}
+                          />
+                          {partnerSearchQuery && (
+                            <button
+                              onClick={() => {
+                                setPartnerSearchQuery('');
+                                setPartnerSearchResults([]);
+                              }}
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                            >
+                              <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                            </button>
                           )}
                         </div>
-                      );
-                    })}
+                        
+                        {/* Search Results Dropdown */}
+                        {(partnerSearchResults.length > 0 || (partnerSearchQuery.length >= 2 && !isSearching)) && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                            {isSearching ? (
+                              <div className="p-3 text-center text-gray-500">Searching...</div>
+                            ) : partnerSearchResults.length > 0 ? (
+                              partnerSearchResults.map((partner) => (
+                                <button
+                                  key={partner.id}
+                                  onClick={() => addPartner(partner)}
+                                  className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                                >
+                                  <div className="font-medium">{partner.company_name}</div>
+                                  {partner.description && (
+                                    <div className="text-sm text-gray-500 truncate">{partner.description}</div>
+                                  )}
+                                </button>
+                              ))
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setNewPartnerData(prev => ({
+                                    ...prev,
+                                    company_name: partnerSearchQuery
+                                  }));
+                                  setShowNewPartnerModal(true);
+                                }}
+                                className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2"
+                              >
+                                <Plus className="h-4 w-4 text-power100-green" />
+                                <span>Add "{partnerSearchQuery}" as new partner</span>
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Selected Partners */}
+                    {formData.strategic_partners.length > 0 && (
+                      <div>
+                        <Label>Selected Partners ({formData.strategic_partners.length}/3)</Label>
+                        <div className="space-y-2 mt-2">
+                          {formData.strategic_partners.map((partner, index) => (
+                            <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <Building2 className="h-4 w-4 text-gray-400" />
+                                <span className="font-medium">{partner.company_name}</span>
+                                {partner.is_new && (
+                                  <span className="text-xs bg-power100-green text-white px-2 py-0.5 rounded">NEW</span>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => removePartner(index)}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
+          )}
+          
+          {/* New Partner Modal */}
+          {showNewPartnerModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="bg-white rounded-lg p-6 max-w-md w-full mx-4"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-bold">Add New Partner</h3>
+                    <p className="text-sm text-gray-600 mt-1">{newPartnerData.company_name}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowNewPartnerModal(false);
+                      setNewPartnerData({
+                        company_name: '',
+                        contact_name: '',
+                        contact_email: '',
+                        contact_phone: ''
+                      });
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <p className="text-sm text-gray-500">Optionally add contact information for this partner:</p>
+                  
+                  <div>
+                    <Label>Contact Name</Label>
+                    <Input
+                      value={newPartnerData.contact_name}
+                      onChange={(e) => setNewPartnerData(prev => ({ ...prev, contact_name: e.target.value }))}
+                      placeholder="Contact person's name (optional)"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Contact Email</Label>
+                    <Input
+                      type="email"
+                      value={newPartnerData.contact_email}
+                      onChange={(e) => setNewPartnerData(prev => ({ ...prev, contact_email: e.target.value }))}
+                      placeholder="contact@example.com (optional)"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Contact Phone</Label>
+                    <Input
+                      type="tel"
+                      value={newPartnerData.contact_phone}
+                      onChange={(e) => setNewPartnerData(prev => ({ ...prev, contact_phone: e.target.value }))}
+                      placeholder="(555) 123-4567 (optional)"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex gap-3 mt-6">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowNewPartnerModal(false);
+                      setNewPartnerData({
+                        company_name: '',
+                        contact_name: '',
+                        contact_email: '',
+                        contact_phone: ''
+                      });
+                    }}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={addNewPartner}
+                    className="flex-1 bg-power100-green hover:bg-green-600 text-white"
+                  >
+                    Add Partner
+                  </Button>
+                </div>
+              </motion.div>
+            </div>
           )}
 
           {/* Step 8: Client Demos & References */}

@@ -2,6 +2,43 @@ const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database.postgresql');
 
+// Search partners for autocomplete (no auth required)
+router.get('/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    
+    if (!q || q.trim().length < 1) {
+      return res.json([]);
+    }
+    
+    const searchTerm = `%${q.trim().toLowerCase()}%`;
+    
+    // Search for active partners matching the query
+    const result = await query(
+      `SELECT 
+        id, 
+        company_name,
+        description,
+        logo_url,
+        website
+      FROM strategic_partners 
+      WHERE is_active = true 
+        AND LOWER(company_name) LIKE $1
+      ORDER BY company_name
+      LIMIT 10`,
+      [searchTerm]
+    );
+    
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error searching partners:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to search partners' 
+    });
+  }
+});
+
 // Public partner application submission (no auth required)
 router.post('/apply', async (req, res) => {
   try {
@@ -58,6 +95,12 @@ router.post('/apply', async (req, res) => {
     mappedData.powerconfidence_score = 0; // No score until reviewed
     mappedData.status = 'pending_review'; // Mark as pending
     
+    // Map strategic_partners to best_working_partnerships
+    if (mappedData.strategic_partners) {
+      mappedData.best_working_partnerships = JSON.stringify(mappedData.strategic_partners);
+      delete mappedData.strategic_partners;
+    }
+    
     // Convert arrays/objects to JSON strings for storage
     const jsonFields = [
       'target_revenue_audience', 'service_areas', 'focus_areas_12_months',
@@ -65,7 +108,7 @@ router.post('/apply', async (req, res) => {
       'tech_stack_customer_experience', 'tech_stack_installation_pm', 
       'tech_stack_accounting_finance', 'sponsored_events', 'podcast_appearances',
       'client_demos', 'client_references', 'client_testimonials', 'focus_areas_served',
-      'target_revenue_range', 'geographic_regions', 'key_differentiators'
+      'target_revenue_range', 'geographic_regions', 'key_differentiators', 'best_working_partnerships'
     ];
     
     jsonFields.forEach(field => {
@@ -89,7 +132,7 @@ router.post('/apply', async (req, res) => {
       'tech_stack_marketing', 'tech_stack_crm', 'tech_stack_analytics', 'tech_stack_communication',
       'tech_stack_financial', 'tech_stack_project_management',
       'client_demos', 'client_references', 'landing_page_videos',
-      'primary_contact', 'secondary_contact', 'company_description'
+      'primary_contact', 'secondary_contact', 'company_description', 'best_working_partnerships'
     ];
     
     // Filter to only include valid columns
