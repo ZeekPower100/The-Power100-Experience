@@ -209,7 +209,8 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         );
         if (response.ok) {
           const data = await response.json();
-          setPartnerSearchResults(data.partners || []);
+          // The API returns an array directly, not wrapped in an object
+          setPartnerSearchResults(Array.isArray(data) ? data : []);
         }
       } catch (error) {
         console.error('Error searching partners:', error);
