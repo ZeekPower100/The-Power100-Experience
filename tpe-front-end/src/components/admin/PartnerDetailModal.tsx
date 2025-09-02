@@ -584,12 +584,13 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                     })()}
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 font-medium mb-2">Client References</p>
+                    <p className="text-sm text-gray-600 font-medium mb-2">Client References (Minimum 5 for PowerConfidence)</p>
                     {(() => {
                       try {
                         const references = JSON.parse(partnerData.client_references || '[]');
                         return Array.isArray(references) && references.length > 0 ? (
                           <div className="space-y-2">
+                            <p className="text-xs text-gray-500 mb-2">Count: {references.length} / 5 minimum</p>
                             {references.map((ref: any, idx: number) => (
                               <div key={idx} className="p-3 bg-gray-50 rounded-lg">
                                 <p className="font-medium">{ref.name || 'Unnamed Reference'}</p>
@@ -604,9 +605,37 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                               </div>
                             ))}
                           </div>
-                        ) : <span className="text-gray-500">No references provided</span>;
+                        ) : <span className="text-gray-500">No references provided (5 minimum required)</span>;
                       } catch {
-                        return <span className="text-gray-500">No references provided</span>;
+                        return <span className="text-gray-500">No references provided (5 minimum required)</span>;
+                      }
+                    })()}
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600 font-medium mb-2">Employee References (Minimum 5 for PowerConfidence)</p>
+                    {(() => {
+                      try {
+                        const employees = JSON.parse(partnerData.employee_references || '[]');
+                        return Array.isArray(employees) && employees.length > 0 ? (
+                          <div className="space-y-2">
+                            <p className="text-xs text-gray-500 mb-2">Count: {employees.length} / 5 minimum</p>
+                            {employees.map((emp: any, idx: number) => (
+                              <div key={idx} className="p-3 bg-gray-50 rounded-lg">
+                                <p className="font-medium">{emp.name || 'Unnamed Employee'}</p>
+                                <p className="text-sm text-gray-600">{emp.email}</p>
+                                {emp.phone && <p className="text-sm text-gray-600">{emp.phone}</p>}
+                                {emp.website && (
+                                  <a href={emp.website} target="_blank" rel="noopener noreferrer" 
+                                     className="text-blue-600 hover:underline text-sm">
+                                    {emp.website}
+                                  </a>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : <span className="text-gray-500">No employee references provided (5 minimum required)</span>;
+                      } catch {
+                        return <span className="text-gray-500">No employee references provided (5 minimum required)</span>;
                       }
                     })()}
                   </div>

@@ -170,6 +170,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
     // Client Demos & References - Updated structure
     client_demos: [] as DemoItem[],
     client_references: [] as ClientReference[],
+    employee_references: [] as ClientReference[],
     
     // Landing Page Content
     landing_page_videos: [] as any[],
@@ -462,6 +463,13 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         client_references: (() => {
           try {
             return JSON.parse(partner.client_references || '[]');
+          } catch {
+            return [];
+          }
+        })(),
+        employee_references: (() => {
+          try {
+            return JSON.parse(partner.employee_references || '[]');
           } catch {
             return [];
           }
@@ -1483,7 +1491,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           
           <div className="grid grid-cols-1 gap-8">
             <div>
-              <Label htmlFor="client_demos">Client Demos (Up to 5)</Label>
+              <Label htmlFor="client_demos">Client Demos (At least 5)</Label>
               <p className="text-sm text-power100-grey mt-1 mb-4">
                 Upload recorded demos directly to our platform or provide links to videos (YouTube, Vimeo, etc.) showcasing your work
               </p>
@@ -1491,20 +1499,47 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                 items={formData.client_demos}
                 onChange={(items) => handleInputChange('client_demos', items)}
                 className="mt-1"
-                maxItems={5}
+                maxItems={10}
               />
+            </div>
+
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h4 className="font-medium text-yellow-900 mb-2">PowerConfidence Ranking Requirements</h4>
+              <p className="text-sm text-yellow-800 mb-2">
+                <strong>Important:</strong> To receive your initial PowerConfidence ranking, we require feedback from both clients and employees.
+              </p>
+              <p className="text-sm text-yellow-800">
+                • <strong>Clients:</strong> We'll send PowerCards to verify your work quality and obtain direct feedback
+                • <strong>Employees:</strong> We'll send PowerCards to understand your company culture and internal operations
+              </p>
+              <p className="text-sm text-yellow-700 mt-2">
+                <strong>Minimum requirement for ranking:</strong> 5 completed PowerCards from each group
+              </p>
             </div>
             
             <div>
-              <Label htmlFor="client_references">Client References (Up to 5)</Label>
+              <Label htmlFor="client_references">Client References (At least 5)</Label>
               <p className="text-sm text-power100-grey mt-1 mb-4">
-                <strong>Purpose:</strong> We will contact these clients to verify your work quality and obtain direct feedback about your services. This helps us ensure our partners maintain the highest standards and provides valuable insights for potential contractors considering your services.
+                Provide clients that match your target audience and have given permission to be contacted for PowerCard evaluations
               </p>
               <ClientReferenceList
                 items={formData.client_references}
                 onChange={(items) => handleInputChange('client_references', items)}
                 className="mt-1"
-                maxItems={5}
+                maxItems={10}
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="employee_references">Employee References (At least 5)</Label>
+              <p className="text-sm text-power100-grey mt-1 mb-4">
+                Provide employees who can speak to your company culture and will receive PowerCard evaluations
+              </p>
+              <ClientReferenceList
+                items={formData.employee_references}
+                onChange={(items) => handleInputChange('employee_references', items)}
+                className="mt-1"
+                maxItems={10}
               />
             </div>
 
@@ -2356,33 +2391,52 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                   {/* Form Fields */}
                   <div className="space-y-8">
                     <div>
-                      <Label>Client Demos (Up to 5)</Label>
+                      <Label>Client Demos (At least 5)</Label>
                       <p className="text-sm text-power100-grey mt-1 mb-4">
                         Upload recorded demos directly or provide links to videos (YouTube, Vimeo, etc.) showcasing your work
                       </p>
                       <DemoUploadList
                         items={formData.client_demos}
                         onChange={(items) => handleInputChange('client_demos', items)}
-                        maxItems={5}
+                        maxItems={10}
                       />
                     </div>
 
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <h4 className="font-medium text-yellow-900 mb-2">About Client References</h4>
+                      <h4 className="font-medium text-yellow-900 mb-2">PowerConfidence Ranking Requirements</h4>
                       <p className="text-sm text-yellow-800 mb-2">
-                        <strong>Why we need this:</strong> We will contact these clients to verify your work quality and obtain direct feedback about your services. This helps us ensure our partners maintain the highest standards.
+                        <strong>Important:</strong> To receive your initial PowerConfidence ranking, we require feedback from both clients and employees.
                       </p>
                       <p className="text-sm text-yellow-800">
-                        Please provide up to 5 clients that match your target audience and have given you permission to be contacted.
+                        • <strong>Clients:</strong> We'll send PowerCards to verify your work quality and obtain direct feedback
+                        • <strong>Employees:</strong> We'll send PowerCards to understand your company culture and internal operations
+                      </p>
+                      <p className="text-sm text-yellow-700 mt-2">
+                        <strong>Minimum requirement for ranking:</strong> 5 completed PowerCards from each group
                       </p>
                     </div>
                     
                     <div>
-                      <Label>Client References (Up to 5)</Label>
+                      <Label>Client References (At least 5)</Label>
+                      <p className="text-sm text-power100-grey mt-1 mb-4">
+                        Provide clients that match your target audience and have given permission to be contacted for PowerCard evaluations
+                      </p>
                       <ClientReferenceList
                         items={formData.client_references}
                         onChange={(items) => handleInputChange('client_references', items)}
-                        maxItems={5}
+                        maxItems={10}
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Employee References (At least 5)</Label>
+                      <p className="text-sm text-power100-grey mt-1 mb-4">
+                        Provide employees who can speak to your company culture and will receive PowerCard evaluations
+                      </p>
+                      <ClientReferenceList
+                        items={formData.employee_references}
+                        onChange={(items) => handleInputChange('employee_references', items)}
+                        maxItems={10}
                       />
                     </div>
 
