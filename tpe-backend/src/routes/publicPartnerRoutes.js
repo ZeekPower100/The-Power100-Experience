@@ -107,7 +107,7 @@ router.post('/apply', async (req, res) => {
       'tech_stack_sales', 'tech_stack_operations', 'tech_stack_marketing',
       'tech_stack_customer_experience', 'tech_stack_installation_pm', 
       'tech_stack_accounting_finance', 'sponsored_events', 'podcast_appearances',
-      'client_demos', 'client_references', 'client_testimonials', 'focus_areas_served',
+      'client_demos', 'client_references', 'employee_references', 'client_testimonials', 'focus_areas_served',
       'target_revenue_range', 'geographic_regions', 'key_differentiators', 'best_working_partnerships'
     ];
     
@@ -131,7 +131,7 @@ router.post('/apply', async (req, res) => {
       'value_proposition', 'why_clients_choose_you', 'focus_areas_12_months',
       'tech_stack_marketing', 'tech_stack_crm', 'tech_stack_analytics', 'tech_stack_communication',
       'tech_stack_financial', 'tech_stack_project_management',
-      'client_demos', 'client_references', 'landing_page_videos',
+      'client_demos', 'client_references', 'employee_references', 'landing_page_videos',
       'primary_contact', 'secondary_contact', 'company_description', 'best_working_partnerships'
     ];
     

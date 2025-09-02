@@ -77,7 +77,8 @@ async function runMigration() {
       
       // Client Demos & References
       "ALTER TABLE strategic_partners ADD COLUMN client_demos TEXT",
-      "ALTER TABLE strategic_partners ADD COLUMN client_references TEXT"
+      "ALTER TABLE strategic_partners ADD COLUMN client_references TEXT",
+      "ALTER TABLE strategic_partners ADD COLUMN employee_references TEXT"
     ];
     
     let successCount = 0;

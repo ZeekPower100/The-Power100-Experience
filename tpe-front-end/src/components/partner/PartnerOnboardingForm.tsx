@@ -147,6 +147,7 @@ export default function PartnerOnboardingForm() {
     // Client Demos & References
     client_demos: [] as DemoItem[],
     client_references: [] as ClientReference[],
+    employee_references: [] as ClientReference[],
     
     // Default values
     is_active: true
@@ -378,7 +379,8 @@ export default function PartnerOnboardingForm() {
         
         // Step 8: Client Demos & References
         client_demos: formData.client_demos,
-        client_references: formData.client_references
+        client_references: formData.client_references,
+        employee_references: formData.employee_references
       };
 
       // Submit to API
@@ -1477,7 +1479,7 @@ export default function PartnerOnboardingForm() {
                     </div>
 
                     <div>
-                      <Label>Client Demos (Up to 5)</Label>
+                      <Label>Client Demos (At least 5)</Label>
                       <p className="text-sm text-power100-grey mt-1 mb-4">
                         Upload recorded demos directly or provide links to videos (YouTube, Vimeo, etc.) showcasing your work
                       </p>
@@ -1493,24 +1495,47 @@ export default function PartnerOnboardingForm() {
                     </div>
 
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <h4 className="font-medium text-yellow-900 mb-2">About Client References</h4>
+                      <h4 className="font-medium text-yellow-900 mb-2">PowerConfidence Ranking Requirements</h4>
                       <p className="text-sm text-yellow-800 mb-2">
-                        <strong>Why we need this:</strong> We will contact these clients to verify your work quality and obtain direct feedback about your services. This helps us ensure our partners maintain the highest standards.
+                        <strong>Important:</strong> To receive your initial PowerConfidence ranking, we require feedback from both clients and employees.
                       </p>
                       <p className="text-sm text-yellow-800">
-                        Please provide up to 5 clients that match your target audience and have given you permission to be contacted.
+                        • <strong>Clients:</strong> We'll send PowerCards to verify your work quality and obtain direct feedback
+                        • <strong>Employees:</strong> We'll send PowerCards to understand your company culture and internal operations
+                      </p>
+                      <p className="text-sm text-yellow-700 mt-2">
+                        <strong>Minimum requirement for ranking:</strong> 5 completed PowerCards from each group
                       </p>
                     </div>
                     
                     <div>
-                      <Label>Client References (Up to 5)</Label>
+                      <Label>Client References (At least 5)</Label>
+                      <p className="text-sm text-power100-grey mt-1 mb-4">
+                        Provide clients that match your target audience and have given permission to be contacted for PowerCard evaluations
+                      </p>
                       <div onClick={(e) => e.stopPropagation()}>
                         <ClientReferenceList
                           items={formData.client_references}
                           onChange={(items) => {
                             handleInputChange('client_references', items);
                           }}
-                          maxItems={5}
+                          maxItems={10}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Employee References (At least 5)</Label>
+                      <p className="text-sm text-power100-grey mt-1 mb-4">
+                        Provide employees who can speak to your company culture and will receive PowerCard evaluations
+                      </p>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <ClientReferenceList
+                          items={formData.employee_references}
+                          onChange={(items) => {
+                            handleInputChange('employee_references', items);
+                          }}
+                          maxItems={10}
                         />
                       </div>
                     </div>
