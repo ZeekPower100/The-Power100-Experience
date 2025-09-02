@@ -80,7 +80,7 @@ const receiveCommunication = async (req, res) => {
         metadata,
         sent_at,
         created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
     `;
     
     const values = [
@@ -141,18 +141,18 @@ const getContractorCommunications = async (req, res) => {
     
     let queryText = `
       SELECT * FROM communication_logs 
-      WHERE (from_id = ? AND from_type = 'contractor') 
-         OR (to_id = ? AND to_type = 'contractor')
+      WHERE (from_id = $1 AND from_type = 'contractor') 
+         OR (to_id = $2 AND to_type = 'contractor')
     `;
     
     const params = [contractorId, contractorId];
     
     if (type) {
-      queryText += ' AND communication_type = ?';
+      queryText += ' AND communication_type = $' + (params.length + 1);
       params.push(type);
     }
     
-    queryText += ' ORDER BY created_at DESC LIMIT ? OFFSET ?';
+    queryText += ' ORDER BY created_at DESC LIMIT $' + (params.length + 1) + ' OFFSET $' + (params.length + 2);
     params.push(parseInt(limit), parseInt(offset));
     
     const result = await query(queryText, params);
@@ -191,23 +191,23 @@ const updateMessageStatus = async (req, res) => {
     const { messageId } = req.params;
     const { status, timestamp } = req.body;
     
-    let updateQuery = 'UPDATE communication_logs SET status = ?, updated_at = CURRENT_TIMESTAMP';
+    let updateQuery = 'UPDATE communication_logs SET status = $1, updated_at = CURRENT_TIMESTAMP';
     const params = [status];
     
     // Add timestamp for specific statuses
     if (status === 'delivered') {
-      updateQuery += ', delivered_at = ?';
+      updateQuery += ', delivered_at = $' + (params.length + 1);
       params.push(timestamp || new Date().toISOString());
     } else if (status === 'read') {
-      updateQuery += ', read_at = ?';
+      updateQuery += ', read_at = $' + (params.length + 1);
       params.push(timestamp || new Date().toISOString());
     } else if (status === 'failed') {
-      updateQuery += ', failed_at = ?, error_message = ?';
+      updateQuery += ', failed_at = $' + (params.length + 1) + ', error_message = $' + (params.length + 2);
       params.push(timestamp || new Date().toISOString());
       params.push(req.body.errorMessage || 'Delivery failed');
     }
     
-    updateQuery += ' WHERE message_id = ? OR ghl_message_id = ?';
+    updateQuery += ' WHERE message_id = $' + (params.length + 1) + ' OR ghl_message_id = $' + (params.length + 2);
     params.push(messageId, messageId);
     
     await query(updateQuery, params);
