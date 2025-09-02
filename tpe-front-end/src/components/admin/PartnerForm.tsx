@@ -14,8 +14,9 @@ import { ClientReferenceList, type ClientReference } from '@/components/ui/clien
 import { DemoUploadList, type DemoItem } from '@/components/ui/demo-upload-list';
 import VideoManager from '@/components/admin/VideoManager';
 import { partnerApi } from '@/lib/api';
+import { getApiUrl } from '@/utils/api';
 import { StrategicPartner } from '@/lib/types/strategic_partner';
-import { ArrowLeft, Save, Building2, AlertTriangle, Users, FileText, Star, Target, PlayCircle } from 'lucide-react';
+import { ArrowLeft, Save, Building2, AlertTriangle, Users, FileText, Star, Target, PlayCircle, Search, X, Plus, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 interface PartnerFormProps {
@@ -81,6 +82,18 @@ const TECH_STACK_CATEGORIES = {
 };
 
 function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
+  // Partner search state
+  const [partnerSearchQuery, setPartnerSearchQuery] = useState('');
+  const [partnerSearchResults, setPartnerSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showNewPartnerModal, setShowNewPartnerModal] = useState(false);
+  const [newPartnerData, setNewPartnerData] = useState({
+    company_name: '',
+    contact_name: '',
+    contact_email: '',
+    contact_phone: ''
+  });
+
   const [formData, setFormData] = useState({
     // Company Information
     company_name: '',
@@ -180,6 +193,112 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 8;
+
+  // Partner search effect
+  useEffect(() => {
+    const searchPartners = async () => {
+      if (partnerSearchQuery.trim().length < 2) {
+        setPartnerSearchResults([]);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        const response = await fetch(
+          `${getApiUrl('api/partners/public/search')}?q=${encodeURIComponent(partnerSearchQuery)}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setPartnerSearchResults(data.partners || []);
+        }
+      } catch (error) {
+        console.error('Error searching partners:', error);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(searchPartners, 300);
+    return () => clearTimeout(debounceTimer);
+  }, [partnerSearchQuery]);
+
+  const addPartnerRelationship = (partner: any) => {
+    if (formData.best_working_partnerships) {
+      try {
+        const currentPartnerships = typeof formData.best_working_partnerships === 'string'
+          ? JSON.parse(formData.best_working_partnerships)
+          : formData.best_working_partnerships;
+        
+        // Check if partner already exists
+        if (currentPartnerships.some((p: any) => p.company_name === partner.company_name)) {
+          setError('This partner has already been added');
+          setTimeout(() => setError(null), 3000);
+          return;
+        }
+
+        const updatedPartnerships = [...currentPartnerships, partner];
+        setFormData(prev => ({
+          ...prev,
+          best_working_partnerships: JSON.stringify(updatedPartnerships)
+        }));
+      } catch (e) {
+        const newPartnerships = [partner];
+        setFormData(prev => ({
+          ...prev,
+          best_working_partnerships: JSON.stringify(newPartnerships)
+        }));
+      }
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        best_working_partnerships: JSON.stringify([partner])
+      }));
+    }
+    
+    // Clear search
+    setPartnerSearchQuery('');
+    setPartnerSearchResults([]);
+  };
+
+  const removePartnerRelationship = (index: number) => {
+    if (formData.best_working_partnerships) {
+      try {
+        const currentPartnerships = typeof formData.best_working_partnerships === 'string'
+          ? JSON.parse(formData.best_working_partnerships)
+          : formData.best_working_partnerships;
+        
+        const updatedPartnerships = currentPartnerships.filter((_: any, i: number) => i !== index);
+        setFormData(prev => ({
+          ...prev,
+          best_working_partnerships: updatedPartnerships.length > 0 ? JSON.stringify(updatedPartnerships) : ''
+        }));
+      } catch (e) {
+        console.error('Error removing partner:', e);
+      }
+    }
+  };
+
+  const handleAddNewPartner = () => {
+    const newPartner = {
+      id: `new-${Date.now()}`,
+      company_name: newPartnerData.company_name,
+      contact_name: newPartnerData.contact_name,
+      contact_email: newPartnerData.contact_email,
+      contact_phone: newPartnerData.contact_phone,
+      is_new: true
+    };
+    
+    addPartnerRelationship(newPartner);
+    
+    // Reset modal
+    setShowNewPartnerModal(false);
+    setNewPartnerData({
+      company_name: '',
+      contact_name: '',
+      contact_email: '',
+      contact_phone: ''
+    });
+  };
 
   useEffect(() => {
     if (partner) {
@@ -1129,24 +1248,101 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           </h3>
           
           <div className="space-y-4">
-            {formData.best_working_partnerships ? (
-              <div>
-                <Label>Current Partner Relationships</Label>
-                <div className="mt-2 p-4 bg-gray-50 rounded-lg">
-                  {(() => {
-                    try {
-                      const partnerships = typeof formData.best_working_partnerships === 'string' 
+            {/* Partner Search */}
+            <div>
+              <Label>Search and add partners</Label>
+              <div className="relative mt-2">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    type="text"
+                    placeholder="Start typing partner name..."
+                    value={partnerSearchQuery}
+                    onChange={(e) => setPartnerSearchQuery(e.target.value)}
+                    className="pl-10 pr-10"
+                  />
+                  {partnerSearchQuery && (
+                    <button
+                      onClick={() => {
+                        setPartnerSearchQuery('');
+                        setPartnerSearchResults([]);
+                      }}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                    >
+                      <X className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+                    </button>
+                  )}
+                </div>
+                
+                {/* Search Results Dropdown */}
+                {(partnerSearchResults.length > 0 || (partnerSearchQuery.length >= 2 && !isSearching)) && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-auto">
+                    {isSearching ? (
+                      <div className="p-3 text-center text-gray-500">Searching...</div>
+                    ) : partnerSearchResults.length > 0 ? (
+                      partnerSearchResults.map((partner) => (
+                        <button
+                          key={partner.id}
+                          onClick={() => addPartnerRelationship({
+                            id: partner.id,
+                            company_name: partner.company_name,
+                            contact_name: '',
+                            contact_email: '',
+                            contact_phone: ''
+                          })}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
+                        >
+                          <div className="font-medium">{partner.company_name}</div>
+                          {partner.description && (
+                            <div className="text-sm text-gray-500 truncate">{partner.description}</div>
+                          )}
+                        </button>
+                      ))
+                    ) : (
+                      <button
+                        onClick={() => {
+                          setNewPartnerData(prev => ({
+                            ...prev,
+                            company_name: partnerSearchQuery
+                          }));
+                          setShowNewPartnerModal(true);
+                        }}
+                        className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2"
+                      >
+                        <Plus className="h-4 w-4 text-power100-green" />
+                        <span>Add "{partnerSearchQuery}" as new partner</span>
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Current Partner Relationships */}
+            <div>
+              <Label>Current Partner Relationships</Label>
+              <div className="mt-2">
+                {(() => {
+                  try {
+                    const partnerships = formData.best_working_partnerships
+                      ? (typeof formData.best_working_partnerships === 'string' 
                         ? JSON.parse(formData.best_working_partnerships)
-                        : formData.best_working_partnerships;
-                      
-                      if (!partnerships || partnerships.length === 0) {
-                        return <p className="text-gray-500">No partner relationships recorded</p>;
-                      }
-                      
+                        : formData.best_working_partnerships)
+                      : [];
+                    
+                    if (!partnerships || partnerships.length === 0) {
                       return (
-                        <div className="space-y-3">
-                          {partnerships.map((partner: any, index: number) => (
-                            <div key={index} className="p-3 bg-white rounded border">
+                        <div className="p-4 bg-gray-50 rounded-lg">
+                          <p className="text-gray-500">No partner relationships added yet.</p>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <div className="space-y-3">
+                        {partnerships.map((partner: any, index: number) => (
+                          <div key={index} className="p-3 bg-white rounded border flex justify-between items-start">
+                            <div>
                               <div className="font-medium">{partner.company_name}</div>
                               {partner.contact_name && (
                                 <div className="text-sm text-gray-600 mt-1">
@@ -1155,28 +1351,126 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                                   {partner.contact_phone && ` - ${partner.contact_phone}`}
                                 </div>
                               )}
+                              {partner.is_new && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 mt-1">
+                                  New Partner
+                                </span>
+                              )}
                             </div>
-                          ))}
-                        </div>
-                      );
-                    } catch (e) {
-                      return <p className="text-gray-500">No partner relationships recorded</p>;
-                    }
-                  })()}
-                </div>
-                <p className="text-sm text-gray-500 mt-2">
-                  Partner relationships are managed through the partner onboarding process.
-                </p>
+                            <button
+                              onClick={() => removePartnerRelationship(index)}
+                              className="text-red-500 hover:text-red-700"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  } catch (e) {
+                    return (
+                      <div className="p-4 bg-gray-50 rounded-lg">
+                        <p className="text-gray-500">No partner relationships added yet.</p>
+                      </div>
+                    );
+                  }
+                })()}
               </div>
-            ) : (
-              <div className="p-4 bg-gray-50 rounded-lg">
-                <p className="text-gray-500">No partner relationships have been added yet.</p>
-                <p className="text-sm text-gray-400 mt-1">
-                  Partner relationships are captured during the partner onboarding process.
-                </p>
-              </div>
-            )}
+            </div>
           </div>
+
+          {/* New Partner Modal */}
+          {showNewPartnerModal && (
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-semibold">Add New Partner</h3>
+                  <button
+                    onClick={() => {
+                      setShowNewPartnerModal(false);
+                      setNewPartnerData({
+                        company_name: '',
+                        contact_name: '',
+                        contact_email: '',
+                        contact_phone: ''
+                      });
+                    }}
+                    className="text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <Label>Company Name</Label>
+                    <Input
+                      value={newPartnerData.company_name}
+                      onChange={(e) => setNewPartnerData(prev => ({ ...prev, company_name: e.target.value }))}
+                      placeholder="Enter company name"
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Contact Name (Optional)</Label>
+                    <Input
+                      value={newPartnerData.contact_name}
+                      onChange={(e) => setNewPartnerData(prev => ({ ...prev, contact_name: e.target.value }))}
+                      placeholder="Enter contact name"
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Contact Email (Optional)</Label>
+                    <Input
+                      type="email"
+                      value={newPartnerData.contact_email}
+                      onChange={(e) => setNewPartnerData(prev => ({ ...prev, contact_email: e.target.value }))}
+                      placeholder="Enter contact email"
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Contact Phone (Optional)</Label>
+                    <Input
+                      type="tel"
+                      value={newPartnerData.contact_phone}
+                      onChange={(e) => setNewPartnerData(prev => ({ ...prev, contact_phone: e.target.value }))}
+                      placeholder="Enter contact phone"
+                      className="mt-1"
+                    />
+                  </div>
+                  
+                  <div className="flex justify-end gap-2 mt-6">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowNewPartnerModal(false);
+                        setNewPartnerData({
+                          company_name: '',
+                          contact_name: '',
+                          contact_email: '',
+                          contact_phone: ''
+                        });
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleAddNewPartner}
+                      disabled={!newPartnerData.company_name.trim()}
+                      className="bg-power100-green hover:bg-green-700 text-white"
+                    >
+                      Add Partner
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Section 8: Client Demos & References */}
