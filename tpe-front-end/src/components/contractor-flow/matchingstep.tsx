@@ -376,7 +376,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                       <div className="mb-4">
                         <h4 className="font-semibold text-power100-black mb-2">Key Takeaways:</h4>
                         <div className="space-y-2">
-                          {(typeof bookMatch.key_takeaways === 'string' ? JSON.parse(bookMatch.key_takeaways) : bookMatch.key_takeaways).slice(0, 3).map((takeaway: string, index: number) => (
+                          {(Array.isArray(bookMatch.key_takeaways) ? bookMatch.key_takeaways : typeof bookMatch.key_takeaways === 'string' && bookMatch.key_takeaways.startsWith('[') ? JSON.parse(bookMatch.key_takeaways) : []).slice(0, 3).map((takeaway: string, index: number) => (
                             <div key={index} className="flex items-start space-x-2">
                               <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
                               <span className="text-gray-700">{takeaway}</span>
@@ -435,7 +435,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                       <div className="mb-4">
                         <h4 className="font-semibold text-power100-black mb-2">Topics Covered:</h4>
                         <div className="flex flex-wrap gap-2">
-                          {(typeof podcastMatch.topics === 'string' ? JSON.parse(podcastMatch.topics) : podcastMatch.topics)?.map((topic: string, index: number) => (
+                          {(Array.isArray(podcastMatch.topics) ? podcastMatch.topics : typeof podcastMatch.topics === 'string' ? podcastMatch.topics.split(',').map(t => t.trim()) : [])?.map((topic: string, index: number) => (
                             <Badge key={index} className="bg-gray-100 text-gray-700 bg-opacity-100">{topic}</Badge>
                           ))}
                         </div>
@@ -473,8 +473,27 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                       </div>
                     </div>
                     <p className="text-gray-700 mb-4">
-                      {eventMatch.description || 'The premier event for ambitious contractors ready to 10x their business.'}
+                      {eventMatch.description || 'A battle-tested playbook to generate 200 to 500 qualified leads every single month. Join top contractors who are transforming their lead generation strategies.'}
                     </p>
+                    
+                    {/* Key Takeaways */}
+                    <div className="mb-4">
+                      <h4 className="font-semibold text-power100-black mb-2">Key Takeaways:</h4>
+                      <div className="space-y-2">
+                        <div className="flex items-start space-x-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                          <span className="text-gray-700">Battle-tested playbook to generate 200-500 qualified leads monthly</span>
+                        </div>
+                        <div className="flex items-start space-x-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                          <span className="text-gray-700">Direct strategies from contractors doing $10M+ annually</span>
+                        </div>
+                        <div className="flex items-start space-x-2">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                          <span className="text-gray-700">Proven systems to double close rates and increase average tickets</span>
+                        </div>
+                      </div>
+                    </div>
                     {eventMatch.matchReasons && (
                       <div className="mb-4">
                         <h4 className="font-semibold text-power100-black mb-2">Why You Should Attend:</h4>
@@ -591,7 +610,23 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                 
                 {/* Partner Matches - FOURTH (Side by Side) */}
                 {matchedPartners.length > 0 && (
-                  <div className="grid md:grid-cols-2 gap-6">
+                  <>
+                    {/* Enticing Headline */}
+                    <motion.div 
+                      initial={{ opacity: 0, y: -10 }} 
+                      animate={{ opacity: 1, y: 0 }} 
+                      transition={{ duration: 0.5, delay: 0.2 }}
+                      className="text-center mb-6"
+                    >
+                      <h2 className="text-2xl md:text-3xl font-bold text-power100-black mb-2">
+                        Your Strategic Partners for {formatFocusArea(allFocusAreas[currentFocusAreaIndex] || primaryFocusArea)}
+                      </h2>
+                      <p className="text-lg text-gray-600">
+                        Based on your goals and current challenges, these partners deliver the highest impact solutions
+                      </p>
+                    </motion.div>
+                    
+                    <div className="grid md:grid-cols-2 gap-6">
                     {matchedPartners.map((partner, idx) => (
                     <motion.div key={partner.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5, delay: 0.3 + idx * 0.1 }} className="bg-white border-2 border-power100-red rounded-xl p-6 shadow-lg">
                         <div className="flex flex-col items-start mb-4">
@@ -613,7 +648,34 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                             </div>
                             {partner.website && <Button variant="outline" size="sm" onClick={() => window.open(partner.website, '_blank')} className="flex items-center space-x-1 w-full mb-3"><ExternalLink className="w-3 h-3" /><span>Visit Site</span></Button>}
                         </div>
-                        <p className="text-gray-700 mb-4 text-sm leading-relaxed">{partner.description}</p>
+                        {/* Dynamic Partner Summary Based on Focus Area */}
+                        <div className="text-gray-700 mb-4 text-sm leading-relaxed">
+                          {(() => {
+                            const focusArea = allFocusAreas[currentFocusAreaIndex] || primaryFocusArea;
+                            let summary = partner.description;
+                            
+                            // Customize summary based on focus area
+                            if (focusArea === 'controlling_lead_flow') {
+                              summary = `Based on your focus on controlling lead flow, ${partner.company_name} specializes in ${partner.description}. Their proven systems help contractors like you generate predictable, high-quality leads while reducing acquisition costs.`;
+                            } else if (focusArea === 'hiring_sales_leadership') {
+                              summary = `With your priority on hiring sales leadership, ${partner.company_name} offers ${partner.description}. They help contractors build high-performing sales teams that close more deals and drive sustainable growth.`;
+                            } else if (focusArea === 'closing_higher_percentage') {
+                              summary = `To address your goal of closing a higher percentage of leads, ${partner.company_name} provides ${partner.description}. Their clients typically see a 15-30% improvement in close rates within the first 90 days.`;
+                            } else if (focusArea === 'operational_efficiency') {
+                              summary = `For improving operational efficiency, ${partner.company_name} delivers ${partner.description}. They help contractors streamline operations, reduce costs, and scale profitably.`;
+                            } else if (focusArea === 'customer_experience') {
+                              summary = `To enhance customer experience, ${partner.company_name} specializes in ${partner.description}. Their solutions help contractors build lasting customer relationships and generate more referrals.`;
+                            } else if (focusArea === 'revenue_growth') {
+                              summary = `Focused on revenue growth, ${partner.company_name} provides ${partner.description}. Their strategies have helped contractors achieve 2-3x revenue growth within 12-18 months.`;
+                            } else if (focusArea === 'greenfield_growth') {
+                              summary = `For expanding into new markets, ${partner.company_name} offers ${partner.description}. They specialize in helping contractors successfully enter and dominate new territories.`;
+                            } else if (focusArea === 'technology_systems' || focusArea === 'technology_integration') {
+                              summary = `To modernize your technology stack, ${partner.company_name} delivers ${partner.description}. Their solutions integrate seamlessly to create a connected, efficient operation.`;
+                            }
+                            
+                            return <p>{summary}</p>;
+                          })()}
+                        </div>
                         {partner.key_differentiators?.length > 0 && <div className="mb-4"><h4 className="font-semibold text-power100-black mb-2 text-sm">Key Benefits:</h4><div className="space-y-2">{partner.key_differentiators.map((diff, index) => <div key={index} className="flex items-start space-x-2"><div className="w-1.5 h-1.5 bg-power100-red rounded-full mt-1.5 flex-shrink-0"></div><span className="text-gray-700 text-sm">{diff}</span></div>)}</div></div>}
                         {partner.pricing_model && <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4"><h4 className="font-semibold text-green-900 mb-1 text-sm">Pricing:</h4><p className="text-green-800 text-sm">{partner.pricing_model}</p></div>}
                         <div className="space-y-2">
@@ -652,6 +714,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                     </motion.div>
                     ))}
                   </div>
+                  </>
                 )}
                 
                 {/* Focus Area Navigation Section */}
