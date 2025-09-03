@@ -1,5 +1,39 @@
 # Server Configuration Troubleshooting Guide
 
+## 🚨 CRITICAL: Deployment Verification Protocol
+
+### NEVER Deploy Without Verification
+Before claiming ANY fix is deployed, you MUST:
+
+1. **Compare actual code files** between dev and production
+2. **Test the specific endpoint** that was broken
+3. **Check error logs** for the specific error that was occurring
+4. **Show proof** of the fix with actual code snippets and test results
+
+### Common Deployment Mistakes to AVOID:
+- ❌ Assuming production has the fix without checking
+- ❌ Saying "should be working" instead of testing
+- ❌ Fixing only frontend when backend sends errors
+- ❌ Not checking logs after deployment
+- ❌ Marking as complete without verification
+
+### Verification Commands:
+```bash
+# Compare files between environments
+diff local_file production_file
+
+# Test specific API endpoints
+curl -s https://tpx.power100.io/api/endpoint | jq '.'
+
+# Check production logs for errors
+pm2 logs tpe-backend --lines 50 | grep -i error
+
+# Verify specific code sections
+ssh production 'cat file.js | grep -n "specific_code"'
+```
+
+See `DEPLOYMENT-CHECKLIST.md` for complete deployment verification steps.
+
 ## Standard Server Restart Protocol (REQUIRED)
 
 **⚠️ CRITICAL: Always follow this exact protocol when restarting servers throughout the project**

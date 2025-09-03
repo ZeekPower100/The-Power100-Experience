@@ -322,6 +322,63 @@ the-power100-experience/          # Project root
 - Monitoring and logging infrastructure
 - Backup and disaster recovery systems
 
+## 🚨 CRITICAL: DEPLOYMENT VERIFICATION PROTOCOL
+
+### MANDATORY Before ANY Production Deployment
+**NEVER assume code is fixed. ALWAYS verify with these exact steps:**
+
+#### 1. **Compare Files FIRST**
+```bash
+# ALWAYS compare dev vs prod files before claiming alignment:
+diff tpe-backend/src/services/file.js production/file.js
+# Or check specific problem areas:
+grep -n "problematic_code" both_files
+```
+
+#### 2. **Test Actual API Responses**
+```bash
+# Don't just check status codes, verify the actual data:
+curl -s https://tpx.power100.io/api/endpoint | jq '.specific.field'
+# Compare with development:
+curl -s http://localhost:5000/api/endpoint | jq '.specific.field'
+```
+
+#### 3. **Check Error Logs**
+```bash
+# Production logs:
+pm2 logs tpe-backend --lines 20 --nostream | grep -i error
+# Development logs:
+tail -50 tpe-backend/server.log | grep -i error
+```
+
+#### 4. **Verify Both Environments**
+- ✅ Development backend code (cat/grep the actual file)
+- ✅ Production backend code (cat/grep the actual file)  
+- ✅ Development frontend code (cat/grep the actual file)
+- ✅ Production frontend code (cat/grep the actual file)
+- ✅ Test development API response
+- ✅ Test production API response
+
+#### 5. **Track Changes Properly**
+- Use TodoWrite to track deployment steps
+- Document which environment has which fix
+- NEVER mark as "completed" without verification
+- If you say "deployed", show the proof
+
+#### 6. **Common Mistake Patterns to Avoid**
+- ❌ "The production backend was fixed" (assumption)
+- ✅ "I verified production has the fix by checking line 42: [show code]"
+- ❌ "It should be working now"
+- ✅ "Confirmed working: API returns success:true with no errors"
+- ❌ "Frontend fix will solve this"
+- ✅ "Backend sends error, fixing backend first at line X"
+
+#### 7. **Understand Error Origins**
+- "Unexpected token B in JSON" = Backend parsing issue, NOT frontend
+- "Failed to fetch" = Backend not running or CORS issue
+- 400 errors = Validation failure (check both frontend AND backend validation)
+- 500 errors = Backend code error (check logs immediately)
+
 ## 🎛️ Special Instructions for Claude Code
 
 ### Always Do
