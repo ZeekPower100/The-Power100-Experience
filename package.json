@@ -21,7 +21,10 @@
       "claude:verify": "node scripts/claude-verify.js",
       "claude:backup": "git checkout -b backup/$(date +'%Y%m%d-%H%M%S') && git add . && git commit -m 'Emergency backup' && git push origin backup/$(date +'%Y%m%d-%H%M%S')",
       "claude:status": "node scripts/claude-status.js",
-      "claude:docs": "node scripts/update-claude-docs.js"
+      "claude:docs": "node scripts/update-claude-docs.js",
+      "check-compatibility": "node compatibility-check.js",
+      "install-compatibility-hook": "node install-git-hooks.js",
+      "uninstall-compatibility-hook": "rm .git/hooks/pre-push"
     },
     "workspaces": [
       "tpe-front-end",
