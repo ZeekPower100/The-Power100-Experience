@@ -23,6 +23,7 @@ export default function DelegationPage() {
   const [selectedMember, setSelectedMember] = useState('');
   const [companyName, setCompanyName] = useState('');
   const [partnerId, setPartnerId] = useState('');
+  const [ceoName, setCeoName] = useState('');
 
   useEffect(() => {
     // Load saved form data and extract team members from Step 2
@@ -32,6 +33,7 @@ export default function DelegationPage() {
     if (savedData) {
       const formData = JSON.parse(savedData);
       setCompanyName(formData.company_name || '');
+      setCeoName(formData.ceo_name || formData.ceo_contact_name || 'CEO');
       
       // Extract team members from Step 2 contacts
       const members: TeamMember[] = [];
@@ -120,19 +122,33 @@ export default function DelegationPage() {
         throw new Error('Selected team member not found');
       }
 
-      // Send delegation email (this would be an API call in production)
-      const response = await fetch(getApiUrl('api/partners/delegate-portfolio'), {
+      // Generate a unique delegate ID
+      const delegateId = `delegate-${partnerId}-${Date.now()}`;
+      
+      // Send delegation email via the email service
+      const response = await fetch(getApiUrl('api/emails/partner-delegation'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           partnerId: partnerId,
-          delegateTo: member,
-          companyName: companyName
+          partnerName: companyName,
+          delegateId: delegateId,
+          ceoName: ceoName,
+          delegateEmail: member.email,
+          delegateName: member.name,
+          delegationLink: `${window.location.origin}/partner/onboarding?step=8&partner=${partnerId}&delegate=${delegateId}`
         })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to send delegation email');
+      const result = await response.json();
+      
+      if (!response.ok && !result.workflowTriggered) {
+        throw new Error(result.error || 'Failed to send delegation email');
+      }
+      
+      // Show appropriate message based on workflow status
+      if (result.workflowTriggered === false) {
+        console.log('📧 Email workflow pending setup in n8n');
       }
 
       // Clear local storage

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
+import { DynamicListWithUrl, ItemWithUrl } from '@/components/ui/dynamic-list-with-url';
 import { ClientReferenceList, type ClientReference } from '@/components/ui/client-reference-list';
 import { DemoUploadList, type DemoItem } from '@/components/ui/demo-upload-list';
 import LogoManager from '@/components/admin/LogoManager';
@@ -49,9 +50,23 @@ const SERVICE_AREAS = [
 const OWNERSHIP_TYPES = [
   { value: 'private_independent', label: 'Private/Independent' },
   { value: 'public', label: 'Public' },
-  { value: 'big_box', label: 'Big Box' },
-  { value: 'franchise', label: 'Franchise' },
   { value: 'pe_funding', label: 'PE Funding' }
+];
+
+// Contractor focus areas for matching
+const CONTRACTOR_SERVICE_CATEGORIES = [
+  { value: 'revenue_growth', label: 'Revenue Growth' },
+  { value: 'controlling_lead_flow', label: 'Controlling Lead Flow' },
+  { value: 'hiring_sales_leadership', label: 'Hiring Sales/Leadership' },
+  { value: 'marketing_improvement', label: 'Marketing Improvement' },
+  { value: 'sales_process', label: 'Sales Process' },
+  { value: 'operational_efficiency', label: 'Operational Efficiency' },
+  { value: 'technology_systems', label: 'Technology & Systems' },
+  { value: 'financial_management', label: 'Financial Management' },
+  { value: 'customer_experience', label: 'Customer Experience' },
+  { value: 'greenfield_growth', label: 'Greenfield/New Market Growth' },
+  { value: 'closing_higher_percentage', label: 'Closing Higher Percentage' },
+  { value: 'installation_quality', label: 'Installation Quality' }
 ];
 
 const FOCUS_AREAS_12_MONTHS = [
@@ -62,7 +77,13 @@ const FOCUS_AREAS_12_MONTHS = [
   { value: 'technology', label: 'Technology' },
   { value: 'marketing', label: 'Marketing' },
   { value: 'sales', label: 'Sales' },
-  { value: 'financing', label: 'Financing' }
+  { value: 'financing', label: 'Financing' },
+  { value: 'partnerships', label: 'Partnerships' },
+  { value: 'marketing_efforts', label: 'Marketing Efforts' },
+  { value: 'shift_target_audience', label: 'Shift in Target Audience' },
+  { value: 'new_sales_strategies', label: 'Implementing New Sales Strategies' },
+  { value: 'closing_percentages', label: 'Increasing Closing Percentages' },
+  { value: 'tech_ai_implementations', label: 'Tech/AI Implementations' }
 ];
 
 export default function PartnerOnboardingForm() {
@@ -144,13 +165,13 @@ export default function PartnerOnboardingForm() {
     
     // Sponsorships & Media
     sponsored_events: [] as string[],
-    other_sponsored_events: [] as string[],
+    other_sponsored_events: [] as ItemWithUrl[],
     podcast_appearances: [] as string[],
-    other_podcast_appearances: [] as string[],
+    other_podcast_appearances: [] as ItemWithUrl[],
     books_read_recommended: '',
     
     // Competitive Analysis
-    service_category: '',
+    service_categories: [] as string[],
     value_proposition: '',
     why_clients_choose_you: '',
     why_clients_choose_competitors: '',
@@ -304,30 +325,41 @@ export default function PartnerOnboardingForm() {
     setError(null);
 
     try {
-      // Validate required fields
-      if (!formData.company_name.trim()) {
-        throw new Error('Company name is required');
+      // Skip basic validation for Step 8 (pre-onboarding only)
+      if (currentStep !== 8) {
+        // Validate required fields for normal flow
+        if (!formData.company_name.trim()) {
+          throw new Error('Company name is required');
+        }
+        if (!formData.established_year) {
+          throw new Error('Established year is required');
+        }
       }
-      if (!formData.established_year) {
-        throw new Error('Established year is required');
+      
+      // Skip CEO and revenue validation for Step 8
+      if (currentStep !== 8) {
+        if (!formData.ceo_name || !formData.ceo_email) {
+          throw new Error('CEO contact information is required');
+        }
+        if (formData.target_revenue_audience.length === 0) {
+          throw new Error('At least one target revenue range is required');
+        }
       }
-      if (!formData.ceo_name || !formData.ceo_email) {
-        throw new Error('CEO contact information is required');
-      }
-      if (formData.target_revenue_audience.length === 0) {
-        throw new Error('At least one target revenue range is required');
-      }
-      if (formData.target_revenue_audience.length > 3) {
-        throw new Error('Maximum 3 target revenue ranges allowed');
-      }
-      if (formData.service_areas.length === 0) {
-        throw new Error('At least one service area is required');
-      }
-      if (formData.focus_areas_12_months.length === 0) {
-        throw new Error('At least one focus area for next 12 months is required');
-      }
-      if (formData.focus_areas_12_months.length > 3) {
-        throw new Error('Maximum 3 focus areas for next 12 months allowed');
+      
+      // Skip additional validations for Step 8
+      if (currentStep !== 8) {
+        if (formData.target_revenue_audience.length > 3) {
+          throw new Error('Maximum 3 target revenue ranges allowed');
+        }
+        if (formData.service_areas.length === 0) {
+          throw new Error('At least one service area is required');
+        }
+        if (formData.focus_areas_12_months.length === 0) {
+          throw new Error('At least one focus area for next 12 months is required');
+        }
+        if (formData.focus_areas_12_months.length > 3) {
+          throw new Error('Maximum 3 focus areas for next 12 months allowed');
+        }
       }
 
       // Prepare data for API - Using comprehensive onboarding field names
@@ -386,7 +418,7 @@ export default function PartnerOnboardingForm() {
         service_areas_other: formData.service_areas_other,
         
         // Step 4: Competitive Analysis
-        service_category: formData.service_category,
+        service_categories: formData.service_categories,
         value_proposition: formData.value_proposition,
         why_clients_choose_you: formData.why_clients_choose_you,
         why_clients_choose_competitors: formData.why_clients_choose_competitors,
@@ -681,6 +713,11 @@ export default function PartnerOnboardingForm() {
                   
                   {/* Title */}
                   <div className="text-center mb-8">
+                    {formData.company_name && (
+                      <h2 className="text-2xl font-bold text-power100-black mb-2">
+                        {formData.company_name}
+                      </h2>
+                    )}
                     <h2 className="text-2xl font-bold text-power100-black mb-2">
                       Key Contact Information
                     </h2>
@@ -693,7 +730,7 @@ export default function PartnerOnboardingForm() {
                   <div className="space-y-8">
                     {/* CEO Information */}
                     <div>
-                      <h3 className="font-semibold text-lg mb-4">CEO Information *</h3>
+                      <h3 className="font-semibold text-lg mb-4">CEO *</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <Label htmlFor="ceo_name">Name</Label>
@@ -733,7 +770,7 @@ export default function PartnerOnboardingForm() {
 
                     {/* CX Information */}
                     <div>
-                      <h3 className="font-semibold text-lg mb-4">Customer Experience (CX) Information</h3>
+                      <h3 className="font-semibold text-lg mb-4">Customer Experience (CX)</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <Label htmlFor="cx_name">Name</Label>
@@ -771,7 +808,7 @@ export default function PartnerOnboardingForm() {
 
                     {/* Sales Information */}
                     <div>
-                      <h3 className="font-semibold text-lg mb-4">Sales Information</h3>
+                      <h3 className="font-semibold text-lg mb-4">Sales</h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <Label htmlFor="sales_name">Name</Label>
@@ -809,7 +846,7 @@ export default function PartnerOnboardingForm() {
 
                     {/* Onboarding Information */}
                     <div>
-                      <h3 className="font-semibold text-lg mb-4">Onboarding Information</h3>
+                      <h3 className="font-semibold text-lg mb-4">Onboarding/Trainer <span className="font-normal text-gray-500">(or equivalent)</span></h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <Label htmlFor="onboarding_name">Name</Label>
@@ -847,7 +884,7 @@ export default function PartnerOnboardingForm() {
 
                     {/* Marketing Information */}
                     <div>
-                      <h3 className="font-semibold text-lg mb-4">Marketing Information</h3>
+                      <h3 className="font-semibold text-lg mb-4">CMO <span className="font-normal text-gray-500">(VP of Marketing, or equivalent)</span></h3>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                           <Label htmlFor="marketing_name">Name</Label>
@@ -888,7 +925,7 @@ export default function PartnerOnboardingForm() {
             </motion.div>
           )}
 
-          {/* Step 3: Target Audience & Service Areas */}
+          {/* Step 3: Client Profile */}
           {currentStep === 3 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -908,17 +945,17 @@ export default function PartnerOnboardingForm() {
                   {/* Title */}
                   <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-power100-black mb-2">
-                      Target Audience & Service Areas
+                      Client Profile
                     </h2>
                     <p className="text-power100-grey">
-                      Define your target market and service offerings
+                      Let's get to know your ideal client profile
                     </p>
                   </div>
                   
                   {/* Form Fields */}
                   <div className="space-y-8">
                     <div>
-                      <Label>Target Revenue Audience (Select up to 3) *</Label>
+                      <Label>Ideal Client's Revenue Range (Select up to 3) *</Label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
                         {TARGET_REVENUE_OPTIONS.map(option => (
                           <div key={option.value} className="flex items-center space-x-2">
@@ -954,8 +991,36 @@ export default function PartnerOnboardingForm() {
                     </div>
 
                     <div>
-                      <Label>Service Areas *</Label>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+                      <Label>Services Offered By Ideal Client (Select All That Apply) *</Label>
+                      <div className="mb-3 mt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const allServiceValues = SERVICE_AREAS.map(s => s.value);
+                            const allSelected = allServiceValues.every(v => formData.service_areas.includes(v));
+                            
+                            if (allSelected) {
+                              // Deselect all
+                              setFormData(prev => ({
+                                ...prev,
+                                service_areas: []
+                              }));
+                            } else {
+                              // Select all
+                              setFormData(prev => ({
+                                ...prev,
+                                service_areas: allServiceValues
+                              }));
+                            }
+                          }}
+                          className="w-auto"
+                        >
+                          {SERVICE_AREAS.every(s => formData.service_areas.includes(s.value)) ? 'Deselect All' : 'Select All'}
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {SERVICE_AREAS.map(service => (
                           <div key={service.value} className="flex items-center space-x-2">
                             <Checkbox
@@ -1030,7 +1095,7 @@ export default function PartnerOnboardingForm() {
                   {/* Form Fields */}
                   <div className="space-y-6">
                     <div>
-                      <Label>Events you sponsor (check all that apply)</Label>
+                      <Label>Events your CEO sponsors (check all that apply)</Label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
                         {[
                           'Power 100',
@@ -1069,10 +1134,11 @@ export default function PartnerOnboardingForm() {
                       </div>
                       <div className="mt-4">
                         <Label htmlFor="other_sponsored_events">Other events not listed above</Label>
-                        <SimpleDynamicList
+                        <DynamicListWithUrl
                           items={formData.other_sponsored_events || []}
                           onChange={(items) => handleInputChange('other_sponsored_events', items)}
-                          placeholder="Enter additional event name"
+                          namePlaceholder="Enter additional event name"
+                          urlPlaceholder="Enter event URL (optional)"
                           className="mt-1"
                           addButtonText="Add Event"
                         />
@@ -1080,7 +1146,7 @@ export default function PartnerOnboardingForm() {
                     </div>
 
                     <div>
-                      <Label>Podcasts you have appeared on within the last 2 years</Label>
+                      <Label>Podcasts your CEO has appeared on within the last 2 years</Label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
                         {[
                           'Contractor Secrets',
@@ -1118,10 +1184,11 @@ export default function PartnerOnboardingForm() {
                       </div>
                       <div className="mt-4">
                         <Label htmlFor="other_podcast_appearances">Other podcasts not listed above</Label>
-                        <SimpleDynamicList
+                        <DynamicListWithUrl
                           items={formData.other_podcast_appearances || []}
                           onChange={(items) => handleInputChange('other_podcast_appearances', items)}
-                          placeholder="Enter additional podcast name"
+                          namePlaceholder="Enter additional podcast name"
+                          urlPlaceholder="Enter podcast URL (optional)"
                           className="mt-1"
                           addButtonText="Add Podcast"
                         />
@@ -1178,14 +1245,34 @@ export default function PartnerOnboardingForm() {
                   {/* Form Fields */}
                   <div className="space-y-6">
                     <div>
-                      <Label htmlFor="service_category">Service Category</Label>
-                      <Input
-                        id="service_category"
-                        value={formData.service_category}
-                        onChange={(e) => handleInputChange('service_category', e.target.value)}
-                        placeholder="Primary service category"
-                        className="mt-1"
-                      />
+                      <Label>Service Categories (Check all that apply) *</Label>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+                        {CONTRACTOR_SERVICE_CATEGORIES.map(category => (
+                          <div key={category.value} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`category-${category.value}`}
+                              checked={formData.service_categories?.includes(category.value) || false}
+                              onCheckedChange={(checked) => {
+                                const currentCategories = formData.service_categories || [];
+                                if (checked) {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    service_categories: [...currentCategories, category.value]
+                                  }));
+                                } else {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    service_categories: currentCategories.filter(c => c !== category.value)
+                                  }));
+                                }
+                              }}
+                            />
+                            <Label htmlFor={`category-${category.value}`} className="text-sm cursor-pointer">
+                              {category.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                     
                     <div>
@@ -1202,7 +1289,7 @@ export default function PartnerOnboardingForm() {
                     </div>
                     
                     <div>
-                      <Label htmlFor="why_clients_choose_you">Why do clients choose you over competitors? *</Label>
+                      <Label htmlFor="why_clients_choose_you">The #1 reason why clients choose you over your competitors *</Label>
                       <Textarea
                         id="why_clients_choose_you"
                         value={formData.why_clients_choose_you}
@@ -1215,7 +1302,7 @@ export default function PartnerOnboardingForm() {
                     </div>
                     
                     <div>
-                      <Label htmlFor="why_clients_choose_competitors">Why do clients choose competitors over you?</Label>
+                      <Label htmlFor="why_clients_choose_competitors">The #1 reason clients choose competitors over you</Label>
                       <Textarea
                         id="why_clients_choose_competitors"
                         value={formData.why_clients_choose_competitors}

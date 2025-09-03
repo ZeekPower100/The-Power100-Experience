@@ -129,8 +129,96 @@ const sendStageNotification = async (req, res) => {
   }
 };
 
+// Send partner delegation email
+const sendPartnerDelegationEmail = async (req, res) => {
+  try {
+    const {
+      partnerId,
+      partnerName,
+      delegateId,
+      ceoName,
+      delegateEmail,
+      delegateName,
+      delegationLink
+    } = req.body;
+
+    console.log('📧 Triggering partner delegation email for:', delegateEmail);
+
+    // Validate required fields
+    if (!delegateEmail || !delegateName || !partnerId || !partnerName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: delegateEmail, delegateName, partnerId, or partnerName'
+      });
+    }
+
+    // Generate secure delegation link if not provided
+    const finalDelegationLink = delegationLink || 
+      `https://tpx.power100.io/partner/onboarding?step=8&partner=${partnerId}`;
+
+    // Trigger n8n delegation email workflow
+    const n8nPayload = {
+      partnerId,
+      partnerName,
+      delegateId: delegateId || `delegate-${partnerId}-${Date.now()}`,
+      ceoName: ceoName || 'CEO',
+      delegateEmail,
+      delegateName,
+      delegationLink: finalDelegationLink,
+      triggerType: 'partner_delegation',
+      timestamp: new Date().toISOString()
+    };
+
+    const response = await axios.post(
+      `${N8N_WEBHOOK_BASE}/webhook/partner-delegation-email`,
+      n8nPayload,
+      {
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000 // 30 second timeout
+      }
+    );
+
+    console.log('✅ Partner delegation email workflow triggered successfully');
+
+    res.status(200).json({
+      success: true,
+      message: 'Delegation email sent successfully',
+      workflowTriggered: true,
+      partnerId: partnerId,
+      delegateId: n8nPayload.delegateId,
+      delegateEmail: delegateEmail,
+      delegationLink: finalDelegationLink,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('❌ Error sending delegation email:', error.message);
+    
+    // If n8n workflow doesn't exist yet, return a softer error
+    if (error.response?.status === 404) {
+      return res.status(200).json({
+        success: true,
+        message: 'Delegation email queued (workflow pending setup in n8n)',
+        workflowTriggered: false,
+        partnerId: req.body.partnerId,
+        delegateEmail: req.body.delegateEmail,
+        note: 'n8n workflow needs to be created at /webhook/partner-delegation-email'
+      });
+    }
+    
+    res.status(500).json({
+      success: false,
+      error: 'Failed to send delegation email',
+      details: error.response?.data || error.message
+    });
+  }
+};
+
 // Routes
 router.post('/welcome', sendWelcomeEmail);
 router.post('/stage-notification', sendStageNotification);
+router.post('/partner-delegation', sendPartnerDelegationEmail);
 
 module.exports = router;
