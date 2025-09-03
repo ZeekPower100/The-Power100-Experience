@@ -100,10 +100,23 @@ export default function PartnerOnboardingForm() {
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const stepParam = urlParams.get('step');
+      const partnerParam = urlParams.get('partner');
+      const delegateParam = urlParams.get('delegate');
+      
       if (stepParam === '8') {
         setCurrentStep(8);
         
-        // Also restore the saved form data
+        // Store partner ID and delegate ID from URL for delegation flow
+        if (partnerParam) {
+          localStorage.setItem('partner_application_id', partnerParam);
+          console.log('📝 Partner ID from delegation URL:', partnerParam);
+        }
+        if (delegateParam) {
+          localStorage.setItem('delegate_id', delegateParam);
+          console.log('📝 Delegate ID from delegation URL:', delegateParam);
+        }
+        
+        // Also restore the saved form data if available
         const savedData = localStorage.getItem('partner_application_data');
         if (savedData) {
           try {
