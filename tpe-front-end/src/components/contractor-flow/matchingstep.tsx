@@ -436,7 +436,9 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                         <h4 className="font-semibold text-power100-black mb-2">Topics Covered:</h4>
                         <div className="flex flex-wrap gap-2">
                           {(Array.isArray(podcastMatch.topics) ? podcastMatch.topics : typeof podcastMatch.topics === 'string' ? podcastMatch.topics.split(',').map(t => t.trim()) : [])?.map((topic: string, index: number) => (
-                            <Badge key={index} className="bg-gray-100 text-gray-700 bg-opacity-100">{topic}</Badge>
+                            <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
+                              {topic}
+                            </span>
                           ))}
                         </div>
                       </div>
