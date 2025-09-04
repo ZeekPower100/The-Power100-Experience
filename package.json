@@ -23,6 +23,9 @@
       "claude:status": "node scripts/claude-status.js",
       "claude:docs": "node scripts/update-claude-docs.js",
       "check-compatibility": "node compatibility-check.js",
+      "check-db-compatibility": "node database-compatibility-check.js",
+      "check-all": "npm run check-compatibility && npm run check-full-stack && npm run check-db-compatibility -- --quick",
+      "check-full-stack": "node full-stack-compatibility-check.js",
       "install-compatibility-hook": "node install-git-hooks.js",
       "uninstall-compatibility-hook": "rm .git/hooks/pre-push"
     },

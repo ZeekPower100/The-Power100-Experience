@@ -212,6 +212,11 @@ const createPartner = async (req, res, next) => {
 const updatePartner = async (req, res, next) => {
   const { id } = req.params;
   const updates = req.body;
+  
+  // Log the client_demos structure for debugging
+  if (updates.client_demos) {
+    console.log('📹 Updating client_demos:', JSON.stringify(updates.client_demos, null, 2));
+  }
 
   // Build dynamic update query - Include ALL database fields
   const allowedFields = [
@@ -324,8 +329,13 @@ const updatePartner = async (req, res, next) => {
       partner: result.rows[0]
     });
   } catch (error) {
-    console.error('Update partner error:', error);
-    return next(new AppError('Failed to update partner', 500));
+    console.error('❌ Update partner database error:', error.message);
+    console.error('SQL Query details:', {
+      setClause: setClause.join(', '),
+      valuesCount: values.length,
+      error: error.detail || error.message
+    });
+    return next(new AppError(`Failed to update partner: ${error.message}`, 500));
   }
 };
 

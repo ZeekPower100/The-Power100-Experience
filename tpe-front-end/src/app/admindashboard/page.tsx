@@ -106,8 +106,16 @@ export default function AdminDashboard() {
     setError(null);
 
     try {
+      // Clear only old admin tokens to prevent confusion
+      // Keep contractor session intact for testing continuity
+      localStorage.removeItem('adminToken');
+      // Also clear authToken before setting new one to avoid stale tokens
+      localStorage.removeItem('authToken');
+      
       const response = await authApi.login(loginForm.email, loginForm.password);
       localStorage.setItem('authToken', response.token);
+      // Set a timestamp to track when this admin session was created
+      localStorage.setItem('authTokenTimestamp', Date.now().toString());
       setIsAuthenticated(true);
       loadDashboardData();
     } catch (err: unknown) {
@@ -115,6 +123,19 @@ export default function AdminDashboard() {
     } finally {
       setLoginLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    // Clear all admin tokens
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('authTokenTimestamp');
+    // Note: Keeping contractor sessions intact for testing
+    setIsAuthenticated(false);
+    setStats(null);
+    setRecentContractors([]);
+    setTopPartners([]);
+    setError(null);
   };
 
   const loadDashboardData = async () => {
@@ -303,15 +324,37 @@ export default function AdminDashboard() {
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center space-x-4 mb-4"
+            className="flex items-center justify-between mb-4"
           >
-            <div className="w-12 h-12 bg-gradient-to-br from-power100-red to-red-700 rounded-xl flex items-center justify-center mx-auto mb-4">
-              <BarChart3 className="w-6 h-6 text-white" />
+            <div className="flex items-center space-x-4">
+              <div className="w-12 h-12 bg-gradient-to-br from-power100-red to-red-700 rounded-xl flex items-center justify-center">
+                <BarChart3 className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold text-power100-black">Power100 Dashboard</h1>
+                <p className="text-lg text-power100-grey">Power100 Experience Analytics & Management</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-4xl font-bold text-power100-black">Power100 Dashboard</h1>
-              <p className="text-lg text-power100-grey">Power100 Experience Analytics & Management</p>
-            </div>
+            <Button
+              onClick={handleLogout}
+              variant="outline"
+              className="bg-white border-gray-300 hover:bg-gray-50 text-power100-black"
+            >
+              <svg 
+                className="w-4 h-4 mr-2" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" 
+                />
+              </svg>
+              Logout
+            </Button>
           </motion.div>
         </div>
 

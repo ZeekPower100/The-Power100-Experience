@@ -35,6 +35,7 @@ const powerCardRoutes = require('./routes/powerCards');
 const powerConfidenceRoutes = require('./routes/powerConfidence');
 const reportRoutes = require('./routes/reports');
 const contactTaggingRoutes = require('./routes/contactTagging');
+const uploadRoutes = require('./routes/upload');
 
 const app = express();
 
@@ -74,6 +75,11 @@ app.use('/api/', limiter);
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Serve uploaded files for development
+if (process.env.NODE_ENV === 'development' || !process.env.AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID === 'your-access-key-here') {
+  app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+}
 
 // Compression middleware
 app.use(compression());
@@ -129,6 +135,7 @@ app.use('/api/ghl-sync', require('./routes/ghlSyncRoutes'));
 app.use('/api/verification', require('./routes/verificationRoutes'));
 app.use('/api/emails', require('./routes/emailRoutes'));
 app.use('/api/matching', require('./routes/matchingRoutes'));
+app.use('/api/upload', uploadRoutes);
 
 // 404 handler
 app.use((req, res) => {

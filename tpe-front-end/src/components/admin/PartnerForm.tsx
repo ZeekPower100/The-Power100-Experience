@@ -637,6 +637,17 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         ],
         books_read_recommended: formData.books_read_recommended,
         
+        // Client demos and references - now using proper columns
+        client_demos: formData.client_demos.map(demo => ({
+          id: demo.id,
+          title: demo.title,
+          description: demo.description,
+          type: demo.type,
+          url: demo.url || demo.uploadedUrl || '',
+          fileName: demo.fileName
+        })),
+        client_references: formData.client_references,
+        
         // Store additional comprehensive data in key_differentiators as JSON
         key_differentiators: [
           `Service Category: ${formData.service_category}`,
@@ -649,9 +660,8 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           `Client Count: ${formData.client_count}`
         ].filter(item => !item.includes(': undefined') && !item.includes(': ')),
         
-        client_testimonials: formData.client_testimonials,
         is_active: formData.is_active,
-        last_quarterly_report: formData.last_quarterly_report || ''
+        last_quarterly_report: formData.last_quarterly_report || null
       };
 
       if (partner) {

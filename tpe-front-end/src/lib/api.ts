@@ -21,21 +21,33 @@ async function apiRequest<T>(
   };
 
   // Add auth token if available
-  // Check for contractor session token first, then fall back to admin token
-  const sessionData = localStorage.getItem('tpe_contractor_session');
+  // Use appropriate token based on endpoint context
   let token = null;
   
-  if (sessionData) {
-    try {
-      const parsed = JSON.parse(sessionData);
-      token = parsed.token;
-    } catch (e) {
-      // Fall back to admin token if session parse fails
-      token = localStorage.getItem('adminToken') || localStorage.getItem('authToken');
-    }
+  // Check if this is an admin/auth endpoint
+  const isAdminEndpoint = endpoint.includes('/admin') || 
+                          endpoint.includes('/auth') || 
+                          endpoint.includes('/partners-enhanced') ||
+                          endpoint.includes('/contractors-enhanced');
+  
+  if (isAdminEndpoint) {
+    // For admin endpoints, only use admin tokens
+    token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
   } else {
-    // Check for admin token - check both possible keys
-    token = localStorage.getItem('adminToken') || localStorage.getItem('authToken');
+    // For contractor endpoints, check contractor session first
+    const sessionData = localStorage.getItem('tpe_contractor_session');
+    if (sessionData) {
+      try {
+        const parsed = JSON.parse(sessionData);
+        token = parsed.token;
+      } catch (e) {
+        // Fall back to admin token if session parse fails
+        token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+      }
+    } else {
+      // No contractor session, use admin token if available
+      token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+    }
   }
   
   if (token) {

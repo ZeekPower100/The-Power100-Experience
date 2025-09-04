@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '../ui/button';
 import { Card } from '../ui/card';
-import { Upload, Link, Trash2, Image as ImageIcon, X } from 'lucide-react';
+import { Upload, Link, Trash2, Image as ImageIcon, X, CheckCircle } from 'lucide-react';
+import { Progress } from '../ui/progress';
 
 interface LogoManagerProps {
   logoUrl: string | null;
@@ -15,6 +16,11 @@ export default function LogoManager({ logoUrl, onChange, label = "Company Logo" 
   const [inputMode, setInputMode] = useState<'url' | 'upload' | null>(null);
   const [tempUrl, setTempUrl] = useState('');
   const [previewError, setPreviewError] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleUrlSubmit = () => {
     if (tempUrl.trim()) {
@@ -38,6 +44,112 @@ export default function LogoManager({ logoUrl, onChange, label = "Company Logo" 
     setPreviewError(false);
   };
 
+  const handleFileUpload = async (file: File) => {
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/svg+xml', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('Please upload a valid image file (JPG, PNG, SVG, or WebP)');
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('File size must be less than 5MB');
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPreviewImage(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    // Upload file
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    setIsUploading(true);
+    setUploadProgress(0);
+
+    try {
+      // Get auth token
+      const token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+      
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const baseUrl = apiUrl.endsWith('/api') ? apiUrl.replace('/api', '') : apiUrl;
+      const response = await fetch(`${baseUrl}/api/upload/logo`, {
+        method: 'POST',
+        headers: {
+          'Authorization': token ? `Bearer ${token}` : '',
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload failed');
+      }
+
+      const data = await response.json();
+      
+      // Use the uploaded URL
+      const uploadedUrl = data.data.url.startsWith('http') 
+        ? data.data.url 
+        : `${baseUrl}${data.data.url}`;
+      
+      onChange(uploadedUrl);
+      setInputMode(null);
+      setPreviewImage(null);
+      setUploadProgress(100);
+      
+      setTimeout(() => {
+        setUploadProgress(0);
+        setIsUploading(false);
+      }, 1000);
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload logo. Please try again.');
+      setIsUploading(false);
+      setUploadProgress(0);
+      setPreviewImage(null);
+    }
+  };
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files[0]) {
+      handleFileUpload(files[0]);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files[0]) {
+      handleFileUpload(files[0]);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -58,10 +170,9 @@ export default function LogoManager({ logoUrl, onChange, label = "Company Logo" 
               variant="outline"
               onClick={() => setInputMode('upload')}
               className="flex items-center gap-2"
-              disabled
             >
               <Upload className="w-4 h-4" />
-              Upload (Coming Soon)
+              Upload
             </Button>
           </div>
         )}
@@ -156,6 +267,82 @@ export default function LogoManager({ logoUrl, onChange, label = "Company Logo" 
               </Button>
             </div>
           </div>
+        </Card>
+      )}
+
+      {/* Upload Mode */}
+      {inputMode === 'upload' && (
+        <Card className="p-4">
+          <div
+            className={`relative border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              isDragging ? 'border-power100-green bg-green-50' : 'border-gray-300'
+            }`}
+            onDragEnter={handleDragEnter}
+            onDragLeave={handleDragLeave}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            
+            {isUploading ? (
+              <div className="space-y-4">
+                <div className="w-16 h-16 mx-auto">
+                  <CheckCircle className="w-full h-full text-power100-green animate-pulse" />
+                </div>
+                <p className="text-sm font-medium">Uploading logo...</p>
+                <Progress value={uploadProgress} className="w-full max-w-xs mx-auto" />
+              </div>
+            ) : previewImage ? (
+              <div className="space-y-4">
+                <img
+                  src={previewImage}
+                  alt="Preview"
+                  className="w-32 h-32 object-contain mx-auto rounded-lg"
+                />
+                <p className="text-sm text-gray-600">Processing upload...</p>
+              </div>
+            ) : (
+              <>
+                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-lg font-medium text-gray-700 mb-2">
+                  {isDragging ? 'Drop your logo here!' : 'Drag and drop your logo'}
+                </p>
+                <p className="text-sm text-gray-500 mb-4">or</p>
+                <Button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bg-power100-green hover:bg-green-600 text-white"
+                >
+                  Choose File
+                </Button>
+                <p className="text-xs text-gray-400 mt-4">
+                  Supported formats: JPG, PNG, SVG, WebP (Max 5MB)
+                </p>
+              </>
+            )}
+          </div>
+          
+          {!isUploading && (
+            <div className="flex gap-2 mt-4">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setInputMode(null);
+                  setPreviewImage(null);
+                }}
+                className="w-full"
+              >
+                Cancel
+              </Button>
+            </div>
+          )}
         </Card>
       )}
 
