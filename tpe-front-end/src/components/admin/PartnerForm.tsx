@@ -10,6 +10,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DynamicList } from '@/components/ui/dynamic-list';
 import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
+import { DynamicListWithUrl } from '@/components/ui/dynamic-list-with-url';
 import { ClientReferenceList, type ClientReference } from '@/components/ui/client-reference-list';
 import { DemoUploadList, type DemoItem } from '@/components/ui/demo-upload-list';
 import VideoManager from '@/components/admin/VideoManager';
@@ -81,6 +82,31 @@ const TECH_STACK_CATEGORIES = {
   accounting_finance: ['QuickBooks', 'Sage', 'Xero', 'FreshBooks', 'Other']
 };
 
+// Top 21 Industry Events (same as PartnerOnboardingForm)
+const INDUSTRY_EVENTS = [
+  'Rilla Masters',
+  'Lead Con',
+  'International Builders Show (IBS)',
+  'International Roofing Expo (IRE)',
+  'ServiceTitan Pantheon',
+  'D2D Con',
+  'Win the Storm',
+  'NERCA 2025',
+  'QR Top 500 Live',
+  'National Hardware Show',
+  'Service World Expo',
+  'SolarCon',
+  'Certified Contractors Network Spring',
+  'QR Fast Remodeler Live',
+  'Florida Roofing and Sheet Metal Expo',
+  'Pro Remodeler Pinnacle Experience',
+  'Texas Roofing Conference',
+  'Western Roofing Expo',
+  'Midwest Roofing Contractors',
+  'International Pool, Spa, and Patio Expo',
+  'Storm Restoration Conference'
+];
+
 function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
   // Partner search state
   const [partnerSearchQuery, setPartnerSearchQuery] = useState('');
@@ -129,12 +155,12 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
     
     // Sponsorships & Media - Updated field names
     sponsored_events: [] as string[],
-    other_sponsored_events: [] as string[],
+    other_sponsored_events: [] as Array<{name: string; url?: string}>,
     events_sponsored: [] as string[], // For multi-step form compatibility
     
     // Podcasts - Updated field names
     podcast_appearances: [] as string[],
-    other_podcast_appearances: [] as string[],
+    other_podcast_appearances: [] as Array<{name: string; url?: string}>,
     
     // Books - Updated field name
     books_read_recommended: '',
@@ -600,6 +626,17 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         pricing_model: formData.pricing_model,
         onboarding_process: formData.onboarding_process,
         
+        // Sponsorships & Media - combine predefined and custom entries
+        sponsored_events: [
+          ...formData.sponsored_events,
+          ...(formData.other_sponsored_events || []).map(e => e.name)
+        ],
+        podcast_appearances: [
+          ...formData.podcast_appearances,
+          ...(formData.other_podcast_appearances || []).map(p => p.name)
+        ],
+        books_read_recommended: formData.books_read_recommended,
+        
         // Store additional comprehensive data in key_differentiators as JSON
         key_differentiators: [
           `Service Category: ${formData.service_category}`,
@@ -635,13 +672,13 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
     const titles = [
       '', // 0-index adjustment
       'Company Information',
-      'Contact Information', 
-      'Target Audience & Services',
+      'Key Contact Information', 
+      'Client Profile',
       'Sponsorships & Media',
       'Competitive Analysis',
-      'Focus Areas',
-      'Partner Relationships',
-      'Client Demos & References'
+      'Focus Areas for Next 12 Months',
+      'Strategic Partners',
+      'Pre-Onboarding'
     ];
     return titles[step] || 'Unknown Step';
   };
@@ -767,7 +804,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           
           {/* CEO Information */}
           <div className="mb-6">
-            <h4 className="font-semibold text-lg mb-4">CEO Information *</h4>
+            <h4 className="font-semibold text-lg mb-4">CEO *</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="ceo_name">Name</Label>
@@ -807,7 +844,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
 
           {/* CX Information */}
           <div className="mb-6">
-            <h4 className="font-semibold text-lg mb-4">Customer Experience (CX) Information</h4>
+            <h4 className="font-semibold text-lg mb-4">Customer Experience (CX)</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="cx_name">Name</Label>
@@ -845,7 +882,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
 
           {/* Sales Information */}
           <div className="mb-6">
-            <h4 className="font-semibold text-lg mb-4">Sales Information</h4>
+            <h4 className="font-semibold text-lg mb-4">Sales</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="sales_name">Name</Label>
@@ -883,7 +920,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
 
           {/* Onboarding Information */}
           <div className="mb-6">
-            <h4 className="font-semibold text-lg mb-4">Onboarding Information</h4>
+            <h4 className="font-semibold text-lg mb-4">Onboarding/Trainer <span className="font-normal text-gray-500">(or equivalent)</span></h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="onboarding_name">Name</Label>
@@ -921,7 +958,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
 
           {/* Marketing Information */}
           <div className="mb-6">
-            <h4 className="font-semibold text-lg mb-4">Marketing Information</h4>
+            <h4 className="font-semibold text-lg mb-4">CMO <span className="font-normal text-gray-500">(VP of Marketing, or equivalent)</span></h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="marketing_name">Name</Label>
@@ -962,11 +999,11 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         <div className="col-span-2 mt-8">
           <h3 className="text-xl font-semibold text-power100-black mb-4 flex items-center gap-2">
             <Target className="h-5 w-5 text-power100-red" />
-            Target Audience & Services
+            Client Profile
           </h3>
           
           <div className="mb-6">
-            <Label>Target Revenue Audience (Select up to 3) *</Label>
+            <Label>Ideal Client's Revenue Range (Select up to 3) *</Label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
               {TARGET_REVENUE_OPTIONS.map(option => (
                 <div key={option.value} className="flex items-center space-x-2">
@@ -1002,8 +1039,36 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           </div>
 
           <div className="mb-6">
-            <Label>Service Areas *</Label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+            <Label>Services Offered By Ideal Client (Select All That Apply) *</Label>
+            <div className="mb-3 mt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const allServiceValues = SERVICE_AREAS.map(s => s.value);
+                  const allSelected = allServiceValues.every(v => formData.service_areas.includes(v));
+                  
+                  if (allSelected) {
+                    // Deselect all
+                    setFormData(prev => ({
+                      ...prev,
+                      service_areas: []
+                    }));
+                  } else {
+                    // Select all
+                    setFormData(prev => ({
+                      ...prev,
+                      service_areas: allServiceValues
+                    }));
+                  }
+                }}
+                className="w-auto"
+              >
+                {SERVICE_AREAS.every(s => formData.service_areas.includes(s.value)) ? 'Deselect All' : 'Select All'}
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
               {SERVICE_AREAS.map(service => (
                 <div key={service.value} className="flex items-center space-x-2">
                   <Checkbox
@@ -1131,19 +1196,10 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           
           <div className="grid grid-cols-1 gap-6">
             <div>
-              <Label>Events you sponsor (check all that apply)</Label>
+              <Label>Events your CEO sponsors (check all that apply)</Label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
-                {/* Predefined list of common events */}
-                {[
-                  'Power 100',
-                  'GuildQuality Summit',
-                  'Remodeling Show',
-                  'Home & Garden Show',
-                  'Builder Show',
-                  'Local Chamber Events',
-                  'Industry Trade Shows',
-                  'Charity Events'
-                ].map(event => (
+                {/* Predefined list of industry events */}
+                {INDUSTRY_EVENTS.map(event => (
                   <div key={event} className="flex items-center space-x-2">
                     <Checkbox
                       id={`event-${event.replace(/\s+/g, '-').toLowerCase()}`}
@@ -1171,18 +1227,21 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
               </div>
               <div className="mt-4">
                 <Label htmlFor="other_sponsored_events">Other events not listed above</Label>
-                <SimpleDynamicList
+                <p className="text-sm text-power100-grey mb-2">
+                  Add any additional events with their URLs
+                </p>
+                <DynamicListWithUrl
                   items={formData.other_sponsored_events || []}
                   onChange={(items) => handleInputChange('other_sponsored_events', items)}
-                  placeholder="Enter additional event name"
-                  className="mt-1"
+                  namePlaceholder="Enter additional event name"
+                  urlPlaceholder="Enter event URL (optional)"
                   addButtonText="Add Event"
                 />
               </div>
             </div>
 
             <div>
-              <Label>Podcasts you have appeared on within the last 2 years</Label>
+              <Label>Podcasts your CEO has appeared on within the last 2 years</Label>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
                 {/* Predefined list of common industry podcasts */}
                 {[
@@ -2026,15 +2085,15 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
             </motion.div>
           )}
 
-          {/* Step 3: Target Audience & Service Areas */}
+          {/* Step 3: Client Profile */}
           {currentStep === 3 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   {getStepIcon(3)}
-                  Target Audience & Service Areas
+                  Client Profile
                 </CardTitle>
-                <p className="text-sm text-power100-grey">Define your target market and service capabilities</p>
+                <p className="text-sm text-power100-grey">Tell us about your ideal client</p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
@@ -2113,15 +2172,15 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
             </Card>
           )}
 
-          {/* Step 4: Sponsorships & Media Presence */}
+          {/* Step 4: Sponsorships & Media */}
           {currentStep === 4 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   {getStepIcon(4)}
-                  Sponsorships & Media Presence
+                  Sponsorships & Media
                 </CardTitle>
-                <p className="text-sm text-power100-grey">Optional: Information about your industry involvement</p>
+                <p className="text-sm text-power100-grey">Share your industry involvement and media presence</p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
@@ -2188,9 +2247,9 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   {getStepIcon(5)}
-                  Competitive Analysis & Value Proposition
+                  Competitive Analysis
                 </CardTitle>
-                <p className="text-sm text-power100-grey">Help us understand your competitive position</p>
+                <p className="text-sm text-power100-grey">Help us understand your market position</p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
@@ -2256,7 +2315,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                   {getStepIcon(6)}
                   Focus Areas for Next 12 Months
                 </CardTitle>
-                <p className="text-sm text-power100-grey">Select your top 3 priorities (maximum 3)</p>
+                <p className="text-sm text-power100-grey">Select up to 3 areas you plan to focus on</p>
               </CardHeader>
               <CardContent>
                 <div>
@@ -2297,15 +2356,15 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
             </Card>
           )}
 
-          {/* Step 7: Partner Relationships */}
+          {/* Step 7: Strategic Partners */}
           {currentStep === 7 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   {getStepIcon(7)}
-                  Partner Relationships
+                  Strategic Partners
                 </CardTitle>
-                <p className="text-sm text-power100-grey">Your strategic partner relationships</p>
+                <p className="text-sm text-power100-grey">List your top 3 strategic partnerships</p>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-4">
@@ -2361,7 +2420,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
             </Card>
           )}
 
-          {/* Step 8: Client Demos & References */}
+          {/* Step 8: Pre-Onboarding */}
           {currentStep === 8 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -2381,10 +2440,10 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                   {/* Title */}
                   <div className="text-center mb-8">
                     <h2 className="text-2xl font-bold text-power100-black mb-2">
-                      Client Demos & References
+                      Pre-Onboarding
                     </h2>
                     <p className="text-power100-grey">
-                      Provide recorded demos and client references that fit your target audience
+                      Final details before we activate your profile
                     </p>
                   </div>
                   

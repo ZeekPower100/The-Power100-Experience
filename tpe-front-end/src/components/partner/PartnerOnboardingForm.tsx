@@ -440,8 +440,16 @@ export default function PartnerOnboardingForm() {
         focus_areas_12_months: formData.focus_areas_12_months,
         
         // Step 6: Marketing & Sponsorships
-        sponsored_events: formData.sponsored_events,
-        podcast_appearances: formData.podcast_appearances,
+        // Combine predefined events with custom events (just the names)
+        sponsored_events: [
+          ...formData.sponsored_events,
+          ...formData.other_sponsored_events.map(e => e.name)
+        ],
+        // Combine predefined podcasts with custom podcasts (just the names)
+        podcast_appearances: [
+          ...formData.podcast_appearances,
+          ...formData.other_podcast_appearances.map(e => e.name)
+        ],
         books_read_recommended: formData.books_read_recommended,
         
         // Step 7: Strategic Partners
@@ -1111,14 +1119,28 @@ export default function PartnerOnboardingForm() {
                       <Label>Events your CEO sponsors (check all that apply)</Label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
                         {[
-                          'Power 100',
-                          'GuildQuality Summit',
-                          'Remodeling Show',
-                          'Home & Garden Show',
-                          'Builder Show',
-                          'Local Chamber Events',
-                          'Industry Trade Shows',
-                          'Charity Events'
+                          // Top 21 Industry Events (prioritized by significance)
+                          'Rilla Masters',
+                          'Lead Con',
+                          'International Builders Show (IBS)',
+                          'International Roofing Expo (IRE)',
+                          'ServiceTitan Pantheon',
+                          'D2D Con',
+                          'Win the Storm',
+                          'NERCA 2025',
+                          'QR Top 500 Live',
+                          'National Hardware Show',
+                          'Service World Expo',
+                          'SolarCon',
+                          'Certified Contractors Network Spring',
+                          'QR Fast Remodeler Live',
+                          'Florida Roofing and Sheet Metal Expo',
+                          'Pro Remodeler Pinnacle Experience',
+                          'Texas Roofing Conference',
+                          'Western Roofing Expo',
+                          'Midwest Roofing Contractors',
+                          'International Pool, Spa, and Patio Expo',
+                          'Storm Restoration Conference'
                         ].map(event => (
                           <div key={event} className="flex items-center space-x-2">
                             <Checkbox
