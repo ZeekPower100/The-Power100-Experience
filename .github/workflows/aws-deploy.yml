@@ -224,6 +224,9 @@ jobs:
               cd /home/ubuntu/The-Power100-Experience
               
               echo "🔄 Pulling latest code from GitHub..."
+              # Reset any local changes to avoid merge conflicts
+              git reset --hard HEAD
+              git clean -fd
               git pull origin master
               
               echo "🧹 Cleaning old dependencies to prevent version conflicts..."
