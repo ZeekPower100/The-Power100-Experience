@@ -76,8 +76,13 @@ app.use('/api/', limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve uploaded files for development
-if (process.env.NODE_ENV === 'development' || !process.env.AWS_ACCESS_KEY_ID || process.env.AWS_ACCESS_KEY_ID === 'your-access-key-here') {
+// Serve uploaded files when AWS is not configured or in development
+const isAWSConfigured = process.env.AWS_ACCESS_KEY_ID && 
+                        process.env.AWS_SECRET_ACCESS_KEY && 
+                        process.env.AWS_ACCESS_KEY_ID !== 'your-access-key-here';
+
+if (!isAWSConfigured) {
+  console.log('📁 Serving local uploads from:', path.join(__dirname, '..', 'uploads'));
   app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 }
 
