@@ -133,18 +133,23 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
     ceo_name: '',
     ceo_email: '',
     ceo_phone: '',
+    ceo_title: '',
     cx_name: '',
     cx_email: '',
     cx_phone: '',
+    cx_title: '',
     sales_name: '',
     sales_email: '',
     sales_phone: '',
+    sales_title: '',
     onboarding_name: '',
     onboarding_email: '',
     onboarding_phone: '',
+    onboarding_title: '',
     marketing_name: '',
     marketing_email: '',
     marketing_phone: '',
+    marketing_title: '',
     
     // Target Audience - Revenue (limit 3)
     target_revenue_audience: [] as string[],
@@ -344,31 +349,31 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         power_confidence_score: partner.power_confidence_score || 0,
         is_active: partner.is_active !== undefined ? partner.is_active : true,
         
-        // Contact Information
-        ceo_contact_name: partner.ceo_contact_name || '',
-        ceo_contact_email: partner.ceo_contact_email || partner.contact_email || '',
-        ceo_contact_phone: partner.ceo_contact_phone || '',
-        ceo_contact_title: partner.ceo_contact_title || '',
+        // Contact Information - Map from database field names to form field names
+        ceo_name: partner.ceo_contact_name || '',
+        ceo_email: partner.ceo_contact_email || partner.contact_email || '',
+        ceo_phone: partner.ceo_contact_phone || '',
+        ceo_title: partner.ceo_contact_title || '',
         
-        cx_contact_name: partner.cx_contact_name || '',
-        cx_contact_email: partner.cx_contact_email || '',
-        cx_contact_phone: partner.cx_contact_phone || '',
-        cx_contact_title: partner.cx_contact_title || '',
+        cx_name: partner.cx_contact_name || '',
+        cx_email: partner.cx_contact_email || '',
+        cx_phone: partner.cx_contact_phone || '',
+        cx_title: partner.cx_contact_title || '',
         
-        sales_contact_name: partner.sales_contact_name || '',
-        sales_contact_email: partner.sales_contact_email || '',
-        sales_contact_phone: partner.sales_contact_phone || '',
-        sales_contact_title: partner.sales_contact_title || '',
+        sales_name: partner.sales_contact_name || '',
+        sales_email: partner.sales_contact_email || '',
+        sales_phone: partner.sales_contact_phone || '',
+        sales_title: partner.sales_contact_title || '',
         
-        onboarding_contact_name: partner.onboarding_contact_name || '',
-        onboarding_contact_email: partner.onboarding_contact_email || '',
-        onboarding_contact_phone: partner.onboarding_contact_phone || '',
-        onboarding_contact_title: partner.onboarding_contact_title || '',
+        onboarding_name: partner.onboarding_contact_name || '',
+        onboarding_email: partner.onboarding_contact_email || '',
+        onboarding_phone: partner.onboarding_contact_phone || '',
+        onboarding_title: partner.onboarding_contact_title || '',
         
-        marketing_contact_name: partner.marketing_contact_name || '',
-        marketing_contact_email: partner.marketing_contact_email || '',
-        marketing_contact_phone: partner.marketing_contact_phone || '',
-        marketing_contact_title: partner.marketing_contact_title || '',
+        marketing_name: partner.marketing_contact_name || '',
+        marketing_email: partner.marketing_contact_email || '',
+        marketing_phone: partner.marketing_contact_phone || '',
+        marketing_title: partner.marketing_contact_title || '',
         
         // Target Audience & Service Areas
         target_revenue_audience: (() => {
@@ -616,6 +621,12 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         contact_email: formData.ceo_email || formData.contact_email,
         contact_phone: formData.ceo_phone || formData.contact_phone,
         power100_subdomain: formData.power100_subdomain,
+        
+        // CEO Contact Information fields
+        ceo_contact_name: formData.ceo_name,
+        ceo_contact_email: formData.ceo_email,
+        ceo_contact_phone: formData.ceo_phone,
+        ceo_contact_title: formData.ceo_title,
         
         // Store comprehensive data as JSON in existing flexible fields
         focus_areas_served: formData.service_areas,
