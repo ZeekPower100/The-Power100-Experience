@@ -155,8 +155,10 @@ export default function DelegationPage() {
       localStorage.removeItem('partner_application_data');
       localStorage.removeItem('partner_application_id');
 
-      // Redirect to success page with delegation confirmation
-      router.push('/partner/onboarding/success?delegated=true');
+      // Redirect to delegation success page with delegate info
+      const delegateParam = encodeURIComponent(member.name);
+      const companyParam = encodeURIComponent(companyName);
+      router.push(`/partner/onboarding/delegation-success?delegate=${delegateParam}&company=${companyParam}`);
       
     } catch (error) {
       console.error('Delegation error:', error);
@@ -251,10 +253,10 @@ export default function DelegationPage() {
                           <div>
                             <Label htmlFor="delegate">Select Team Member</Label>
                             <Select value={selectedMember} onValueChange={setSelectedMember}>
-                              <SelectTrigger id="delegate" className="w-full">
+                              <SelectTrigger id="delegate" className="w-full bg-white">
                                 <SelectValue placeholder="Choose a team member" />
                               </SelectTrigger>
-                              <SelectContent>
+                              <SelectContent className="bg-white">
                                 {teamMembers.map((member) => (
                                   <SelectItem key={member.email} value={member.email}>
                                     {member.name} - {member.title}

@@ -96,6 +96,30 @@ the-power100-experience/          # Project root
 - Lucide React for icons
 - Tailwind CSS for styling
 
+### UI Component Standards
+
+#### Dropdown Menus (Select Components)
+**IMPORTANT**: All dropdown menus must have solid white backgrounds for visibility and consistency.
+
+```tsx
+// Standard dropdown implementation:
+<Select value={value} onValueChange={setValue}>
+  <SelectTrigger className="... bg-white">  {/* Always include bg-white */}
+    <SelectValue placeholder="Select option" />
+  </SelectTrigger>
+  <SelectContent className="bg-white">      {/* Always include bg-white */}
+    <SelectItem value="option1">Option 1</SelectItem>
+    <SelectItem value="option2">Option 2</SelectItem>
+  </SelectContent>
+</Select>
+```
+
+**Rationale**: Transparent or semi-transparent dropdowns are difficult to read and create accessibility issues. Solid white backgrounds ensure:
+- Clear visibility of all options
+- Consistent user experience across the platform
+- Better contrast for readability
+- Professional appearance
+
 ## 🎯 Standard Card Design System
 
 ### **REQUIRED: All cards and forms must follow this consistent design pattern**

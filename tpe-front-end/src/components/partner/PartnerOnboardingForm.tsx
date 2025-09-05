@@ -697,7 +697,7 @@ export default function PartnerOnboardingForm() {
                         />
                       </div>
                       <div>
-                        <Label>Ownership Type</Label>
+                        <Label className="font-semibold">Ownership Type</Label>
                         <select
                           value={formData.ownership_type}
                           onChange={(e) => handleInputChange('ownership_type', e.target.value)}
@@ -977,7 +977,7 @@ export default function PartnerOnboardingForm() {
                   {/* Form Fields */}
                   <div className="space-y-8">
                     <div>
-                      <Label>Ideal Client's Revenue Range (Select up to 3) *</Label>
+                      <Label className="font-semibold text-base">Ideal Client's Revenue Range (Select up to 3) *</Label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
                         {TARGET_REVENUE_OPTIONS.map(option => (
                           <div key={option.value} className="flex items-center space-x-2">
@@ -1013,7 +1013,7 @@ export default function PartnerOnboardingForm() {
                     </div>
 
                     <div>
-                      <Label>Services Offered By Ideal Client (Select All That Apply) *</Label>
+                      <Label className="font-semibold text-base">Services Offered By Ideal Client (Select All That Apply) *</Label>
                       <div className="mb-3 mt-2">
                         <Button
                           type="button"
@@ -1070,7 +1070,7 @@ export default function PartnerOnboardingForm() {
                       </div>
                       {formData.service_areas.includes('other') && (
                         <div className="mt-4">
-                          <Label htmlFor="service_areas_other">Other Service Areas</Label>
+                          <Label htmlFor="service_areas_other" className="font-semibold">Other Service Areas</Label>
                           <Input
                             id="service_areas_other"
                             value={formData.service_areas_other}
@@ -1117,7 +1117,7 @@ export default function PartnerOnboardingForm() {
                   {/* Form Fields */}
                   <div className="space-y-6">
                     <div>
-                      <Label>Events your CEO sponsors (check all that apply)</Label>
+                      <Label className="font-semibold text-base">Events your CEO sponsors (check all that apply)</Label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
                         {[
                           // Top 21 Industry Events (prioritized by significance)
@@ -1169,7 +1169,7 @@ export default function PartnerOnboardingForm() {
                         ))}
                       </div>
                       <div className="mt-4">
-                        <Label htmlFor="other_sponsored_events">Other events not listed above</Label>
+                        <Label htmlFor="other_sponsored_events" className="font-semibold">Other events not listed above</Label>
                         <DynamicListWithUrl
                           items={formData.other_sponsored_events || []}
                           onChange={(items) => handleInputChange('other_sponsored_events', items)}
@@ -1182,7 +1182,7 @@ export default function PartnerOnboardingForm() {
                     </div>
 
                     <div>
-                      <Label>Podcasts your CEO has appeared on within the last 2 years</Label>
+                      <Label className="font-semibold text-base">Podcasts your CEO has appeared on within the last 2 years</Label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
                         {[
                           'Contractor Secrets',
@@ -1219,7 +1219,7 @@ export default function PartnerOnboardingForm() {
                         ))}
                       </div>
                       <div className="mt-4">
-                        <Label htmlFor="other_podcast_appearances">Other podcasts not listed above</Label>
+                        <Label htmlFor="other_podcast_appearances" className="font-semibold">Other podcasts not listed above</Label>
                         <DynamicListWithUrl
                           items={formData.other_podcast_appearances || []}
                           onChange={(items) => handleInputChange('other_podcast_appearances', items)}
@@ -1232,7 +1232,7 @@ export default function PartnerOnboardingForm() {
                     </div>
 
                     <div>
-                      <Label htmlFor="books_read_recommended">Books Read/Recommended</Label>
+                      <Label htmlFor="books_read_recommended" className="font-semibold">Books Read/Recommended</Label>
                       <Textarea
                         id="books_read_recommended"
                         value={formData.books_read_recommended || ''}
@@ -1281,7 +1281,7 @@ export default function PartnerOnboardingForm() {
                   {/* Form Fields */}
                   <div className="space-y-6">
                     <div>
-                      <Label>Service Categories (Check all that apply) *</Label>
+                      <Label className="font-semibold text-base">Service Categories (Check all that apply) *</Label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
                         {CONTRACTOR_SERVICE_CATEGORIES.map(category => (
                           <div key={category.value} className="flex items-center space-x-2">
@@ -1384,7 +1384,7 @@ export default function PartnerOnboardingForm() {
                   {/* Form Fields */}
                   <div className="space-y-6">
                     <div>
-                      <Label>Select up to 3 focus areas *</Label>
+                      <Label className="font-semibold text-base">Select up to 3 focus areas *</Label>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
                         {FOCUS_AREAS_12_MONTHS.map(area => (
                           <div key={area.value} className="flex items-center space-x-2">
@@ -1454,7 +1454,7 @@ export default function PartnerOnboardingForm() {
                   {/* Partner Search */}
                   <div className="space-y-6">
                     <div>
-                      <Label>Search and add partners (up to 3) *</Label>
+                      <Label className="font-semibold text-base">Search and add partners (up to 3) *</Label>
                       <div className="relative mt-2">
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
@@ -1679,7 +1679,7 @@ export default function PartnerOnboardingForm() {
                     </div>
 
                     <div>
-                      <Label>Client Demos (At least 5)</Label>
+                      <Label className="font-semibold text-base">Client Demos (At least 5)</Label>
                       <p className="text-sm text-power100-grey mt-1 mb-4">
                         Upload recorded demos directly or provide links to videos (YouTube, Vimeo, etc.) showcasing your work
                       </p>
@@ -1709,7 +1709,7 @@ export default function PartnerOnboardingForm() {
                     </div>
                     
                     <div>
-                      <Label>Client References (At least 5)</Label>
+                      <Label className="font-semibold text-base">Client References (At least 5)</Label>
                       <p className="text-sm text-power100-grey mt-1 mb-4">
                         Provide clients that match your target audience and have given permission to be contacted for PowerCard evaluations
                       </p>
@@ -1725,7 +1725,7 @@ export default function PartnerOnboardingForm() {
                     </div>
 
                     <div>
-                      <Label>Employee References (At least 5)</Label>
+                      <Label className="font-semibold text-base">Employee References (At least 5)</Label>
                       <p className="text-sm text-power100-grey mt-1 mb-4">
                         Provide employees who can speak to your company culture and will receive PowerCard evaluations
                       </p>
