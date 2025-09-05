@@ -14,6 +14,7 @@ import { DynamicListWithUrl } from '@/components/ui/dynamic-list-with-url';
 import { ClientReferenceList, type ClientReference } from '@/components/ui/client-reference-list';
 import { DemoUploadList, type DemoItem } from '@/components/ui/demo-upload-list';
 import VideoManager from '@/components/admin/VideoManager';
+import LogoManager from '@/components/admin/LogoManager';
 import { partnerApi } from '@/lib/api';
 import { getApiUrl } from '@/utils/api';
 import { StrategicPartner } from '@/lib/types/strategic_partner';
@@ -65,12 +66,19 @@ const OWNERSHIP_TYPES = [
 const FOCUS_AREAS_12_MONTHS = [
   { value: 'revenue_growth', label: 'Revenue Growth' },
   { value: 'team_building', label: 'Team Building' },
+  { value: 'hiring', label: 'Hiring' },
   { value: 'operations', label: 'Operations' },
   { value: 'customer_experience', label: 'Customer Experience' },
   { value: 'technology', label: 'Technology' },
   { value: 'marketing', label: 'Marketing' },
   { value: 'sales', label: 'Sales' },
-  { value: 'financing', label: 'Financing' }
+  { value: 'financing', label: 'Financing' },
+  { value: 'partnerships', label: 'Partnerships' },
+  { value: 'marketing_efforts', label: 'Marketing Efforts' },
+  { value: 'shift_target_audience', label: 'Shift in Target Audience' },
+  { value: 'new_sales_strategies', label: 'Implementing New Sales Strategies' },
+  { value: 'closing_percentages', label: 'Increasing Closing Percentages' },
+  { value: 'tech_ai_implementations', label: 'Tech/AI Implementations' }
 ];
 
 const TECH_STACK_CATEGORIES = {
@@ -1562,14 +1570,26 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           )}
         </div>
 
-        {/* Section 8: Client Demos & References */}
+        {/* Section 8: Pre-Onboarding */}
         <div className="col-span-2 mt-8">
           <h3 className="text-xl font-semibold text-power100-black mb-4 flex items-center gap-2">
             <FileText className="h-5 w-5 text-power100-red" />
-            Client Demos & References
+            Pre-Onboarding
           </h3>
           
           <div className="grid grid-cols-1 gap-8">
+            {/* Company Logo */}
+            <div>
+              <LogoManager
+                logoUrl={formData.logo_url}
+                onChange={(url) => handleInputChange('logo_url', url)}
+                label="Company Logo"
+              />
+              <p className="text-sm text-power100-grey mt-2">
+                Your logo will be displayed on your partner profile and in marketing materials
+              </p>
+            </div>
+            
             <div>
               <Label htmlFor="client_demos">Client Demos (At least 5)</Label>
               <p className="text-sm text-power100-grey mt-1 mb-4">

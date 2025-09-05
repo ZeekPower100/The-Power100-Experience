@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { DynamicList } from '@/components/ui/dynamic-list';
+import { DynamicListWithUrl } from '@/components/ui/dynamic-list-with-url';
 import { partnerApi } from '@/lib/api';
 import { StrategicPartner } from '@/lib/types/strategic_partner';
 import { ArrowLeft, Save, Building2, AlertTriangle, Users, FileText, Star, Target } from 'lucide-react';
@@ -50,20 +51,41 @@ const SERVICE_AREAS = [
 const OWNERSHIP_TYPES = [
   { value: 'private_independent', label: 'Private/Independent' },
   { value: 'public', label: 'Public' },
-  { value: 'big_box', label: 'Big Box' },
-  { value: 'franchise', label: 'Franchise' },
   { value: 'pe_funding', label: 'PE Funding' }
+];
+
+// Contractor focus areas for matching
+const CONTRACTOR_SERVICE_CATEGORIES = [
+  { value: 'revenue_growth', label: 'Revenue Growth' },
+  { value: 'controlling_lead_flow', label: 'Controlling Lead Flow' },
+  { value: 'hiring_sales_leadership', label: 'Hiring Sales/Leadership' },
+  { value: 'marketing_improvement', label: 'Marketing Improvement' },
+  { value: 'sales_process', label: 'Sales Process' },
+  { value: 'operational_efficiency', label: 'Operational Efficiency' },
+  { value: 'technology_systems', label: 'Technology & Systems' },
+  { value: 'financial_management', label: 'Financial Management' },
+  { value: 'customer_experience', label: 'Customer Experience' },
+  { value: 'greenfield_growth', label: 'Greenfield/New Market Growth' },
+  { value: 'closing_higher_percentage', label: 'Closing Higher Percentage' },
+  { value: 'installation_quality', label: 'Installation Quality' }
 ];
 
 const FOCUS_AREAS_12_MONTHS = [
   { value: 'revenue_growth', label: 'Revenue Growth' },
   { value: 'team_building', label: 'Team Building' },
+  { value: 'hiring', label: 'Hiring' },
   { value: 'operations', label: 'Operations' },
   { value: 'customer_experience', label: 'Customer Experience' },
   { value: 'technology', label: 'Technology' },
   { value: 'marketing', label: 'Marketing' },
   { value: 'sales', label: 'Sales' },
-  { value: 'financing', label: 'Financing' }
+  { value: 'financing', label: 'Financing' },
+  { value: 'partnerships', label: 'Partnerships' },
+  { value: 'marketing_efforts', label: 'Marketing Efforts' },
+  { value: 'shift_target_audience', label: 'Shift in Target Audience' },
+  { value: 'new_sales_strategies', label: 'Implementing New Sales Strategies' },
+  { value: 'closing_percentages', label: 'Increasing Closing Percentages' },
+  { value: 'tech_ai_implementations', label: 'Tech/AI Implementations' }
 ];
 
 const TECH_STACK_CATEGORIES = {
@@ -74,6 +96,31 @@ const TECH_STACK_CATEGORIES = {
   installation_pm: ['Buildertrend', 'CoConstruct', 'BuilderCloud', 'Procore', 'Other'],
   accounting_finance: ['QuickBooks', 'Sage', 'Xero', 'FreshBooks', 'Other']
 };
+
+// Top 21 Industry Events (same as PartnerOnboardingForm)
+const INDUSTRY_EVENTS = [
+  'Rilla Masters',
+  'Lead Con',
+  'International Builders Show (IBS)',
+  'International Roofing Expo (IRE)',
+  'ServiceTitan Pantheon',
+  'D2D Con',
+  'Win the Storm',
+  'NERCA 2025',
+  'QR Top 500 Live',
+  'National Hardware Show',
+  'Service World Expo',
+  'SolarCon',
+  'Certified Contractors Network Spring',
+  'QR Fast Remodeler Live',
+  'Florida Roofing and Sheet Metal Expo',
+  'Pro Remodeler Pinnacle Experience',
+  'Texas Roofing Conference',
+  'Western Roofing Expo',
+  'Midwest Roofing Contractors',
+  'International Pool, Spa, and Patio Expo',
+  'Storm Restoration Conference'
+];
 
 function ComprehensivePartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
   const [formData, setFormData] = useState({
@@ -111,6 +158,7 @@ function ComprehensivePartnerForm({ partner, onSuccess, onCancel }: PartnerFormP
     
     // Sponsorships & Speaking
     events_sponsored: [] as string[],
+    other_sponsored_events: [] as Array<{name: string; url?: string}>,
     
     // Podcasts
     podcasts_appeared: [] as Array<{name: string; link: string}>,
@@ -121,7 +169,7 @@ function ComprehensivePartnerForm({ partner, onSuccess, onCancel }: PartnerFormP
     // Partnerships
     
     // Category of Service & Value Proposition
-    service_category: '',
+    service_categories: [] as string[],
     value_proposition: '',
     why_clients_choose_you: '',
     why_clients_choose_competitors: '',
@@ -281,9 +329,19 @@ function ComprehensivePartnerForm({ partner, onSuccess, onCancel }: PartnerFormP
         pricing_model: formData.pricing_model,
         onboarding_process: formData.onboarding_process,
         
+        // Sponsorships & Media - combine predefined and custom entries
+        sponsored_events: [
+          ...formData.events_sponsored,
+          ...(formData.other_sponsored_events || []).map(e => e.name)
+        ],
+        podcast_appearances: formData.podcasts_appeared.map(p => 
+          typeof p === 'string' ? p : p.name
+        ),
+        books_read_recommended: formData.books_recommended,
+        
         // Store additional comprehensive data in key_differentiators as JSON
         key_differentiators: [
-          `Service Category: ${formData.service_category}`,
+          `Service Categories: ${formData.service_categories?.join(', ') || 'None'}`,
           `Why Clients Choose Us: ${formData.why_clients_choose_you}`,
           `Why Clients Choose Competitors: ${formData.why_clients_choose_competitors}`,
           `Focus Areas 12 Months: ${formData.focus_areas_12_months.join(', ')}`,
@@ -786,13 +844,45 @@ function ComprehensivePartnerForm({ partner, onSuccess, onCancel }: PartnerFormP
                 <div>
                   <Label>Events & Shows Sponsored or Spoke At</Label>
                   <p className="text-sm text-power100-grey mb-2">
-                    List events, trade shows, or conferences where you've been a sponsor or speaker
+                    Check events where you've been a sponsor or speaker
                   </p>
-                  <DynamicList
-                    value={formData.events_sponsored.map(event => ({ text: event }))}
-                    onChange={(items) => handleInputChange('events_sponsored', items.map(item => item.text))}
-                    placeholder="Add event or show..."
-                  />
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+                    {INDUSTRY_EVENTS.map(event => (
+                      <div key={event} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`event-${event.replace(/\s+/g, '-').toLowerCase()}`}
+                          checked={formData.events_sponsored.includes(event)}
+                          onCheckedChange={(checked) => {
+                            const currentEvents = formData.events_sponsored || [];
+                            if (checked) {
+                              handleInputChange('events_sponsored', [...currentEvents, event]);
+                            } else {
+                              handleInputChange('events_sponsored', currentEvents.filter(e => e !== event));
+                            }
+                          }}
+                        />
+                        <Label
+                          htmlFor={`event-${event.replace(/\s+/g, '-').toLowerCase()}`}
+                          className="text-sm font-normal cursor-pointer"
+                        >
+                          {event}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4">
+                    <Label>Other events not listed above</Label>
+                    <p className="text-sm text-power100-grey mb-2">
+                      Add any additional events with their URLs
+                    </p>
+                    <DynamicListWithUrl
+                      items={formData.other_sponsored_events || []}
+                      onChange={(items) => handleInputChange('other_sponsored_events', items)}
+                      namePlaceholder="Enter event name"
+                      urlPlaceholder="Enter event URL (optional)"
+                      addButtonText="Add Event"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -800,10 +890,12 @@ function ComprehensivePartnerForm({ partner, onSuccess, onCancel }: PartnerFormP
                   <p className="text-sm text-power100-grey mb-2">
                     Podcasts you've appeared on with published links if available
                   </p>
-                  <DynamicList
-                    value={formData.podcasts_appeared}
+                  <DynamicListWithUrl
+                    items={formData.podcasts_appeared}
                     onChange={(podcasts) => handleInputChange('podcasts_appeared', podcasts)}
-                    placeholder="Add podcast name and link..."
+                    namePlaceholder="Enter podcast name"
+                    urlPlaceholder="Enter podcast URL (optional)"
+                    addButtonText="Add Podcast"
                   />
                 </div>
 
@@ -837,14 +929,34 @@ function ComprehensivePartnerForm({ partner, onSuccess, onCancel }: PartnerFormP
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <Label htmlFor="service_category">Category of Service</Label>
-                  <Input
-                    id="service_category"
-                    value={formData.service_category}
-                    onChange={(e) => handleInputChange('service_category', e.target.value)}
-                    placeholder="e.g., Digital Marketing, CRM, Financial Services"
-                    className="mt-1"
-                  />
+                  <Label>Service Categories (Check all that apply)</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+                    {CONTRACTOR_SERVICE_CATEGORIES.map(category => (
+                      <div key={category.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`category-${category.value}`}
+                          checked={formData.service_categories?.includes(category.value) || false}
+                          onCheckedChange={(checked) => {
+                            const currentCategories = formData.service_categories || [];
+                            if (checked) {
+                              setFormData(prev => ({
+                                ...prev,
+                                service_categories: [...currentCategories, category.value]
+                              }));
+                            } else {
+                              setFormData(prev => ({
+                                ...prev,
+                                service_categories: currentCategories.filter(c => c !== category.value)
+                              }));
+                            }
+                          }}
+                        />
+                        <Label htmlFor={`category-${category.value}`} className="text-sm cursor-pointer">
+                          {category.label}
+                        </Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div>
@@ -861,7 +973,7 @@ function ComprehensivePartnerForm({ partner, onSuccess, onCancel }: PartnerFormP
                 </div>
 
                 <div>
-                  <Label htmlFor="why_clients_choose_you">Why do clients choose you over competitors? *</Label>
+                  <Label htmlFor="why_clients_choose_you">The #1 reason why clients choose you over your competitors *</Label>
                   <Textarea
                     id="why_clients_choose_you"
                     value={formData.why_clients_choose_you}
@@ -874,7 +986,7 @@ function ComprehensivePartnerForm({ partner, onSuccess, onCancel }: PartnerFormP
                 </div>
 
                 <div>
-                  <Label htmlFor="why_clients_choose_competitors">Why do clients choose competitors over you?</Label>
+                  <Label htmlFor="why_clients_choose_competitors">The #1 reason clients choose competitors over you</Label>
                   <p className="text-sm text-power100-grey mb-2">
                     Understanding this helps us position you better
                   </p>

@@ -174,7 +174,7 @@ export default function PendingPartners() {
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => window.open(`/admindashboard/partners/${partner.id}`, '_blank')}
+                      onClick={() => window.location.href = `/admindashboard/partners/${partner.id}`}
                     >
                       <Eye className="h-4 w-4 mr-1" />
                       View

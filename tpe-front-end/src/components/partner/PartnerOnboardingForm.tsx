@@ -72,6 +72,7 @@ const CONTRACTOR_SERVICE_CATEGORIES = [
 const FOCUS_AREAS_12_MONTHS = [
   { value: 'revenue_growth', label: 'Revenue Growth' },
   { value: 'team_building', label: 'Team Building' },
+  { value: 'hiring', label: 'Hiring' },
   { value: 'operations', label: 'Operations' },
   { value: 'customer_experience', label: 'Customer Experience' },
   { value: 'technology', label: 'Technology' },

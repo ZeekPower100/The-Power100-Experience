@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import PartnerForm from '@/components/admin/PartnerForm';
 import { 
   Building2, 
   Globe, 
@@ -137,9 +138,21 @@ export default function PartnerViewPage() {
   const [partner, setPartner] = useState<PartnerDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [referrer, setReferrer] = useState<string>('');
 
   useEffect(() => {
     loadPartner();
+    // Store the referrer URL or default to search page
+    if (typeof window !== 'undefined') {
+      const ref = document.referrer;
+      if (ref && ref.includes('/admindashboard')) {
+        setReferrer(ref);
+      } else {
+        // Default to search page if no valid referrer
+        setReferrer('/admindashboard/search');
+      }
+    }
   }, [params.id]);
 
   const loadPartner = async () => {
@@ -155,11 +168,41 @@ export default function PartnerViewPage() {
   };
 
   const handleEdit = () => {
-    router.push(`/admindashboard/partners/${params.id}/edit`);
+    setIsEditing(true);
+  };
+
+  const handleEditSuccess = () => {
+    setIsEditing(false);
+    loadPartner(); // Reload partner data after successful edit
+  };
+
+  const handleEditCancel = () => {
+    setIsEditing(false);
   };
 
   const handleBack = () => {
-    router.back();
+    // Try to use the stored referrer, or use router.back() as fallback
+    if (referrer) {
+      // Parse the referrer URL to get the pathname
+      try {
+        const url = new URL(referrer);
+        router.push(url.pathname + url.search);
+      } catch {
+        // If URL parsing fails, try direct navigation
+        if (referrer.startsWith('/')) {
+          router.push(referrer);
+        } else {
+          router.back();
+        }
+      }
+    } else {
+      // Fallback to router.back() or default to search page
+      if (window.history.length > 1) {
+        router.back();
+      } else {
+        router.push('/admindashboard/search');
+      }
+    }
   };
 
   const parseJSON = (data: any) => {
@@ -192,6 +235,17 @@ export default function PartnerViewPage() {
           {error || 'Partner not found'}
         </div>
       </div>
+    );
+  }
+
+  // Show PartnerForm when editing
+  if (isEditing) {
+    return (
+      <PartnerForm 
+        partner={partner}
+        onSuccess={handleEditSuccess}
+        onCancel={handleEditCancel}
+      />
     );
   }
 

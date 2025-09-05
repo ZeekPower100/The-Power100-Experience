@@ -178,30 +178,30 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                       />
                     </div>
                     <div>
-                      <Label htmlFor="contact_person">Contact Person</Label>
+                      <Label htmlFor="ceo_contact_name">CEO/Primary Contact</Label>
                       <Input
-                        id="contact_person"
-                        value={partner.contact_person || ''}
-                        onChange={(e) => updateField('contact_person', e.target.value)}
+                        id="ceo_contact_name"
+                        value={partner.ceo_contact_name || ''}
+                        onChange={(e) => updateField('ceo_contact_name', e.target.value)}
                         className="mt-1"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="contact_email">Contact Email</Label>
                       <Input
-                        id="email"
+                        id="contact_email"
                         type="email"
-                        value={partner.email || ''}
-                        onChange={(e) => updateField('email', e.target.value)}
+                        value={partner.contact_email || partner.ceo_contact_email || ''}
+                        onChange={(e) => updateField('contact_email', e.target.value)}
                         className="mt-1"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="phone">Phone</Label>
+                      <Label htmlFor="contact_phone">Contact Phone</Label>
                       <Input
-                        id="phone"
-                        value={partner.phone || ''}
-                        onChange={(e) => updateField('phone', e.target.value)}
+                        id="contact_phone"
+                        value={partner.contact_phone || partner.ceo_contact_phone || ''}
+                        onChange={(e) => updateField('contact_phone', e.target.value)}
                         className="mt-1"
                       />
                     </div>
@@ -215,14 +215,14 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                       />
                     </div>
                     <div>
-                      <Label htmlFor="powerconfidence_score">PowerConfidence Score</Label>
+                      <Label htmlFor="power_confidence_score">PowerConfidence Score</Label>
                       <Input
-                        id="powerconfidence_score"
+                        id="power_confidence_score"
                         type="number"
                         min="0"
                         max="100"
-                        value={partner.powerconfidence_score || ''}
-                        onChange={(e) => updateField('powerconfidence_score', parseInt(e.target.value))}
+                        value={partner.power_confidence_score || ''}
+                        onChange={(e) => updateField('power_confidence_score', parseInt(e.target.value))}
                         className="mt-1"
                       />
                     </div>
@@ -360,13 +360,13 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                 {/* Capabilities Tab */}
                 <TabsContent value="capabilities" className="space-y-6 mt-6">
                   <div>
-                    <Label>Service Capabilities</Label>
+                    <Label>Service Areas</Label>
                     <Textarea
-                      value={partner.service_capabilities ? JSON.stringify(partner.service_capabilities) : '[]'}
+                      value={partner.service_areas ? JSON.stringify(partner.service_areas) : '[]'}
                       onChange={(e) => {
                         try {
-                          const capabilities = JSON.parse(e.target.value);
-                          updateField('service_capabilities', capabilities);
+                          const areas = JSON.parse(e.target.value);
+                          updateField('service_areas', areas);
                         } catch (err) {
                           // Invalid JSON
                         }
@@ -378,13 +378,13 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                   </div>
 
                   <div>
-                    <Label>Focus Areas</Label>
+                    <Label>Focus Areas Served</Label>
                     <Textarea
-                      value={partner.focus_areas ? JSON.stringify(partner.focus_areas) : '[]'}
+                      value={partner.focus_areas_served ? JSON.stringify(partner.focus_areas_served) : '[]'}
                       onChange={(e) => {
                         try {
                           const areas = JSON.parse(e.target.value);
-                          updateField('focus_areas', areas);
+                          updateField('focus_areas_served', areas);
                         } catch (err) {
                           // Invalid JSON
                         }
@@ -397,13 +397,13 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <Label>Revenue Tiers</Label>
+                      <Label>Target Revenue Range</Label>
                       <Textarea
-                        value={partner.revenue_tiers ? JSON.stringify(partner.revenue_tiers) : '[]'}
+                        value={partner.target_revenue_range ? JSON.stringify(partner.target_revenue_range) : '[]'}
                         onChange={(e) => {
                           try {
-                            const tiers = JSON.parse(e.target.value);
-                            updateField('revenue_tiers', tiers);
+                            const ranges = JSON.parse(e.target.value);
+                            updateField('target_revenue_range', ranges);
                           } catch (err) {
                             // Invalid JSON
                           }
@@ -451,13 +451,13 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                 {/* Testimonials Tab */}
                 <TabsContent value="testimonials" className="space-y-6 mt-6">
                   <div>
-                    <Label>Customer Testimonials</Label>
+                    <Label>Client Testimonials</Label>
                     <Textarea
-                      value={partner.customer_testimonials ? JSON.stringify(partner.customer_testimonials, null, 2) : '[]'}
+                      value={partner.client_testimonials ? JSON.stringify(partner.client_testimonials, null, 2) : '[]'}
                       onChange={(e) => {
                         try {
                           const testimonials = JSON.parse(e.target.value);
-                          updateField('customer_testimonials', testimonials);
+                          updateField('client_testimonials', testimonials);
                         } catch (err) {
                           // Invalid JSON
                         }
