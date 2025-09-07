@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Partner Onboarding Delegation Flow</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            background: #28a745;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #218838;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Partner Onboarding Delegation Flow Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Links</h2>
+        <p>Click these links to test the actual pages:</p>
+        <ul>
+            <li><a href="http://localhost:3002/partner/onboarding" target="_blank">Partner Onboarding Form</a> - Start here</li>
+            <li><a href="http://localhost:3002/partner/onboarding?step=8" target="_blank">Partner Onboarding Step 8</a> - Direct to portfolio step</li>
+            <li><a href="http://localhost:3002/partner/onboarding/delegation" target="_blank">Delegation Page</a> - Should appear after Step 7</li>
+            <li><a href="http://localhost:3002/partner/onboarding/success" target="_blank">Success Page</a> - Final page</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>1. Test Partial Submission (Step 7)</h2>
+        <button onclick="testPartialSubmission()">Test Step 7 Submission</button>
+        <div id="partial-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>2. Test Portfolio Update (Step 8)</h2>
+        <input type="text" id="partner-id" placeholder="Enter Partner ID from Step 1">
+        <button onclick="testPortfolioUpdate()">Test Portfolio Update</button>
+        <div id="portfolio-result" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>3. Test Delegation Email</h2>
+        <button onclick="testDelegation()">Test Delegation</button>
+        <div id="delegation-result" class="result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api/partners';
+
+        async function testPartialSubmission() {
+            const resultDiv = document.getElementById('partial-result');
+            resultDiv.innerHTML = 'Testing partial submission...';
+            
+            try {
+                const response = await fetch(`${API_URL}/public/apply`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        company_name: 'Test Company ' + Date.now(),
+                        established_year: '2020',
+                        website: 'https://testcompany.com',
+                        ceo_name: 'John CEO',
+                        ceo_email: 'ceo@test.com',
+                        ceo_phone: '555-0001',
+                        cx_name: 'Jane CX',
+                        cx_email: 'cx@test.com',
+                        sales_name: 'Bob Sales',
+                        sales_email: 'sales@test.com',
+                        marketing_name: 'Alice Marketing',
+                        marketing_email: 'marketing@test.com',
+                        target_revenue_audience: ['$1M-$5M'],
+                        service_areas: ['HVAC'],
+                        focus_areas_12_months: ['Customer Experience'],
+                        value_proposition: 'Test value prop',
+                        why_clients_choose_you: 'Test reasons',
+                        partner_relationships: [],
+                        submission_type: 'partial',
+                        completed_steps: 7
+                    })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<span class="success">✅ Success!</span>\n${JSON.stringify(data, null, 2)}`;
+                
+                if (data.applicationId) {
+                    document.getElementById('partner-id').value = data.applicationId;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function testPortfolioUpdate() {
+            const partnerId = document.getElementById('partner-id').value;
+            const resultDiv = document.getElementById('portfolio-result');
+            
+            if (!partnerId) {
+                resultDiv.innerHTML = '<span class="error">Please enter a Partner ID</span>';
+                return;
+            }
+            
+            resultDiv.innerHTML = 'Testing portfolio update...';
+            
+            try {
+                const response = await fetch(`${API_URL}/public/update-portfolio/${partnerId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        logo_url: 'https://example.com/logo.png',
+                        client_demos: [
+                            { title: 'Demo 1', url: 'https://youtube.com/demo1' },
+                            { title: 'Demo 2', url: 'https://youtube.com/demo2' }
+                        ],
+                        client_references: [
+                            { name: 'Client 1', email: 'client1@example.com', phone: '555-1001' },
+                            { name: 'Client 2', email: 'client2@example.com', phone: '555-1002' }
+                        ],
+                        employee_references: [
+                            { name: 'Employee 1', email: 'emp1@example.com', phone: '555-2001' },
+                            { name: 'Employee 2', email: 'emp2@example.com', phone: '555-2002' }
+                        ]
+                    })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<span class="success">✅ Success!</span>\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+
+        async function testDelegation() {
+            const resultDiv = document.getElementById('delegation-result');
+            resultDiv.innerHTML = 'Testing delegation...';
+            
+            try {
+                const response = await fetch(`${API_URL}/public/delegate-portfolio`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        partnerId: '123',
+                        companyName: 'Test Company',
+                        delegateTo: {
+                            name: 'Jane Marketing',
+                            email: 'marketing@test.com',
+                            title: 'Marketing Director'
+                        }
+                    })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<span class="success">✅ Success!</span>\n${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>

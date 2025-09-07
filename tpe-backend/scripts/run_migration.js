@@ -78,7 +78,10 @@ async function runMigration() {
       // Client Demos & References
       "ALTER TABLE strategic_partners ADD COLUMN client_demos TEXT",
       "ALTER TABLE strategic_partners ADD COLUMN client_references TEXT",
-      "ALTER TABLE strategic_partners ADD COLUMN employee_references TEXT"
+      "ALTER TABLE strategic_partners ADD COLUMN employee_references TEXT",
+      
+      // Onboarding Progress Tracking
+      "ALTER TABLE strategic_partners ADD COLUMN completed_steps INTEGER DEFAULT 8"
     ];
     
     let successCount = 0;

@@ -65,6 +65,19 @@
         "--key=C:\\Users\\broac\\CascadeProjects\\The-Power100-Experience\\deploy\\aws\\tpe-working-key.pem"
       ],
       "env": {}
+    },
+    "n8n-mcp": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "-y",
+        "n8n-mcp"
+      ],
+      "env": {
+        "N8N_API_URL": "https://n8n.srv918843.hstgr.cloud/api/v1",
+        "N8N_API_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxNWM1M2M2ZC02OTZkLTQ2OTktODg3ZC1kMjQ3MTM4NjEwMmIiLCJpc3MiOiJuOG4iLCJhdWQiOiJwdWJsaWMtYXBpIiwiaWF0IjoxNzU2ODEwMjExfQ.fKaBL_TYAvNhTxj9RTFUIwj3Ct3VUo-8h8lKvQkSNns"
+      }
     }
   }
 }

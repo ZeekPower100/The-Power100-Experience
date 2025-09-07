@@ -148,12 +148,15 @@ class DevManager {
       cwd: config.dir,
       stdio: 'pipe',
       shell: true,
-      detached: false
+      detached: true
     });
 
     // Save PID
     fs.writeFileSync(config.pidFile, child.pid.toString());
     this.processes[config.name] = child;
+    
+    // Allow the child to continue running independently
+    child.unref();
 
     // Handle output
     child.stdout.on('data', (data) => {
@@ -345,20 +348,36 @@ class DevManager {
     if (args.length === 0) {
       await this.showMenu();
     } else {
-      switch(args[0]) {
+      const command = args[0];
+      const target = args[1]; // Optional target (backend, frontend, all)
+      
+      switch(command) {
         case 'start':
           await this.startAll();
-          // Keep process alive for attached mode
-          setInterval(() => {}, 1000);
+          // Exit cleanly after starting servers
+          console.log('\n📝 Servers started in background mode.');
+          console.log('Use "node dev-manager.js status" to check their status.');
+          console.log('Use "node dev-manager.js stop" to stop them.');
+          process.exit(0);
           break;
         case 'stop':
           await this.stopAll();
           process.exit(0);
           break;
         case 'restart':
-          await this.restartAll();
-          // Keep process alive
-          setInterval(() => {}, 1000);
+          // Support restart with specific target or all
+          if (target === 'backend' || target === 'frontend') {
+            console.log(`♻️ Restarting ${target} server...`);
+            // For now, restart all (can be enhanced to restart specific server)
+            await this.restartAll();
+          } else {
+            await this.restartAll();
+          }
+          // Exit cleanly after restarting servers
+          console.log('\n📝 Servers restarted in background mode.');
+          console.log('Use "node dev-manager.js status" to check their status.');
+          console.log('Use "node dev-manager.js stop" to stop them.');
+          process.exit(0);
           break;
         case 'clean':
           await this.cleanBuildArtifacts();
@@ -369,10 +388,10 @@ class DevManager {
           process.exit(0);
           break;
         default:
-          console.log('Usage: node dev-manager.js [start|stop|restart|clean|status]');
+          console.log('Usage: node dev-manager.js [start|stop|restart|clean|status] [backend|frontend|all]');
           console.log('  start     - Start servers');
           console.log('  stop      - Stop all servers');
-          console.log('  restart   - Restart all servers');
+          console.log('  restart   - Restart all servers (or specify backend/frontend)');
           console.log('  clean     - Clean build artifacts');
           console.log('  status    - Check server status');
           process.exit(1);

@@ -32,7 +32,18 @@
 
 ## 🏗️ Project Overview
 
-The Power100 Experience is a comprehensive full-stack web application that connects contractors with strategic partners through an AI-driven matching system. The platform guides contractors through a personalized experience to identify business goals and connects them with verified partners.
+The Power100 Experience is a comprehensive full-stack web application that operates in two primary modes:
+
+### 1. **Entry Point: AI-Driven Matching System**
+For new contractors entering TPX, the platform guides them through a personalized experience to identify business goals and connects them with verified partners through our intelligent matching algorithm. This is their first interaction with TPX - a structured flow that captures their needs and makes strategic connections.
+
+### 2. **Evolution: AI-First Concierge Platform**
+Once contractors are in the TPX ecosystem (post-contractor flow or as partner clients), they gain access to an AI concierge that serves as their always-available business advisor. This AI knows their business intimately, provides contextual guidance across all resources (partners, books, podcasts, events), and anticipates their needs before they arise.
+
+### 🤖 AI-First Development Principle
+**CRITICAL**: While maintaining our core matching system, all new features and data collection must be designed with AI processing in mind. See [AI-First Strategy Document](docs/AI-FIRST-STRATEGY.md) for complete vision. Every data field collected should enable both:
+- Immediate value through our matching algorithm
+- Future value through AI concierge capabilities and backend intelligence
 
 ## 📁 Project Architecture
 

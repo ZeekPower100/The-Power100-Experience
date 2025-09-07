@@ -1,0 +1,169 @@
+{
+  "name": "Partner Delegation Email Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "partner-delegation-email",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "8f9d5b3e-4c2a-4b89-9e7d-8a6c5f3e2d1d",
+      "name": "Webhook - Partner Delegation Email",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "webhookId": "75d8f7e9-3c4a-4b89-9e7d-8a6c5f3e2d1d"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format partner delegation email with inline CSS HTML template\nconst data = $input.first().json.body;\n\nconsole.log('📧 Partner Delegation Email Request:', data);\n\nif (!data.email || !data.delegateName || !data.partnerName) {\n  throw new Error('Missing required fields: email, delegateName, or partnerName');\n}\n\n// Build personalized delegation email content\nconst emailSubject = `Complete Your Pre-Onboarding - ${data.partnerName} Partnership with The Power100`;\n\n// Inline CSS HTML template with Power100 branding\nconst emailBodyHTML = `\n<html>\n<body style=\"margin: 0; padding: 0; background-color: #f8f9fa; font-family: Arial, Helvetica, sans-serif;\">\n  <div style=\"max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.1);\">\n    \n    <!-- Header with gradient background -->\n    <div style=\"background: linear-gradient(135deg, #FB0401 0%, #28a745 100%); color: #ffffff; padding: 30px; text-align: center; border-radius: 10px 10px 0 0;\">\n      <h1 style=\"margin: 0; font-size: 28px; font-weight: bold; text-shadow: 0 2px 4px rgba(0,0,0,0.3);\">The Power100 Experience</h1>\n      <p style=\"margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;\">Strategic Partnership Delegation</p>\n    </div>\n    \n    <!-- Main content -->\n    <div style=\"background: #ffffff; padding: 40px 30px; line-height: 1.6;\">\n      <h2 style=\"color: #333333; font-size: 24px; margin: 0 0 20px 0; font-weight: 600;\">Pre-Onboarding Required</h2>\n      \n      <p style=\"font-size: 16px; color: #333333; margin: 0 0 16px 0;\">Dear <strong style=\"color: #FB0401;\">${data.delegateName}</strong>,</p>\n      \n      <p style=\"font-size: 16px; color: #333333; margin: 0 0 16px 0;\">You have been designated as the key contact for <strong style=\"color: #28a745;\">${data.partnerName}</strong>'s partnership with The Power100 Experience.</p>\n      \n      <div style=\"background: #f8f9fa; border-left: 4px solid #28a745; padding: 20px; margin: 25px 0; border-radius: 0 8px 8px 0;\">\n        <h3 style=\"color: #28a745; font-size: 18px; margin: 0 0 15px 0; font-weight: 600;\">Action Required:</h3>\n        <p style=\"font-size: 16px; color: #333333; margin: 0 0 12px 0;\">Complete Step 8 Pre-Onboarding to activate your partnership and begin receiving qualified contractor referrals.</p>\n        <p style=\"font-size: 14px; color: #6c757d; margin: 0;\"><strong>Timeline:</strong> Please complete within 48 hours to maintain your priority status.</p>\n      </div>\n      \n      <div style=\"text-align: center; margin: 30px 0;\">\n        <a href=\"${data.preOnboardingLink || 'https://tpx.power100.io/partner/onboarding/delegation'}\" \n           style=\"display: inline-block; background: linear-gradient(135deg, #28a745 0%, #20c997 100%); color: #ffffff; padding: 15px 35px; text-decoration: none; border-radius: 8px; font-size: 18px; font-weight: 600; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3); transition: all 0.3s ease;\">\n          Complete Pre-Onboarding\n        </a>\n      </div>\n      \n      <div style=\"background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 20px; margin: 25px 0;\">\n        <h4 style=\"color: #856404; font-size: 16px; margin: 0 0 10px 0; font-weight: 600;\">⚡ What You'll Complete:</h4>\n        <ul style=\"color: #856404; font-size: 14px; margin: 0; padding-left: 20px;\">\n          <li style=\"margin-bottom: 8px;\">Partnership agreement and terms</li>\n          <li style=\"margin-bottom: 8px;\">Service capability verification</li>\n          <li style=\"margin-bottom: 8px;\">Lead routing and communication preferences</li>\n          <li style=\"margin-bottom: 8px;\">PowerConfidence scoring setup</li>\n        </ul>\n      </div>\n      \n      <hr style=\"border: none; border-top: 1px solid #e9ecef; margin: 30px 0;\">\n      \n      <p style=\"font-size: 14px; color: #6c757d; margin: 0 0 8px 0;\">Questions about the pre-onboarding process?</p>\n      <p style=\"font-size: 14px; color: #6c757d; margin: 0 0 20px 0;\">Contact our Partnership Team: <a href=\"mailto:partnerships@power100.io\" style=\"color: #FB0401; text-decoration: none;\">partnerships@power100.io</a> | <strong>(555) 100-POWER</strong></p>\n      \n      <p style=\"font-size: 16px; color: #333333; margin: 25px 0 0 0;\">Ready to transform contractor partnerships together!</p>\n      \n      <div style=\"margin-top: 30px;\">\n        <p style=\"font-size: 16px; color: #333333; margin: 0; font-weight: 600;\">The Power100 Partnership Team</p>\n        <p style=\"font-size: 14px; color: #6c757d; margin: 5px 0 0 0;\">\n          <a href=\"https://tpx.power100.io\" style=\"color: #FB0401; text-decoration: none;\">tpx.power100.io</a> | \n          <a href=\"https://power100.io\" style=\"color: #FB0401; text-decoration: none;\">power100.io</a>\n        </p>\n      </div>\n    </div>\n    \n    <!-- Footer -->\n    <div style=\"background: #f8f9fa; padding: 20px 30px; text-align: center; border-top: 1px solid #e9ecef;\">\n      <p style=\"font-size: 12px; color: #6c757d; margin: 0 0 5px 0;\">This email was sent to ${data.email} as the designated contact for ${data.partnerName}.</p>\n      <p style=\"font-size: 12px; color: #6c757d; margin: 0;\">© 2024 The Power100 Experience. All rights reserved.</p>\n    </div>\n    \n  </div>\n</body>\n</html>\n`;\n\nconst emailBodyPlain = `Dear ${data.delegateName},\n\nYou have been designated as the key contact for ${data.partnerName}'s partnership with The Power100 Experience.\n\nACTION REQUIRED: Complete Step 8 Pre-Onboarding\n\nTo activate your partnership and begin receiving qualified contractor referrals, please complete the pre-onboarding process within 48 hours.\n\nWhat You'll Complete:\n• Partnership agreement and terms\n• Service capability verification  \n• Lead routing and communication preferences\n• PowerConfidence scoring setup\n\nComplete Pre-Onboarding: ${data.preOnboardingLink || 'https://tpx.power100.io/partner/onboarding/delegation'}\n\nQuestions? Contact our Partnership Team:\nEmail: partnerships@power100.io\nPhone: (555) 100-POWER\n\nReady to transform contractor partnerships together!\n\nThe Power100 Partnership Team\ntpx.power100.io | power100.io\n\nThis email was sent to ${data.email} as the designated contact for ${data.partnerName}.\n© 2024 The Power100 Experience. All rights reserved.`;\n\nreturn [{\n  json: {\n    // Email data\n    email: data.email,\n    delegateName: data.delegateName,\n    partnerName: data.partnerName,\n    subject: emailSubject,\n    htmlBody: emailBodyHTML,\n    plainBody: emailBodyPlain,\n    \n    // GHL Contact data\n    contactId: data.contactId || null,\n    locationId: \"Jlq8gw3IEjAQu39n4c0s\",\n    \n    // Tracking\n    partnerId: data.partnerId,\n    delegateId: data.delegateId,\n    preOnboardingLink: data.preOnboardingLink || 'https://tpx.power100.io/partner/onboarding/delegation',\n    emailType: 'partner_delegation',\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "9e8c4d5f-3b1a-4c89-8d6e-9b5c6f4e3d2e",
+      "name": "1. Format Delegation Email Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://services.leadconnectorhq.com/conversations/messages",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer pit-47d8d6fc-d175-4c59-a7e4-54c50237d56c"
+            },
+            {
+              "name": "Version",
+              "value": "2021-07-28"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"Email\",\n  \"contactId\": {{ JSON.stringify($json.contactId) }},\n  \"subject\": {{ JSON.stringify($json.subject) }},\n  \"html\": {{ JSON.stringify($json.htmlBody) }},\n  \"emailFrom\": \"partnerships@power100.io\",\n  \"emailTo\": {{ JSON.stringify($json.email) }}\n}",
+        "options": {}
+      },
+      "id": "af7d6e8c-2a4b-5c8d-7e9f-8a7c6f5e4d3f",
+      "name": "2. Send Email via GHL API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process delegation email send result\nconst emailResponse = $input.first().json;\nconst requestData = $('1. Format Delegation Email Content').first().json;\n\nconst success = !emailResponse.error && (emailResponse.messageId || emailResponse.id || emailResponse.conversationId);\n\nconst result = {\n  success: success,\n  status: success ? \"sent\" : \"failed\",\n  partnerId: requestData.partnerId,\n  delegateId: requestData.delegateId,\n  email: requestData.email,\n  delegateName: requestData.delegateName,\n  partnerName: requestData.partnerName,\n  contactId: requestData.contactId,\n  emailType: requestData.emailType,\n  subject: requestData.subject,\n  preOnboardingLink: requestData.preOnboardingLink,\n  messageId: emailResponse.messageId || emailResponse.id || emailResponse.conversationId || null,\n  message: success ? \"Partner delegation email sent successfully\" : (emailResponse.error || emailResponse.message || \"Failed to send delegation email\"),\n  timestamp: new Date().toISOString()\n};\n\nif (success) {\n  console.log('✅ Partner delegation email sent successfully!');\n  console.log('Message ID:', result.messageId);\n  console.log('Delegate Email:', result.email);\n  console.log('Partner:', result.partnerName);\n} else {\n  console.error('❌ Failed to send partner delegation email:', emailResponse.error || emailResponse.message);\n  result.error = emailResponse.error || emailResponse.message || 'Failed to send delegation email';\n  result.ghlResponse = emailResponse;\n}\n\nreturn [{ json: result }];"
+      },
+      "id": "ba9e8f7d-1b3c-5d9e-8f0a-9b8d7e6f5e4f",
+      "name": "3. Process Email Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://tpx.power100.io/api/communications/webhook",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"type\": \"email\",\n  \"direction\": \"outbound\",\n  \"contactId\": {{ JSON.stringify($json.contactId) }},\n  \"to\": {\n    \"email\": {{ JSON.stringify($json.email) }},\n    \"name\": {{ JSON.stringify($json.delegateName) }}\n  },\n  \"subject\": {{ JSON.stringify($json.subject) }},\n  \"messageId\": {{ JSON.stringify($json.messageId) }},\n  \"message_body\": {{ JSON.stringify($json.message) }},\n  \"status\": {{ JSON.stringify($json.status) }},\n  \"partnerId\": {{ JSON.stringify($json.partnerId) }},\n  \"delegateId\": {{ JSON.stringify($json.delegateId) }},\n  \"metadata\": {\n    \"emailType\": {{ JSON.stringify($json.emailType) }},\n    \"partnerName\": {{ JSON.stringify($json.partnerName) }},\n    \"preOnboardingLink\": {{ JSON.stringify($json.preOnboardingLink) }},\n    \"success\": {{ JSON.stringify($json.success) }}\n  },\n  \"timestamp\": {{ JSON.stringify($json.timestamp) }}\n}",
+        "options": {}
+      },
+      "id": "cb0f9a8e-2c4d-6e0f-9a1b-0c9e8f7a6f5a",
+      "name": "4. Log to TPE Database",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": {{ $json.success }},\n  \"message\": {{ $json.message }},\n  \"emailSent\": {{ $json.success }},\n  \"partnerId\": {{ $json.partnerId }},\n  \"delegateId\": {{ $json.delegateId }},\n  \"delegateName\": {{ $json.delegateName }},\n  \"partnerName\": {{ $json.partnerName }},\n  \"messageId\": {{ $json.messageId }},\n  \"preOnboardingLink\": {{ $json.preOnboardingLink }},\n  \"timestamp\": {{ $json.timestamp }}\n}",
+        "options": {}
+      },
+      "id": "dc1a0b9f-3d5e-7f1a-0b2c-1d0f9b8a7a6b",
+      "name": "5. Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Partner Delegation Email": {
+      "main": [
+        [
+          {
+            "node": "1. Format Delegation Email Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Format Delegation Email Content": {
+      "main": [
+        [
+          {
+            "node": "2. Send Email via GHL API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Send Email via GHL API": {
+      "main": [
+        [
+          {
+            "node": "3. Process Email Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Process Email Result": {
+      "main": [
+        [
+          {
+            "node": "4. Log to TPE Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Log to TPE Database": {
+      "main": [
+        [
+          {
+            "node": "5. Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8c8c5237010faa45cd59f6c43c75c61f7b0879ad081c0a5fc5a966b7e044d37d"
+  },
+  "pinData": {},
+  "versionId": "8f9d5b3e-4c2a-4b89-9e7d-8a6c5f3e2d1d",
+  "triggerCount": 0,
+  "tags": ["partner", "delegation", "email", "onboarding"]
+}
