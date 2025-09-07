@@ -36,6 +36,9 @@ const powerConfidenceRoutes = require('./routes/powerConfidence');
 const reportRoutes = require('./routes/reports');
 const contactTaggingRoutes = require('./routes/contactTagging');
 const uploadRoutes = require('./routes/upload');
+const bookRoutes = require('./routes/bookRoutes');
+const eventRoutes = require('./routes/eventRoutes');
+const podcastRoutes = require('./routes/podcastRoutes');
 
 const app = express();
 
@@ -141,6 +144,9 @@ app.use('/api/verification', require('./routes/verificationRoutes'));
 app.use('/api/emails', require('./routes/emailRoutes'));
 app.use('/api/matching', require('./routes/matchingRoutes'));
 app.use('/api/upload', uploadRoutes);
+app.use('/api/books', bookRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/podcasts', podcastRoutes);
 
 // 404 handler
 app.use((req, res) => {
