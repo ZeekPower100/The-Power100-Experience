@@ -34,13 +34,32 @@ const matchPodcast = async (contractor) => {
   let bestScore = 0;
   
   for (const podcast of podcastsResult.rows) {
-    const focusAreasCovered = typeof podcast.focus_areas_covered === 'string'
-      ? JSON.parse(podcast.focus_areas_covered || '[]')
-      : podcast.focus_areas_covered || [];
+    let focusAreasCovered = [];
+    try {
+      if (typeof podcast.focus_areas_covered === 'string') {
+        focusAreasCovered = JSON.parse(podcast.focus_areas_covered || '[]');
+      } else {
+        focusAreasCovered = podcast.focus_areas_covered || [];
+      }
+    } catch (e) {
+      console.error('Error parsing focus_areas_covered:', e);
+      focusAreasCovered = [];
+    }
     
-    const topics = typeof podcast.topics === 'string'
-      ? JSON.parse(podcast.topics || '[]')
-      : podcast.topics || [];
+    let topics = [];
+    try {
+      if (typeof podcast.topics === 'string' && podcast.topics.startsWith('[')) {
+        topics = JSON.parse(podcast.topics);
+      } else if (typeof podcast.topics === 'string') {
+        // Handle comma-separated string
+        topics = podcast.topics.split(',').map(t => t.trim());
+      } else {
+        topics = podcast.topics || [];
+      }
+    } catch (e) {
+      // Fall back to splitting if JSON parse fails
+      topics = typeof podcast.topics === 'string' ? podcast.topics.split(',').map(t => t.trim()) : [];
+    }
     
     // Calculate match score
     let score = 0;
@@ -59,6 +78,7 @@ const matchPodcast = async (contractor) => {
         description: podcast.description || "Top podcast for contractors",
         website: podcast.website || "#",
         topics,
+        focus_areas_covered: focusAreasCovered, // Use the parsed array
         matchScore: score,
         matchReasons: generatePodcastMatchReasons(contractor, podcast, focusAreasCovered)
       };
@@ -426,8 +446,8 @@ const getEnhancedMatches = async (contractor, focusAreaIndex = 0) => {
   // Get event match for the specific focus area
   const eventMatch = await matchEvent(modifiedContractor);
   
-  // Get manufacturer match for the specific focus area
-  const manufacturerMatch = await matchManufacturer(modifiedContractor);
+  // MANUFACTURERS DISABLED - Return null instead
+  const manufacturerMatch = null; // await matchManufacturer(modifiedContractor);
   
   // Track the matching outcome with focus area context
   if (partnerMatches && partnerMatches.length > 0) {
@@ -439,7 +459,7 @@ const getEnhancedMatches = async (contractor, focusAreaIndex = 0) => {
         reasons: partnerMatches[0].matchReasons,
         podcastMatched: !!podcastMatch,
         eventMatched: !!eventMatch,
-        manufacturerMatched: !!manufacturerMatch,
+        manufacturerMatched: false, // Always false since disabled
         focusAreaIndex: focusAreaIndex,
         focusAreaSelected: modifiedContractor.primary_focus_area
       }
@@ -449,14 +469,14 @@ const getEnhancedMatches = async (contractor, focusAreaIndex = 0) => {
   console.log("=== ENHANCED MATCHING RESULTS ===");
   console.log("Podcast Match:", podcastMatch ? "FOUND" : "NOT FOUND");
   console.log("Event Match:", eventMatch ? "FOUND" : "NOT FOUND");
-  console.log("Manufacturer Match:", manufacturerMatch ? "FOUND" : "NOT FOUND");
+  console.log("Manufacturer Match: DISABLED");
   console.log("All Focus Areas:", focusAreas);
   console.log("================================");
   return {
     matches: partnerMatches.slice(0, 2), // Return top 2 partners
     podcastMatch,
     eventMatch,
-    manufacturerMatch,
+    manufacturerMatch: null, // Always null since disabled
     currentFocusArea: modifiedContractor.primary_focus_area,
     allFocusAreas: focusAreas
   };
