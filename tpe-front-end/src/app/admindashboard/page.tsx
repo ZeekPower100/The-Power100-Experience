@@ -11,6 +11,7 @@ import {
   Users, 
   Handshake, 
   Calendar, 
+  Calendar as CalendarIcon,
   Star,
   ArrowRight,
   BarChart3,
@@ -18,7 +19,9 @@ import {
   AlertTriangle,
   Search,
   MessageSquare,
-  Shield
+  Shield,
+  BookOpen as BookOpenIcon,
+  Mic as MicIcon
 } from "lucide-react";
 import { motion } from "framer-motion";
 import PendingPartners from "@/components/admin/PendingPartners";
@@ -438,7 +441,7 @@ export default function AdminDashboard() {
         {/* Quick Actions */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-power100-black mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <Link href="/admindashboard/search">
               <Card className="bg-white hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-power100-red">
                 <CardContent className="p-6 text-center">
@@ -465,6 +468,36 @@ export default function AdminDashboard() {
                   <Star className="w-8 h-8 text-power100-red mx-auto mb-3" />
                   <h3 className="font-semibold text-power100-black">Power Cards</h3>
                   <p className="text-sm text-power100-grey mt-1">Manage quarterly feedback surveys</p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link href="/admindashboard/books">
+              <Card className="bg-white hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-power100-red">
+                <CardContent className="p-6 text-center">
+                  <BookOpenIcon className="w-8 h-8 text-power100-red mx-auto mb-3" />
+                  <h3 className="font-semibold text-power100-black">Books</h3>
+                  <p className="text-sm text-power100-grey mt-1">Manage book resources</p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link href="/admindashboard/events">
+              <Card className="bg-white hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-power100-red">
+                <CardContent className="p-6 text-center">
+                  <CalendarIcon className="w-8 h-8 text-power100-red mx-auto mb-3" />
+                  <h3 className="font-semibold text-power100-black">Events</h3>
+                  <p className="text-sm text-power100-grey mt-1">Manage contractor events</p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link href="/admindashboard/podcasts">
+              <Card className="bg-white hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-power100-red">
+                <CardContent className="p-6 text-center">
+                  <MicIcon className="w-8 h-8 text-power100-red mx-auto mb-3" />
+                  <h3 className="font-semibold text-power100-black">Podcasts</h3>
+                  <p className="text-sm text-power100-grey mt-1">Manage podcast resources</p>
                 </CardContent>
               </Card>
             </Link>
