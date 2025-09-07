@@ -7,12 +7,34 @@ import { Upload, Link, Trash2, Image as ImageIcon, X, CheckCircle } from 'lucide
 import { Progress } from '../ui/progress';
 
 interface LogoManagerProps {
-  logoUrl: string | null;
-  onChange: (logoUrl: string | null) => void;
+  currentLogoUrl?: string | null;
+  onLogoChange?: (logoUrl: string | null) => void;
+  // Legacy props for backward compatibility
+  logoUrl?: string | null;
+  onChange?: (logoUrl: string | null) => void;
   label?: string;
+  uploadLabel?: string;
+  removeLabel?: string;
+  previewSize?: string;
+  entityType?: string;
+  entityName?: string;
 }
 
-export default function LogoManager({ logoUrl, onChange, label = "Company Logo" }: LogoManagerProps) {
+export default function LogoManager({ 
+  currentLogoUrl,
+  onLogoChange,
+  logoUrl: legacyLogoUrl,
+  onChange: legacyOnChange,
+  label = "Company Logo",
+  uploadLabel = "Add Logo",
+  removeLabel = "Remove Logo",
+  previewSize = "w-32 h-32",
+  entityType = "company",
+  entityName = "partner"
+}: LogoManagerProps) {
+  // Use new props if available, otherwise fall back to legacy props
+  const logoUrl = currentLogoUrl !== undefined ? currentLogoUrl : legacyLogoUrl;
+  const onChange = onLogoChange || legacyOnChange || (() => {});
   const [inputMode, setInputMode] = useState<'url' | 'upload' | null>(null);
   const [tempUrl, setTempUrl] = useState('');
   const [previewError, setPreviewError] = useState(false);
@@ -182,11 +204,11 @@ export default function LogoManager({ logoUrl, onChange, label = "Company Logo" 
       {logoUrl && !inputMode && (
         <Card className="p-4">
           <div className="flex items-center gap-4">
-            <div className="w-32 h-32 bg-gray-50 rounded-lg border-2 border-gray-200 flex items-center justify-center overflow-hidden">
+            <div className={`${previewSize} bg-gray-50 rounded-lg border-2 border-gray-200 flex items-center justify-center overflow-hidden`}>
               {!previewError ? (
                 <img
                   src={logoUrl}
-                  alt="Company logo"
+                  alt={`${entityType} ${entityName}`}
                   className="w-full h-full object-contain"
                   onError={handleImageError}
                   onLoad={handleImageLoad}
@@ -199,7 +221,7 @@ export default function LogoManager({ logoUrl, onChange, label = "Company Logo" 
               )}
             </div>
             <div className="flex-1">
-              <p className="text-sm text-gray-600 mb-2">Current Logo URL:</p>
+              <p className="text-sm text-gray-600 mb-2">Current {label} URL:</p>
               <p className="text-sm font-mono bg-gray-50 p-2 rounded break-all">{logoUrl}</p>
               <div className="flex gap-2 mt-3">
                 <Button
@@ -218,7 +240,7 @@ export default function LogoManager({ logoUrl, onChange, label = "Company Logo" 
                   className="flex items-center gap-1 text-red-600 hover:text-red-700"
                 >
                   <Trash2 className="w-3 h-3" />
-                  Remove Logo
+                  {removeLabel}
                 </Button>
               </div>
             </div>
@@ -243,7 +265,7 @@ export default function LogoManager({ logoUrl, onChange, label = "Company Logo" 
                 onKeyPress={(e) => e.key === 'Enter' && handleUrlSubmit()}
               />
               <p className="text-xs text-gray-500 mt-1">
-                Enter a direct URL to your company logo (PNG, JPG, or SVG)
+                Enter a direct URL to your {entityType === 'book' ? 'book cover' : entityType === 'event' ? 'event logo' : entityType === 'podcast' ? 'podcast logo' : 'company logo'} (PNG, JPG, or SVG)
               </p>
             </div>
             <div className="flex gap-2">
@@ -253,7 +275,7 @@ export default function LogoManager({ logoUrl, onChange, label = "Company Logo" 
                 disabled={!tempUrl.trim()}
                 className="bg-power100-green hover:bg-green-600 text-white"
               >
-                Add Logo
+                {uploadLabel}
               </Button>
               <Button
                 size="sm"
@@ -350,8 +372,8 @@ export default function LogoManager({ logoUrl, onChange, label = "Company Logo" 
       {!logoUrl && !inputMode && (
         <Card className="p-8 text-center border-2 border-dashed border-gray-300">
           <ImageIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-500 mb-3">No logo added yet</p>
-          <p className="text-sm text-gray-400">Add a logo to display on your partner profile</p>
+          <p className="text-gray-500 mb-3">No {entityType === 'book' ? 'book cover' : 'logo'} added yet</p>
+          <p className="text-sm text-gray-400">Add a {entityType === 'book' ? 'cover image' : 'logo'} to display on your {entityType === 'partner' ? 'partner profile' : entityType === 'book' ? 'book' : entityType === 'event' ? 'event' : 'podcast'}</p>
         </Card>
       )}
     </div>
