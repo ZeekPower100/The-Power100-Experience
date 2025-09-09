@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, XCircle, Clock, AlertCircle, Eye } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, AlertCircle, Eye, Trash2 } from 'lucide-react';
 import { partnerApi } from '@/lib/api';
 
 interface PendingPartner {
@@ -65,6 +65,22 @@ export default function PendingPartners() {
       alert('Partner activated successfully!');
     } catch (err: any) {
       alert(`Error activating partner: ${err.message}`);
+    }
+  };
+
+  const deletePartner = async (partnerId: number, partnerName: string) => {
+    if (!confirm(`Are you sure you want to permanently delete "${partnerName}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await partnerApi.delete(partnerId.toString());
+
+      // Refresh the list
+      await fetchPendingPartners();
+      alert('Partner deleted successfully!');
+    } catch (err: any) {
+      alert(`Error deleting partner: ${err.message}`);
     }
   };
 
@@ -201,6 +217,16 @@ export default function PendingPartners() {
                         Activate
                       </Button>
                     )}
+                    
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+                      onClick={() => deletePartner(partner.id, partner.company_name)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Delete
+                    </Button>
                   </div>
                 </div>
               </div>

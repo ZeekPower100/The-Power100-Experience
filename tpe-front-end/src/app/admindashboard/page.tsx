@@ -82,14 +82,32 @@ export default function AdminDashboard() {
   const checkAuthAndLoadData = useCallback(async () => {
     // Check if already logged in
     const token = localStorage.getItem('authToken');
+    
     if (token) {
       try {
-        await authApi.getMe();
-        setIsAuthenticated(true);
-        loadDashboardData();
-      } catch {
-        // Token is invalid, remove it
+        const user = await authApi.getMe();
+        // Verify this is actually an admin user by checking the response
+        // Admin users will have an email and no error
+        if (user && user.email && !user.error && !user.message?.includes('not found')) {
+          setIsAuthenticated(true);
+          loadDashboardData();
+        } else {
+          // Not a valid admin token - could be partner/contractor token
+          // Only clear if we're sure it's invalid
+          const timestamp = localStorage.getItem('authTokenTimestamp');
+          if (!timestamp || user.message?.includes('not found')) {
+            // This is either not an admin token or an expired one
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('authTokenTimestamp');
+          }
+          setIsAuthenticated(false);
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        // Only clear tokens if we get a definitive auth error
         localStorage.removeItem('authToken');
+        localStorage.removeItem('authTokenTimestamp');
         setIsAuthenticated(false);
         setLoading(false);
       }
@@ -110,10 +128,10 @@ export default function AdminDashboard() {
 
     try {
       // Clear only old admin tokens to prevent confusion
-      // Keep contractor session intact for testing continuity
+      // Keep contractor and partner sessions intact for testing continuity
       localStorage.removeItem('adminToken');
-      // Also clear authToken before setting new one to avoid stale tokens
       localStorage.removeItem('authToken');
+      localStorage.removeItem('authTokenTimestamp');
       
       const response = await authApi.login(loginForm.email, loginForm.password);
       localStorage.setItem('authToken', response.token);
