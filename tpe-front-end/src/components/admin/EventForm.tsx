@@ -171,7 +171,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="name">Event Name (optional)</Label>
+                <Label htmlFor="name">Event Name <span className="text-red-500">*</span></Label>
                 <Input
                   id="name"
                   name="name"
@@ -183,7 +183,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div>
-                <Label htmlFor="event_type">Event Type (optional)</Label>
+                <Label htmlFor="event_type">Event Type</Label>
                 <Select 
                   value={formData.event_type} 
                   onValueChange={(value) => handleSelectChange('event_type', value)}
@@ -206,7 +206,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="date">Event Date (optional)</Label>
+                  <Label htmlFor="date">Event Date <span className="text-red-500">*</span></Label>
                   <Input
                     id="date"
                     name="date"
@@ -216,7 +216,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
                   />
                 </div>
                 <div>
-                  <Label htmlFor="registration_deadline">Registration Deadline (optional)</Label>
+                  <Label htmlFor="registration_deadline">Registration Deadline</Label>
                   <Input
                     id="registration_deadline"
                     name="registration_deadline"
@@ -228,7 +228,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div>
-                <Label htmlFor="duration">Duration (optional)</Label>
+                <Label htmlFor="duration">Duration</Label>
                 <Select 
                   value={formData.duration} 
                   onValueChange={(value) => handleSelectChange('duration', value)}
@@ -248,7 +248,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div>
-                <Label htmlFor="description">Event Description (optional)</Label>
+                <Label htmlFor="description">Event Description</Label>
                 <Textarea
                   id="description"
                   name="description"
@@ -260,7 +260,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div>
-                <Label>Event Logo (optional)</Label>
+                <Label>Event Logo</Label>
                 <p className="text-sm text-power100-grey mb-3">Upload a logo for your event</p>
                 <LogoManager
                   currentLogoUrl={formData.logo_url}
@@ -290,7 +290,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="location">Location (optional)</Label>
+                <Label htmlFor="location">Location</Label>
                 <Input
                   id="location"
                   name="location"
@@ -302,7 +302,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div>
-                <Label htmlFor="format">Event Format (optional)</Label>
+                <Label htmlFor="format">Event Format</Label>
                 <Select 
                   value={formData.format} 
                   onValueChange={(value) => handleSelectChange('format', value)}
@@ -319,7 +319,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div>
-                <Label htmlFor="expected_attendees">Expected Attendees (optional)</Label>
+                <Label htmlFor="expected_attendees">Expected Attendees</Label>
                 <Select 
                   value={formData.expected_attendees} 
                   onValueChange={(value) => handleSelectChange('expected_attendees', value)}
@@ -339,7 +339,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div>
-                <Label htmlFor="price_range">Price Range (optional)</Label>
+                <Label htmlFor="price_range">Price Range</Label>
                 <Input
                   id="price_range"
                   name="price_range"
@@ -351,7 +351,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div>
-                <Label htmlFor="registration_url">Registration URL (optional)</Label>
+                <Label htmlFor="registration_url">Registration URL</Label>
                 <Input
                   id="registration_url"
                   name="registration_url"
@@ -363,7 +363,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div>
-                <Label htmlFor="website">Event Website (optional)</Label>
+                <Label htmlFor="website">Event Website</Label>
                 <Input
                   id="website"
                   name="website"
@@ -393,7 +393,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
 
             <div className="space-y-4">
               <div>
-                <Label>What contractor challenges does this event address? (optional)</Label>
+                <Label>What contractor challenges does this event address?</Label>
                 <p className="text-sm text-power100-grey mb-3">Ensures your event reaches the right contractors</p>
                 <div className="grid grid-cols-2 gap-3">
                   {FOCUS_AREAS.map(area => (
@@ -412,7 +412,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div>
-                <Label htmlFor="target_audience">Target Audience (optional)</Label>
+                <Label htmlFor="target_audience">Target Audience</Label>
                 <Textarea
                   id="target_audience"
                   name="target_audience"
@@ -425,7 +425,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div>
-                <Label htmlFor="topics">Key Topics Covered (optional)</Label>
+                <Label htmlFor="topics">Key Topics Covered</Label>
                 <Textarea
                   id="topics"
                   name="topics"
@@ -479,7 +479,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="organizer_name">Organizer Name (optional)</Label>
+                <Label htmlFor="organizer_name">Organizer Name</Label>
                 <Input
                   id="organizer_name"
                   name="organizer_name"
@@ -491,7 +491,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
 
               <div>
                 <Label htmlFor="organizer_email">
-                  Organizer Email {submissionType === 'organizer' && '(required)'}
+                  Organizer Email {submissionType === 'organizer' && <span className="text-red-500">*</span>}
                 </Label>
                 <Input
                   id="organizer_email"
@@ -506,7 +506,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div>
-                <Label htmlFor="organizer_phone">Organizer Phone (optional)</Label>
+                <Label htmlFor="organizer_phone">Organizer Phone</Label>
                 <Input
                   id="organizer_phone"
                   name="organizer_phone"
@@ -517,7 +517,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div>
-                <Label htmlFor="organizer_company">Organizing Company (optional)</Label>
+                <Label htmlFor="organizer_company">Organizing Company</Label>
                 <Input
                   id="organizer_company"
                   name="organizer_company"

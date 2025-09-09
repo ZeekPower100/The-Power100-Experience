@@ -178,7 +178,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="title">Podcast Title (optional)</Label>
+                <Label htmlFor="title">Podcast Title <span className="text-red-500">*</span></Label>
                 <Input
                   id="title"
                   name="title"
@@ -190,7 +190,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="host">Host Name (optional)</Label>
+                <Label htmlFor="host">Host Name <span className="text-red-500">*</span></Label>
                 <Input
                   id="host"
                   name="host"
@@ -202,7 +202,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="format">Podcast Format (optional)</Label>
+                <Label htmlFor="format">Podcast Format</Label>
                 <Select 
                   value={formData.format} 
                   onValueChange={(value) => handleSelectChange('format', value)}
@@ -222,7 +222,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="frequency">Release Frequency (optional)</Label>
+                <Label htmlFor="frequency">Release Frequency</Label>
                 <Select 
                   value={formData.frequency} 
                   onValueChange={(value) => handleSelectChange('frequency', value)}
@@ -243,7 +243,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="description">Podcast Description (optional)</Label>
+                <Label htmlFor="description">Podcast Description</Label>
                 <Textarea
                   id="description"
                   name="description"
@@ -255,7 +255,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="average_episode_length">Average Episode Length (optional)</Label>
+                <Label htmlFor="average_episode_length">Average Episode Length</Label>
                 <Select 
                   value={formData.average_episode_length} 
                   onValueChange={(value) => handleSelectChange('average_episode_length', value)}
@@ -275,7 +275,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label>Podcast Logo (optional)</Label>
+                <Label>Podcast Logo</Label>
                 <p className="text-sm text-power100-grey mb-3">Upload a logo for your podcast</p>
                 <LogoManager
                   currentLogoUrl={formData.logo_url}
@@ -305,7 +305,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="website">Podcast Website (optional)</Label>
+                <Label htmlFor="website">Podcast Website</Label>
                 <Input
                   id="website"
                   name="website"
@@ -316,7 +316,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="spotify_url">Spotify URL (optional)</Label>
+                <Label htmlFor="spotify_url">Spotify URL</Label>
                 <Input
                   id="spotify_url"
                   name="spotify_url"
@@ -328,7 +328,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="apple_podcasts_url">Apple Podcasts URL (optional)</Label>
+                <Label htmlFor="apple_podcasts_url">Apple Podcasts URL</Label>
                 <Input
                   id="apple_podcasts_url"
                   name="apple_podcasts_url"
@@ -339,7 +339,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="youtube_url">YouTube URL (optional)</Label>
+                <Label htmlFor="youtube_url">YouTube URL</Label>
                 <Input
                   id="youtube_url"
                   name="youtube_url"
@@ -350,7 +350,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="other_platform_urls">Other Platforms (optional)</Label>
+                <Label htmlFor="other_platform_urls">Other Platforms</Label>
                 <Textarea
                   id="other_platform_urls"
                   name="other_platform_urls"
@@ -381,7 +381,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
 
             <div className="space-y-4">
               <div>
-                <Label>What contractor challenges does your podcast address? (optional)</Label>
+                <Label>What contractor challenges does your podcast address?</Label>
                 <p className="text-sm text-power100-grey mb-3">Ensures your podcast reaches the right contractors</p>
                 <div className="grid grid-cols-2 gap-3">
                   {FOCUS_AREAS.map(area => (
@@ -400,7 +400,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="target_audience">Target Audience (optional)</Label>
+                <Label htmlFor="target_audience">Target Audience</Label>
                 <Textarea
                   id="target_audience"
                   name="target_audience"
@@ -413,7 +413,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="topics">Key Topics Covered (optional)</Label>
+                <Label htmlFor="topics">Key Topics Covered</Label>
                 <Textarea
                   id="topics"
                   name="topics"
@@ -426,7 +426,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="notable_guests">Notable Past Guests (optional)</Label>
+                <Label htmlFor="notable_guests">Notable Past Guests</Label>
                 <Textarea
                   id="notable_guests"
                   name="notable_guests"
@@ -481,7 +481,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
             <div className="space-y-4">
               <div>
                 <Label htmlFor="host_email">
-                  Host Email {submissionType === 'host' && '(required)'}
+                  Host Email <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="host_email"
@@ -496,7 +496,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="host_phone">Host Phone (optional)</Label>
+                <Label htmlFor="host_phone">Host Phone</Label>
                 <Input
                   id="host_phone"
                   name="host_phone"
@@ -507,7 +507,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="host_linkedin">Host LinkedIn (optional)</Label>
+                <Label htmlFor="host_linkedin">Host LinkedIn</Label>
                 <Input
                   id="host_linkedin"
                   name="host_linkedin"
@@ -518,7 +518,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="host_company">Host Company (optional)</Label>
+                <Label htmlFor="host_company">Host Company</Label>
                 <Input
                   id="host_company"
                   name="host_company"

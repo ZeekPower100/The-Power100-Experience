@@ -110,11 +110,9 @@ export default function PartnerOnboardingForm() {
         // Store partner ID and delegate ID from URL for delegation flow
         if (partnerParam) {
           localStorage.setItem('partner_application_id', partnerParam);
-          console.log('📝 Partner ID from delegation URL:', partnerParam);
         }
         if (delegateParam) {
           localStorage.setItem('delegate_id', delegateParam);
-          console.log('📝 Delegate ID from delegation URL:', delegateParam);
         }
         
         // Also restore the saved form data if available
@@ -124,7 +122,7 @@ export default function PartnerOnboardingForm() {
             const restoredData = JSON.parse(savedData);
             setFormData(restoredData);
           } catch (error) {
-            console.error('Error restoring form data:', error);
+            // Silently handle error
           }
         }
       }
@@ -136,6 +134,7 @@ export default function PartnerOnboardingForm() {
   const [partnerSearchResults, setPartnerSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showNewPartnerModal, setShowNewPartnerModal] = useState(false);
+  const [isAddingPartner, setIsAddingPartner] = useState(false); // Track if we're in the process of adding a partner
   const [newPartnerData, setNewPartnerData] = useState({
     company_name: '',
     contact_name: '',
@@ -284,6 +283,7 @@ export default function PartnerOnboardingForm() {
       contact_phone: ''
     });
     setShowNewPartnerModal(false);
+    setIsAddingPartner(false); // Clear the flag
   };
 
   const isStepValid = (step: number): boolean => {
@@ -310,6 +310,11 @@ export default function PartnerOnboardingForm() {
   };
   
   const nextStep = () => {
+    // Prevent navigation if we're adding a partner
+    if (isAddingPartner || showNewPartnerModal) {
+      return;
+    }
+    
     if (isStepValid(currentStep) && currentStep < totalSteps) {
       setCurrentStep(prev => prev + 1);
       setError(null);
@@ -326,6 +331,12 @@ export default function PartnerOnboardingForm() {
   };
 
   const handleSubmit = async (e?: React.FormEvent | React.MouseEvent) => {
+    // Block submission if we're adding a partner
+    if (isAddingPartner || showNewPartnerModal) {
+      if (e) e.preventDefault();
+      return;
+    }
+    
     if (e) {
       e.preventDefault();
     }
@@ -601,7 +612,10 @@ export default function PartnerOnboardingForm() {
 
       {/* Step Content - Centered Card Layout */}
       <div className="max-w-2xl mx-auto px-6 py-12">
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          // Only allow explicit submission via button clicks, not implicit form submission
+        }} className="space-y-8">
           {/* Step 1: Company Information */}
           {currentStep === 1 && (
             <motion.div
@@ -1468,7 +1482,10 @@ export default function PartnerOnboardingForm() {
                           />
                           {partnerSearchQuery && (
                             <button
-                              onClick={() => {
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
                                 setPartnerSearchQuery('');
                                 setPartnerSearchResults([]);
                               }}
@@ -1488,7 +1505,12 @@ export default function PartnerOnboardingForm() {
                               partnerSearchResults.map((partner) => (
                                 <button
                                   key={partner.id}
-                                  onClick={() => addPartner(partner)}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    addPartner(partner);
+                                  }}
                                   className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0"
                                 >
                                   <div className="font-medium">{partner.company_name}</div>
@@ -1498,19 +1520,48 @@ export default function PartnerOnboardingForm() {
                                 </button>
                               ))
                             ) : (
-                              <button
-                                onClick={() => {
-                                  setNewPartnerData(prev => ({
-                                    ...prev,
-                                    company_name: partnerSearchQuery
-                                  }));
-                                  setShowNewPartnerModal(true);
+                              <div 
+                                onSubmit={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  return false;
                                 }}
-                                className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2"
                               >
-                                <Plus className="h-4 w-4 text-power100-green" />
-                                <span>Add "{partnerSearchQuery}" as new partner</span>
-                              </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    
+                                    // Use native event's stopImmediatePropagation if available
+                                    if (e.nativeEvent && e.nativeEvent.stopImmediatePropagation) {
+                                      e.nativeEvent.stopImmediatePropagation();
+                                    }
+                                    
+                                    // Set flag to prevent any navigation
+                                    setIsAddingPartner(true);
+                                    
+                                    setNewPartnerData(prev => ({
+                                      ...prev,
+                                      company_name: partnerSearchQuery
+                                    }));
+                                    setShowNewPartnerModal(true);
+                                    
+                                    // Clear the flag after a moment
+                                    setTimeout(() => setIsAddingPartner(false), 1000);
+                                    
+                                    return false; // Extra prevention
+                                  }}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                  }}
+                                  className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-2"
+                                >
+                                  <Plus className="h-4 w-4 text-power100-green" />
+                                  <span>Add "{partnerSearchQuery}" as new partner</span>
+                                </button>
+                              </div>
                             )}
                           </div>
                         )}
@@ -1532,7 +1583,12 @@ export default function PartnerOnboardingForm() {
                                 )}
                               </div>
                               <button
-                                onClick={() => removePartner(index)}
+                                type="button"
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  removePartner(index);
+                                }}
                                 className="text-red-500 hover:text-red-700"
                               >
                                 <X className="h-4 w-4" />
@@ -1562,8 +1618,12 @@ export default function PartnerOnboardingForm() {
                     <p className="text-sm text-gray-600 mt-1">{newPartnerData.company_name}</p>
                   </div>
                   <button
-                    onClick={() => {
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       setShowNewPartnerModal(false);
+                      setIsAddingPartner(false); // Clear the flag
                       setNewPartnerData({
                         company_name: '',
                         contact_name: '',
@@ -1612,9 +1672,13 @@ export default function PartnerOnboardingForm() {
                 
                 <div className="flex gap-3 mt-6">
                   <Button
+                    type="button"
                     variant="outline"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       setShowNewPartnerModal(false);
+                      setIsAddingPartner(false); // Clear the flag
                       setNewPartnerData({
                         company_name: '',
                         contact_name: '',
@@ -1627,7 +1691,12 @@ export default function PartnerOnboardingForm() {
                     Cancel
                   </Button>
                   <Button
-                    onClick={addNewPartner}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      addNewPartner();
+                    }}
                     className="flex-1 bg-power100-green hover:bg-green-600 text-white"
                   >
                     Add Partner
@@ -1772,10 +1841,10 @@ export default function PartnerOnboardingForm() {
               <Button
                 type="button"
                 onClick={handleSubmit}
-                disabled={loading || !isStepValid(currentStep)}
+                disabled={loading || !isStepValid(currentStep) || isAddingPartner || showNewPartnerModal}
                 className="bg-power100-green hover:bg-green-700 text-white px-8 py-2 rounded-full font-semibold"
               >
-                {loading ? 'Submitting...' : 'Submit Partner Profile'}
+                {loading ? 'Submitting...' : isAddingPartner ? 'Adding Partner...' : 'Submit Partner Profile'}
               </Button>
             ) : currentStep === 8 ? (
               // Step 8: Submit pre-onboarding (updates existing profile with portfolio)

@@ -205,7 +205,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
             <div className="space-y-4">
               {/* Book Cover Upload */}
               <div>
-                <Label>Book Cover Image (optional)</Label>
+                <Label>Book Cover Image</Label>
                 <p className="text-sm text-power100-grey mb-3">Upload a cover image that will appear in search results</p>
                 <LogoManager
                   currentLogoUrl={formData.cover_image_url}
@@ -220,7 +220,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="title">Book Title (optional)</Label>
+                <Label htmlFor="title">Book Title <span className="text-red-500">*</span></Label>
                 <Input
                   id="title"
                   name="title"
@@ -232,7 +232,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="author">Author Name (optional)</Label>
+                <Label htmlFor="author">Author Name <span className="text-red-500">*</span></Label>
                 <Input
                   id="author"
                   name="author"
@@ -244,7 +244,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="description">Book Description (optional)</Label>
+                <Label htmlFor="description">Book Description</Label>
                 <Textarea
                   id="description"
                   name="description"
@@ -256,7 +256,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="amazon_url">Amazon URL (optional)</Label>
+                <Label htmlFor="amazon_url">Amazon URL</Label>
                 <Input
                   id="amazon_url"
                   name="amazon_url"
@@ -268,7 +268,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="publication_year">Publication Year (optional)</Label>
+                <Label htmlFor="publication_year">Publication Year</Label>
                 <Input
                   id="publication_year"
                   name="publication_year"
@@ -323,7 +323,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="author_email">
-                  Author Email {submissionType === 'author' && '(required)'}
+                  Author Email <span className="text-red-500">*</span>
                 </Label>
                 <Input
                   id="author_email"
@@ -337,7 +337,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="author_phone">Author Phone (optional)</Label>
+                <Label htmlFor="author_phone">Author Phone</Label>
                 <Input
                   id="author_phone"
                   name="author_phone"
@@ -349,7 +349,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="author_linkedin_url">LinkedIn Profile (optional)</Label>
+                <Label htmlFor="author_linkedin_url">LinkedIn Profile</Label>
                 <Input
                   id="author_linkedin_url"
                   name="author_linkedin_url"
@@ -361,7 +361,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="author_website">Personal/Business Website (optional)</Label>
+                <Label htmlFor="author_website">Personal/Business Website</Label>
                 <Input
                   id="author_website"
                   name="author_website"
@@ -451,7 +451,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
 
             <div className="space-y-6">
               <div>
-                <Label>Who are the top people you cite in your book? (optional)</Label>
+                <Label>Who are the top people you cite in your book?</Label>
                 <p className="text-sm text-power100-grey mb-3">Shows thought leadership and credibility</p>
                 
                 {keyCitations.map((citation, index) => (
@@ -498,7 +498,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label>What contractor challenges does your book address? (optional)</Label>
+                <Label>What contractor challenges does your book address?</Label>
                 <p className="text-sm text-power100-grey mb-3">Ensures your book reaches the right contractors</p>
                 <div className="grid grid-cols-2 gap-3">
                   {FOCUS_AREAS.map(area => (
@@ -517,7 +517,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="target_audience">Target Audience (optional)</Label>
+                <Label htmlFor="target_audience">Target Audience</Label>
                 <Textarea
                   id="target_audience"
                   name="target_audience"
@@ -530,7 +530,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="difficulty_level">Reading Level (optional)</Label>
+                <Label htmlFor="difficulty_level">Reading Level</Label>
                 <Select 
                   value={formData.difficulty_level} 
                   onValueChange={(value) => handleSelectChange('difficulty_level', value)}
@@ -567,7 +567,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="writing_inspiration">What influenced you to write this book? (optional)</Label>
+                <Label htmlFor="writing_inspiration">What influenced you to write this book?</Label>
                 <Textarea
                   id="writing_inspiration"
                   name="writing_inspiration"
@@ -580,7 +580,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="problems_addressed">What solutions were you hoping to provide? (optional)</Label>
+                <Label htmlFor="problems_addressed">What solutions were you hoping to provide?</Label>
                 <Textarea
                   id="problems_addressed"
                   name="problems_addressed"
@@ -593,7 +593,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="next_12_18_months">What are you focused on for the next 12-18 months? (optional)</Label>
+                <Label htmlFor="next_12_18_months">What are you focused on for the next 12-18 months?</Label>
                 <Textarea
                   id="next_12_18_months"
                   name="next_12_18_months"
@@ -606,7 +606,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="book_goals">What are you hoping the book helps you accomplish? (optional)</Label>
+                <Label htmlFor="book_goals">What are you hoping the book helps you accomplish?</Label>
                 <Textarea
                   id="book_goals"
                   name="book_goals"
