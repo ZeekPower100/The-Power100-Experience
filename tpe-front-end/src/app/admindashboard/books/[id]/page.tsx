@@ -117,11 +117,11 @@ export default function BookDetailsPage() {
               </div>
             )}
             
-            {book.amazon_link && (
+            {book.amazon_url && (
               <div>
                 <h3 className="font-semibold mb-2">Amazon Link</h3>
-                <a href={book.amazon_link} target="_blank" rel="noopener noreferrer" className="text-power100-red hover:underline">
-                  {book.amazon_link}
+                <a href={book.amazon_url} target="_blank" rel="noopener noreferrer" className="text-power100-red hover:underline">
+                  {book.amazon_url}
                 </a>
               </div>
             )}

@@ -59,7 +59,7 @@ export default function BookOnboardingForm() {
     title: '',
     author: '',
     description: '',
-    amazon_link: '',
+    amazon_url: '',
     focus_areas: [],
     target_revenue: [],
     key_takeaways: [],
@@ -255,11 +255,11 @@ export default function BookOnboardingForm() {
                 </div>
 
                 <div>
-                  <Label htmlFor="amazon_link">Amazon Link</Label>
+                  <Label htmlFor="amazon_url">Amazon Link</Label>
                   <Input
-                    id="amazon_link"
-                    value={formData.amazon_link}
-                    onChange={(e) => handleFieldChange('amazon_link', e.target.value)}
+                    id="amazon_url"
+                    value={formData.amazon_url}
+                    onChange={(e) => handleFieldChange('amazon_url', e.target.value)}
                     placeholder="https://amazon.com/..."
                     className="mt-1"
                   />
