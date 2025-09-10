@@ -135,6 +135,8 @@ export default function BookOnboardingForm() {
         focus_areas_covered: formData.focus_areas?.join(', ') || '',
         target_revenue: formData.target_revenue?.join(', ') || '',
         book_cover_url: formData.book_cover_url,
+        // Remove original array fields to avoid conflicts
+        focus_areas: undefined,
         // Keep original fields
         is_author: submissionType === 'author',
         status: 'pending_review'

@@ -141,11 +141,17 @@ export default function PodcastOnboardingForm() {
       // Map fields to match backend expectations
       const submissionData = {
         ...formData,
+        // Map host fields
+        host_email: formData.submitter_email,
+        host_phone: formData.submitter_phone,
+        host_company: formData.submitter_company,
         // Map array fields to JSON strings
         notable_guests: JSON.stringify(formData.notable_guests || []),
         topics: JSON.stringify(formData.key_topics || []),
         testimonials: JSON.stringify(formData.testimonials || []),
         focus_areas_covered: formData.focus_areas?.join(', ') || '',
+        // Remove original array fields to avoid conflicts
+        key_topics: undefined,
         // Keep original fields
         is_host: submissionType === 'host',
         status: 'pending_review'

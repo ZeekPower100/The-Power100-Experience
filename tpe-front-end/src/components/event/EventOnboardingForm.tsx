@@ -155,6 +155,11 @@ export default function EventOnboardingForm() {
       // Map fields to match backend expectations
       const submissionData = {
         ...formData,
+        // Map organizer fields
+        organizer_name: formData.submitter_name,
+        organizer_email: formData.submitter_email,
+        organizer_phone: formData.submitter_phone,
+        organizer_company: formData.submitter_company,
         // Map field names to what backend expects
         speaker_profiles: JSON.stringify(formData.speakers || []),
         past_attendee_testimonials: JSON.stringify(formData.testimonials || []),
@@ -164,6 +169,9 @@ export default function EventOnboardingForm() {
         expected_attendees: formData.expected_attendance,
         date: formData.start_date,
         registration_deadline: formData.end_date,
+        // Remove original array fields to avoid conflicts
+        speakers: undefined,
+        testimonials: undefined,
         // Keep original fields too for compatibility
         is_organizer: submissionType === 'organizer',
         status: 'pending_review'
