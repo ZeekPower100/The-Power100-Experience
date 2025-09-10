@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
 import { ArrowLeft, Save, BookOpen, User, Building, Quote, Target, Sparkles, X, Upload } from 'lucide-react';
 import { Book } from '@/lib/types/book';
 import LogoManager from '@/components/admin/LogoManager';
@@ -70,6 +71,9 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
     topics: book?.topics || '',
     target_audience: book?.target_audience || '',
     key_takeaways: book?.key_takeaways || '',
+    testimonials: book?.testimonials || '',
+    sample_chapter_link: book?.sample_chapter_link || '',
+    table_of_contents: book?.table_of_contents || '',
     reading_time: book?.reading_time || '',
     difficulty_level: book?.difficulty_level || '',
     
@@ -101,6 +105,23 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
   // Selected focus areas (for multi-select)
   const [selectedFocusAreas, setSelectedFocusAreas] = useState<string[]>(
     book?.focus_areas_covered ? book.focus_areas_covered.split(',').map(f => f.trim()) : []
+  );
+
+  // Key takeaways and testimonials (array fields)
+  const [keyTakeaways, setKeyTakeaways] = useState<string[]>(
+    book?.key_takeaways ? 
+      (typeof book.key_takeaways === 'string' ? 
+        (book.key_takeaways.startsWith('[') ? JSON.parse(book.key_takeaways) : book.key_takeaways.split(',').map(t => t.trim())) : 
+        Array.isArray(book.key_takeaways) ? book.key_takeaways : []
+      ) : []
+  );
+
+  const [testimonials, setTestimonials] = useState<string[]>(
+    book?.testimonials ? 
+      (typeof book.testimonials === 'string' ? 
+        (book.testimonials.startsWith('[') ? JSON.parse(book.testimonials) : book.testimonials.split(',').map(t => t.trim())) : 
+        Array.isArray(book.testimonials) ? book.testimonials : []
+      ) : []
   );
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -144,6 +165,8 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
         ...formData,
         focus_areas_covered: selectedFocusAreas.join(', '),
         key_citations: JSON.stringify(keyCitations.filter(c => c.cited_person)),
+        key_takeaways: JSON.stringify(keyTakeaways.filter(t => t.trim())),
+        testimonials: JSON.stringify(testimonials.filter(t => t.trim())),
         submission_type: submissionType,
         // Set status based on whether it's a draft save or submission
         // If saving as draft, mark as 'draft'
@@ -546,6 +569,28 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
                 </Select>
                 <p className="text-sm text-power100-grey mt-1">Sets proper expectations for readers</p>
               </div>
+
+              <div>
+                <Label>Key Takeaways</Label>
+                <p className="text-sm text-power100-grey mb-2">List the main lessons or insights from your book</p>
+                <SimpleDynamicList
+                  items={keyTakeaways}
+                  onItemsChange={setKeyTakeaways}
+                  placeholder="Enter a key takeaway"
+                  buttonText="Add Takeaway"
+                />
+              </div>
+
+              <div>
+                <Label>Testimonials</Label>
+                <p className="text-sm text-power100-grey mb-2">Add testimonials or endorsements for your book</p>
+                <SimpleDynamicList
+                  items={testimonials}
+                  onItemsChange={setTestimonials}
+                  placeholder="Enter a testimonial"
+                  buttonText="Add Testimonial"
+                />
+              </div>
             </div>
           </div>
         );
@@ -616,6 +661,31 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
                   rows={3}
                 />
                 <p className="text-sm text-power100-grey mt-1">Aligns your goals with contractor success</p>
+              </div>
+
+              <div>
+                <Label htmlFor="sample_chapter_link">Sample Chapter Link</Label>
+                <Input
+                  id="sample_chapter_link"
+                  name="sample_chapter_link"
+                  value={formData.sample_chapter_link}
+                  onChange={handleInputChange}
+                  placeholder="Link to a sample chapter or excerpt"
+                />
+                <p className="text-sm text-power100-grey mt-1">Gives contractors a preview of your content</p>
+              </div>
+
+              <div>
+                <Label htmlFor="table_of_contents">Table of Contents</Label>
+                <Textarea
+                  id="table_of_contents"
+                  name="table_of_contents"
+                  value={formData.table_of_contents}
+                  onChange={handleInputChange}
+                  placeholder="Paste your table of contents here"
+                  rows={4}
+                />
+                <p className="text-sm text-power100-grey mt-1">Helps contractors understand the book's structure</p>
               </div>
             </div>
           </div>

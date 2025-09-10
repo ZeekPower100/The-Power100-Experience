@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
 import { Mic, Headphones, Users, BarChart, Phone, X } from 'lucide-react';
 import { Podcast } from '@/lib/types/podcast';
 import LogoManager from '@/components/admin/LogoManager';
@@ -92,6 +93,31 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
     podcast?.focus_areas_covered ? podcast.focus_areas_covered.split(',').map(f => f.trim()) : []
   );
 
+  // Notable guests and key topics (array fields)
+  const [notableGuests, setNotableGuests] = useState<string[]>(
+    podcast?.notable_guests ? 
+      (typeof podcast.notable_guests === 'string' ? 
+        (podcast.notable_guests.startsWith('[') ? JSON.parse(podcast.notable_guests) : podcast.notable_guests.split(',').map(g => g.trim())) : 
+        Array.isArray(podcast.notable_guests) ? podcast.notable_guests : []
+      ) : []
+  );
+
+  const [keyTopics, setKeyTopics] = useState<string[]>(
+    podcast?.topics ? 
+      (typeof podcast.topics === 'string' ? 
+        (podcast.topics.startsWith('[') ? JSON.parse(podcast.topics) : podcast.topics.split(',').map(t => t.trim())) : 
+        Array.isArray(podcast.topics) ? podcast.topics : []
+      ) : []
+  );
+
+  const [testimonials, setTestimonials] = useState<string[]>(
+    podcast?.testimonials ? 
+      (typeof podcast.testimonials === 'string' ? 
+        (podcast.testimonials.startsWith('[') ? JSON.parse(podcast.testimonials) : podcast.testimonials.split(',').map(t => t.trim())) : 
+        Array.isArray(podcast.testimonials) ? podcast.testimonials : []
+      ) : []
+  );
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -118,6 +144,9 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
       const dataToSubmit = {
         ...formData,
         focus_areas_covered: selectedFocusAreas.join(', '),
+        notable_guests: JSON.stringify(notableGuests.filter(g => g.trim())),
+        topics: JSON.stringify(keyTopics.filter(t => t.trim())),
+        testimonials: JSON.stringify(testimonials.filter(t => t.trim())),
         submission_type: submissionType,
         // Set status based on whether it's a draft save or submission
         // If saving as draft, mark as 'draft'
@@ -413,29 +442,36 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
-                <Label htmlFor="topics">Key Topics Covered</Label>
-                <Textarea
-                  id="topics"
-                  name="topics"
-                  value={formData.topics}
-                  onChange={handleInputChange}
-                  placeholder="List the main topics you regularly discuss"
-                  rows={3}
+                <Label>Key Topics Covered</Label>
+                <p className="text-sm text-power100-grey mb-2">List the main topics you regularly discuss</p>
+                <SimpleDynamicList
+                  items={keyTopics}
+                  onItemsChange={setKeyTopics}
+                  placeholder="Enter a key topic"
+                  buttonText="Add Topic"
                 />
-                <p className="text-sm text-power100-grey mt-1">Specific topics help contractors find relevant episodes</p>
               </div>
 
               <div>
-                <Label htmlFor="notable_guests">Notable Past Guests</Label>
-                <Textarea
-                  id="notable_guests"
-                  name="notable_guests"
-                  value={formData.notable_guests}
-                  onChange={handleInputChange}
-                  placeholder="List any notable industry leaders or successful contractors you've interviewed"
-                  rows={2}
+                <Label>Notable Past Guests</Label>
+                <p className="text-sm text-power100-grey mb-2">List notable industry leaders or successful contractors you've interviewed</p>
+                <SimpleDynamicList
+                  items={notableGuests}
+                  onItemsChange={setNotableGuests}
+                  placeholder="Enter guest name and episode"
+                  buttonText="Add Guest"
                 />
-                <p className="text-sm text-power100-grey mt-1">Social proof increases listener interest</p>
+              </div>
+
+              <div>
+                <Label>Testimonials</Label>
+                <p className="text-sm text-power100-grey mb-2">Add testimonials from listeners or guests</p>
+                <SimpleDynamicList
+                  items={testimonials}
+                  onItemsChange={setTestimonials}
+                  placeholder="Enter a testimonial"
+                  buttonText="Add Testimonial"
+                />
               </div>
             </div>
           </div>

@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
 import { Calendar, MapPin, Users, DollarSign, Phone, X } from 'lucide-react';
 import { Event } from '@/lib/types/event';
 import LogoManager from '@/components/admin/LogoManager';
@@ -85,6 +86,31 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
     event?.focus_areas_covered ? event.focus_areas_covered.split(',').map(f => f.trim()) : []
   );
 
+  // Dynamic list fields
+  const [speakers, setSpeakers] = useState<string[]>(
+    event?.speaker_profiles ? 
+      (typeof event.speaker_profiles === 'string' ? 
+        (event.speaker_profiles.startsWith('[') ? JSON.parse(event.speaker_profiles) : event.speaker_profiles.split(',').map(s => s.trim())) : 
+        Array.isArray(event.speaker_profiles) ? event.speaker_profiles : []
+      ) : []
+  );
+
+  const [agendaHighlights, setAgendaHighlights] = useState<string[]>(
+    event?.agenda_highlights ? 
+      (typeof event.agenda_highlights === 'string' ? 
+        (event.agenda_highlights.startsWith('[') ? JSON.parse(event.agenda_highlights) : event.agenda_highlights.split(',').map(a => a.trim())) : 
+        Array.isArray(event.agenda_highlights) ? event.agenda_highlights : []
+      ) : []
+  );
+
+  const [testimonials, setTestimonials] = useState<string[]>(
+    event?.past_attendee_testimonials ? 
+      (typeof event.past_attendee_testimonials === 'string' ? 
+        (event.past_attendee_testimonials.startsWith('[') ? JSON.parse(event.past_attendee_testimonials) : event.past_attendee_testimonials.split(',').map(t => t.trim())) : 
+        Array.isArray(event.past_attendee_testimonials) ? event.past_attendee_testimonials : []
+      ) : []
+  );
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -111,6 +137,9 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
       const dataToSubmit = {
         ...formData,
         focus_areas_covered: selectedFocusAreas.join(', '),
+        speaker_profiles: JSON.stringify(speakers.filter(s => s.trim())),
+        agenda_highlights: JSON.stringify(agendaHighlights.filter(a => a.trim())),
+        past_attendee_testimonials: JSON.stringify(testimonials.filter(t => t.trim())),
         submission_type: submissionType,
         // Set status based on whether it's a draft save or submission
         // If saving as draft, mark as 'draft'
@@ -435,6 +464,39 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
                   rows={3}
                 />
                 <p className="text-sm text-power100-grey mt-1">Specific topics help contractors evaluate relevance</p>
+              </div>
+
+              <div>
+                <Label>Speakers & Presenters</Label>
+                <p className="text-sm text-power100-grey mb-2">List notable speakers or presenters</p>
+                <SimpleDynamicList
+                  items={speakers}
+                  onItemsChange={setSpeakers}
+                  placeholder="Enter speaker name and title"
+                  buttonText="Add Speaker"
+                />
+              </div>
+
+              <div>
+                <Label>Agenda Highlights</Label>
+                <p className="text-sm text-power100-grey mb-2">List key sessions or agenda items</p>
+                <SimpleDynamicList
+                  items={agendaHighlights}
+                  onItemsChange={setAgendaHighlights}
+                  placeholder="Enter agenda highlight"
+                  buttonText="Add Highlight"
+                />
+              </div>
+
+              <div>
+                <Label>Past Attendee Testimonials</Label>
+                <p className="text-sm text-power100-grey mb-2">Add testimonials from past attendees</p>
+                <SimpleDynamicList
+                  items={testimonials}
+                  onItemsChange={setTestimonials}
+                  placeholder="Enter testimonial"
+                  buttonText="Add Testimonial"
+                />
               </div>
             </div>
           </div>
