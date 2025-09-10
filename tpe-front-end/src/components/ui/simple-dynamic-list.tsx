@@ -7,27 +7,35 @@ import { Input } from '@/components/ui/input';
 
 interface SimpleDynamicListProps {
   items: string[];
-  onChange: (items: string[]) => void;
+  onChange?: (items: string[]) => void;
+  onItemsChange?: (items: string[]) => void;  // Support both prop names
   placeholder?: string;
   className?: string;
   disabled?: boolean;
   addButtonText?: string;
+  buttonText?: string;  // Support both prop names
 }
 
 export const SimpleDynamicList: React.FC<SimpleDynamicListProps> = ({
   items = [],
   onChange,
+  onItemsChange,  // Support both prop names
   placeholder = "Enter item...",
   className = "",
   disabled = false,
-  addButtonText = "Add Item"
+  addButtonText,
+  buttonText  // Support both prop names
 }) => {
+  // Use whichever callback is provided
+  const handleChange = onChange || onItemsChange || (() => {});
+  // Use whichever button text is provided
+  const buttonLabel = addButtonText || buttonText || "Add Item";
   const [isAdding, setIsAdding] = useState(false);
   const [newItem, setNewItem] = useState('');
 
   const handleAddItem = () => {
     if (newItem.trim()) {
-      onChange([...items, newItem.trim()]);
+      handleChange([...items, newItem.trim()]);
       setNewItem('');
       setIsAdding(false);
     }
@@ -35,14 +43,14 @@ export const SimpleDynamicList: React.FC<SimpleDynamicListProps> = ({
 
   const handleRemoveItem = (index: number) => {
     const updated = items.filter((_, i) => i !== index);
-    onChange(updated);
+    handleChange(updated);
   };
 
   const handleUpdateItem = (index: number, value: string) => {
     const updated = items.map((item, i) => 
       i === index ? value : item
     );
-    onChange(updated);
+    handleChange(updated);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -122,7 +130,7 @@ export const SimpleDynamicList: React.FC<SimpleDynamicListProps> = ({
           className="w-full border-dashed border-2 h-10 text-muted-foreground hover:text-foreground"
         >
           <Plus className="h-4 w-4 mr-2" />
-          {items.length === 0 ? addButtonText : `Add Another`}
+          {items.length === 0 ? buttonLabel : `Add Another`}
         </Button>
       )}
 
