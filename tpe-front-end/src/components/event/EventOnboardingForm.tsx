@@ -152,9 +152,19 @@ export default function EventOnboardingForm() {
     setError(null);
 
     try {
-      // Set submission type
+      // Map fields to match backend expectations
       const submissionData = {
         ...formData,
+        // Map field names to what backend expects
+        speaker_profiles: JSON.stringify(formData.speakers || []),
+        past_attendee_testimonials: JSON.stringify(formData.testimonials || []),
+        agenda_highlights: JSON.stringify(formData.agenda_highlights || []),
+        focus_areas_covered: formData.focus_areas?.join(', ') || '',
+        logo_url: formData.event_image_url,
+        expected_attendees: formData.expected_attendance,
+        date: formData.start_date,
+        registration_deadline: formData.end_date,
+        // Keep original fields too for compatibility
         is_organizer: submissionType === 'organizer',
         status: 'pending_review'
       };

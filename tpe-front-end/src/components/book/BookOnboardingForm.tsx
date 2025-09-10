@@ -126,9 +126,16 @@ export default function BookOnboardingForm() {
     setError(null);
 
     try {
-      // Set submission type
+      // Map fields to match backend expectations
       const submissionData = {
         ...formData,
+        // Map array fields to JSON strings
+        key_takeaways: JSON.stringify(formData.key_takeaways || []),
+        testimonials: JSON.stringify(formData.testimonials || []),
+        focus_areas_covered: formData.focus_areas?.join(', ') || '',
+        target_revenue: formData.target_revenue?.join(', ') || '',
+        book_cover_url: formData.book_cover_url,
+        // Keep original fields
         is_author: submissionType === 'author',
         status: 'pending_review'
       };
