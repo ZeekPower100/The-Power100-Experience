@@ -465,66 +465,6 @@ export const podcastApi = {
   approve: (id: string) => apiRequest(`/podcasts/${id}/approve`, { method: 'PUT' })
 };
 
-// AI Tracking API
-export const aiTrackingApi = {
-  // Track engagement event
-  trackEvent: (contractorId: string, data: any) => 
-    apiRequest(`/ai-tracking/contractors/${contractorId}/events`, {
-      method: 'POST',
-      body: JSON.stringify(data)
-    }),
-  
-  // Track bulk events
-  trackBulkEvents: (contractorId: string, events: any[]) =>
-    apiRequest(`/ai-tracking/contractors/${contractorId}/events/bulk`, {
-      method: 'POST',
-      body: JSON.stringify({ events })
-    }),
-  
-  // Get contractor AI profile
-  getContractorAIProfile: (contractorId: string) =>
-    apiRequest(`/ai-tracking/contractors/${contractorId}/ai-profile`),
-  
-  // Get engagement analytics
-  getEngagementAnalytics: (contractorId: string, days: number = 7) =>
-    apiRequest(`/ai-tracking/contractors/${contractorId}/analytics?days=${days}`),
-  
-  // Get at-risk contractors
-  getAtRiskContractors: () =>
-    apiRequest('/ai-tracking/analytics/at-risk'),
-  
-  // Get power users
-  getPowerUsers: () =>
-    apiRequest('/ai-tracking/analytics/power-users'),
-  
-  // Update preferences
-  updatePreferences: (contractorId: string, preferences: any) =>
-    apiRequest(`/ai-tracking/contractors/${contractorId}/preferences`, {
-      method: 'PATCH',
-      body: JSON.stringify(preferences)
-    }),
-  
-  // Track business goals
-  trackBusinessGoals: (contractorId: string, goals: any[]) =>
-    apiRequest(`/ai-tracking/contractors/${contractorId}/goals`, {
-      method: 'POST',
-      body: JSON.stringify({ goals })
-    }),
-  
-  // Track challenges
-  trackChallenges: (contractorId: string, challenges: any[]) =>
-    apiRequest(`/ai-tracking/contractors/${contractorId}/challenges`, {
-      method: 'POST',
-      body: JSON.stringify({ challenges })
-    }),
-  
-  // Track recommendation
-  trackRecommendation: (contractorId: string, data: any) =>
-    apiRequest(`/ai-tracking/contractors/${contractorId}/recommendations`, {
-      method: 'POST',
-      body: JSON.stringify(data)
-    })
-};
 
 // Event API
 export const eventApi = {

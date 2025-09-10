@@ -147,9 +147,6 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/books', bookRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/podcasts', podcastRoutes);
-// Phase 2 AI routes - DO NOT UNCOMMENT until Phase 2 deployment
-// app.use('/api/tagging', require('./routes/taggingRoutes'));
-// app.use('/api/ai-tracking', require('./routes/aiTrackingRoutes'));
 
 // 404 handler
 app.use((req, res) => {
