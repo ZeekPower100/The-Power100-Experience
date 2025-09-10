@@ -4,6 +4,8 @@ import React, { createContext, useContext, useReducer, useEffect, ReactNode } fr
 import { Contractor } from '@/lib/types/contractor';
 import { StrategicPartner } from '@/lib/types/strategic_partner';
 import SessionService from '@/lib/sessionService';
+// Phase 2: AI tracking
+// import { AIEventTracker } from '@/lib/aiEventTracking';
 
 // State types
 interface ContractorFlowState {
@@ -41,9 +43,21 @@ const initialState: ContractorFlowState = {
 function contractorFlowReducer(state: ContractorFlowState, action: ContractorFlowAction): ContractorFlowState {
   switch (action.type) {
     case 'SET_STEP':
+      // Phase 2: AI tracking will go here
+      // if (state.contractor?.id) {
+      //   AIEventTracker.trackPageView(`contractor_flow_step_${action.payload}`, {
+      //     previous_step: state.currentStep,
+      //     new_step: action.payload
+      //   });
+      // }
       return { ...state, currentStep: action.payload };
     
     case 'SET_CONTRACTOR':
+      // Phase 2: Initialize AI tracking when contractor is set
+      // if (action.payload?.id) {
+      //   AIEventTracker.setContractorId(action.payload.id.toString());
+      //   AIEventTracker.trackPageView('contractor_flow_start');
+      // }
       return { ...state, contractor: action.payload };
     
     case 'UPDATE_CONTRACTOR':
