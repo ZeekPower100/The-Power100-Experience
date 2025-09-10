@@ -15,6 +15,45 @@ exports.getAllPodcasts = async (req, res) => {
   }
 };
 
+// Get pending podcasts
+exports.getPendingPodcasts = async (req, res) => {
+  try {
+    const query = `
+      SELECT * FROM podcasts 
+      WHERE status = 'pending_review'
+      ORDER BY created_at DESC
+    `;
+    const result = await db.query(query);
+    res.json({ podcasts: result.rows });
+  } catch (error) {
+    console.error('Error fetching pending podcasts:', error);
+    res.status(500).json({ error: 'Failed to fetch pending podcasts' });
+  }
+};
+
+// Approve podcast
+exports.approvePodcast = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const query = `
+      UPDATE podcasts 
+      SET status = 'approved'
+      WHERE id = $1
+      RETURNING *
+    `;
+    const result = await db.query(query, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Podcast not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error approving podcast:', error);
+    res.status(500).json({ error: 'Failed to approve podcast' });
+  }
+};
+
 // Get single podcast
 exports.getPodcast = async (req, res) => {
   try {

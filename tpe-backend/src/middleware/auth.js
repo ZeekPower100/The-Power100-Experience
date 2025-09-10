@@ -16,7 +16,8 @@ const protect = async (req, res, next) => {
     token = req.cookies.token;
   }
 
-  console.log('🔐 Auth check - Token present:', !!token, 'Path:', req.path, 'Method:', req.method);
+  // Uncomment for debugging auth issues
+  // console.log('🔐 Auth check - Token present:', !!token, 'Path:', req.path, 'Method:', req.method);
 
   if (!token) {
     return next(new AppError('Not authorized to access this route', 401));
@@ -83,7 +84,7 @@ const optionalAuth = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const result = await query(
-      'SELECT id, email, full_name, is_active FROM admin_users WHERE id = $1 AND is_active = true',
+      'SELECT id, email, name as full_name, is_active FROM admin_users WHERE id = $1 AND is_active = true',
       [decoded.id]
     );
 

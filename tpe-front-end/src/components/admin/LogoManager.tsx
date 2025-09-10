@@ -95,16 +95,21 @@ export default function LogoManager({
     setUploadProgress(0);
 
     try {
-      // Get auth token
+      // Get auth token (optional - upload works without it for public forms)
       const token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
       
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const baseUrl = apiUrl.endsWith('/api') ? apiUrl.replace('/api', '') : apiUrl;
+      
+      // Build headers object conditionally
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch(`${baseUrl}/api/upload/logo`, {
         method: 'POST',
-        headers: {
-          'Authorization': token ? `Bearer ${token}` : '',
-        },
+        headers,
         body: formData,
       });
 

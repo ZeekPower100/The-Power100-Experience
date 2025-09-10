@@ -15,6 +15,45 @@ exports.getAllBooks = async (req, res) => {
   }
 };
 
+// Get pending books
+exports.getPendingBooks = async (req, res) => {
+  try {
+    const query = `
+      SELECT * FROM books 
+      WHERE status = 'pending_review'
+      ORDER BY created_at DESC
+    `;
+    const result = await db.query(query);
+    res.json({ books: result.rows });
+  } catch (error) {
+    console.error('Error fetching pending books:', error);
+    res.status(500).json({ error: 'Failed to fetch pending books' });
+  }
+};
+
+// Approve book
+exports.approveBook = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const query = `
+      UPDATE books 
+      SET status = 'approved'
+      WHERE id = $1
+      RETURNING *
+    `;
+    const result = await db.query(query, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Book not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error approving book:', error);
+    res.status(500).json({ error: 'Failed to approve book' });
+  }
+};
+
 // Get single book
 exports.getBook = async (req, res) => {
   try {

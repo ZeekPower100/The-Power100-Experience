@@ -15,6 +15,45 @@ exports.getAllEvents = async (req, res) => {
   }
 };
 
+// Get pending events
+exports.getPendingEvents = async (req, res) => {
+  try {
+    const query = `
+      SELECT * FROM events 
+      WHERE status = 'pending_review'
+      ORDER BY created_at DESC
+    `;
+    const result = await db.query(query);
+    res.json({ events: result.rows });
+  } catch (error) {
+    console.error('Error fetching pending events:', error);
+    res.status(500).json({ error: 'Failed to fetch pending events' });
+  }
+};
+
+// Approve event
+exports.approveEvent = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const query = `
+      UPDATE events 
+      SET status = 'approved'
+      WHERE id = $1
+      RETURNING *
+    `;
+    const result = await db.query(query, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error approving event:', error);
+    res.status(500).json({ error: 'Failed to approve event' });
+  }
+};
+
 // Get single event
 exports.getEvent = async (req, res) => {
   try {

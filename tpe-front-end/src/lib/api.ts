@@ -58,8 +58,9 @@ async function apiRequest<T>(
   }
 
   try {
-    console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
-    console.log(`📡 Auth token: ${config.headers?.['Authorization'] ? 'Present' : 'Missing'}`);
+    // Uncomment for debugging API requests
+    // console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
+    // console.log(`📡 Auth token: ${config.headers?.['Authorization'] ? 'Present' : 'Missing'}`);
     
     const response = await fetch(url, config);
     
@@ -382,4 +383,185 @@ export const apiUtils = {
   isAuthenticated: () => {
     return !!localStorage.getItem('authToken');
   },
+};
+
+// Book API
+export const bookApi = {
+  // Get all books
+  getAll: () => apiRequest('/books'),
+  
+  // Get pending books
+  getPending: () => apiRequest('/books/pending'),
+  
+  // Get single book
+  get: (id: string) => apiRequest(`/books/${id}`),
+  
+  // Create book (public submission - no auth)
+  create: (data: any) => {
+    // Make direct fetch without auth for public submission
+    const url = `${API_BASE_URL}/books/submit`;
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    }).then(res => {
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      return res.json();
+    });
+  },
+  
+  // Update book
+  update: (id: string, data: any) => apiRequest(`/books/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  
+  // Delete book
+  delete: (id: string) => apiRequest(`/books/${id}`, { method: 'DELETE' }),
+  
+  // Approve book
+  approve: (id: string) => apiRequest(`/books/${id}/approve`, { method: 'PUT' })
+};
+
+// Podcast API
+export const podcastApi = {
+  // Get all podcasts
+  getAll: () => apiRequest('/podcasts'),
+  
+  // Get pending podcasts
+  getPending: () => apiRequest('/podcasts/pending'),
+  
+  // Get single podcast
+  get: (id: string) => apiRequest(`/podcasts/${id}`),
+  
+  // Create podcast (public submission - no auth)
+  create: (data: any) => {
+    // Make direct fetch without auth for public submission
+    const url = `${API_BASE_URL}/podcasts/submit`;
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    }).then(res => {
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      return res.json();
+    });
+  },
+  
+  // Update podcast
+  update: (id: string, data: any) => apiRequest(`/podcasts/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  
+  // Delete podcast
+  delete: (id: string) => apiRequest(`/podcasts/${id}`, { method: 'DELETE' }),
+  
+  // Approve podcast
+  approve: (id: string) => apiRequest(`/podcasts/${id}/approve`, { method: 'PUT' })
+};
+
+// AI Tracking API
+export const aiTrackingApi = {
+  // Track engagement event
+  trackEvent: (contractorId: string, data: any) => 
+    apiRequest(`/ai-tracking/contractors/${contractorId}/events`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    }),
+  
+  // Track bulk events
+  trackBulkEvents: (contractorId: string, events: any[]) =>
+    apiRequest(`/ai-tracking/contractors/${contractorId}/events/bulk`, {
+      method: 'POST',
+      body: JSON.stringify({ events })
+    }),
+  
+  // Get contractor AI profile
+  getContractorAIProfile: (contractorId: string) =>
+    apiRequest(`/ai-tracking/contractors/${contractorId}/ai-profile`),
+  
+  // Get engagement analytics
+  getEngagementAnalytics: (contractorId: string, days: number = 7) =>
+    apiRequest(`/ai-tracking/contractors/${contractorId}/analytics?days=${days}`),
+  
+  // Get at-risk contractors
+  getAtRiskContractors: () =>
+    apiRequest('/ai-tracking/analytics/at-risk'),
+  
+  // Get power users
+  getPowerUsers: () =>
+    apiRequest('/ai-tracking/analytics/power-users'),
+  
+  // Update preferences
+  updatePreferences: (contractorId: string, preferences: any) =>
+    apiRequest(`/ai-tracking/contractors/${contractorId}/preferences`, {
+      method: 'PATCH',
+      body: JSON.stringify(preferences)
+    }),
+  
+  // Track business goals
+  trackBusinessGoals: (contractorId: string, goals: any[]) =>
+    apiRequest(`/ai-tracking/contractors/${contractorId}/goals`, {
+      method: 'POST',
+      body: JSON.stringify({ goals })
+    }),
+  
+  // Track challenges
+  trackChallenges: (contractorId: string, challenges: any[]) =>
+    apiRequest(`/ai-tracking/contractors/${contractorId}/challenges`, {
+      method: 'POST',
+      body: JSON.stringify({ challenges })
+    }),
+  
+  // Track recommendation
+  trackRecommendation: (contractorId: string, data: any) =>
+    apiRequest(`/ai-tracking/contractors/${contractorId}/recommendations`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    })
+};
+
+// Event API
+export const eventApi = {
+  // Get all events
+  getAll: () => apiRequest('/events'),
+  
+  // Get pending events
+  getPending: () => apiRequest('/events/pending'),
+  
+  // Get single event
+  get: (id: string) => apiRequest(`/events/${id}`),
+  
+  // Create event (public submission - no auth)
+  create: (data: any) => {
+    // Make direct fetch without auth for public submission
+    const url = `${API_BASE_URL}/events/submit`;
+    return fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data)
+    }).then(res => {
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+      return res.json();
+    });
+  },
+  
+  // Update event
+  update: (id: string, data: any) => apiRequest(`/events/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(data)
+  }),
+  
+  // Delete event
+  delete: (id: string) => apiRequest(`/events/${id}`, { method: 'DELETE' }),
+  
+  // Approve event
+  approve: (id: string) => apiRequest(`/events/${id}/approve`, { method: 'PUT' })
 };

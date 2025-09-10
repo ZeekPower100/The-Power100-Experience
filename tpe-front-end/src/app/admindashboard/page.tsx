@@ -21,10 +21,11 @@ import {
   MessageSquare,
   Shield,
   BookOpen as BookOpenIcon,
-  Mic as MicIcon
+  Mic as MicIcon,
+  Brain
 } from "lucide-react";
 import { motion } from "framer-motion";
-import PendingPartners from "@/components/admin/PendingPartners";
+import PendingResourcesTabs from "@/components/admin/PendingResourcesTabs";
 
 interface DashboardStats {
   contractors: {
@@ -85,17 +86,21 @@ export default function AdminDashboard() {
     
     if (token) {
       try {
-        const user = await authApi.getMe();
-        // Verify this is actually an admin user by checking the response
-        // Admin users will have an email and no error
-        if (user && user.email && !user.error && !user.message?.includes('not found')) {
+        const response = await authApi.getMe();
+        
+        // The API returns { success: true, user: {...} }
+        if (response && response.success && response.user && response.user.email) {
+          setIsAuthenticated(true);
+          loadDashboardData();
+        } else if (response && response.user && response.user.email) {
+          // Handle case where success flag might be missing but user data is valid
           setIsAuthenticated(true);
           loadDashboardData();
         } else {
           // Not a valid admin token - could be partner/contractor token
           // Only clear if we're sure it's invalid
           const timestamp = localStorage.getItem('authTokenTimestamp');
-          if (!timestamp || user.message?.includes('not found')) {
+          if (!timestamp || response?.error || response?.message?.includes('not found')) {
             // This is either not an admin token or an expired one
             localStorage.removeItem('authToken');
             localStorage.removeItem('authTokenTimestamp');
@@ -532,9 +537,9 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Pending Partners Section */}
+        {/* Pending Resources Section */}
         <div className="mb-8">
-          <PendingPartners />
+          <PendingResourcesTabs />
         </div>
 
         {/* Main Content Grid */}
@@ -638,6 +643,12 @@ export default function AdminDashboard() {
                   <Button variant="outline" className="w-full justify-start h-11">
                     <MessageSquare className="w-4 h-4 mr-2" />
                     PowerConfidence
+                  </Button>
+                </Link>
+                <Link href="/admindashboard/ai-insights" className="block">
+                  <Button variant="outline" className="w-full justify-start h-11">
+                    <Brain className="w-4 h-4 mr-2" />
+                    AI Insights
                   </Button>
                 </Link>
               </CardContent>

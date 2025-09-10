@@ -3,17 +3,23 @@ const router = express.Router();
 const eventController = require('../controllers/eventController');
 const { protect } = require('../middleware/auth');
 
-// All event routes require authentication
+// Public routes (for submissions)
+router.post('/submit', eventController.createEvent);
+
+// Protected routes
 router.use(protect);
+
+// Get pending events (must come before /:id)
+router.get('/pending', eventController.getPendingEvents);
 
 // Get all events
 router.get('/', eventController.getAllEvents);
 
+// Approve event
+router.put('/:id/approve', eventController.approveEvent);
+
 // Get single event
 router.get('/:id', eventController.getEvent);
-
-// Create new event
-router.post('/', eventController.createEvent);
 
 // Update event
 router.put('/:id', eventController.updateEvent);
