@@ -1,6 +1,8 @@
 /**
- * JSON Helper Utilities
- * Prevents 90% of JSON parsing errors in the application
+ * JSON Helper Utilities for Backend
+ * Prevents JSON parsing errors and provides safe fallbacks
+ * 
+ * This is the JavaScript version for Node.js backend
  */
 
 /**
@@ -9,36 +11,42 @@
  */
 function safeJsonParse(data, fallback = null) {
   try {
-    // Category 4: Check if data exists
+    // Check if data exists
     if (data === null || data === undefined || data === '') {
       return fallback;
     }
     
-    // Category 3: Check if already parsed (is an object/array)
+    // Check if already parsed (is an object/array)
     if (typeof data === 'object') {
       return data;
     }
     
-    // Category 2: Only parse strings
+    // Only parse strings
     if (typeof data === 'string') {
       // Handle special case: "[object Object]" string
       if (data === '[object Object]') {
         return fallback;
       }
       
-      // Handle boolean strings that sometimes come from forms
+      // Handle boolean strings
       if (data === 'true') return true;
       if (data === 'false') return false;
       
-      // Try to parse
+      // Handle comma-separated values that aren't JSON
+      if (!data.startsWith('[') && !data.startsWith('{') && data.includes(',')) {
+        // Return as array of trimmed values
+        return data.split(',').map(item => item.trim());
+      }
+      
+      // Try to parse as JSON
       return JSON.parse(data);
     }
     
     // If it's not a string or object, return as-is
     return data;
   } catch (error) {
-    // Category 1: Catches malformed JSON
-    console.error('JSON Parse Error:', error.message, 'Data:', data?.substring?.(0, 100));
+    console.error('JSON Parse Error:', error.message, 'Data preview:', 
+                  typeof data === 'string' ? data.substring(0, 100) : 'non-string');
     return fallback;
   }
 }
@@ -74,15 +82,40 @@ function safeJsonStringify(data, fallback = '{}') {
 }
 
 /**
+ * Handle API response with proper JSON parsing
+ * For backend, this is typically used with fetch responses
+ */
+async function handleApiResponse(response) {
+  try {
+    // Check response exists
+    if (!response) return null;
+    
+    // For backend, check if response has json method
+    if (typeof response.json === 'function') {
+      const text = await response.text();
+      return safeJsonParse(text, null);
+    }
+    
+    // If it's already data, parse it safely
+    return safeJsonParse(response, null);
+  } catch (error) {
+    console.error('Response parsing failed:', error);
+    return null;
+  }
+}
+
+/**
  * Parse JSON fields from database records
- * Common for contractor/partner JSON fields
+ * Common for handling JSON columns from PostgreSQL
  */
 function parseJsonFields(record, jsonFields = []) {
+  if (!record) return record;
+  
   const parsed = { ...record };
   
   for (const field of jsonFields) {
     if (field in parsed) {
-      parsed[field] = safeJsonParse(parsed[field], Array.isArray(parsed[field]) ? [] : {});
+      parsed[field] = safeJsonParse(parsed[field], Array.isArray(parsed[field]) ? [] : null);
     }
   }
   
@@ -90,66 +123,59 @@ function parseJsonFields(record, jsonFields = []) {
 }
 
 /**
- * Prepare JSON fields for database storage
+ * Validate and parse array fields
+ * Ensures data is always an array
  */
-function stringifyJsonFields(record, jsonFields = []) {
-  const prepared = { ...record };
+function ensureArray(data) {
+  // Already an array
+  if (Array.isArray(data)) return data;
   
-  for (const field of jsonFields) {
-    if (field in prepared && prepared[field] !== null) {
-      prepared[field] = safeJsonStringify(prepared[field]);
+  // Null/undefined/empty
+  if (!data || data === null || data === undefined || data === '') return [];
+  
+  // String that looks like JSON array
+  if (typeof data === 'string') {
+    if (data.startsWith('[')) {
+      return safeJsonParse(data, []);
     }
+    // Comma-separated string
+    if (data.includes(',')) {
+      return data.split(',').map(item => item.trim());
+    }
+    // Single value
+    return [data];
   }
   
-  return prepared;
+  // Wrap single item in array
+  return [data];
 }
 
 /**
- * Common JSON fields in our database
+ * Safe JSON parsing for request body
+ * Commonly used in Express middleware
  */
-const CONTRACTOR_JSON_FIELDS = [
-  'focus_areas',
-  'readiness_indicators',
-  'tech_stack',
-  'ai_preferences',
-  'communication_preferences',
-  'learning_preferences'
-];
-
-const PARTNER_JSON_FIELDS = [
-  'focus_areas_served',
-  'target_revenue_range',
-  'geographic_regions',
-  'service_categories',
-  'manufacturer_partners',
-  'testimonials'
-];
-
-/**
- * Validate JSON structure against expected schema
- */
-function validateJsonStructure(data, expectedType = 'array') {
-  const parsed = safeJsonParse(data, null);
+function parseRequestBody(body) {
+  if (!body) return {};
   
-  if (parsed === null) return false;
-  
-  if (expectedType === 'array') {
-    return Array.isArray(parsed);
+  // If it's a string, try to parse it
+  if (typeof body === 'string') {
+    return safeJsonParse(body, {});
   }
   
-  if (expectedType === 'object') {
-    return typeof parsed === 'object' && !Array.isArray(parsed);
-  }
-  
-  return true;
+  // Already an object
+  return body;
 }
 
+// For CommonJS compatibility (Node.js)
 module.exports = {
   safeJsonParse,
   safeJsonStringify,
+  handleApiResponse,
   parseJsonFields,
-  stringifyJsonFields,
-  validateJsonStructure,
-  CONTRACTOR_JSON_FIELDS,
-  PARTNER_JSON_FIELDS
+  ensureArray,
+  parseRequestBody,
+  
+  // Compatibility aliases for migration
+  getFromStorage: safeJsonParse,  // Backend doesn't use localStorage
+  setToStorage: safeJsonStringify  // But migration script might add these
 };

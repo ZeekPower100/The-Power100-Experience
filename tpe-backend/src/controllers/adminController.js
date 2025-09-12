@@ -1,3 +1,5 @@
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../utils/jsonHelpers';
+
 const { query } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
 
@@ -235,7 +237,7 @@ const convertToCSV = (data) => {
         return `"${value.join('; ')}"`;
       }
       if (typeof value === 'object' && value !== null) {
-        return `"${JSON.stringify(value)}"`;
+        return `"${safeJsonStringify(value)}"`;
       }
       // Escape quotes and handle commas
       return `"${String(value || '').replace(/"/g, '""')}"`;
