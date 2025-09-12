@@ -46,6 +46,14 @@ export default function EventsPage() {
       
       if (response.ok) {
         const data = await response.json();
+        console.log('Fetched events data:', data);
+        if (data.length > 0) {
+          console.log('First event date fields:', {
+            date: data[0].date,
+            end_date: data[0].end_date,
+            registration_deadline: data[0].registration_deadline
+          });
+        }
         setEvents(data);
       } else {
         console.error('Failed to fetch events:', response.status);
@@ -206,10 +214,10 @@ export default function EventsPage() {
                         <p className="text-sm text-gray-600">{event.location}</p>
                       </div>
                     )}
-                    {event.expected_attendees && (
+                    {event.expected_attendance && (
                       <div className="flex items-center gap-2">
                         <Users className="h-3 w-3 text-power100-grey" />
-                        <p className="text-sm text-gray-600">{event.expected_attendees} attendees</p>
+                        <p className="text-sm text-gray-600">{event.expected_attendance} attendees</p>
                       </div>
                     )}
                     {event.format && (

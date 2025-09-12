@@ -10,7 +10,7 @@ export interface Event {
   location?: string;
   format?: string;
   description?: string;
-  expected_attendees?: string;
+  expected_attendance?: string;
   website?: string;
   logo_url?: string;
   

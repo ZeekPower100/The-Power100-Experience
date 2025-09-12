@@ -158,7 +158,7 @@ const matchEvent = async (contractor) => {
           location: event.location || "Virtual",
           format: event.format || "Hybrid",
           description: event.description || "Premier contractor event",
-          attendees: event.expected_attendees || "500+ contractors",
+          attendees: event.expected_attendance || "500+ contractors",
           website: event.website || "#",
           matchReasons: generateEventMatchReasons(contractor, event, focusAreasCovered)
         };

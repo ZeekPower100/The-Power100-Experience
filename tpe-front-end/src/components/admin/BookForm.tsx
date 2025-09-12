@@ -78,11 +78,18 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
     difficulty_level: book?.difficulty_level || '',
     
     // Author's Story
-    writing_inspiration: book?.writing_inspiration || '',
-    problems_addressed: book?.problems_addressed || '',
-    next_12_18_months: book?.next_12_18_months || '',
+    writing_influence: book?.writing_influence || '',
+    intended_solutions: book?.intended_solutions || '',
+    author_next_focus: book?.author_next_focus || '',
     book_goals: book?.book_goals || '',
     author_availability: book?.author_availability || '',
+    
+    // Submitter Information
+    submitter_name: book?.submitter_name || '',
+    submitter_email: book?.submitter_email || '',
+    submitter_phone: book?.submitter_phone || '',
+    submitter_company: book?.submitter_company || '',
+    is_author: book?.is_author || false,
     
     // Additional URLs
     barnes_noble_url: book?.barnes_noble_url || '',
@@ -340,6 +347,68 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
                 >
                   Author
                 </Button>
+              </div>
+            </div>
+
+            {/* Submitter Information Section */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+              <h3 className="font-semibold mb-3">Submitter Information</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="submitter_name">Submitter Name</Label>
+                  <Input
+                    id="submitter_name"
+                    name="submitter_name"
+                    value={formData.submitter_name}
+                    onChange={handleInputChange}
+                    placeholder="Your name"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="submitter_email">Submitter Email</Label>
+                  <Input
+                    id="submitter_email"
+                    name="submitter_email"
+                    type="email"
+                    value={formData.submitter_email}
+                    onChange={handleInputChange}
+                    placeholder="your@email.com"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="submitter_phone">Submitter Phone</Label>
+                  <Input
+                    id="submitter_phone"
+                    name="submitter_phone"
+                    value={formData.submitter_phone}
+                    onChange={handleInputChange}
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="submitter_company">Submitter Company</Label>
+                  <Input
+                    id="submitter_company"
+                    name="submitter_company"
+                    value={formData.submitter_company}
+                    onChange={handleInputChange}
+                    placeholder="Company name"
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="is_author"
+                    checked={formData.is_author}
+                    onCheckedChange={(checked) => handleCheckboxChange('is_author', checked as boolean)}
+                  />
+                  <Label htmlFor="is_author" className="font-normal">
+                    Submitter is the author
+                  </Label>
+                </div>
               </div>
             </div>
 
@@ -612,11 +681,11 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
 
             <div className="space-y-4">
               <div>
-                <Label htmlFor="writing_inspiration">What influenced you to write this book?</Label>
+                <Label htmlFor="writing_influence">What influenced you to write this book?</Label>
                 <Textarea
-                  id="writing_inspiration"
-                  name="writing_inspiration"
-                  value={formData.writing_inspiration}
+                  id="writing_influence"
+                  name="writing_influence"
+                  value={formData.writing_influence}
                   onChange={handleInputChange}
                   placeholder="Share your inspiration..."
                   rows={3}
@@ -625,11 +694,11 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="problems_addressed">What solutions were you hoping to provide?</Label>
+                <Label htmlFor="intended_solutions">What solutions were you hoping to provide?</Label>
                 <Textarea
-                  id="problems_addressed"
-                  name="problems_addressed"
-                  value={formData.problems_addressed}
+                  id="intended_solutions"
+                  name="intended_solutions"
+                  value={formData.intended_solutions}
                   onChange={handleInputChange}
                   placeholder="Describe the problems you're solving..."
                   rows={3}
@@ -638,11 +707,11 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="next_12_18_months">What are you focused on for the next 12-18 months?</Label>
+                <Label htmlFor="author_next_focus">What are you focused on for the next 12-18 months?</Label>
                 <Textarea
-                  id="next_12_18_months"
-                  name="next_12_18_months"
-                  value={formData.next_12_18_months}
+                  id="author_next_focus"
+                  name="author_next_focus"
+                  value={formData.author_next_focus}
                   onChange={handleInputChange}
                   placeholder="Your upcoming focus areas..."
                   rows={3}

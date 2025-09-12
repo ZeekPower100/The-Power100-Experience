@@ -37,6 +37,41 @@ const FOCUS_AREAS = [
   { value: 'talent_management', label: 'Talent Management' }
 ];
 
+const TARGET_REVENUE_OPTIONS = [
+  { value: '0_5_million', label: '0-5 Million' },
+  { value: '5_10_million', label: '5-10 Million' },
+  { value: '11_20_million', label: '11-20 Million' },
+  { value: '21_30_million', label: '21-30 Million' },
+  { value: '31_50_million', label: '31-50 Million' },
+  { value: '51_75_million', label: '51-75 Million' },
+  { value: '76_150_million', label: '76-150 Million' },
+  { value: '151_300_million', label: '151-300 Million' },
+  { value: '300_plus_million', label: '300+ Million' }
+];
+
+const NETWORKING_OPTIONS = [
+  { value: 'speed_networking', label: 'Structured Speed Networking' },
+  { value: 'roundtables', label: 'Roundtable Discussions' },
+  { value: 'one_on_ones', label: '1-on-1 Scheduled Meetings' },
+  { value: 'open_networking', label: 'Open Networking Hours' },
+  { value: 'meal_networking', label: 'Breakfast/Lunch/Dinner Networking' },
+  { value: 'cocktail_reception', label: 'Cocktail Reception' },
+  { value: 'breakout_sessions', label: 'Breakout Sessions' },
+  { value: 'virtual_breakouts', label: 'Virtual Breakout Rooms' },
+  { value: 'app_facilitated', label: 'Mobile App Connections' },
+  { value: 'industry_meetups', label: 'Industry Meetups' },
+  { value: 'vendor_exhibition', label: 'Vendor Exhibition Time' },
+  { value: 'after_party', label: 'After-Party/Social Events' }
+];
+
+const NETWORKING_QUALITY_OPTIONS = [
+  { value: 'excellent', label: 'Excellent (9-10)' },
+  { value: 'very_good', label: 'Very Good (7-8)' },
+  { value: 'good', label: 'Good (5-6)' },
+  { value: 'fair', label: 'Fair (3-4)' },
+  { value: 'poor', label: 'Poor (1-2)' }
+];
+
 export default function EventForm({ event, onSuccess, onCancel }: EventFormProps) {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
@@ -44,29 +79,68 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // Debug logging
+  if (event) {
+    console.log('EventForm received event:', event);
+    console.log('Event date raw:', event.date);
+    console.log('Event end_date raw:', event.end_date);
+    console.log('Event registration_deadline raw:', event.registration_deadline);
+  }
+  
+  // Helper function to format date for input field
+  const formatDateForInput = (dateString: string | undefined) => {
+    if (!dateString) return '';
+    // If it's already in YYYY-MM-DD format, return as is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateString)) {
+      console.log(`Date ${dateString} is already in correct format`);
+      return dateString;
+    }
+    // Otherwise, parse and format
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) {
+      console.log(`Could not parse date: ${dateString}`);
+      return '';
+    }
+    const formatted = date.toISOString().split('T')[0];
+    console.log(`Formatted date from ${dateString} to ${formatted}`);
+    return formatted;
+  };
+  
   // Form data state
+  const [isMultiDay, setIsMultiDay] = useState(!!event?.end_date);
   const [formData, setFormData] = useState<Event>({
     name: event?.name || '',
-    date: event?.date || '',
-    registration_deadline: event?.registration_deadline || '',
+    date: formatDateForInput(event?.date),
+    end_date: formatDateForInput(event?.end_date),
+    registration_deadline: formatDateForInput(event?.registration_deadline),
     location: event?.location || '',
     format: event?.format || '',
     description: event?.description || '',
-    expected_attendees: event?.expected_attendees || '',
+    expected_attendance: event?.expected_attendance || '',
     website: event?.website || '',
     logo_url: event?.logo_url || '',
     
     // New fields
     target_audience: event?.target_audience || '',
+    target_revenue: event?.target_revenue || '',
     topics: event?.topics || '',
     price_range: event?.price_range || '',
     registration_url: event?.registration_url || '',
+    hotel_block_url: event?.hotel_block_url || '',
     
     // Organizer info
     organizer_name: event?.organizer_name || '',
     organizer_email: event?.organizer_email || '',
     organizer_phone: event?.organizer_phone || '',
     organizer_company: event?.organizer_company || '',
+    
+    // POC Fields (NEW from Greg)
+    poc_customer_name: event?.poc_customer_name || '',
+    poc_customer_email: event?.poc_customer_email || '',
+    poc_customer_phone: event?.poc_customer_phone || '',
+    poc_media_name: event?.poc_media_name || '',
+    poc_media_email: event?.poc_media_email || '',
+    poc_media_phone: event?.poc_media_phone || '',
     
     // Event details
     event_type: event?.event_type || '',
@@ -76,7 +150,14 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
     past_attendee_testimonials: event?.past_attendee_testimonials || '',
     success_metrics: event?.success_metrics || '',
     speaker_profiles: event?.speaker_profiles || '',
+    sponsors: event?.sponsors || '',
+    pre_registered_attendees: event?.pre_registered_attendees || '',
+    networking_opportunities: event?.networking_opportunities || '',
     networking_quality_score: event?.networking_quality_score || '',
+    session_recordings: event?.session_recordings || false,
+    post_event_support: event?.post_event_support || '',
+    implementation_support: event?.implementation_support || false,
+    follow_up_resources: event?.follow_up_resources || '',
     
     is_active: event?.is_active !== undefined ? event.is_active : true,
   });
@@ -85,6 +166,19 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
   const [selectedFocusAreas, setSelectedFocusAreas] = useState<string[]>(
     event?.focus_areas_covered ? event.focus_areas_covered.split(',').map(f => f.trim()) : []
   );
+
+  // Selected target revenue (for multi-select)
+  const [selectedTargetRevenue, setSelectedTargetRevenue] = useState<string[]>(() => {
+    if (event?.target_revenue) {
+      try {
+        const parsed = JSON.parse(event.target_revenue);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return event.target_revenue.split(',').map(r => r.trim());
+      }
+    }
+    return [];
+  });
 
   // Dynamic list fields
   const [speakers, setSpeakers] = useState<string[]>(
@@ -111,6 +205,38 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
       ) : []
   );
 
+  const [sponsors, setSponsors] = useState<string[]>(
+    event?.sponsors ? 
+      (typeof event.sponsors === 'string' ? 
+        (event.sponsors.startsWith('[') ? JSON.parse(event.sponsors) : event.sponsors.split(',').map(s => s.trim())) : 
+        Array.isArray(event.sponsors) ? event.sponsors : []
+      ) : []
+  );
+
+  const [preRegisteredAttendees, setPreRegisteredAttendees] = useState<string[]>(
+    event?.pre_registered_attendees ? 
+      (typeof event.pre_registered_attendees === 'string' ? 
+        (event.pre_registered_attendees.startsWith('[') ? JSON.parse(event.pre_registered_attendees) : event.pre_registered_attendees.split(',').map(a => a.trim())) : 
+        Array.isArray(event.pre_registered_attendees) ? event.pre_registered_attendees : []
+      ) : []
+  );
+
+  const [selectedNetworkingOpportunities, setSelectedNetworkingOpportunities] = useState<string[]>(
+    event?.networking_opportunities ? 
+      (typeof event.networking_opportunities === 'string' ? 
+        JSON.parse(event.networking_opportunities) : 
+        Array.isArray(event.networking_opportunities) ? event.networking_opportunities : []
+      ) : []
+  );
+
+  const [followUpResources, setFollowUpResources] = useState<string[]>(
+    event?.follow_up_resources ? 
+      (typeof event.follow_up_resources === 'string' ? 
+        JSON.parse(event.follow_up_resources) : 
+        Array.isArray(event.follow_up_resources) ? event.follow_up_resources : []
+      ) : []
+  );
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -128,6 +254,22 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
     );
   };
 
+  const handleTargetRevenueToggle = (revenue: string) => {
+    setSelectedTargetRevenue(prev => 
+      prev.includes(revenue) 
+        ? prev.filter(r => r !== revenue)
+        : [...prev, revenue]
+    );
+  };
+
+  const handleNetworkingToggle = (opportunity: string) => {
+    setSelectedNetworkingOpportunities(prev => 
+      prev.includes(opportunity) 
+        ? prev.filter(o => o !== opportunity)
+        : [...prev, opportunity]
+    );
+  };
+
   const handleSubmit = async (isDraft = false) => {
     setLoading(true);
     setError(null);
@@ -137,9 +279,14 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
       const dataToSubmit = {
         ...formData,
         focus_areas_covered: selectedFocusAreas.join(', '),
+        target_revenue: JSON.stringify(selectedTargetRevenue),
         speaker_profiles: JSON.stringify(speakers.filter(s => s.trim())),
         agenda_highlights: JSON.stringify(agendaHighlights.filter(a => a.trim())),
         past_attendee_testimonials: JSON.stringify(testimonials.filter(t => t.trim())),
+        sponsors: JSON.stringify(sponsors.filter(s => s.trim())),
+        pre_registered_attendees: JSON.stringify(preRegisteredAttendees.filter(a => a.trim())),
+        networking_opportunities: JSON.stringify(selectedNetworkingOpportunities),
+        follow_up_resources: JSON.stringify(followUpResources.filter(r => r.trim())),
         submission_type: submissionType,
         // Set status based on whether it's a draft save or submission
         // If saving as draft, mark as 'draft'
@@ -223,37 +370,90 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
                   <SelectContent className="bg-white">
                     <SelectItem value="Conference">Conference</SelectItem>
                     <SelectItem value="Workshop">Workshop</SelectItem>
-                    <SelectItem value="Summit">Summit</SelectItem>
-                    <SelectItem value="Bootcamp">Bootcamp</SelectItem>
                     <SelectItem value="Seminar">Seminar</SelectItem>
+                    <SelectItem value="Webinar">Webinar</SelectItem>
                     <SelectItem value="Networking">Networking Event</SelectItem>
                     <SelectItem value="Training">Training Program</SelectItem>
+                    <SelectItem value="Summit">Summit</SelectItem>
+                    <SelectItem value="Bootcamp">Bootcamp</SelectItem>
+                    <SelectItem value="Retreat">Retreat</SelectItem>
                     <SelectItem value="Other">Other</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="date">Event Date <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="date"
-                    name="date"
-                    type="date"
-                    value={formData.date}
-                    onChange={handleInputChange}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="multi_day"
+                    checked={isMultiDay}
+                    onCheckedChange={(checked) => {
+                      setIsMultiDay(checked as boolean);
+                      if (!checked) {
+                        setFormData(prev => ({ ...prev, end_date: '' }));
+                      }
+                    }}
                   />
+                  <Label htmlFor="multi_day">Multi-day event</Label>
                 </div>
-                <div>
-                  <Label htmlFor="registration_deadline">Registration Deadline</Label>
-                  <Input
-                    id="registration_deadline"
-                    name="registration_deadline"
-                    type="date"
-                    value={formData.registration_deadline}
-                    onChange={handleInputChange}
-                  />
-                </div>
+
+                {!isMultiDay ? (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="date">Event Date <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="date"
+                        name="date"
+                        type="date"
+                        value={formData.date}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="registration_deadline">Registration Deadline</Label>
+                      <Input
+                        id="registration_deadline"
+                        name="registration_deadline"
+                        type="date"
+                        value={formData.registration_deadline}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <Label htmlFor="date">Start Date <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="date"
+                        name="date"
+                        type="date"
+                        value={formData.date}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="end_date">End Date <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="end_date"
+                        name="end_date"
+                        type="date"
+                        value={formData.end_date}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="registration_deadline">Registration Deadline</Label>
+                      <Input
+                        id="registration_deadline"
+                        name="registration_deadline"
+                        type="date"
+                        value={formData.registration_deadline}
+                        onChange={handleInputChange}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -348,10 +548,10 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div>
-                <Label htmlFor="expected_attendees">Expected Attendees</Label>
+                <Label htmlFor="expected_attendance">Expected Attendance</Label>
                 <Select 
-                  value={formData.expected_attendees} 
-                  onValueChange={(value) => handleSelectChange('expected_attendees', value)}
+                  value={formData.expected_attendance} 
+                  onValueChange={(value) => handleSelectChange('expected_attendance', value)}
                 >
                   <SelectTrigger className="bg-white">
                     <SelectValue placeholder="Select expected attendance" />
@@ -389,6 +589,18 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
                   placeholder="https://example.com/register"
                 />
                 <p className="text-sm text-power100-grey mt-1">Direct link for contractors to register</p>
+              </div>
+
+              <div>
+                <Label htmlFor="hotel_block_url">Hotel Block URL</Label>
+                <Input
+                  id="hotel_block_url"
+                  name="hotel_block_url"
+                  value={formData.hotel_block_url}
+                  onChange={handleInputChange}
+                  placeholder="Hotel booking link (if available)"
+                />
+                <p className="text-sm text-power100-grey mt-1">Special rate hotel booking link</p>
               </div>
 
               <div>
@@ -434,6 +646,25 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
                       />
                       <Label htmlFor={area.value} className="font-normal cursor-pointer">
                         {area.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Label>Target Revenue Range</Label>
+                <p className="text-sm text-power100-grey mb-3">What revenue ranges should attendees be in?</p>
+                <div className="grid grid-cols-2 gap-3">
+                  {TARGET_REVENUE_OPTIONS.map(option => (
+                    <div key={option.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`revenue-${option.value}`}
+                        checked={selectedTargetRevenue.includes(option.value)}
+                        onCheckedChange={() => handleTargetRevenueToggle(option.value)}
+                      />
+                      <Label htmlFor={`revenue-${option.value}`} className="font-normal cursor-pointer">
+                        {option.label}
                       </Label>
                     </div>
                   ))}
@@ -496,6 +727,126 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
                   onItemsChange={setTestimonials}
                   placeholder="Enter testimonial"
                   buttonText="Add Testimonial"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="success_metrics">Success Metrics</Label>
+                <Textarea
+                  id="success_metrics"
+                  name="success_metrics"
+                  value={formData.success_metrics}
+                  onChange={handleInputChange}
+                  placeholder="How do you measure event success? (e.g., connections made, deals closed, satisfaction ratings)"
+                  rows={3}
+                />
+                <p className="text-sm text-power100-grey mt-1">Metrics help demonstrate ROI to contractors</p>
+              </div>
+
+              <div>
+                <Label>Event Sponsors</Label>
+                <p className="text-sm text-power100-grey mb-2">List sponsors or partners</p>
+                <SimpleDynamicList
+                  items={sponsors}
+                  onItemsChange={setSponsors}
+                  placeholder="Enter sponsor name"
+                  buttonText="Add Sponsor"
+                />
+              </div>
+
+              <div>
+                <Label>Pre-Registered Attendees</Label>
+                <p className="text-sm text-power100-grey mb-2">Notable companies or individuals already registered</p>
+                <SimpleDynamicList
+                  items={preRegisteredAttendees}
+                  onItemsChange={setPreRegisteredAttendees}
+                  placeholder="Enter attendee name/company"
+                  buttonText="Add Attendee"
+                />
+              </div>
+
+              <div>
+                <Label>Networking Opportunities</Label>
+                <p className="text-sm text-power100-grey mb-2">Select all networking formats available</p>
+                <div className="grid grid-cols-2 gap-3 mt-2">
+                  {NETWORKING_OPTIONS.map(option => (
+                    <div key={option.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`networking-${option.value}`}
+                        checked={selectedNetworkingOpportunities.includes(option.value)}
+                        onCheckedChange={() => handleNetworkingToggle(option.value)}
+                      />
+                      <Label htmlFor={`networking-${option.value}`} className="font-normal cursor-pointer">
+                        {option.label}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="networking_quality_score">Networking Quality Score (Admin Only)</Label>
+                <Select 
+                  value={formData.networking_quality_score} 
+                  onValueChange={(value) => handleSelectChange('networking_quality_score', value)}
+                >
+                  <SelectTrigger className="bg-white">
+                    <SelectValue placeholder="Select quality score" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white">
+                    {NETWORKING_QUALITY_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-power100-grey mt-1">TPE assessment based on past events</p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="session_recordings"
+                  checked={formData.session_recordings || false}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, session_recordings: checked as boolean }))}
+                />
+                <Label htmlFor="session_recordings" className="cursor-pointer">
+                  Session recordings will be available after the event
+                </Label>
+              </div>
+
+              <div>
+                <Label htmlFor="post_event_support">Post-Event Support</Label>
+                <Textarea
+                  id="post_event_support"
+                  name="post_event_support"
+                  value={formData.post_event_support}
+                  onChange={handleInputChange}
+                  placeholder="Describe any support or follow-up provided after the event"
+                  rows={3}
+                />
+                <p className="text-sm text-power100-grey mt-1">What support do attendees receive after the event?</p>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="implementation_support"
+                  checked={formData.implementation_support || false}
+                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, implementation_support: checked as boolean }))}
+                />
+                <Label htmlFor="implementation_support" className="cursor-pointer">
+                  Implementation support is provided after the event
+                </Label>
+              </div>
+
+              <div>
+                <Label>Follow-Up Resources</Label>
+                <p className="text-sm text-power100-grey mb-2">Resources provided to attendees after the event</p>
+                <SimpleDynamicList
+                  items={followUpResources}
+                  onItemsChange={setFollowUpResources}
+                  placeholder="e.g., Templates, guides, recordings"
+                  buttonText="Add Resource"
                 />
               </div>
             </div>
@@ -598,6 +949,82 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
                 <p className="text-green-800 font-semibold mb-2">Events with complete profiles get 3x more visibility</p>
                 <p className="text-green-700 text-sm">You can always enhance the profile later with success stories and testimonials</p>
+              </div>
+            </div>
+
+            {/* POC Customer Experience Fields */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <h3 className="text-lg font-semibold text-power100-black mb-4">Customer Experience POC</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="poc_customer_name">POC Name</Label>
+                  <Input
+                    id="poc_customer_name"
+                    name="poc_customer_name"
+                    value={formData.poc_customer_name}
+                    onChange={handleInputChange}
+                    placeholder="Customer experience contact name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="poc_customer_email">POC Email</Label>
+                  <Input
+                    id="poc_customer_email"
+                    name="poc_customer_email"
+                    type="email"
+                    value={formData.poc_customer_email}
+                    onChange={handleInputChange}
+                    placeholder="customer.poc@example.com"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="poc_customer_phone">POC Phone</Label>
+                  <Input
+                    id="poc_customer_phone"
+                    name="poc_customer_phone"
+                    value={formData.poc_customer_phone}
+                    onChange={handleInputChange}
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* POC Media Fields */}
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <h3 className="text-lg font-semibold text-power100-black mb-4">Media/Promotion/Social POC</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="poc_media_name">POC Name</Label>
+                  <Input
+                    id="poc_media_name"
+                    name="poc_media_name"
+                    value={formData.poc_media_name}
+                    onChange={handleInputChange}
+                    placeholder="Media contact name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="poc_media_email">POC Email</Label>
+                  <Input
+                    id="poc_media_email"
+                    name="poc_media_email"
+                    type="email"
+                    value={formData.poc_media_email}
+                    onChange={handleInputChange}
+                    placeholder="media.poc@example.com"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="poc_media_phone">POC Phone</Label>
+                  <Input
+                    id="poc_media_phone"
+                    name="poc_media_phone"
+                    value={formData.poc_media_phone}
+                    onChange={handleInputChange}
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
               </div>
             </div>
           </div>

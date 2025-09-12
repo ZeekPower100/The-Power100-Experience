@@ -107,6 +107,18 @@ exports.createPodcast = async (req, res) => {
       download_average,
       notable_guests,
       testimonials,
+      
+      // Submitter fields
+      submitter_name,
+      submitter_email,
+      submitter_phone,
+      submitter_company,
+      is_host,
+      
+      // Additional fields
+      total_episodes,
+      target_revenue,
+      
       submission_type,
       status,
       
@@ -163,6 +175,18 @@ exports.createPodcast = async (req, res) => {
     if (existingColumns.includes('download_average')) fieldsToInsert.download_average = download_average;
     if (existingColumns.includes('notable_guests')) fieldsToInsert.notable_guests = notable_guests;
     if (existingColumns.includes('testimonials')) fieldsToInsert.testimonials = testimonials;
+    
+    // Submitter fields
+    if (existingColumns.includes('submitter_name')) fieldsToInsert.submitter_name = submitter_name;
+    if (existingColumns.includes('submitter_email')) fieldsToInsert.submitter_email = submitter_email;
+    if (existingColumns.includes('submitter_phone')) fieldsToInsert.submitter_phone = submitter_phone;
+    if (existingColumns.includes('submitter_company')) fieldsToInsert.submitter_company = submitter_company;
+    if (existingColumns.includes('is_host')) fieldsToInsert.is_host = is_host;
+    
+    // Additional fields
+    if (existingColumns.includes('total_episodes')) fieldsToInsert.total_episodes = total_episodes;
+    if (existingColumns.includes('target_revenue')) fieldsToInsert.target_revenue = target_revenue;
+    
     if (existingColumns.includes('submission_type')) fieldsToInsert.submission_type = submission_type;
     if (existingColumns.includes('status')) fieldsToInsert.status = status;
 

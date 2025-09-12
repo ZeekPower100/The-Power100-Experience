@@ -86,6 +86,7 @@ exports.createBook = async (req, res) => {
       focus_areas_covered,
       target_audience,
       key_takeaways,
+      testimonials,
       reading_time,
       difficulty_level,
       
@@ -100,11 +101,24 @@ exports.createBook = async (req, res) => {
       ea_phone,
       ea_scheduling_link,
       key_citations,
-      writing_inspiration,
-      problems_addressed,
-      next_12_18_months,
+      writing_influence,
+      intended_solutions,
+      author_next_focus,
       book_goals,
       author_availability,
+      
+      // Submitter fields
+      submitter_name,
+      submitter_email,
+      submitter_phone,
+      submitter_company,
+      is_author,
+      
+      // Book content fields
+      sample_chapter_link,
+      table_of_contents,
+      target_revenue,
+      
       barnes_noble_url,
       author_website_purchase_url,
       submission_type,
@@ -140,6 +154,7 @@ exports.createBook = async (req, res) => {
       focus_areas_covered,
       target_audience,
       key_takeaways,
+      testimonials,
       reading_time,
       difficulty_level,
       is_active
@@ -156,11 +171,26 @@ exports.createBook = async (req, res) => {
     if (existingColumns.includes('ea_phone')) fieldsToInsert.ea_phone = ea_phone;
     if (existingColumns.includes('ea_scheduling_link')) fieldsToInsert.ea_scheduling_link = ea_scheduling_link;
     if (existingColumns.includes('key_citations')) fieldsToInsert.key_citations = key_citations;
-    if (existingColumns.includes('writing_inspiration')) fieldsToInsert.writing_inspiration = writing_inspiration;
-    if (existingColumns.includes('problems_addressed')) fieldsToInsert.problems_addressed = problems_addressed;
-    if (existingColumns.includes('next_12_18_months')) fieldsToInsert.next_12_18_months = next_12_18_months;
+    
+    // Strategic fields (correct names)
+    if (existingColumns.includes('writing_influence')) fieldsToInsert.writing_influence = writing_influence;
+    if (existingColumns.includes('intended_solutions')) fieldsToInsert.intended_solutions = intended_solutions;
+    if (existingColumns.includes('author_next_focus')) fieldsToInsert.author_next_focus = author_next_focus;
     if (existingColumns.includes('book_goals')) fieldsToInsert.book_goals = book_goals;
     if (existingColumns.includes('author_availability')) fieldsToInsert.author_availability = author_availability;
+    
+    // Submitter fields
+    if (existingColumns.includes('submitter_name')) fieldsToInsert.submitter_name = submitter_name;
+    if (existingColumns.includes('submitter_email')) fieldsToInsert.submitter_email = submitter_email;
+    if (existingColumns.includes('submitter_phone')) fieldsToInsert.submitter_phone = submitter_phone;
+    if (existingColumns.includes('submitter_company')) fieldsToInsert.submitter_company = submitter_company;
+    if (existingColumns.includes('is_author')) fieldsToInsert.is_author = is_author;
+    
+    // Book content fields
+    if (existingColumns.includes('sample_chapter_link')) fieldsToInsert.sample_chapter_link = sample_chapter_link;
+    if (existingColumns.includes('table_of_contents')) fieldsToInsert.table_of_contents = table_of_contents;
+    if (existingColumns.includes('target_revenue')) fieldsToInsert.target_revenue = target_revenue;
+    
     if (existingColumns.includes('barnes_noble_url')) fieldsToInsert.barnes_noble_url = barnes_noble_url;
     if (existingColumns.includes('author_website_purchase_url')) fieldsToInsert.author_website_purchase_url = author_website_purchase_url;
     if (existingColumns.includes('submission_type')) fieldsToInsert.submission_type = submission_type;

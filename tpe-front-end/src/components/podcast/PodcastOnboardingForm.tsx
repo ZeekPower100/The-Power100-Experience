@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import LogoManager from '@/components/admin/LogoManager';
 import { podcastApi } from '@/lib/api';
 import { Mic, User, Target, Sparkles, ArrowRight, ArrowLeft, AlertTriangle, Headphones } from 'lucide-react';
@@ -47,11 +48,11 @@ const TARGET_REVENUE_OPTIONS = [
 ];
 
 const EPISODE_FREQUENCY_OPTIONS = [
-  { value: 'daily', label: 'Daily' },
-  { value: 'weekly', label: 'Weekly' },
-  { value: 'bi_weekly', label: 'Bi-Weekly' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'irregular', label: 'Irregular' }
+  { value: 'Daily', label: 'Daily' },
+  { value: 'Twice Weekly', label: 'Twice Weekly' },
+  { value: 'Weekly', label: 'Weekly' },
+  { value: 'Biweekly', label: 'Biweekly' },
+  { value: 'Monthly', label: 'Monthly' }
 ];
 
 export default function PodcastOnboardingForm() {
@@ -64,21 +65,36 @@ export default function PodcastOnboardingForm() {
 
   // Form data state
   const [formData, setFormData] = useState<Partial<Podcast>>({
-    name: '',
+    title: '',
     host: '',
     description: '',
-    website_url: '',
+    website: '',
     spotify_url: '',
     apple_podcasts_url: '',
     youtube_url: '',
-    focus_areas: [],
+    other_platform_urls: '',
+    focus_areas_covered: [],
     target_revenue: [],
-    episode_frequency: '',
+    frequency: '',
     average_episode_length: '',
     total_episodes: 0,
+    subscriber_count: 0,
+    download_average: 0,
     notable_guests: [],
-    key_topics: [],
-    cover_image_url: '',
+    topics: [],
+    testimonials: [],
+    logo_url: '',
+    target_audience: '',
+    accepts_guest_requests: false,
+    guest_requirements: '',
+    typical_guest_profile: '',
+    booking_link: '',
+    host_email: '',
+    host_phone: '',
+    host_linkedin: '',
+    host_company: '',
+    host_bio: '',
+    format: '',
     submitter_name: '',
     submitter_email: '',
     submitter_phone: '',
@@ -102,11 +118,11 @@ export default function PodcastOnboardingForm() {
   };
 
   const handleFocusAreaToggle = (area: string) => {
-    const currentAreas = formData.focus_areas || [];
+    const currentAreas = formData.focus_areas_covered || [];
     if (currentAreas.includes(area)) {
-      handleArrayFieldChange('focus_areas', currentAreas.filter(a => a !== area));
+      handleArrayFieldChange('focus_areas_covered', currentAreas.filter(a => a !== area));
     } else {
-      handleArrayFieldChange('focus_areas', [...currentAreas, area]);
+      handleArrayFieldChange('focus_areas_covered', [...currentAreas, area]);
     }
   };
 
@@ -141,17 +157,11 @@ export default function PodcastOnboardingForm() {
       // Map fields to match backend expectations
       const submissionData = {
         ...formData,
-        // Map host fields
-        host_email: formData.submitter_email,
-        host_phone: formData.submitter_phone,
-        host_company: formData.submitter_company,
         // Map array fields to JSON strings
         notable_guests: JSON.stringify(formData.notable_guests || []),
-        topics: JSON.stringify(formData.key_topics || []),
+        topics: JSON.stringify(formData.topics || []),
         testimonials: JSON.stringify(formData.testimonials || []),
-        focus_areas_covered: formData.focus_areas?.join(', ') || '',
-        // Remove original array fields to avoid conflicts
-        key_topics: undefined,
+        focus_areas_covered: formData.focus_areas_covered?.join(', ') || '',
         // Keep original fields
         is_host: submissionType === 'host',
         status: 'pending_review'
@@ -243,11 +253,11 @@ export default function PodcastOnboardingForm() {
             {currentStep === 1 && (
               <div className="space-y-6">
                 <div>
-                  <Label htmlFor="name">Podcast Name *</Label>
+                  <Label htmlFor="title">Podcast Name *</Label>
                   <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => handleFieldChange('name', e.target.value)}
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => handleFieldChange('title', e.target.value)}
                     placeholder="Enter the name of your podcast"
                     className="mt-1"
                     required
@@ -279,11 +289,11 @@ export default function PodcastOnboardingForm() {
                 </div>
 
                 <div>
-                  <Label htmlFor="website_url">Podcast Website</Label>
+                  <Label htmlFor="website">Podcast Website</Label>
                   <Input
-                    id="website_url"
-                    value={formData.website_url}
-                    onChange={(e) => handleFieldChange('website_url', e.target.value)}
+                    id="website"
+                    value={formData.website}
+                    onChange={(e) => handleFieldChange('website', e.target.value)}
                     placeholder="https://yourpodcast.com"
                     className="mt-1"
                   />
@@ -294,9 +304,9 @@ export default function PodcastOnboardingForm() {
                   <div className="mt-2">
                     <LogoManager
                       entityType="podcast"
-                      entityName={formData.name || 'podcast'}
-                      currentLogoUrl={formData.cover_image_url}
-                      onLogoChange={(url) => handleFieldChange('cover_image_url', url)}
+                      entityName={formData.title || 'podcast'}
+                      currentLogoUrl={formData.logo_url}
+                      onLogoChange={(url) => handleFieldChange('logo_url', url)}
                       label="Upload Cover Image"
                     />
                   </div>
@@ -317,7 +327,7 @@ export default function PodcastOnboardingForm() {
                       <div key={area.value} className="flex items-center space-x-2">
                         <Checkbox
                           id={area.value}
-                          checked={formData.focus_areas?.includes(area.value) || false}
+                          checked={formData.focus_areas_covered?.includes(area.value) || false}
                           onCheckedChange={() => handleFocusAreaToggle(area.value)}
                         />
                         <Label
@@ -354,19 +364,52 @@ export default function PodcastOnboardingForm() {
                     ))}
                   </div>
                 </div>
+
+                <div>
+                  <Label htmlFor="target_audience">Target Audience</Label>
+                  <Textarea
+                    id="target_audience"
+                    value={formData.target_audience}
+                    onChange={(e) => handleFieldChange('target_audience', e.target.value)}
+                    placeholder="Describe your ideal listener (e.g., contractors with 10-50 employees looking to scale)"
+                    className="mt-1"
+                    rows={3}
+                  />
+                </div>
               </div>
             )}
 
             {/* Step 3: Episode Details & Content */}
             {currentStep === 3 && (
               <div className="space-y-6">
+                <div>
+                  <Label htmlFor="format">Podcast Format</Label>
+                  <Select
+                    value={formData.format}
+                    onValueChange={(value) => handleFieldChange('format', value)}
+                  >
+                    <SelectTrigger className="mt-1 bg-white">
+                      <SelectValue placeholder="Select podcast format" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="Interview">Interview</SelectItem>
+                      <SelectItem value="Solo">Solo</SelectItem>
+                      <SelectItem value="Co-hosted">Co-hosted</SelectItem>
+                      <SelectItem value="Panel">Panel</SelectItem>
+                      <SelectItem value="Narrative">Narrative</SelectItem>
+                      <SelectItem value="Educational">Educational</SelectItem>
+                      <SelectItem value="Mixed">Mixed Format</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="episode_frequency">Episode Frequency</Label>
+                    <Label htmlFor="frequency">Episode Frequency</Label>
                     <select
-                      id="episode_frequency"
-                      value={formData.episode_frequency}
-                      onChange={(e) => handleFieldChange('episode_frequency', e.target.value)}
+                      id="frequency"
+                      value={formData.frequency}
+                      onChange={(e) => handleFieldChange('frequency', e.target.value)}
                       className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md bg-white"
                     >
                       <option value="">Select frequency</option>
@@ -380,13 +423,21 @@ export default function PodcastOnboardingForm() {
 
                   <div>
                     <Label htmlFor="average_episode_length">Average Episode Length</Label>
-                    <Input
-                      id="average_episode_length"
+                    <Select
                       value={formData.average_episode_length}
-                      onChange={(e) => handleFieldChange('average_episode_length', e.target.value)}
-                      placeholder="e.g., 30 minutes"
-                      className="mt-1"
-                    />
+                      onValueChange={(value) => handleFieldChange('average_episode_length', value)}
+                    >
+                      <SelectTrigger className="mt-1 bg-white">
+                        <SelectValue placeholder="Select episode length" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="< 15 minutes">Under 15 minutes</SelectItem>
+                        <SelectItem value="15-30 minutes">15-30 minutes</SelectItem>
+                        <SelectItem value="30-45 minutes">30-45 minutes</SelectItem>
+                        <SelectItem value="45-60 minutes">45-60 minutes</SelectItem>
+                        <SelectItem value="60+ minutes">Over 60 minutes</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
 
@@ -400,6 +451,32 @@ export default function PodcastOnboardingForm() {
                     placeholder="Number of episodes"
                     className="mt-1"
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="subscriber_count">Subscriber Count</Label>
+                    <Input
+                      id="subscriber_count"
+                      type="number"
+                      value={formData.subscriber_count}
+                      onChange={(e) => handleFieldChange('subscriber_count', parseInt(e.target.value) || 0)}
+                      placeholder="e.g., 5000"
+                      className="mt-1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="download_average">Average Downloads per Episode</Label>
+                    <Input
+                      id="download_average"
+                      type="number"
+                      value={formData.download_average}
+                      onChange={(e) => handleFieldChange('download_average', parseInt(e.target.value) || 0)}
+                      placeholder="e.g., 1500"
+                      className="mt-1"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -419,6 +496,13 @@ export default function PodcastOnboardingForm() {
                       placeholder="YouTube URL"
                       value={formData.youtube_url}
                       onChange={(e) => handleFieldChange('youtube_url', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Input
+                      placeholder="Other Platform URLs (LinkedIn, Instagram, TikTok, etc.)"
+                      value={formData.other_platform_urls}
+                      onChange={(e) => handleFieldChange('other_platform_urls', e.target.value)}
                     />
                   </div>
                 </div>
@@ -442,11 +526,73 @@ export default function PodcastOnboardingForm() {
                     List the main topics covered in your podcast
                   </p>
                   <SimpleDynamicList
-                    items={formData.key_topics || []}
-                    onItemsChange={(items) => handleArrayFieldChange('key_topics', items)}
+                    items={formData.topics || []}
+                    onItemsChange={(items) => handleArrayFieldChange('topics', items)}
                     placeholder="Enter a key topic"
                     buttonText="Add Topic"
                   />
+                </div>
+
+                <div>
+                  <Label>Testimonials</Label>
+                  <p className="text-sm text-power100-grey mb-2">
+                    Add testimonials from listeners or guests
+                  </p>
+                  <SimpleDynamicList
+                    items={formData.testimonials || []}
+                    onItemsChange={(items) => handleArrayFieldChange('testimonials', items)}
+                    placeholder="Enter a testimonial"
+                    buttonText="Add Testimonial"
+                  />
+                </div>
+
+                {/* Guest Management Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="accepts_guest_requests"
+                      checked={formData.accepts_guest_requests || false}
+                      onCheckedChange={(checked) => handleFieldChange('accepts_guest_requests', checked)}
+                    />
+                    <Label htmlFor="accepts_guest_requests">I accept guest requests from contractors</Label>
+                  </div>
+
+                  {formData.accepts_guest_requests && (
+                    <div className="space-y-4 ml-6">
+                      <div>
+                        <Label htmlFor="guest_requirements">Guest Requirements</Label>
+                        <Textarea
+                          id="guest_requirements"
+                          value={formData.guest_requirements}
+                          onChange={(e) => handleFieldChange('guest_requirements', e.target.value)}
+                          placeholder="What are your requirements for potential guests?"
+                          className="mt-1"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="typical_guest_profile">Typical Guest Profile</Label>
+                        <Input
+                          id="typical_guest_profile"
+                          value={formData.typical_guest_profile}
+                          onChange={(e) => handleFieldChange('typical_guest_profile', e.target.value)}
+                          placeholder="e.g., Contractors with $5M+ revenue"
+                          className="mt-1"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="booking_link">Guest Booking Link</Label>
+                        <Input
+                          id="booking_link"
+                          value={formData.booking_link}
+                          onChange={(e) => handleFieldChange('booking_link', e.target.value)}
+                          placeholder="https://calendly.com/..."
+                          className="mt-1"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -523,6 +669,73 @@ export default function PodcastOnboardingForm() {
                     className="mt-1"
                   />
                 </div>
+
+                {/* Host Contact Information - Show for both host and team_member */}
+                {(submissionType === 'host' || submissionType === 'team_member') && (
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="font-semibold mb-4">Host Information</h3>
+                    
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="host_email">Host Email</Label>
+                        <Input
+                          id="host_email"
+                          type="email"
+                          value={formData.host_email}
+                          onChange={(e) => handleFieldChange('host_email', e.target.value)}
+                          placeholder="host@example.com"
+                          className="mt-1"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="host_phone">Host Phone</Label>
+                        <Input
+                          id="host_phone"
+                          value={formData.host_phone}
+                          onChange={(e) => handleFieldChange('host_phone', e.target.value)}
+                          placeholder="(555) 123-4567"
+                          className="mt-1"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="host_linkedin">Host LinkedIn Profile</Label>
+                        <Input
+                          id="host_linkedin"
+                          value={formData.host_linkedin}
+                          onChange={(e) => handleFieldChange('host_linkedin', e.target.value)}
+                          placeholder="https://linkedin.com/in/yourprofile"
+                          className="mt-1"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="host_company">Host Company</Label>
+                        <Input
+                          id="host_company"
+                          value={formData.host_company}
+                          onChange={(e) => handleFieldChange('host_company', e.target.value)}
+                          placeholder="Your company name"
+                          className="mt-1"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="host_bio">Host Bio</Label>
+                        <Textarea
+                          id="host_bio"
+                          value={formData.host_bio}
+                          onChange={(e) => handleFieldChange('host_bio', e.target.value)}
+                          placeholder="Tell us about yourself and your experience..."
+                          className="mt-1"
+                          rows={4}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
               </div>
             )}
 

@@ -25,6 +25,15 @@ export default function EventDetailsPage() {
   const fetchEvent = async () => {
     try {
       const data = await eventApi.get(params.id as string);
+      console.log('Event details page - fetched event:', data);
+      console.log('Event date fields:', {
+        date: data.date,
+        end_date: data.end_date,
+        registration_deadline: data.registration_deadline,
+        dateType: typeof data.date,
+        endDateType: typeof data.end_date,
+        regDeadlineType: typeof data.registration_deadline
+      });
       setEvent(data);
     } catch (error) {
       console.error('Error fetching event:', error);

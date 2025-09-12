@@ -85,6 +85,17 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
     notable_guests: podcast?.notable_guests || '',
     testimonials: podcast?.testimonials || '',
     
+    // Submitter information
+    submitter_name: podcast?.submitter_name || '',
+    submitter_email: podcast?.submitter_email || '',
+    submitter_phone: podcast?.submitter_phone || '',
+    submitter_company: podcast?.submitter_company || '',
+    is_host: podcast?.is_host || false,
+    
+    // Additional fields
+    target_revenue: podcast?.target_revenue || '',
+    total_episodes: podcast?.total_episodes || '',
+    
     is_active: podcast?.is_active !== undefined ? podcast.is_active : true,
   });
 
@@ -107,6 +118,14 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
       (typeof podcast.topics === 'string' ? 
         (podcast.topics.startsWith('[') ? JSON.parse(podcast.topics) : podcast.topics.split(',').map(t => t.trim())) : 
         Array.isArray(podcast.topics) ? podcast.topics : []
+      ) : []
+  );
+
+  const [targetRevenue, setTargetRevenue] = useState<string[]>(
+    podcast?.target_revenue ? 
+      (typeof podcast.target_revenue === 'string' ? 
+        (podcast.target_revenue.startsWith('[') ? JSON.parse(podcast.target_revenue) : podcast.target_revenue.split(',').map(r => r.trim())) : 
+        Array.isArray(podcast.target_revenue) ? podcast.target_revenue : []
       ) : []
   );
 
@@ -146,6 +165,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
         focus_areas_covered: selectedFocusAreas.join(', '),
         notable_guests: JSON.stringify(notableGuests.filter(g => g.trim())),
         topics: JSON.stringify(keyTopics.filter(t => t.trim())),
+        target_revenue: JSON.stringify(targetRevenue.filter(r => r.trim())),
         testimonials: JSON.stringify(testimonials.filter(t => t.trim())),
         submission_type: submissionType,
         // Set status based on whether it's a draft save or submission
@@ -304,6 +324,44 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
+                <Label htmlFor="total_episodes">Total Episodes Published</Label>
+                <Input
+                  id="total_episodes"
+                  type="number"
+                  value={formData.total_episodes}
+                  onChange={(e) => handleFieldChange('total_episodes', e.target.value)}
+                  placeholder="e.g., 150"
+                />
+                <p className="text-sm text-power100-grey mt-1">Number of episodes published to date</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="subscriber_count">Subscriber Count</Label>
+                  <Input
+                    id="subscriber_count"
+                    type="number"
+                    value={formData.subscriber_count}
+                    onChange={(e) => handleFieldChange('subscriber_count', e.target.value)}
+                    placeholder="e.g., 5000"
+                  />
+                  <p className="text-sm text-power100-grey mt-1">Total subscribers across platforms</p>
+                </div>
+
+                <div>
+                  <Label htmlFor="download_average">Average Downloads</Label>
+                  <Input
+                    id="download_average"
+                    type="number"
+                    value={formData.download_average}
+                    onChange={(e) => handleFieldChange('download_average', e.target.value)}
+                    placeholder="e.g., 1500"
+                  />
+                  <p className="text-sm text-power100-grey mt-1">Average downloads per episode</p>
+                </div>
+              </div>
+
+              <div>
                 <Label>Podcast Logo</Label>
                 <p className="text-sm text-power100-grey mb-3">Upload a logo for your podcast</p>
                 <LogoManager
@@ -442,6 +500,17 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div>
+                <Label>Target Revenue Range</Label>
+                <p className="text-sm text-power100-grey mb-2">Select contractor revenue ranges your content targets</p>
+                <SimpleDynamicList
+                  items={targetRevenue}
+                  onItemsChange={setTargetRevenue}
+                  placeholder="e.g., 5-10 Million"
+                  buttonText="Add Revenue Range"
+                />
+              </div>
+
+              <div>
                 <Label>Key Topics Covered</Label>
                 <p className="text-sm text-power100-grey mb-2">List the main topics you regularly discuss</p>
                 <SimpleDynamicList
@@ -514,6 +583,68 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
             </div>
 
+            {/* Submitter Information Section */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+              <h3 className="font-semibold mb-3">Submitter Information</h3>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="submitter_name">Submitter Name</Label>
+                  <Input
+                    id="submitter_name"
+                    name="submitter_name"
+                    value={formData.submitter_name}
+                    onChange={handleInputChange}
+                    placeholder="Name of person who submitted"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="submitter_email">Submitter Email</Label>
+                  <Input
+                    id="submitter_email"
+                    name="submitter_email"
+                    type="email"
+                    value={formData.submitter_email}
+                    onChange={handleInputChange}
+                    placeholder="submitter@email.com"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="submitter_phone">Submitter Phone</Label>
+                  <Input
+                    id="submitter_phone"
+                    name="submitter_phone"
+                    value={formData.submitter_phone}
+                    onChange={handleInputChange}
+                    placeholder="(555) 123-4567"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="submitter_company">Submitter Company</Label>
+                  <Input
+                    id="submitter_company"
+                    name="submitter_company"
+                    value={formData.submitter_company}
+                    onChange={handleInputChange}
+                    placeholder="Company name"
+                  />
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="is_host"
+                    checked={formData.is_host}
+                    onCheckedChange={(checked) => handleCheckboxChange('is_host', checked as boolean)}
+                  />
+                  <Label htmlFor="is_host" className="font-normal">
+                    Submitter is the host
+                  </Label>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-4">
               <div>
                 <Label htmlFor="host_email">
@@ -564,6 +695,18 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
                 />
               </div>
 
+              <div>
+                <Label htmlFor="host_bio">Host Bio</Label>
+                <Textarea
+                  id="host_bio"
+                  name="host_bio"
+                  value={formData.host_bio}
+                  onChange={handleInputChange}
+                  placeholder="Tell us about the host's background and experience..."
+                  rows={4}
+                />
+              </div>
+
               <div className="border-t pt-4">
                 <div className="flex items-center space-x-2 mb-4">
                   <Checkbox
@@ -578,6 +721,16 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
 
                 {formData.accepts_guest_requests && (
                   <div className="space-y-4 ml-6">
+                    <div>
+                      <Label htmlFor="guest_requirements">Guest Requirements</Label>
+                      <Textarea
+                        id="guest_requirements"
+                        name="guest_requirements"
+                        value={formData.guest_requirements}
+                        onChange={handleInputChange}
+                        placeholder="What are your requirements for potential guests?"
+                      />
+                    </div>
                     <div>
                       <Label htmlFor="typical_guest_profile">Typical Guest Profile</Label>
                       <Input
