@@ -156,7 +156,7 @@ exports.getMatchedContent = async (req, res) => {
              COALESCE(logo_url, '') as logo_url,
              COALESCE(website, '') as website,
              date, location, format, 
-             COALESCE(expected_attendees, '') as attendees, 
+             COALESCE(expected_attendance, '') as attendees, 
              focus_areas_covered, 
              '' as target_audience,
              registration_deadline

@@ -119,9 +119,28 @@ const matchEvent = async (contractor) => {
   let bestScore = 0;
   
   for (const event of eventsResult.rows) {
-    const focusAreasCovered = typeof event.focus_areas_covered === 'string'
-      ? JSON.parse(event.focus_areas_covered || '[]')
-      : event.focus_areas_covered || [];
+    let focusAreasCovered = [];
+    try {
+      if (typeof event.focus_areas_covered === 'string') {
+        // Check if it's JSON array format
+        if (event.focus_areas_covered.startsWith('[')) {
+          focusAreasCovered = JSON.parse(event.focus_areas_covered);
+        } else {
+          // Handle comma-separated string
+          focusAreasCovered = event.focus_areas_covered.split(',').map(t => t.trim());
+        }
+      } else {
+        focusAreasCovered = event.focus_areas_covered || [];
+      }
+    } catch (e) {
+      console.error('Error parsing event focus_areas_covered:', e);
+      // Try splitting as fallback
+      if (typeof event.focus_areas_covered === 'string') {
+        focusAreasCovered = event.focus_areas_covered.split(',').map(t => t.trim());
+      } else {
+        focusAreasCovered = [];
+      }
+    }
     
     // Calculate match score
     let score = 0;

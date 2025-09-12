@@ -262,6 +262,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
                   <SelectContent className="bg-white">
                     <SelectItem value="Interview">Interview</SelectItem>
                     <SelectItem value="Solo">Solo</SelectItem>
+                    <SelectItem value="Co-hosted">Co-hosted</SelectItem>
                     <SelectItem value="Panel">Panel Discussion</SelectItem>
                     <SelectItem value="Educational">Educational</SelectItem>
                     <SelectItem value="Q&A">Q&A</SelectItem>
