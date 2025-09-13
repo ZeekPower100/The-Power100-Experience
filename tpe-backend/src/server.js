@@ -150,6 +150,15 @@ app.use('/api/events', eventRoutes);
 app.use('/api/podcasts', podcastRoutes);
 app.use('/api/ai', aiRoutes);
 
+// Contractor Behavioral Tracking Routes
+app.use('/api/contractor-business-goals', require('./routes/contractorBusinessGoalsRoutes'));
+app.use('/api/contractor-challenges', require('./routes/contractorChallengesRoutes'));
+app.use('/api/contractor-communications', require('./routes/contractorCommunicationsRoutes'));
+app.use('/api/contractor-content-engagement', require('./routes/contractorContentEngagementRoutes'));
+app.use('/api/contractor-engagement-events', require('./routes/contractorEngagementEventsRoutes'));
+app.use('/api/contractor-metrics-history', require('./routes/contractorMetricsHistoryRoutes'));
+app.use('/api/contractor-recommendations', require('./routes/contractorRecommendationsRoutes'));
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
