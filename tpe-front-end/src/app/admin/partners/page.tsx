@@ -10,6 +10,7 @@ import { StrategicPartner } from '@/lib/types/strategic_partner';
 import { Plus, Edit2, Trash2, AlertTriangle, Building2, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import PartnerForm from '@/components/admin/PartnerForm';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../utils/jsonHelpers';
 
 export default function PartnersManagement() {
   const [partners, setPartners] = useState<StrategicPartner[]>([]);
@@ -20,7 +21,7 @@ export default function PartnersManagement() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   const checkAuthAndLoadData = useCallback(async () => {
-    const token = localStorage.getItem('authToken');
+    const token = getFromStorage('authToken');
     if (token) {
       try {
         await authApi.getMe();
@@ -55,7 +56,7 @@ export default function PartnersManagement() {
               return fallback;
             }
             try {
-              return JSON.parse(field);
+              return safeJsonParse(field);
             } catch (error) {
               return fallback;
             }

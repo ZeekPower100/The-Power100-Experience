@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 const jwt = require('jsonwebtoken');
 const { query } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
@@ -106,10 +108,10 @@ const restoreSession = async (req, res, next) => {
     const parsedContractor = {
       ...contractor,
       focus_areas: typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]'
-        ? JSON.parse(contractor.focus_areas || '[]')
+        ? safeJsonParse(contractor.focus_areas || '[]')
         : Array.isArray(contractor.focus_areas) ? contractor.focus_areas : [],
       services_offered: typeof contractor.services_offered === 'string' && contractor.services_offered !== '[object Object]'
-        ? JSON.parse(contractor.services_offered || '[]')
+        ? safeJsonParse(contractor.services_offered || '[]')
         : Array.isArray(contractor.services_offered) ? contractor.services_offered : [],
       readiness_indicators: {
         increased_tools: contractor.increased_tools,
@@ -118,22 +120,22 @@ const restoreSession = async (req, res, next) => {
       },
       // Parse tech stack fields
       tech_stack_sales: typeof contractor.tech_stack_sales === 'string' 
-        ? JSON.parse(contractor.tech_stack_sales || '[]') 
+        ? safeJsonParse(contractor.tech_stack_sales || '[]') 
         : contractor.tech_stack_sales || [],
       tech_stack_operations: typeof contractor.tech_stack_operations === 'string' 
-        ? JSON.parse(contractor.tech_stack_operations || '[]') 
+        ? safeJsonParse(contractor.tech_stack_operations || '[]') 
         : contractor.tech_stack_operations || [],
       tech_stack_marketing: typeof contractor.tech_stack_marketing === 'string' 
-        ? JSON.parse(contractor.tech_stack_marketing || '[]') 
+        ? safeJsonParse(contractor.tech_stack_marketing || '[]') 
         : contractor.tech_stack_marketing || [],
       tech_stack_customer_experience: typeof contractor.tech_stack_customer_experience === 'string' 
-        ? JSON.parse(contractor.tech_stack_customer_experience || '[]') 
+        ? safeJsonParse(contractor.tech_stack_customer_experience || '[]') 
         : contractor.tech_stack_customer_experience || [],
       tech_stack_project_management: typeof contractor.tech_stack_project_management === 'string' 
-        ? JSON.parse(contractor.tech_stack_project_management || '[]') 
+        ? safeJsonParse(contractor.tech_stack_project_management || '[]') 
         : contractor.tech_stack_project_management || [],
       tech_stack_accounting_finance: typeof contractor.tech_stack_accounting_finance === 'string' 
-        ? JSON.parse(contractor.tech_stack_accounting_finance || '[]') 
+        ? safeJsonParse(contractor.tech_stack_accounting_finance || '[]') 
         : contractor.tech_stack_accounting_finance || []
     };
 

@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database.postgresql');
@@ -105,7 +107,7 @@ router.post('/apply', async (req, res) => {
     
     // Map partner_relationships to best_working_partnerships
     if (mappedData.partner_relationships) {
-      mappedData.best_working_partnerships = JSON.stringify(mappedData.partner_relationships);
+      mappedData.best_working_partnerships = safeJsonStringify(mappedData.partner_relationships);
       delete mappedData.partner_relationships;
     }
     
@@ -121,7 +123,7 @@ router.post('/apply', async (req, res) => {
     
     jsonFields.forEach(field => {
       if (mappedData[field] && typeof mappedData[field] === 'object') {
-        mappedData[field] = JSON.stringify(mappedData[field]);
+        mappedData[field] = safeJsonStringify(mappedData[field]);
       }
     });
     
@@ -193,7 +195,7 @@ router.post('/update-portfolio/:partnerId', async (req, res) => {
     jsonFields.forEach(field => {
       if (preOnboardingData[field]) {
         updateData[field] = typeof preOnboardingData[field] === 'object' 
-          ? JSON.stringify(preOnboardingData[field]) 
+          ? safeJsonStringify(preOnboardingData[field]) 
           : preOnboardingData[field];
       }
     });

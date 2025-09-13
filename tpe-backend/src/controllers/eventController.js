@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 const db = require('../config/database');
 
 // Get all events
@@ -74,7 +76,7 @@ exports.getEvent = async (req, res) => {
 
 // Create new event
 exports.createEvent = async (req, res) => {
-  console.log('Received event data:', JSON.stringify(req.body, null, 2));
+  console.log('Received event data:', safeJsonStringify(req.body, null, 2));
   
   try {
     const {
@@ -208,7 +210,7 @@ exports.createEvent = async (req, res) => {
           values.push(value);
         } else if (['target_revenue', 'sponsors', 'pre_registered_attendees'].includes(key)) {
           // TEXT fields that store arrays - stringify them
-          values.push(Array.isArray(value) ? JSON.stringify(value) : value);
+          values.push(Array.isArray(value) ? safeJsonStringify(value) : value);
         } else {
           values.push(value);
         }

@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import EventForm from '@/components/admin/EventForm';
 import { Calendar, ArrowLeft, Edit, MapPin, Users, DollarSign } from 'lucide-react';
 import { eventApi } from '@/lib/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../../utils/jsonHelpers';
 
 export default function EventDetailsPage() {
   const params = useParams();
@@ -203,7 +204,7 @@ export default function EventDetailsPage() {
               let areas = [];
               try {
                 areas = Array.isArray(event.focus_areas) ? event.focus_areas : 
-                        typeof event.focus_areas === 'string' ? JSON.parse(event.focus_areas) : [];
+                        typeof event.focus_areas === 'string' ? safeJsonParse(event.focus_areas) : [];
               } catch (e) {
                 areas = [];
               }
@@ -225,7 +226,7 @@ export default function EventDetailsPage() {
               let speakers = [];
               try {
                 speakers = Array.isArray(event.speakers) ? event.speakers : 
-                           typeof event.speakers === 'string' ? JSON.parse(event.speakers) : [];
+                           typeof event.speakers === 'string' ? safeJsonParse(event.speakers) : [];
               } catch (e) {
                 speakers = [];
               }

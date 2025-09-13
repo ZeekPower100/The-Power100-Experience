@@ -26,6 +26,7 @@ import {
   Hash
 } from 'lucide-react';
 import { contractorApi } from '@/lib/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../../utils/jsonHelpers';
 
 interface ContractorDetails {
   // Basic Information
@@ -126,7 +127,7 @@ export default function ContractorViewPage() {
     if (!data) return [];
     if (typeof data === 'string') {
       try {
-        return JSON.parse(data);
+        return safeJsonParse(data);
       } catch {
         return [];
       }

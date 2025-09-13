@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import BookForm from '@/components/admin/BookForm';
 import { Book } from '@/lib/types/book';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../utils/jsonHelpers';
 
 export default function BooksPage() {
   const router = useRouter();
@@ -32,7 +33,7 @@ export default function BooksPage() {
 
   const fetchBooks = async () => {
     try {
-      const token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
       
       const response = await fetch('/api/books', {
         headers: {
@@ -42,7 +43,7 @@ export default function BooksPage() {
       });
       
       if (response.ok) {
-        const data = await response.json();
+        const data = await handleApiResponse(response);
         setBooks(data);
       } else {
         console.error('Failed to fetch books:', response.status);
@@ -58,7 +59,7 @@ export default function BooksPage() {
     if (!confirm('Are you sure you want to delete this book?')) return;
 
     try {
-      const token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
       
       const response = await fetch(`/api/books/${id}`, {
         method: 'DELETE',

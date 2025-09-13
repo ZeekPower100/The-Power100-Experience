@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import PendingResourcesTabs from "@/components/admin/PendingResourcesTabs";
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface DashboardStats {
   contractors: {
@@ -82,7 +83,7 @@ export default function AdminDashboard() {
 
   const checkAuthAndLoadData = useCallback(async () => {
     // Check if already logged in
-    const token = localStorage.getItem('authToken');
+    const token = getFromStorage('authToken');
     
     if (token) {
       try {
@@ -99,7 +100,7 @@ export default function AdminDashboard() {
         } else {
           // Not a valid admin token - could be partner/contractor token
           // Only clear if we're sure it's invalid
-          const timestamp = localStorage.getItem('authTokenTimestamp');
+          const timestamp = getFromStorage('authTokenTimestamp');
           if (!timestamp || response?.error || response?.message?.includes('not found')) {
             // This is either not an admin token or an expired one
             localStorage.removeItem('authToken');
@@ -139,9 +140,9 @@ export default function AdminDashboard() {
       localStorage.removeItem('authTokenTimestamp');
       
       const response = await authApi.login(loginForm.email, loginForm.password);
-      localStorage.setItem('authToken', response.token);
+      setToStorage('authToken', response.token);
       // Set a timestamp to track when this admin session was created
-      localStorage.setItem('authTokenTimestamp', Date.now().toString());
+      setToStorage('authTokenTimestamp', Date.now().toString());
       setIsAuthenticated(true);
       loadDashboardData();
     } catch (err: unknown) {
@@ -233,7 +234,7 @@ export default function AdminDashboard() {
           }
           
           try {
-            return JSON.parse(jsonString);
+            return safeJsonParse(jsonString);
           } catch (error) {
             console.warn('Failed to parse JSON:', jsonString, error);
             return fallback;

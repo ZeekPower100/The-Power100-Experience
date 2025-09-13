@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 export default function SimpleTestPage() {
   const [email, setEmail] = useState('finaltest@partner.com');
@@ -19,10 +20,10 @@ export default function SimpleTestPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: safeJsonStringify({ email, password }),
       });
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       
       if (data.success) {
         setMessage(`✅ Login successful! Welcome, ${data.partner.company_name}!`);
@@ -41,7 +42,7 @@ export default function SimpleTestPage() {
     setMessage('Testing backend connection...');
     try {
       const response = await fetch('http://localhost:5000/health');
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       setMessage(`✅ Backend connected! Status: ${data.status}`);
     } catch (error) {
       setMessage(`🔴 Backend not accessible: ${error}`);

@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs').promises;
 const path = require('path');
@@ -120,7 +122,7 @@ class DataCollectionService {
     const params = {
       Bucket: this.bucketName,
       Key: key,
-      Body: JSON.stringify(interaction, null, 2),
+      Body: safeJsonStringify(interaction, null, 2),
       ContentType: 'application/json',
       Metadata: {
         'interaction-type': interaction.interaction_type || 'unknown',
@@ -155,11 +157,11 @@ class DataCollectionService {
       
       // Save interaction
       const filePath = path.join(dateDir, `${interaction.interaction_id}.json`);
-      await fs.writeFile(filePath, JSON.stringify(interaction, null, 2));
+      await fs.writeFile(filePath, safeJsonStringify(interaction, null, 2));
       
       // Also save to a daily summary file for easier analysis
       const summaryPath = path.join(dateDir, 'daily_summary.jsonl');
-      const summaryLine = JSON.stringify(interaction) + '\n';
+      const summaryLine = safeJsonStringify(interaction) + '\n';
       await fs.appendFile(summaryPath, summaryLine);
       
       console.log(`Saved interaction ${interaction.interaction_id} locally`);
@@ -316,7 +318,7 @@ class DataCollectionService {
       
       if (files.length > 0) {
         const content = await fs.readFile(files[0], 'utf8');
-        return JSON.parse(content);
+        return safeJsonParse(content);
       }
     } catch (error) {
       console.error('Error retrieving interaction:', error);
@@ -357,7 +359,7 @@ class DataCollectionService {
       
       const content = await fs.readFile(summaryPath, 'utf8');
       const lines = content.trim().split('\n');
-      return lines.map(line => JSON.parse(line));
+      return lines.map(line => safeJsonParse(line));
     } catch (error) {
       console.error('Error reading daily summary:', error);
       return [];

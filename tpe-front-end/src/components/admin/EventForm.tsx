@@ -12,6 +12,7 @@ import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
 import { Calendar, MapPin, Users, DollarSign, Phone, X } from 'lucide-react';
 import { Event } from '@/lib/types/event';
 import LogoManager from '@/components/admin/LogoManager';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface EventFormProps {
   event?: Event;
@@ -171,7 +172,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
   const [selectedTargetRevenue, setSelectedTargetRevenue] = useState<string[]>(() => {
     if (event?.target_revenue) {
       try {
-        const parsed = JSON.parse(event.target_revenue);
+        const parsed = safeJsonParse(event.target_revenue);
         return Array.isArray(parsed) ? parsed : [];
       } catch {
         return event.target_revenue.split(',').map(r => r.trim());
@@ -184,7 +185,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
   const [speakers, setSpeakers] = useState<string[]>(
     event?.speaker_profiles ? 
       (typeof event.speaker_profiles === 'string' ? 
-        (event.speaker_profiles.startsWith('[') ? JSON.parse(event.speaker_profiles) : event.speaker_profiles.split(',').map(s => s.trim())) : 
+        (event.speaker_profiles.startsWith('[') ? safeJsonParse(event.speaker_profiles) : event.speaker_profiles.split(',').map(s => s.trim())) : 
         Array.isArray(event.speaker_profiles) ? event.speaker_profiles : []
       ) : []
   );
@@ -192,7 +193,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
   const [agendaHighlights, setAgendaHighlights] = useState<string[]>(
     event?.agenda_highlights ? 
       (typeof event.agenda_highlights === 'string' ? 
-        (event.agenda_highlights.startsWith('[') ? JSON.parse(event.agenda_highlights) : event.agenda_highlights.split(',').map(a => a.trim())) : 
+        (event.agenda_highlights.startsWith('[') ? safeJsonParse(event.agenda_highlights) : event.agenda_highlights.split(',').map(a => a.trim())) : 
         Array.isArray(event.agenda_highlights) ? event.agenda_highlights : []
       ) : []
   );
@@ -200,7 +201,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
   const [testimonials, setTestimonials] = useState<string[]>(
     event?.past_attendee_testimonials ? 
       (typeof event.past_attendee_testimonials === 'string' ? 
-        (event.past_attendee_testimonials.startsWith('[') ? JSON.parse(event.past_attendee_testimonials) : event.past_attendee_testimonials.split(',').map(t => t.trim())) : 
+        (event.past_attendee_testimonials.startsWith('[') ? safeJsonParse(event.past_attendee_testimonials) : event.past_attendee_testimonials.split(',').map(t => t.trim())) : 
         Array.isArray(event.past_attendee_testimonials) ? event.past_attendee_testimonials : []
       ) : []
   );
@@ -208,7 +209,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
   const [sponsors, setSponsors] = useState<string[]>(
     event?.sponsors ? 
       (typeof event.sponsors === 'string' ? 
-        (event.sponsors.startsWith('[') ? JSON.parse(event.sponsors) : event.sponsors.split(',').map(s => s.trim())) : 
+        (event.sponsors.startsWith('[') ? safeJsonParse(event.sponsors) : event.sponsors.split(',').map(s => s.trim())) : 
         Array.isArray(event.sponsors) ? event.sponsors : []
       ) : []
   );
@@ -216,7 +217,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
   const [preRegisteredAttendees, setPreRegisteredAttendees] = useState<string[]>(
     event?.pre_registered_attendees ? 
       (typeof event.pre_registered_attendees === 'string' ? 
-        (event.pre_registered_attendees.startsWith('[') ? JSON.parse(event.pre_registered_attendees) : event.pre_registered_attendees.split(',').map(a => a.trim())) : 
+        (event.pre_registered_attendees.startsWith('[') ? safeJsonParse(event.pre_registered_attendees) : event.pre_registered_attendees.split(',').map(a => a.trim())) : 
         Array.isArray(event.pre_registered_attendees) ? event.pre_registered_attendees : []
       ) : []
   );
@@ -224,7 +225,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
   const [selectedNetworkingOpportunities, setSelectedNetworkingOpportunities] = useState<string[]>(
     event?.networking_opportunities ? 
       (typeof event.networking_opportunities === 'string' ? 
-        JSON.parse(event.networking_opportunities) : 
+        safeJsonParse(event.networking_opportunities) : 
         Array.isArray(event.networking_opportunities) ? event.networking_opportunities : []
       ) : []
   );
@@ -232,7 +233,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
   const [followUpResources, setFollowUpResources] = useState<string[]>(
     event?.follow_up_resources ? 
       (typeof event.follow_up_resources === 'string' ? 
-        JSON.parse(event.follow_up_resources) : 
+        safeJsonParse(event.follow_up_resources) : 
         Array.isArray(event.follow_up_resources) ? event.follow_up_resources : []
       ) : []
   );
@@ -279,14 +280,14 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
       const dataToSubmit = {
         ...formData,
         focus_areas_covered: selectedFocusAreas.join(', '),
-        target_revenue: JSON.stringify(selectedTargetRevenue),
-        speaker_profiles: JSON.stringify(speakers.filter(s => s.trim())),
-        agenda_highlights: JSON.stringify(agendaHighlights.filter(a => a.trim())),
-        past_attendee_testimonials: JSON.stringify(testimonials.filter(t => t.trim())),
-        sponsors: JSON.stringify(sponsors.filter(s => s.trim())),
-        pre_registered_attendees: JSON.stringify(preRegisteredAttendees.filter(a => a.trim())),
-        networking_opportunities: JSON.stringify(selectedNetworkingOpportunities),
-        follow_up_resources: JSON.stringify(followUpResources.filter(r => r.trim())),
+        target_revenue: safeJsonStringify(selectedTargetRevenue),
+        speaker_profiles: safeJsonStringify(speakers.filter(s => s.trim())),
+        agenda_highlights: safeJsonStringify(agendaHighlights.filter(a => a.trim())),
+        past_attendee_testimonials: safeJsonStringify(testimonials.filter(t => t.trim())),
+        sponsors: safeJsonStringify(sponsors.filter(s => s.trim())),
+        pre_registered_attendees: safeJsonStringify(preRegisteredAttendees.filter(a => a.trim())),
+        networking_opportunities: safeJsonStringify(selectedNetworkingOpportunities),
+        follow_up_resources: safeJsonStringify(followUpResources.filter(r => r.trim())),
         submission_type: submissionType,
         // Set status based on whether it's a draft save or submission
         // If saving as draft, mark as 'draft'
@@ -301,7 +302,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
         }
       });
 
-      const token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
       
       const response = await fetch(`/api/events${event?.id ? `/${event.id}` : ''}`, {
         method: event?.id ? 'PUT' : 'POST',
@@ -309,7 +310,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(dataToSubmit),
+        body: safeJsonStringify(dataToSubmit),
       });
 
       if (!response.ok) {

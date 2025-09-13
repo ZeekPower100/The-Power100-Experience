@@ -30,7 +30,7 @@ export function safeJsonParse<T = any>(data: any, fallback: T = null as T): T {
       if (data === 'true') return true as T;
       if (data === 'false') return false as T;
       
-      // Try to parse
+      // Try to parse using native JSON.parse
       return JSON.parse(data) as T;
     }
     
@@ -65,7 +65,7 @@ export function safeJsonStringify(data: any, fallback: string = '{}'): string {
       return fallback;
     }
     
-    // Object/Array? Stringify it
+    // Object/Array? Stringify it using native JSON.stringify
     return JSON.stringify(data);
   } catch (error: any) {
     console.error('JSON Stringify Error:', error?.message);
@@ -103,6 +103,35 @@ export async function handleApiResponse<T = any>(response: Response): Promise<T 
 export function getFromStorage<T = any>(key: string, fallback: T = null as T): T {
   try {
     const item = localStorage.getItem(key);
+    
+    // If no item found, return fallback
+    if (item === null || item === undefined) {
+      return fallback;
+    }
+    
+    // List of keys that should NOT be parsed as JSON
+    const nonJsonKeys = [
+      'authToken', 'adminToken', 'partnerToken',  // JWT tokens
+      'authTokenTimestamp',                        // Timestamps
+      'partner_application_id', 'delegate_id'      // Simple IDs
+    ];
+    
+    // Check if this key should be returned as-is (not parsed)
+    if (nonJsonKeys.includes(key) || 
+        key.endsWith('Token') || 
+        key.endsWith('_token') ||
+        key.endsWith('Timestamp') ||
+        key.endsWith('_id') ||
+        key.endsWith('_uuid')) {
+      return item as T;
+    }
+    
+    // Check if the value looks like a JWT token (starts with ey)
+    if (typeof item === 'string' && item.startsWith('ey')) {
+      return item as T;
+    }
+    
+    // For everything else, try to parse as JSON
     return safeJsonParse<T>(item, fallback);
   } catch (error) {
     console.error(`Storage read error for ${key}:`, error);
@@ -115,8 +144,47 @@ export function getFromStorage<T = any>(key: string, fallback: T = null as T): T
  */
 export function setToStorage(key: string, value: any): boolean {
   try {
-    const stringified = safeJsonStringify(value);
-    localStorage.setItem(key, stringified);
+    // List of keys that should NOT be JSON stringified
+    const nonJsonKeys = [
+      'authToken', 'adminToken', 'partnerToken',  // JWT tokens
+      'authTokenTimestamp',                        // Timestamps
+      'partner_application_id', 'delegate_id'      // Simple IDs
+    ];
+    
+    // Check if this key should be stored as-is (not stringified)
+    if (nonJsonKeys.includes(key) || 
+        key.endsWith('Token') || 
+        key.endsWith('_token') ||
+        key.endsWith('Timestamp') ||
+        key.endsWith('_id') ||
+        key.endsWith('_uuid')) {
+      localStorage.setItem(key, String(value));
+      return true;
+    }
+    
+    // Check if the value looks like a JWT token
+    if (typeof value === 'string' && value.startsWith('ey')) {
+      localStorage.setItem(key, value);
+      return true;
+    }
+    
+    // Check if value is already a JSON string (to avoid double stringification)
+    if (typeof value === 'string') {
+      try {
+        // Try to parse it to check if it's valid JSON
+        JSON.parse(value);
+        // If it parses successfully, it's already JSON, store as-is
+        localStorage.setItem(key, value);
+        return true;
+      } catch {
+        // Not JSON, stringify it
+        localStorage.setItem(key, safeJsonStringify(value));
+        return true;
+      }
+    }
+    
+    // For objects and arrays, stringify them
+    localStorage.setItem(key, safeJsonStringify(value));
     return true;
   } catch (error) {
     console.error(`Storage write error for ${key}:`, error);

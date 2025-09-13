@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 const { query, transaction } = require('../config/database');
 const outcomeTrackingService = require('./outcomeTrackingService');
 
@@ -32,10 +34,10 @@ const matchContractorWithPartners = async (contractor) => {
   const parsedContractor = {
     ...contractor,
     focus_areas: typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]'
-      ? JSON.parse(contractor.focus_areas || '[]')
+      ? safeJsonParse(contractor.focus_areas || '[]')
       : Array.isArray(contractor.focus_areas) ? contractor.focus_areas : [],
     services_offered: typeof contractor.services_offered === 'string' && contractor.services_offered !== '[object Object]'
-      ? JSON.parse(contractor.services_offered || '[]')
+      ? safeJsonParse(contractor.services_offered || '[]')
       : Array.isArray(contractor.services_offered) ? contractor.services_offered : []
   };
 
@@ -48,13 +50,13 @@ const matchContractorWithPartners = async (contractor) => {
   const partners = partnersResult.rows.map(partner => ({
     ...partner,
     focus_areas_served: typeof partner.focus_areas_served === 'string' && partner.focus_areas_served !== '[object Object]'
-      ? JSON.parse(partner.focus_areas_served || '[]')
+      ? safeJsonParse(partner.focus_areas_served || '[]')
       : Array.isArray(partner.focus_areas_served) ? partner.focus_areas_served : [],
     target_revenue_range: typeof partner.target_revenue_range === 'string' && partner.target_revenue_range !== '[object Object]'
-      ? JSON.parse(partner.target_revenue_range || '[]')
+      ? safeJsonParse(partner.target_revenue_range || '[]')
       : Array.isArray(partner.target_revenue_range) ? partner.target_revenue_range : [],
     geographic_regions: typeof partner.geographic_regions === 'string' && partner.geographic_regions !== '[object Object]'
-      ? JSON.parse(partner.geographic_regions || '[]')
+      ? safeJsonParse(partner.geographic_regions || '[]')
       : Array.isArray(partner.geographic_regions) ? partner.geographic_regions : [],
     key_differentiators: partner.key_differentiators || ''
   }));
@@ -96,7 +98,7 @@ const matchContractorWithPartners = async (contractor) => {
         parsedContractor.id,
         match.partner.id,
         match.matchScore,
-        JSON.stringify(match.matchReasons), // Convert array to JSON string for SQLite
+        safeJsonStringify(match.matchReasons), // Convert array to JSON string for SQLite
         i === 0 ? true : false // SQLite uses 1/0 for boolean
       ]);
       
@@ -363,7 +365,7 @@ const parseTechStack = (techStackField) => {
   
   if (typeof techStackField === 'string') {
     try {
-      const parsed = JSON.parse(techStackField);
+      const parsed = safeJsonParse(techStackField);
       return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];

@@ -14,6 +14,7 @@ import { DynamicList } from '@/components/ui/dynamic-list';
 import { partnerApi } from '@/lib/api';
 import { StrategicPartner } from '@/lib/types/strategic_partner';
 import { ArrowLeft, Save, Building2, AlertTriangle } from 'lucide-react';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface PartnerFormProps {
   partner?: StrategicPartner | null;
@@ -175,18 +176,18 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         contact_phone: partner.contact_phone || '',
         power100_subdomain: partner.power100_subdomain || '',
         focus_areas_served: Array.isArray(partner.focus_areas_served) ? partner.focus_areas_served : 
-          (typeof partner.focus_areas_served === 'string' ? JSON.parse(partner.focus_areas_served || '[]') : []),
+          (typeof partner.focus_areas_served === 'string' ? safeJsonParse(partner.focus_areas_served || '[]') : []),
         target_revenue_range: Array.isArray(partner.target_revenue_range) ? partner.target_revenue_range :
-          (typeof partner.target_revenue_range === 'string' ? JSON.parse(partner.target_revenue_range || '[]') : []),
+          (typeof partner.target_revenue_range === 'string' ? safeJsonParse(partner.target_revenue_range || '[]') : []),
         geographic_regions: Array.isArray(partner.geographic_regions) ? partner.geographic_regions :
-          (typeof partner.geographic_regions === 'string' ? JSON.parse(partner.geographic_regions || '[]') : []),
+          (typeof partner.geographic_regions === 'string' ? safeJsonParse(partner.geographic_regions || '[]') : []),
         power_confidence_score: partner.power_confidence_score || 0,
         pricing_model: partner.pricing_model || '',
         onboarding_process: partner.onboarding_process || '',
         key_differentiators: Array.isArray(partner.key_differentiators) ? partner.key_differentiators :
-          (typeof partner.key_differentiators === 'string' ? JSON.parse(partner.key_differentiators || '[]') : []),
+          (typeof partner.key_differentiators === 'string' ? safeJsonParse(partner.key_differentiators || '[]') : []),
         client_testimonials: Array.isArray(partner.client_testimonials) ? partner.client_testimonials :
-          (typeof partner.client_testimonials === 'string' ? JSON.parse(partner.client_testimonials || '[]') : []),
+          (typeof partner.client_testimonials === 'string' ? safeJsonParse(partner.client_testimonials || '[]') : []),
         is_active: partner.is_active !== undefined ? partner.is_active : true,
         last_quarterly_report: partner.last_quarterly_report || ''
       });

@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import PodcastForm from '@/components/admin/PodcastForm';
 import { Podcast } from '@/lib/types/podcast';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../utils/jsonHelpers';
 
 export default function PodcastsPage() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function PodcastsPage() {
 
   const fetchPodcasts = async () => {
     try {
-      const token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
       
       const response = await fetch('/api/podcasts', {
         headers: {
@@ -44,7 +45,7 @@ export default function PodcastsPage() {
       });
       
       if (response.ok) {
-        const data = await response.json();
+        const data = await handleApiResponse(response);
         setPodcasts(data);
       } else {
         console.error('Failed to fetch podcasts:', response.status);
@@ -60,7 +61,7 @@ export default function PodcastsPage() {
     if (!confirm('Are you sure you want to delete this podcast?')) return;
 
     try {
-      const token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
       
       const response = await fetch(`/api/podcasts/${id}`, {
         method: 'DELETE',

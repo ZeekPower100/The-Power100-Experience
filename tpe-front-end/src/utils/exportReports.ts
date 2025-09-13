@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from './jsonHelpers';
 
 interface PartnerData {
   company_name: string;
@@ -357,7 +358,7 @@ export const exportToCSV = (data: ExportData | ExportData[]) => {
 // Helper function to parse service categories
 function parseServiceCategories(categories: string): string {
   try {
-    const parsed = JSON.parse(categories);
+    const parsed = safeJsonParse(categories);
     return Array.isArray(parsed) ? parsed.join(', ') : categories;
   } catch {
     return categories || 'N/A';

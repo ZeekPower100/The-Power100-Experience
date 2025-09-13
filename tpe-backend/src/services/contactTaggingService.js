@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 // Contact Tagging Service - Automatic contact classification and tagging
 const { query } = require('../config/database');
 
@@ -101,7 +103,7 @@ class ContactTaggingService {
         taggingData.contact_type,
         taggingData.onboarding_source,
         taggingData.email_domain,
-        JSON.stringify(allTags),
+        safeJsonStringify(allTags),
         contractorId
       ]);
       
@@ -151,7 +153,7 @@ class ContactTaggingService {
       
       return result.rows.map(row => ({
         ...row,
-        tags: JSON.parse(row.tags || '[]')
+        tags: safeJsonParse(row.tags || '[]')
       }));
     } catch (error) {
       console.error('Error getting contacts by tag:', error);
@@ -190,7 +192,7 @@ class ContactTaggingService {
         byType: stats.rows,
         byTags: tagStats.rows.map(row => ({
           ...row,
-          tags: JSON.parse(row.tags || '[]')
+          tags: safeJsonParse(row.tags || '[]')
         }))
       };
     } catch (error) {
@@ -210,11 +212,11 @@ class ContactTaggingService {
         throw new Error('Contact not found');
       }
       
-      const existingTags = JSON.parse(result.rows[0].tags || '[]');
+      const existingTags = safeJsonParse(result.rows[0].tags || '[]');
       const updatedTags = [...new Set([...existingTags, ...newTags])]; // Remove duplicates
       
       await query('UPDATE contractors SET tags = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [
-        JSON.stringify(updatedTags),
+        safeJsonStringify(updatedTags),
         contractorId
       ]);
       

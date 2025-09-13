@@ -14,6 +14,7 @@ import {
   Lightbulb,
   AlertTriangle
 } from 'lucide-react';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface ExecutiveReportProps {
   partnerId: string;
@@ -30,7 +31,7 @@ export default function ExecutiveReport({ partnerId }: ExecutiveReportProps) {
   const fetchReport = async () => {
     try {
       const response = await fetch(getApiUrl(`api/reports/executive/partner/${partnerId}`));
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       if (data.success) {
         setReport(data.report);
       }

@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database');
@@ -109,7 +111,7 @@ router.get('/access-status', protect, async (req, res, next) => {
       contractor: {
         name: mockContractor.name,
         company: mockContractor.company_name,
-        focusAreas: JSON.parse(mockContractor.focus_areas || '[]'),
+        focusAreas: safeJsonParse(mockContractor.focus_areas || '[]'),
         completedFeedback: mockContractor.feedback_completion_status === 'completed',
         aiCoachAccess: hasAccess
       }
@@ -274,7 +276,7 @@ const generateAIResponse = async (userInput, file, contractor) => {
   // and incorporate partner demo insights and feedback data
   
   const responses = [
-    `Based on your partner feedback data and focus on ${contractor.focus_areas ? JSON.parse(contractor.focus_areas)[0] : 'business growth'}, I notice several contractors in similar situations have found success by implementing systematic process improvements. Here are 3 specific strategies tailored to ${contractor.company_name}...`,
+    `Based on your partner feedback data and focus on ${contractor.focus_areas ? safeJsonParse(contractor.focus_areas)[0] : 'business growth'}, I notice several contractors in similar situations have found success by implementing systematic process improvements. Here are 3 specific strategies tailored to ${contractor.company_name}...`,
     
     `Looking at the demo insights from your matched partners, I can see patterns in what's worked for other contractors in your revenue range. Your PowerConfidence scores suggest strong performance in communication, which is a great foundation. Let me share some actionable recommendations...`,
     

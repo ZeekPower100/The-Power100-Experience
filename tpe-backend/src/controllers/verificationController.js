@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 // Verification Controller - Handles SMS verification codes via GHL
 const { query } = require('../config/database');
 const crypto = require('crypto');
@@ -173,7 +175,7 @@ const verifyCode = async (req, res) => {
         'inbound',
         'delivered',
         `Verification code: ${code}`,
-        JSON.stringify({ action: 'verification_complete', verified: true }),
+        safeJsonStringify({ action: 'verification_complete', verified: true }),
         new Date().toISOString()
       ]
     );

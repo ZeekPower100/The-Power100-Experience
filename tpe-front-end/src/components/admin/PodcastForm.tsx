@@ -12,6 +12,7 @@ import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
 import { Mic, Headphones, Users, BarChart, Phone, X } from 'lucide-react';
 import { Podcast } from '@/lib/types/podcast';
 import LogoManager from '@/components/admin/LogoManager';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface PodcastFormProps {
   podcast?: Podcast;
@@ -108,7 +109,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
   const [notableGuests, setNotableGuests] = useState<string[]>(
     podcast?.notable_guests ? 
       (typeof podcast.notable_guests === 'string' ? 
-        (podcast.notable_guests.startsWith('[') ? JSON.parse(podcast.notable_guests) : podcast.notable_guests.split(',').map(g => g.trim())) : 
+        (podcast.notable_guests.startsWith('[') ? safeJsonParse(podcast.notable_guests) : podcast.notable_guests.split(',').map(g => g.trim())) : 
         Array.isArray(podcast.notable_guests) ? podcast.notable_guests : []
       ) : []
   );
@@ -116,7 +117,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
   const [keyTopics, setKeyTopics] = useState<string[]>(
     podcast?.topics ? 
       (typeof podcast.topics === 'string' ? 
-        (podcast.topics.startsWith('[') ? JSON.parse(podcast.topics) : podcast.topics.split(',').map(t => t.trim())) : 
+        (podcast.topics.startsWith('[') ? safeJsonParse(podcast.topics) : podcast.topics.split(',').map(t => t.trim())) : 
         Array.isArray(podcast.topics) ? podcast.topics : []
       ) : []
   );
@@ -124,7 +125,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
   const [targetRevenue, setTargetRevenue] = useState<string[]>(
     podcast?.target_revenue ? 
       (typeof podcast.target_revenue === 'string' ? 
-        (podcast.target_revenue.startsWith('[') ? JSON.parse(podcast.target_revenue) : podcast.target_revenue.split(',').map(r => r.trim())) : 
+        (podcast.target_revenue.startsWith('[') ? safeJsonParse(podcast.target_revenue) : podcast.target_revenue.split(',').map(r => r.trim())) : 
         Array.isArray(podcast.target_revenue) ? podcast.target_revenue : []
       ) : []
   );
@@ -132,7 +133,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
   const [testimonials, setTestimonials] = useState<string[]>(
     podcast?.testimonials ? 
       (typeof podcast.testimonials === 'string' ? 
-        (podcast.testimonials.startsWith('[') ? JSON.parse(podcast.testimonials) : podcast.testimonials.split(',').map(t => t.trim())) : 
+        (podcast.testimonials.startsWith('[') ? safeJsonParse(podcast.testimonials) : podcast.testimonials.split(',').map(t => t.trim())) : 
         Array.isArray(podcast.testimonials) ? podcast.testimonials : []
       ) : []
   );
@@ -163,10 +164,10 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
       const dataToSubmit = {
         ...formData,
         focus_areas_covered: selectedFocusAreas.join(', '),
-        notable_guests: JSON.stringify(notableGuests.filter(g => g.trim())),
-        topics: JSON.stringify(keyTopics.filter(t => t.trim())),
-        target_revenue: JSON.stringify(targetRevenue.filter(r => r.trim())),
-        testimonials: JSON.stringify(testimonials.filter(t => t.trim())),
+        notable_guests: safeJsonStringify(notableGuests.filter(g => g.trim())),
+        topics: safeJsonStringify(keyTopics.filter(t => t.trim())),
+        target_revenue: safeJsonStringify(targetRevenue.filter(r => r.trim())),
+        testimonials: safeJsonStringify(testimonials.filter(t => t.trim())),
         submission_type: submissionType,
         // Set status based on whether it's a draft save or submission
         // If saving as draft, mark as 'draft'
@@ -181,7 +182,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
         }
       });
 
-      const token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
       
       const response = await fetch(`/api/podcasts${podcast?.id ? `/${podcast.id}` : ''}`, {
         method: podcast?.id ? 'PUT' : 'POST',
@@ -189,7 +190,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(dataToSubmit),
+        body: safeJsonStringify(dataToSubmit),
       });
 
       if (!response.ok) {

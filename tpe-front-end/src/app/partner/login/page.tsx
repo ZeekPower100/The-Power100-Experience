@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Eye, EyeOff, LogIn, Shield, TrendingUp, Award } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getApiUrl } from '@/utils/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../utils/jsonHelpers';
 
 export default function PartnerLoginPage() {
   const router = useRouter();
@@ -29,18 +30,18 @@ export default function PartnerLoginPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: safeJsonStringify({ email, password }),
       });
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
 
       if (!response.ok) {
         throw new Error(data.message || 'Invalid credentials');
       }
 
       // Store partner token and info
-      localStorage.setItem('partnerToken', data.token);
-      localStorage.setItem('partnerInfo', JSON.stringify(data.partner));
+      setToStorage('partnerToken', data.token);
+      setToStorage('partnerInfo', data.partner);  // setToStorage will handle stringification
 
       // Redirect to partner dashboard
       router.push('/partner/dashboard');

@@ -18,6 +18,7 @@ import {
   Globe,
   Building
 } from 'lucide-react';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../utils/jsonHelpers';
 
 interface PartnerInfo {
   id: number;
@@ -47,15 +48,15 @@ export default function PartnerDashboard() {
 
   useEffect(() => {
     // Check if partner is logged in
-    const token = localStorage.getItem('partnerToken');
-    const storedPartnerInfo = localStorage.getItem('partnerInfo');
+    const token = getFromStorage('partnerToken');
+    const storedPartnerInfo = getFromStorage('partnerInfo');
     
     if (!token || !storedPartnerInfo) {
       router.push('/partner-portal');
       return;
     }
 
-    setPartnerInfo(JSON.parse(storedPartnerInfo));
+    setPartnerInfo(safeJsonParse(storedPartnerInfo));
     fetchPartnerProfile(token);
   }, [router]);
 
@@ -67,7 +68,7 @@ export default function PartnerDashboard() {
         },
       });
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
 
       if (data.success) {
         setPartnerProfile(data.partner);

@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 // GHL Sync Controller - Manages contact synchronization between TPE and GHL
 const { query } = require('../config/database');
 
@@ -71,7 +73,7 @@ const getContractorsForSync = async () => {
     let focusAreas = [];
     try {
       if (contractor.focus_areas) {
-        focusAreas = JSON.parse(contractor.focus_areas);
+        focusAreas = safeJsonParse(contractor.focus_areas);
       }
     } catch (e) {
       focusAreas = contractor.focus_areas ? [contractor.focus_areas] : [];
@@ -131,7 +133,7 @@ const getPartnersForSync = async () => {
     let serviceCategories = [];
     try {
       if (partner.service_category) {
-        serviceCategories = JSON.parse(partner.service_category);
+        serviceCategories = safeJsonParse(partner.service_category);
       }
     } catch (e) {
       serviceCategories = partner.service_category ? [partner.service_category] : [];

@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { contractorApi } from '@/lib/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface StepProps {
   data: Partial<Contractor>;
@@ -61,7 +62,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
     // Set all focus areas from contractor data
     if (data.focus_areas) {
       const areas = typeof data.focus_areas === 'string' 
-        ? JSON.parse(data.focus_areas) 
+        ? safeJsonParse(data.focus_areas) 
         : data.focus_areas;
       setAllFocusAreas(areas);
     }
@@ -286,7 +287,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                     <div className="mb-3">
                       <p className="text-xs font-semibold text-gray-700 mb-1">Key Takeaways:</p>
                       <ul className="text-xs text-gray-600 list-disc list-inside">
-                        {JSON.parse(matches.book.key_takeaways).slice(0, 3).map((takeaway: string, i: number) => (
+                        {safeJsonParse(matches.book.key_takeaways).slice(0, 3).map((takeaway: string, i: number) => (
                           <li key={i}>{takeaway}</li>
                         ))}
                       </ul>
@@ -331,7 +332,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                   <p className="text-xs text-gray-500 mb-3">
                     Topics Covered: {matches.podcast.topics ? 
                       (typeof matches.podcast.topics === 'string' ? 
-                        JSON.parse(matches.podcast.topics).join(', ') : 
+                        safeJsonParse(matches.podcast.topics).join(', ') : 
                         matches.podcast.topics.join(', ')) : 
                       'Various industry topics'}
                   </p>
@@ -434,7 +435,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                             <p className="text-xs font-semibold text-gray-700 mb-1">Key Benefits:</p>
                             <ul className="text-xs text-gray-600 list-disc list-inside">
                               {(typeof partner.key_differentiators === 'string' ? 
-                                JSON.parse(partner.key_differentiators) : 
+                                safeJsonParse(partner.key_differentiators) : 
                                 partner.key_differentiators).slice(0, 3).map((diff: string, i: number) => (
                                 <li key={i}>{diff}</li>
                               ))}

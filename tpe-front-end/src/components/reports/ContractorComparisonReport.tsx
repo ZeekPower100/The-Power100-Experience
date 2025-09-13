@@ -5,6 +5,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TrendingUp, TrendingDown, ArrowRight, Users, Target, Award } from 'lucide-react';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface ContractorReportProps {
   contractorId: string;
@@ -22,7 +23,7 @@ export default function ContractorComparisonReport({ contractorId, partnerId }: 
   const fetchReport = async () => {
     try {
       const response = await fetch(getApiUrl(`api/reports/contractor/${contractorId}/partner/${partnerId}`));
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       if (data.success) {
         setReport(data.report);
       }

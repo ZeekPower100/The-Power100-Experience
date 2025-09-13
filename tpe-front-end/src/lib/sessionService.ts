@@ -1,4 +1,5 @@
 import { Contractor } from './types/contractor';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../utils/jsonHelpers';
 
 const SESSION_TOKEN_KEY = 'tpe_contractor_session';
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
@@ -25,7 +26,7 @@ export class SessionService {
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days
       };
       
-      localStorage.setItem(SESSION_TOKEN_KEY, JSON.stringify(sessionData));
+      localStorage.setItem(SESSION_TOKEN_KEY, safeJsonStringify(sessionData));
     } catch (error) {
       console.error('Failed to save session:', error);
     }
@@ -37,7 +38,7 @@ export class SessionService {
       const sessionStr = localStorage.getItem(SESSION_TOKEN_KEY);
       if (!sessionStr) return null;
 
-      const session: SessionData = JSON.parse(sessionStr);
+      const session: SessionData = safeJsonParse(sessionStr);
       
       // Check if session is expired
       if (new Date() > new Date(session.expiresAt)) {
@@ -70,14 +71,14 @@ export class SessionService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ contractorId, step }),
+        body: safeJsonStringify({ contractorId, step }),
       });
 
       if (!response.ok) {
         throw new Error('Failed to create session');
       }
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       
       if (data.success) {
         // Save to localStorage
@@ -113,7 +114,7 @@ export class SessionService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ token: sessionToken }),
+        body: safeJsonStringify({ token: sessionToken }),
       });
 
       if (!response.ok) {
@@ -124,7 +125,7 @@ export class SessionService {
         return null;
       }
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       
       if (data.success && data.sessionValid) {
         // Update localStorage with fresh data
@@ -155,7 +156,7 @@ export class SessionService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ token: session.token }),
+        body: safeJsonStringify({ token: session.token }),
       });
 
       if (!response.ok) {
@@ -163,7 +164,7 @@ export class SessionService {
         return null;
       }
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       
       if (data.success) {
         // Update localStorage with new token

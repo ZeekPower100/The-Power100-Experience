@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 const { query } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
 
@@ -181,9 +183,9 @@ const createPartner = async (req, res, next) => {
   `, [
     // Basic values
     company_name, description, logo_url, website, contact_email, contact_phone,
-    power100_subdomain, JSON.stringify(focus_areas_served || []), JSON.stringify(target_revenue_range || []),
-    JSON.stringify(geographic_regions || []), powerconfidence_score || 0, JSON.stringify(key_differentiators || []),
-    pricing_model, onboarding_process, JSON.stringify(client_testimonials || []), 
+    power100_subdomain, safeJsonStringify(focus_areas_served || []), safeJsonStringify(target_revenue_range || []),
+    safeJsonStringify(geographic_regions || []), powerconfidence_score || 0, safeJsonStringify(key_differentiators || []),
+    pricing_model, onboarding_process, safeJsonStringify(client_testimonials || []), 
     is_active !== undefined ? is_active : true, last_quarterly_report, onboarding_url, demo_booking_url,
     
     // Comprehensive onboarding values
@@ -193,13 +195,13 @@ const createPartner = async (req, res, next) => {
     sales_contact_name, sales_contact_email, sales_contact_phone, sales_contact_title,
     onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_title,
     marketing_contact_name, marketing_contact_email, marketing_contact_phone, marketing_contact_title,
-    JSON.stringify(target_revenue_audience || []), JSON.stringify(service_areas || []), service_areas_other,
+    safeJsonStringify(target_revenue_audience || []), safeJsonStringify(service_areas || []), service_areas_other,
     service_category, value_proposition, why_clients_choose_you, why_clients_choose_competitors,
-    JSON.stringify(focus_areas_12_months || []),
-    JSON.stringify(tech_stack_crm || []), JSON.stringify(tech_stack_project_management || []), JSON.stringify(tech_stack_communication || []),
-    JSON.stringify(tech_stack_analytics || []), JSON.stringify(tech_stack_marketing || []), JSON.stringify(tech_stack_financial || []),
-    JSON.stringify(sponsored_events || []), JSON.stringify(podcast_appearances || []), books_read_recommended, best_working_partnerships,
-    JSON.stringify(client_demos || []), JSON.stringify(client_references || [])
+    safeJsonStringify(focus_areas_12_months || []),
+    safeJsonStringify(tech_stack_crm || []), safeJsonStringify(tech_stack_project_management || []), safeJsonStringify(tech_stack_communication || []),
+    safeJsonStringify(tech_stack_analytics || []), safeJsonStringify(tech_stack_marketing || []), safeJsonStringify(tech_stack_financial || []),
+    safeJsonStringify(sponsored_events || []), safeJsonStringify(podcast_appearances || []), books_read_recommended, best_working_partnerships,
+    safeJsonStringify(client_demos || []), safeJsonStringify(client_references || [])
   ]);
 
   res.status(201).json({
@@ -215,7 +217,7 @@ const updatePartner = async (req, res, next) => {
   
   // Log the client_demos structure for debugging
   if (updates.client_demos) {
-    console.log('📹 Updating client_demos:', JSON.stringify(updates.client_demos, null, 2));
+    console.log('📹 Updating client_demos:', safeJsonStringify(updates.client_demos, null, 2));
   }
 
   // Build dynamic update query - Include ALL database fields
@@ -294,7 +296,7 @@ const updatePartner = async (req, res, next) => {
       
       if (jsonFields.includes(key)) {
         // Stringify arrays/objects for JSON storage
-        values.push(typeof updates[key] === 'string' ? updates[key] : JSON.stringify(updates[key] || []));
+        values.push(typeof updates[key] === 'string' ? updates[key] : safeJsonStringify(updates[key] || []));
       } else {
         values.push(updates[key]);
       }
@@ -425,7 +427,7 @@ const searchPartners = async (req, res, next) => {
     offset = 0 
   } = req.body;
 
-  console.log('🔍 searchPartners called with:', JSON.stringify(req.body, null, 2));
+  console.log('🔍 searchPartners called with:', safeJsonStringify(req.body, null, 2));
 
   try {
     let whereClause = '1=1';
@@ -549,7 +551,7 @@ const searchPartners = async (req, res, next) => {
           // Handle special cases
           if (value === '[object Object]' || value === '{}' || value === '') return defaultValue;
           try {
-            const parsed = JSON.parse(value);
+            const parsed = safeJsonParse(value);
             return parsed || defaultValue;
           } catch (e) {
             console.warn(`Failed to parse JSON for partner ${partner.id}:`, value);

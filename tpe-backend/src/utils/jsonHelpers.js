@@ -38,7 +38,7 @@ function safeJsonParse(data, fallback = null) {
         return data.split(',').map(item => item.trim());
       }
       
-      // Try to parse as JSON
+      // Try to parse as JSON using native JSON.parse
       return JSON.parse(data);
     }
     
@@ -60,10 +60,10 @@ function safeJsonStringify(data, fallback = '{}') {
     // Already a string? Check if it's valid JSON
     if (typeof data === 'string') {
       try {
-        JSON.parse(data); // Validate it's proper JSON
+        JSON.parse(data); // Validate it's proper JSON using native JSON.parse
         return data;
       } catch {
-        // Not valid JSON, stringify it
+        // Not valid JSON, stringify it using native JSON.stringify
         return JSON.stringify(data);
       }
     }
@@ -73,7 +73,7 @@ function safeJsonStringify(data, fallback = '{}') {
       return fallback;
     }
     
-    // Object/Array? Stringify it
+    // Object/Array? Stringify it using native JSON.stringify
     return JSON.stringify(data);
   } catch (error) {
     console.error('JSON Stringify Error:', error.message);

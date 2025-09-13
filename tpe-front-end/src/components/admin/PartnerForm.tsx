@@ -20,6 +20,7 @@ import { getApiUrl } from '@/utils/api';
 import { StrategicPartner } from '@/lib/types/strategic_partner';
 import { ArrowLeft, Save, Building2, AlertTriangle, Users, FileText, Star, Target, PlayCircle, Search, X, Plus, Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface PartnerFormProps {
   partner?: StrategicPartner | null;
@@ -248,7 +249,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           `${getApiUrl('api/partners/public/search')}?q=${encodeURIComponent(partnerSearchQuery)}`
         );
         if (response.ok) {
-          const data = await response.json();
+          const data = await handleApiResponse(response);
           // The API returns an array directly, not wrapped in an object
           setPartnerSearchResults(Array.isArray(data) ? data : []);
         }
@@ -267,7 +268,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
     if (formData.best_working_partnerships) {
       try {
         const currentPartnerships = typeof formData.best_working_partnerships === 'string'
-          ? JSON.parse(formData.best_working_partnerships)
+          ? safeJsonParse(formData.best_working_partnerships)
           : formData.best_working_partnerships;
         
         // Check if partner already exists
@@ -280,19 +281,19 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         const updatedPartnerships = [...currentPartnerships, partner];
         setFormData(prev => ({
           ...prev,
-          best_working_partnerships: JSON.stringify(updatedPartnerships)
+          best_working_partnerships: safeJsonStringify(updatedPartnerships)
         }));
       } catch (e) {
         const newPartnerships = [partner];
         setFormData(prev => ({
           ...prev,
-          best_working_partnerships: JSON.stringify(newPartnerships)
+          best_working_partnerships: safeJsonStringify(newPartnerships)
         }));
       }
     } else {
       setFormData(prev => ({
         ...prev,
-        best_working_partnerships: JSON.stringify([partner])
+        best_working_partnerships: safeJsonStringify([partner])
       }));
     }
     
@@ -305,13 +306,13 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
     if (formData.best_working_partnerships) {
       try {
         const currentPartnerships = typeof formData.best_working_partnerships === 'string'
-          ? JSON.parse(formData.best_working_partnerships)
+          ? safeJsonParse(formData.best_working_partnerships)
           : formData.best_working_partnerships;
         
         const updatedPartnerships = currentPartnerships.filter((_: any, i: number) => i !== index);
         setFormData(prev => ({
           ...prev,
-          best_working_partnerships: updatedPartnerships.length > 0 ? JSON.stringify(updatedPartnerships) : ''
+          best_working_partnerships: updatedPartnerships.length > 0 ? safeJsonStringify(updatedPartnerships) : ''
         }));
       } catch (e) {
         console.error('Error removing partner:', e);
@@ -386,14 +387,14 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         // Target Audience & Service Areas
         target_revenue_audience: (() => {
           try {
-            return JSON.parse(partner.target_revenue_audience || '[]');
+            return safeJsonParse(partner.target_revenue_audience || '[]');
           } catch {
             return [];
           }
         })(),
         service_areas: (() => {
           try {
-            return JSON.parse(partner.service_areas || '[]');
+            return safeJsonParse(partner.service_areas || '[]');
           } catch {
             return [];
           }
@@ -409,7 +410,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         // Focus Areas
         focus_areas_12_months: (() => {
           try {
-            return JSON.parse(partner.focus_areas_12_months || '[]');
+            return safeJsonParse(partner.focus_areas_12_months || '[]');
           } catch {
             return [];
           }
@@ -418,42 +419,42 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         // Tech Stack
         tech_stack_crm: (() => {
           try {
-            return JSON.parse(partner.tech_stack_crm || '[]');
+            return safeJsonParse(partner.tech_stack_crm || '[]');
           } catch {
             return [];
           }
         })(),
         tech_stack_project_management: (() => {
           try {
-            return JSON.parse(partner.tech_stack_project_management || '[]');
+            return safeJsonParse(partner.tech_stack_project_management || '[]');
           } catch {
             return [];
           }
         })(),
         tech_stack_communication: (() => {
           try {
-            return JSON.parse(partner.tech_stack_communication || '[]');
+            return safeJsonParse(partner.tech_stack_communication || '[]');
           } catch {
             return [];
           }
         })(),
         tech_stack_analytics: (() => {
           try {
-            return JSON.parse(partner.tech_stack_analytics || '[]');
+            return safeJsonParse(partner.tech_stack_analytics || '[]');
           } catch {
             return [];
           }
         })(),
         tech_stack_marketing: (() => {
           try {
-            return JSON.parse(partner.tech_stack_marketing || '[]');
+            return safeJsonParse(partner.tech_stack_marketing || '[]');
           } catch {
             return [];
           }
         })(),
         tech_stack_financial: (() => {
           try {
-            return JSON.parse(partner.tech_stack_financial || '[]');
+            return safeJsonParse(partner.tech_stack_financial || '[]');
           } catch {
             return [];
           }
@@ -462,28 +463,28 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         // Sponsorships & Media
         sponsored_events: (() => {
           try {
-            return JSON.parse(partner.sponsored_events || '[]');
+            return safeJsonParse(partner.sponsored_events || '[]');
           } catch {
             return [];
           }
         })(),
         other_sponsored_events: (() => {
           try {
-            return JSON.parse(partner.other_sponsored_events || '[]');
+            return safeJsonParse(partner.other_sponsored_events || '[]');
           } catch {
             return [];
           }
         })(),
         podcast_appearances: (() => {
           try {
-            return JSON.parse(partner.podcast_appearances || '[]');
+            return safeJsonParse(partner.podcast_appearances || '[]');
           } catch {
             return [];
           }
         })(),
         other_podcast_appearances: (() => {
           try {
-            return JSON.parse(partner.other_podcast_appearances || '[]');
+            return safeJsonParse(partner.other_podcast_appearances || '[]');
           } catch {
             return [];
           }
@@ -494,21 +495,21 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         // Client Demos & References
         client_demos: (() => {
           try {
-            return JSON.parse(partner.client_demos || '[]');
+            return safeJsonParse(partner.client_demos || '[]');
           } catch {
             return [];
           }
         })(),
         client_references: (() => {
           try {
-            return JSON.parse(partner.client_references || '[]');
+            return safeJsonParse(partner.client_references || '[]');
           } catch {
             return [];
           }
         })(),
         employee_references: (() => {
           try {
-            return JSON.parse(partner.employee_references || '[]');
+            return safeJsonParse(partner.employee_references || '[]');
           } catch {
             return [];
           }
@@ -519,7 +520,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           try {
             const videos = partner.landing_page_videos;
             if (typeof videos === 'string') {
-              return JSON.parse(videos || '[]');
+              return safeJsonParse(videos || '[]');
             }
             return videos || [];
           } catch {
@@ -1426,7 +1427,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                   try {
                     const partnerships = formData.best_working_partnerships
                       ? (typeof formData.best_working_partnerships === 'string' 
-                        ? JSON.parse(formData.best_working_partnerships)
+                        ? safeJsonParse(formData.best_working_partnerships)
                         : formData.best_working_partnerships)
                       : [];
                     
@@ -2419,7 +2420,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                         {(() => {
                           try {
                             const partnerships = typeof formData.best_working_partnerships === 'string' 
-                              ? JSON.parse(formData.best_working_partnerships)
+                              ? safeJsonParse(formData.best_working_partnerships)
                               : formData.best_working_partnerships;
                             
                             if (!partnerships || partnerships.length === 0) {

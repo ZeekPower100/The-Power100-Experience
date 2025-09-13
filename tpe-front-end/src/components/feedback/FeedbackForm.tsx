@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Star, ThumbsUp, MessageSquare, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface FeedbackFormProps {
   surveyId?: string;
@@ -116,7 +117,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData)
+          body: safeJsonStringify(formData)
         });
 
         if (!response.ok) {

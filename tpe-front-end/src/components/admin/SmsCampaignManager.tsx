@@ -21,6 +21,7 @@ import {
   TrendingUp 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface SmsCampaign {
   id: number;
@@ -77,26 +78,26 @@ const SmsCampaignManager: React.FC = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const token = localStorage.getItem('authToken');
+      const token = getFromStorage('authToken');
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       
       // Fetch campaigns
       const campaignResponse = await fetch(`${API_BASE_URL}/sms/campaigns`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const campaignData = await campaignResponse.json();
+      const campaignData = await handleApiResponse(campaignResponse);
       
       // Fetch analytics
       const analyticsResponse = await fetch(`${API_BASE_URL}/sms/analytics`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const analyticsData = await analyticsResponse.json();
+      const analyticsData = await handleApiResponse(analyticsResponse);
       
       // Fetch partners
       const partnerResponse = await fetch(`${API_BASE_URL}/partners`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
-      const partnerData = await partnerResponse.json();
+      const partnerData = await handleApiResponse(partnerResponse);
 
       setCampaigns(campaignData.campaigns || []);
       setAnalytics(analyticsData);
@@ -110,7 +111,7 @@ const SmsCampaignManager: React.FC = () => {
 
   const createCampaign = async () => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = getFromStorage('authToken');
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const response = await fetch(`${API_BASE_URL}/sms/campaigns`, {
         method: 'POST',
@@ -118,7 +119,7 @@ const SmsCampaignManager: React.FC = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
+        body: safeJsonStringify({
           campaignName: newCampaign.campaign_name,
           messageTemplate: newCampaign.message_template,
           partnerId: newCampaign.partner_id ? parseInt(newCampaign.partner_id) : null,
@@ -150,7 +151,7 @@ const SmsCampaignManager: React.FC = () => {
 
   const launchCampaign = async (campaignId: number) => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = getFromStorage('authToken');
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const response = await fetch(`${API_BASE_URL}/sms/campaigns/${campaignId}/launch`, {
         method: 'POST',

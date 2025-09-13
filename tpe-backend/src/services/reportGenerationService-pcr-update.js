@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 // Add this method to the service class
 async generatePublicPCR(partnerId) {
   try {
@@ -13,7 +15,7 @@ async generatePublicPCR(partnerId) {
       
       if (result.rows[0] && result.rows[0].client_testimonials) {
         try {
-          const parsed = JSON.parse(result.rows[0].client_testimonials);
+          const parsed = safeJsonParse(result.rows[0].client_testimonials);
           if (Array.isArray(parsed)) {
             testimonials = parsed.map(t => ({
               quote: t.testimonial || t.quote || t.text,

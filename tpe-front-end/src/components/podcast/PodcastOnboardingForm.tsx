@@ -16,6 +16,7 @@ import { Mic, User, Target, Sparkles, ArrowRight, ArrowLeft, AlertTriangle, Head
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Podcast } from '@/lib/types/podcast';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 // Focus areas for podcast matching
 const FOCUS_AREAS = [
@@ -158,9 +159,9 @@ export default function PodcastOnboardingForm() {
       const submissionData = {
         ...formData,
         // Map array fields to JSON strings
-        notable_guests: JSON.stringify(formData.notable_guests || []),
-        topics: JSON.stringify(formData.topics || []),
-        testimonials: JSON.stringify(formData.testimonials || []),
+        notable_guests: safeJsonStringify(formData.notable_guests || []),
+        topics: safeJsonStringify(formData.topics || []),
+        testimonials: safeJsonStringify(formData.testimonials || []),
         focus_areas_covered: formData.focus_areas_covered?.join(', ') || '',
         // Keep original fields
         is_host: submissionType === 'host',

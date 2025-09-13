@@ -31,6 +31,7 @@ import {
 } from 'lucide-react';
 import { contractorApi } from '@/lib/api';
 import { getApiUrl } from '@/utils/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../../../utils/jsonHelpers';
 
 interface ContractorEditData {
   // Basic Information
@@ -199,7 +200,7 @@ export default function ContractorEditPage() {
       // Use contractors-enhanced endpoint that works reliably
       const response = await fetch(getApiUrl(`api/contractors-enhanced/${contractorId}/view`), {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${getFromStorage('authToken')}`,
         },
       });
 
@@ -207,7 +208,7 @@ export default function ContractorEditPage() {
         throw new Error('Failed to fetch contractor details');
       }
 
-      const responseData = await response.json();
+      const responseData = await handleApiResponse(response);
       console.log('🔍 Full response from contractors-enhanced:', responseData);
       
       const contractorData = responseData.contractor;
@@ -217,7 +218,7 @@ export default function ContractorEditPage() {
       const parseJsonField = (field: any) => {
         if (typeof field === 'string') {
           try {
-            return JSON.parse(field);
+            return safeJsonParse(field);
           } catch {
             return [];
           }
@@ -330,10 +331,10 @@ export default function ContractorEditPage() {
         
         // Location & Services
         service_area: contractor.service_area,
-        services_offered: JSON.stringify(contractor.services_offered),
+        services_offered: safeJsonStringify(contractor.services_offered),
         
         // Business Focus
-        focus_areas: JSON.stringify(contractor.focus_areas),
+        focus_areas: safeJsonStringify(contractor.focus_areas),
         primary_focus_area: contractor.primary_focus_area,
         
         // Business Profile
@@ -346,12 +347,12 @@ export default function ContractorEditPage() {
         increased_activity: contractor.increased_activity,
         
         // Technology Stack
-        tech_stack_sales: JSON.stringify(contractor.tech_stack_sales),
-        tech_stack_operations: JSON.stringify(contractor.tech_stack_operations),
-        tech_stack_marketing: JSON.stringify(contractor.tech_stack_marketing),
-        tech_stack_customer_experience: JSON.stringify(contractor.tech_stack_customer_experience),
-        tech_stack_project_management: JSON.stringify(contractor.tech_stack_project_management),
-        tech_stack_accounting_finance: JSON.stringify(contractor.tech_stack_accounting_finance),
+        tech_stack_sales: safeJsonStringify(contractor.tech_stack_sales),
+        tech_stack_operations: safeJsonStringify(contractor.tech_stack_operations),
+        tech_stack_marketing: safeJsonStringify(contractor.tech_stack_marketing),
+        tech_stack_customer_experience: safeJsonStringify(contractor.tech_stack_customer_experience),
+        tech_stack_project_management: safeJsonStringify(contractor.tech_stack_project_management),
+        tech_stack_accounting_finance: safeJsonStringify(contractor.tech_stack_accounting_finance),
         
         tech_stack_sales_other: contractor.tech_stack_sales_other,
         tech_stack_operations_other: contractor.tech_stack_operations_other,
@@ -365,7 +366,7 @@ export default function ContractorEditPage() {
         onboarding_source: contractor.onboarding_source,
         associated_partner_id: contractor.associated_partner_id ? parseInt(contractor.associated_partner_id) : null,
         email_domain: contractor.email_domain,
-        tags: JSON.stringify(contractor.tags),
+        tags: safeJsonStringify(contractor.tags),
         
         // Verification & Flow
         opted_in_coaching: contractor.opted_in_coaching,

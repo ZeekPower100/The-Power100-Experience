@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, User, Building, Phone, Mail, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../utils/jsonHelpers';
 
 interface Booking {
   id: number;
@@ -30,7 +31,7 @@ export default function BookingsPage() {
       setLoading(true);
       const response = await fetch('/api/bookings');
       if (response.ok) {
-        const data = await response.json();
+        const data = await handleApiResponse(response);
         setBookings(data.bookings || []);
       } else {
         throw new Error('Failed to fetch bookings');

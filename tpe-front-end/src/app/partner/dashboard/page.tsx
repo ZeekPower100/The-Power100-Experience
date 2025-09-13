@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { exportToPDF, exportToExcel } from '@/utils/exportReports';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../utils/jsonHelpers';
 
 interface PartnerData {
   id: number;
@@ -67,7 +68,7 @@ export default function PartnerDashboard() {
 
   const fetchPartnerData = async () => {
     try {
-      const token = localStorage.getItem('partnerToken');
+      const token = getFromStorage('partnerToken');
       if (!token) {
         router.push('/partner/login');
         return;
@@ -126,7 +127,7 @@ export default function PartnerDashboard() {
         contact_email: partnerData.contact_email,
         current_powerconfidence_score: partnerData.power_confidence_score,
         score_trend: partnerData.score_trend,
-        service_categories: JSON.stringify(['Technology', 'Software']),
+        service_categories: safeJsonStringify(['Technology', 'Software']),
         total_contractor_engagements: partnerData.total_contractors,
         avg_contractor_satisfaction: partnerData.avg_satisfaction,
         recent_feedback_count: partnerData.recent_feedback_count

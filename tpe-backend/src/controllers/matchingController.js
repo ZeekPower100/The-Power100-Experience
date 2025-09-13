@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 const db = require('../config/database');
 
 // Get matched content for a contractor based on their focus areas
@@ -35,7 +37,7 @@ exports.getMatchedContent = async (req, res) => {
           // Try to parse as JSON array first
           if (entityFocusAreas.startsWith('[') || entityFocusAreas.startsWith('{')) {
             try {
-              const parsed = JSON.parse(entityFocusAreas);
+              const parsed = safeJsonParse(entityFocusAreas);
               parsedAreas = Array.isArray(parsed) ? parsed : [parsed];
             } catch (e) {
               // If JSON parse fails, try comma-separated
@@ -79,7 +81,7 @@ exports.getMatchedContent = async (req, res) => {
       // Parse topics
       try {
         if (typeof topics === 'string' && (topics.startsWith('[') || topics.startsWith('{'))) {
-          topics = JSON.parse(topics);
+          topics = safeJsonParse(topics);
         } else if (typeof topics === 'string') {
           topics = topics.split(',').map(t => t.trim()).filter(Boolean);
         }
@@ -90,7 +92,7 @@ exports.getMatchedContent = async (req, res) => {
       // Parse key takeaways
       try {
         if (typeof keyTakeaways === 'string' && (keyTakeaways.startsWith('[') || keyTakeaways.startsWith('{'))) {
-          keyTakeaways = JSON.parse(keyTakeaways);
+          keyTakeaways = safeJsonParse(keyTakeaways);
         } else if (typeof keyTakeaways === 'string') {
           keyTakeaways = keyTakeaways.split(',').map(t => t.trim()).filter(Boolean);
         }
@@ -132,7 +134,7 @@ exports.getMatchedContent = async (req, res) => {
       // Parse topics
       try {
         if (typeof topics === 'string' && (topics.startsWith('[') || topics.startsWith('{'))) {
-          topics = JSON.parse(topics);
+          topics = safeJsonParse(topics);
         } else if (typeof topics === 'string') {
           topics = topics.split(',').map(t => t.trim()).filter(Boolean);
         }
@@ -199,7 +201,7 @@ exports.getMatchedContent = async (req, res) => {
       // Parse key differentiators
       try {
         if (typeof keyDifferentiators === 'string' && (keyDifferentiators.startsWith('[') || keyDifferentiators.startsWith('{'))) {
-          keyDifferentiators = JSON.parse(keyDifferentiators);
+          keyDifferentiators = safeJsonParse(keyDifferentiators);
         } else if (typeof keyDifferentiators === 'string') {
           keyDifferentiators = keyDifferentiators.split(',').map(t => t.trim()).filter(Boolean);
         }
@@ -210,7 +212,7 @@ exports.getMatchedContent = async (req, res) => {
       // Parse testimonials
       try {
         if (typeof testimonials === 'string' && (testimonials.startsWith('[') || testimonials.startsWith('{'))) {
-          testimonials = JSON.parse(testimonials);
+          testimonials = safeJsonParse(testimonials);
         } else if (typeof testimonials === 'string') {
           testimonials = testimonials.split(',').map(t => t.trim()).filter(Boolean);
         }
@@ -221,7 +223,7 @@ exports.getMatchedContent = async (req, res) => {
       // Parse success stories
       try {
         if (typeof successStories === 'string' && (successStories.startsWith('[') || successStories.startsWith('{'))) {
-          successStories = JSON.parse(successStories);
+          successStories = safeJsonParse(successStories);
         } else if (typeof successStories === 'string') {
           successStories = successStories.split(',').map(t => t.trim()).filter(Boolean);
         }

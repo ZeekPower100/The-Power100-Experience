@@ -1,3 +1,5 @@
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from './jsonHelpers';
+
 /**
  * JSON Field Utilities for SQLite JSON String Parsing
  * 
@@ -17,7 +19,7 @@ export function parseJsonArray<T = string>(field: unknown): T[] {
     if (typeof field === 'string') {
       // Handle empty string case
       if (field.trim() === '') return [];
-      return JSON.parse(field);
+      return safeJsonParse(field);
     } else if (Array.isArray(field)) {
       return field;
     }
@@ -40,7 +42,7 @@ export function parseJsonObject<T = Record<string, any>>(field: unknown): T | nu
     if (typeof field === 'string') {
       // Handle empty string case
       if (field.trim() === '') return null;
-      return JSON.parse(field);
+      return safeJsonParse(field);
     } else if (typeof field === 'object' && field !== null) {
       return field as T;
     }

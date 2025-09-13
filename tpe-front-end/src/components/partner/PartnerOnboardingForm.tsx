@@ -18,6 +18,7 @@ import { getApiUrl } from '@/utils/api';
 import { Building2, AlertTriangle, Users, FileText, Star, Target, CheckCircle, Plus, X, Search, UserPlus } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 // Constants for form options
 const TARGET_REVENUE_OPTIONS = [
@@ -109,17 +110,17 @@ export default function PartnerOnboardingForm() {
         
         // Store partner ID and delegate ID from URL for delegation flow
         if (partnerParam) {
-          localStorage.setItem('partner_application_id', partnerParam);
+          setToStorage('partner_application_id', partnerParam);
         }
         if (delegateParam) {
-          localStorage.setItem('delegate_id', delegateParam);
+          setToStorage('delegate_id', delegateParam);
         }
         
         // Also restore the saved form data if available
-        const savedData = localStorage.getItem('partner_application_data');
+        const savedData = getFromStorage('partner_application_data');
         if (savedData) {
           try {
-            const restoredData = JSON.parse(savedData);
+            const restoredData = safeJsonParse(savedData);
             setFormData(restoredData);
           } catch (error) {
             // Silently handle error
@@ -233,7 +234,7 @@ export default function PartnerOnboardingForm() {
           `${getApiUrl('api/partners/public/search')}?q=${encodeURIComponent(partnerSearchQuery)}`
         );
         if (response.ok) {
-          const results = await response.json();
+          const results = await handleApiResponse(response);
           setPartnerSearchResults(results);
         }
       } catch (error) {
@@ -489,44 +490,44 @@ export default function PartnerOnboardingForm() {
         const response = await fetch(getApiUrl('api/partners/public/apply'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(profileData)
+          body: safeJsonStringify(profileData)
         });
-        const result = await response.json();
+        const result = await handleApiResponse(response);
         if (!result.success) throw new Error(result.error);
         
         // Store the partner ID for portfolio submission
-        localStorage.setItem('partner_application_id', result.applicationId);
-        localStorage.setItem('partner_application_data', JSON.stringify(formData));
+        setToStorage('partner_application_id', result.applicationId);
+        setToStorage('partner_application_data', formData);  // setToStorage will handle stringification
         
         // Redirect to delegation page after Step 7
         router.push('/partner/onboarding/delegation');
         
       } else if (currentStep === 8) {
         // Step 8: Submit portfolio data (update existing profile)
-        const partnerId = localStorage.getItem('partner_application_id');
+        const partnerId = getFromStorage('partner_application_id');
         
         if (partnerId) {
           // Update existing profile with portfolio data
           const response = await fetch(getApiUrl(`api/partners/public/update-portfolio/${partnerId}`), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            body: safeJsonStringify({
               client_demos: formData.client_demos,
               client_references: formData.client_references,
               employee_references: formData.employee_references,
               logo_url: formData.logo_url
             })
           });
-          const result = await response.json();
+          const result = await handleApiResponse(response);
           if (!result.success) throw new Error(result.error);
         } else {
           // Full submission if no partner ID exists (fallback)
           const response = await fetch(getApiUrl('api/partners/public/apply'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(apiData)
+            body: safeJsonStringify(apiData)
           });
-          const result = await response.json();
+          const result = await handleApiResponse(response);
           if (!result.success) throw new Error(result.error);
         }
         

@@ -16,6 +16,7 @@ import { BookOpen, User, Building, Quote, Target, Sparkles, ArrowRight, ArrowLef
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Book } from '@/lib/types/book';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 // Focus areas for book matching
 const FOCUS_AREAS = [
@@ -174,9 +175,9 @@ export default function BookOnboardingForm() {
       const submissionData = {
         ...formData,
         // Map array fields to JSON strings
-        key_takeaways: JSON.stringify(formData.key_takeaways || []),
-        testimonials: JSON.stringify(formData.testimonials || []),
-        key_citations: JSON.stringify(keyCitations.filter(c => c.cited_person)),
+        key_takeaways: safeJsonStringify(formData.key_takeaways || []),
+        testimonials: safeJsonStringify(formData.testimonials || []),
+        key_citations: safeJsonStringify(keyCitations.filter(c => c.cited_person)),
         focus_areas_covered: formData.focus_areas?.join(', ') || '',
         target_revenue: formData.target_revenue?.join(', ') || '',
         cover_image_url: formData.cover_image_url,

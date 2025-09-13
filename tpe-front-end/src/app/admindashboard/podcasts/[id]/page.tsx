@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import PodcastForm from '@/components/admin/PodcastForm';
 import { Mic, ArrowLeft, Edit, Calendar, Link, Headphones } from 'lucide-react';
 import { podcastApi } from '@/lib/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../../utils/jsonHelpers';
 
 export default function PodcastDetailsPage() {
   const params = useParams();
@@ -161,7 +162,7 @@ export default function PodcastDetailsPage() {
               let areas = [];
               try {
                 areas = Array.isArray(podcast.focus_areas) ? podcast.focus_areas : 
-                        typeof podcast.focus_areas === 'string' ? JSON.parse(podcast.focus_areas) : [];
+                        typeof podcast.focus_areas === 'string' ? safeJsonParse(podcast.focus_areas) : [];
               } catch (e) {
                 areas = [];
               }
@@ -183,7 +184,7 @@ export default function PodcastDetailsPage() {
               let guests = [];
               try {
                 guests = Array.isArray(podcast.notable_guests) ? podcast.notable_guests : 
-                         typeof podcast.notable_guests === 'string' ? JSON.parse(podcast.notable_guests) : [];
+                         typeof podcast.notable_guests === 'string' ? safeJsonParse(podcast.notable_guests) : [];
               } catch (e) {
                 guests = [];
               }

@@ -22,6 +22,7 @@ import PartnerDetailModal from '@/components/admin/PartnerDetailModal';
 import { contractorApi, partnerApi } from '@/lib/api';
 import { getApiUrl } from '@/utils/api';
 import PartnerForm from '@/components/admin/PartnerForm';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../utils/jsonHelpers';
 
 interface SearchResult {
   contractors?: any[];
@@ -100,7 +101,7 @@ export default function AdminSearchPage() {
       // Use the contractors-enhanced endpoint that works
       const response = await fetch(getApiUrl(`api/contractors-enhanced/${id}/view`), {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${getFromStorage('authToken')}`,
         },
       });
 
@@ -108,7 +109,7 @@ export default function AdminSearchPage() {
         throw new Error('Failed to fetch contractor details');
       }
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       setSelectedContractor(data.contractor);
       setIsContractorModalOpen(true);
     } catch (error) {
@@ -123,7 +124,7 @@ export default function AdminSearchPage() {
       // First get all partners and find the specific one (batch approach that works)
       const response = await fetch(getApiUrl('api/partners-enhanced/list'), {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${getFromStorage('authToken')}`,
         },
       });
 
@@ -131,7 +132,7 @@ export default function AdminSearchPage() {
         throw new Error('Failed to fetch partner details');
       }
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       const partner = data.partners.find((p: any) => p.id.toString() === id.toString());
       
       if (partner) {
@@ -156,7 +157,7 @@ export default function AdminSearchPage() {
       // Get full partner data for editing (using enhanced approach)
       const response = await fetch(getApiUrl('api/partners-enhanced/list'), {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${getFromStorage('authToken')}`,
         },
       });
 
@@ -164,7 +165,7 @@ export default function AdminSearchPage() {
         throw new Error('Failed to fetch partner details');
       }
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       const partner = data.partners.find((p: any) => p.id.toString() === id.toString());
       
       if (partner) {

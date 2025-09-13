@@ -1,3 +1,5 @@
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../utils/jsonHelpers';
+
 // API Service Layer for The Power100 Experience - Updated for port 5000
 // Use relative URL in production if NEXT_PUBLIC_API_URL is not set
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 
@@ -32,21 +34,21 @@ async function apiRequest<T>(
   
   if (isAdminEndpoint) {
     // For admin endpoints, only use admin tokens
-    token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+    token = getFromStorage('authToken') || getFromStorage('adminToken');
   } else {
     // For contractor endpoints, check contractor session first
-    const sessionData = localStorage.getItem('tpe_contractor_session');
+    const sessionData = getFromStorage('tpe_contractor_session');
     if (sessionData) {
       try {
-        const parsed = JSON.parse(sessionData);
+        const parsed = safeJsonParse(sessionData);
         token = parsed.token;
       } catch (e) {
         // Fall back to admin token if session parse fails
-        token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+        token = getFromStorage('authToken') || getFromStorage('adminToken');
       }
     } else {
       // No contractor session, use admin token if available
-      token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+      token = getFromStorage('authToken') || getFromStorage('adminToken');
     }
   }
   
@@ -99,28 +101,28 @@ export const contractorApi = {
     company_website?: string;
   }) => apiRequest('/contractors/verify-start', {
     method: 'POST',
-    body: JSON.stringify(data)
+    body: safeJsonStringify(data)
   }),
 
   // Verify SMS code
   verifyCode: (contractorId: string, code: string) => 
     apiRequest('/contractors/verify-code', {
       method: 'POST',
-      body: JSON.stringify({ contractor_id: contractorId, code })
+      body: safeJsonStringify({ contractor_id: contractorId, code })
     }),
 
   // Update contractor profile
   updateProfile: (contractorId: string, data: Record<string, unknown>) =>
     apiRequest(`/contractors/${contractorId}/profile`, {
       method: 'PUT',
-      body: JSON.stringify(data)
+      body: safeJsonStringify(data)
     }),
 
   // Update contractor (admin)
   update: (contractorId: string, data: Record<string, unknown>) =>
     apiRequest(`/contractors/${contractorId}`, {
       method: 'PUT',
-      body: JSON.stringify(data)
+      body: safeJsonStringify(data)
     }),
 
   // Get partner matches
@@ -135,7 +137,7 @@ export const contractorApi = {
   completeFlow: (contractorId: string, selectedPartnerId?: string) =>
     apiRequest(`/contractors/${contractorId}/complete`, {
       method: 'POST',
-      body: JSON.stringify({ selected_partner_id: selectedPartnerId })
+      body: safeJsonStringify({ selected_partner_id: selectedPartnerId })
     }),
 
   // Get all contractors (admin)
@@ -159,7 +161,7 @@ export const contractorApi = {
   search: (params: Record<string, any>) => 
     apiRequest('/contractors/search', {
       method: 'POST',
-      body: JSON.stringify(params)
+      body: safeJsonStringify(params)
     }),
 
   // Delete contractor (admin)
@@ -190,13 +192,13 @@ export const partnerApi = {
   // Create partner (admin)
   create: (data: Record<string, unknown>) => apiRequest('/partners', {
     method: 'POST',
-    body: JSON.stringify(data)
+    body: safeJsonStringify(data)
   }),
 
   // Update partner (admin)
   update: (id: string, data: Record<string, unknown>) => apiRequest(`/partners/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(data)
+    body: safeJsonStringify(data)
   }),
 
   // Delete partner (admin)
@@ -216,7 +218,7 @@ export const partnerApi = {
   search: (params: Record<string, any>) => 
     apiRequest('/partners/search', {
       method: 'POST',
-      body: JSON.stringify(params)
+      body: safeJsonStringify(params)
     }),
 
   // Get pending partners (admin)
@@ -247,7 +249,7 @@ export const bookingApi = {
   // Update booking (admin)
   update: (id: string, data: Record<string, unknown>) => apiRequest(`/bookings/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(data)
+    body: safeJsonStringify(data)
   }),
 
   // Delete booking (admin)
@@ -265,7 +267,7 @@ export const authApi = {
   login: (email: string, password: string) =>
     apiRequest('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password })
+      body: safeJsonStringify({ email, password })
     }),
 
   // Logout
@@ -280,7 +282,7 @@ export const authApi = {
   updatePassword: (currentPassword: string, newPassword: string) =>
     apiRequest('/auth/update-password', {
       method: 'PUT',
-      body: JSON.stringify({ currentPassword, newPassword })
+      body: safeJsonStringify({ currentPassword, newPassword })
     }),
 };
 
@@ -312,28 +314,28 @@ export const bulkApi = {
   updateContractors: (ids: string[], updateData: Record<string, any>) =>
     apiRequest('/bulk/contractors/update', {
       method: 'POST',
-      body: JSON.stringify({ contractor_ids: ids, updates: updateData })
+      body: safeJsonStringify({ contractor_ids: ids, updates: updateData })
     }),
 
   // Bulk delete contractors
   deleteContractors: (ids: string[]) =>
     apiRequest('/bulk/contractors/delete', {
       method: 'POST',
-      body: JSON.stringify({ contractor_ids: ids })
+      body: safeJsonStringify({ contractor_ids: ids })
     }),
 
   // Bulk update partners
   updatePartners: (ids: string[], updateData: Record<string, any>) =>
     apiRequest('/bulk/partners/update', {
       method: 'POST',
-      body: JSON.stringify({ partner_ids: ids, updates: updateData })
+      body: safeJsonStringify({ partner_ids: ids, updates: updateData })
     }),
 
   // Bulk toggle partner status (partners don't support delete - use toggle status instead)
   togglePartnerStatus: (ids: string[]) =>
     apiRequest('/bulk/partners/toggle-status', {
       method: 'POST',
-      body: JSON.stringify({ partner_ids: ids })
+      body: safeJsonStringify({ partner_ids: ids })
     }),
 
   // Export bulk data
@@ -345,7 +347,7 @@ export const bulkApi = {
     
     return apiRequest('/bulk/contractors/export', {
       method: 'POST',
-      body: JSON.stringify(requestBody)
+      body: safeJsonStringify(requestBody)
     });
   },
 
@@ -357,7 +359,7 @@ export const bulkApi = {
     
     return apiRequest('/bulk/partners/export', {
       method: 'POST',
-      body: JSON.stringify(requestBody)
+      body: safeJsonStringify(requestBody)
     });
   },
 };
@@ -366,7 +368,7 @@ export const bulkApi = {
 export const apiUtils = {
   // Store auth token
   setAuthToken: (token: string) => {
-    localStorage.setItem('authToken', token);
+    setToStorage('authToken', token);
   },
 
   // Remove auth token
@@ -376,12 +378,12 @@ export const apiUtils = {
 
   // Get auth token
   getAuthToken: () => {
-    return localStorage.getItem('authToken');
+    return getFromStorage('authToken');
   },
 
   // Check if user is authenticated
   isAuthenticated: () => {
-    return !!localStorage.getItem('authToken');
+    return !!getFromStorage('authToken');
   },
 };
 
@@ -405,7 +407,7 @@ export const bookApi = {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data)
+      body: safeJsonStringify(data)
     }).then(res => {
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       return res.json();
@@ -415,7 +417,7 @@ export const bookApi = {
   // Update book
   update: (id: string, data: any) => apiRequest(`/books/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(data)
+    body: safeJsonStringify(data)
   }),
   
   // Delete book
@@ -445,7 +447,7 @@ export const podcastApi = {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data)
+      body: safeJsonStringify(data)
     }).then(res => {
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       return res.json();
@@ -455,7 +457,7 @@ export const podcastApi = {
   // Update podcast
   update: (id: string, data: any) => apiRequest(`/podcasts/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(data)
+    body: safeJsonStringify(data)
   }),
   
   // Delete podcast
@@ -486,7 +488,7 @@ export const eventApi = {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data)
+      body: safeJsonStringify(data)
     }).then(res => {
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       return res.json();
@@ -496,7 +498,7 @@ export const eventApi = {
   // Update event
   update: (id: string, data: any) => apiRequest(`/events/${id}`, {
     method: 'PUT',
-    body: JSON.stringify(data)
+    body: safeJsonStringify(data)
   }),
   
   // Delete event

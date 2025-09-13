@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { CheckCircle, Users, Send, ArrowRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getApiUrl } from '@/utils/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../../utils/jsonHelpers';
 
 interface TeamMember {
   name: string;
@@ -27,11 +28,11 @@ export default function DelegationPage() {
 
   useEffect(() => {
     // Load saved form data and extract team members from Step 2
-    const savedData = localStorage.getItem('partner_application_data');
-    const savedPartnerId = localStorage.getItem('partner_application_id');
+    const savedData = getFromStorage('partner_application_data');
+    const savedPartnerId = getFromStorage('partner_application_id');
     
     if (savedData) {
-      const formData = JSON.parse(savedData);
+      const formData = safeJsonParse(savedData);
       setCompanyName(formData.company_name || '');
       setCeoName(formData.ceo_name || formData.ceo_contact_name || 'CEO');
       
@@ -93,8 +94,8 @@ export default function DelegationPage() {
 
   const handleContinueToPreOnboarding = () => {
     // Ensure form data is preserved and navigate to Step 8
-    const savedData = localStorage.getItem('partner_application_data');
-    const savedPartnerId = localStorage.getItem('partner_application_id');
+    const savedData = getFromStorage('partner_application_data');
+    const savedPartnerId = getFromStorage('partner_application_id');
     
     if (!savedData || !savedPartnerId) {
       // If no saved data, we need to alert the user
@@ -129,7 +130,7 @@ export default function DelegationPage() {
       const response = await fetch(getApiUrl('api/emails/partner-delegation'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+        body: safeJsonStringify({
           partnerId: partnerId,
           partnerName: companyName,
           delegateId: delegateId,
@@ -140,7 +141,7 @@ export default function DelegationPage() {
         })
       });
 
-      const result = await response.json();
+      const result = await handleApiResponse(response);
       
       if (!response.ok && !result.workflowTriggered) {
         throw new Error(result.error || 'Failed to send delegation email');

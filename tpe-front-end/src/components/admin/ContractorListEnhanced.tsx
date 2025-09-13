@@ -8,6 +8,7 @@ import { Eye, Edit, Users, TrendingUp, Calendar, CheckCircle, XCircle, Clock, Do
 import ContractorDetailModal from './ContractorDetailModal';
 import { exportToExcel, exportToCSV } from '@/utils/exportReports';
 import { getApiUrl } from '@/utils/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface Contractor {
   id: number;
@@ -71,7 +72,7 @@ const ContractorListEnhanced: React.FC<ContractorListEnhancedProps> = ({ onContr
       setLoading(true);
       const response = await fetch(getApiUrl('api/contractors-enhanced/list'), {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${getFromStorage('authToken')}`,
         },
       });
 
@@ -79,7 +80,7 @@ const ContractorListEnhanced: React.FC<ContractorListEnhancedProps> = ({ onContr
         throw new Error('Failed to fetch enhanced contractor list');
       }
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       setContractors(data.contractors);
       setSummary(data.summary);
     } catch (error) {

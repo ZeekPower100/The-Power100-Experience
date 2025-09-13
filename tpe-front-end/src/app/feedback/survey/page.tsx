@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import FeedbackForm from '@/components/feedback/FeedbackForm';
 import { Card, CardContent } from '@/components/ui/card';
 import { MessageSquare, AlertCircle, CheckCircle, Target, ThumbsUp } from 'lucide-react';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../utils/jsonHelpers';
 
 interface SurveyData {
   id: string;
@@ -42,7 +43,7 @@ const FeedbackSurveyContent: React.FC = () => {
           if (!response.ok) {
             throw new Error('Survey not found or expired');
           }
-          const data = await response.json();
+          const data = await handleApiResponse(response);
           setSurveyData(data.surveys[0]);
         } else {
           // Create mock survey data for direct contractor/partner link

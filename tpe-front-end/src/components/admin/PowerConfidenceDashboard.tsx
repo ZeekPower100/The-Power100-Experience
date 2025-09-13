@@ -16,6 +16,7 @@ import {
   RefreshCw 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface PowerConfidenceAnalytics {
   partnerSummary: Array<{
@@ -55,7 +56,7 @@ const PowerConfidenceDashboard: React.FC = () => {
       const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const response = await fetch(`${API_BASE_URL}/feedback/analytics/dashboard`, {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${getFromStorage('authToken')}`,
         },
       });
 
@@ -63,7 +64,7 @@ const PowerConfidenceDashboard: React.FC = () => {
         throw new Error('Failed to fetch analytics');
       }
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       setAnalytics(data);
     } catch (error) {
       console.error('Error fetching PowerConfidence analytics:', error);
@@ -80,9 +81,9 @@ const PowerConfidenceDashboard: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${getFromStorage('authToken')}`,
         },
-        body: JSON.stringify({})
+        body: safeJsonStringify({})
       });
 
       if (!response.ok) {

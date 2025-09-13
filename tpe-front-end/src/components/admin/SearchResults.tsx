@@ -19,6 +19,7 @@ import {
   Edit,
   Trash2
 } from 'lucide-react';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface SearchResult {
   contractors?: any[];
@@ -167,7 +168,7 @@ export default function SearchResults({
           try {
             if (contractor.focus_areas) {
               if (typeof contractor.focus_areas === 'string') {
-                focusAreas = JSON.parse(contractor.focus_areas);
+                focusAreas = safeJsonParse(contractor.focus_areas);
               } else if (Array.isArray(contractor.focus_areas)) {
                 focusAreas = contractor.focus_areas;
               }
@@ -304,7 +305,7 @@ export default function SearchResults({
           try {
             if (partner.focus_areas_served) {
               if (typeof partner.focus_areas_served === 'string') {
-                focusAreasServed = JSON.parse(partner.focus_areas_served);
+                focusAreasServed = safeJsonParse(partner.focus_areas_served);
               } else if (Array.isArray(partner.focus_areas_served)) {
                 focusAreasServed = partner.focus_areas_served;
               }
@@ -333,7 +334,7 @@ export default function SearchResults({
           try {
             if (partner.target_revenue_range) {
               if (typeof partner.target_revenue_range === 'string') {
-                targetRevenueRange = JSON.parse(partner.target_revenue_range);
+                targetRevenueRange = safeJsonParse(partner.target_revenue_range);
               } else if (Array.isArray(partner.target_revenue_range)) {
                 targetRevenueRange = partner.target_revenue_range;
               }

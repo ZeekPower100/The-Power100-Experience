@@ -8,6 +8,7 @@ import { Eye, Edit, MessageCircle, TrendingUp, TrendingDown, Minus, Download, Fi
 import PartnerDetailsEditor from './PartnerDetailsEditor';
 import { exportToExcel, exportToCSV, exportToPDF } from '@/utils/exportReports';
 import { getApiUrl } from '@/utils/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface Partner {
   id: number;
@@ -62,7 +63,7 @@ const PartnerListEnhanced: React.FC<PartnerListEnhancedProps> = ({ onPartnerSele
       setLoading(true);
       const response = await fetch(getApiUrl('api/partners-enhanced/list'), {
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+          'Authorization': `Bearer ${getFromStorage('authToken')}`,
         },
       });
 
@@ -70,7 +71,7 @@ const PartnerListEnhanced: React.FC<PartnerListEnhancedProps> = ({ onPartnerSele
         throw new Error('Failed to fetch enhanced partner list');
       }
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       setPartners(data.partners);
       setSummary(data.summary);
     } catch (error) {
@@ -147,7 +148,7 @@ const PartnerListEnhanced: React.FC<PartnerListEnhancedProps> = ({ onPartnerSele
 
   const formatServiceCategories = (categories: string) => {
     try {
-      const parsed = JSON.parse(categories);
+      const parsed = safeJsonParse(categories);
       return Array.isArray(parsed) ? parsed.slice(0, 2).join(', ') + (parsed.length > 2 ? '...' : '') : categories;
     } catch {
       return categories?.substring(0, 30) + (categories?.length > 30 ? '...' : '') || 'N/A';

@@ -18,6 +18,7 @@ import {
   CheckCircle,
   X
 } from 'lucide-react';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface PublicPCRProps {
   partnerId: string;
@@ -116,7 +117,7 @@ export default function PublicPCRLanding({ partnerId }: PublicPCRProps) {
       console.log('Fetching PCR report from:', url);
       
       const response = await fetch(url);
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       
       if (data.success) {
         setReport(data.report);

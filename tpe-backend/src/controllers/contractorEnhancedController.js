@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 // Enhanced Contractor Controller for Advanced Search and Management
 // Using the same working pattern as Enhanced Partners
 const { query } = require('../config/database');
@@ -37,7 +39,7 @@ const getEnhancedContractorList = async (req, res) => {
         if (!jsonString) return fallback;
         if (jsonString === '[object Object]') return fallback;
         try {
-          return typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+          return typeof jsonString === 'string' ? safeJsonParse(jsonString) : jsonString;
         } catch (error) {
           console.warn('JSON parse error for contractor', contractor.id, ':', error.message);
           return fallback;
@@ -167,7 +169,7 @@ const getContractorDetailedView = async (req, res) => {
       if (!jsonString) return fallback;
       if (jsonString === '[object Object]') return fallback;
       try {
-        return typeof jsonString === 'string' ? JSON.parse(jsonString) : jsonString;
+        return typeof jsonString === 'string' ? safeJsonParse(jsonString) : jsonString;
       } catch (error) {
         console.warn('JSON parse error for contractor', contractorId, ':', error.message);
         return fallback;

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 export default function PartnerPortalLogin() {
   const [formData, setFormData] = useState({
@@ -39,15 +40,15 @@ export default function PartnerPortalLogin() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: safeJsonStringify(formData),
       });
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
 
       if (data.success) {
         // Store token and redirect to dashboard
-        localStorage.setItem('partnerToken', data.token);
-        localStorage.setItem('partnerInfo', JSON.stringify(data.partner));
+        setToStorage('partnerToken', data.token);
+        setToStorage('partnerInfo', data.partner);  // setToStorage will handle stringification
         router.push('/partner-portal/dashboard');
       } else {
         setError(data.error || 'Login failed. Please check your credentials.');

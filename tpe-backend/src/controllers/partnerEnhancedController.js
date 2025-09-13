@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 // Enhanced Partner Controller for PowerConfidence Dashboard Features
 // Updated to match actual database schema
 const { query } = require('../config/database');
@@ -269,7 +271,7 @@ const updatePartnerPowerConfidence = async (req, res) => {
         partnerId, 
         score, 
         quarter, 
-        JSON.stringify(category_scores || {}),
+        safeJsonStringify(category_scores || {}),
         notes || 'Manual update via admin dashboard',
         'admin'
       ]);

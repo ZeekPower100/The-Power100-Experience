@@ -25,6 +25,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { partnerApi } from '@/lib/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../../utils/jsonHelpers';
 
 interface PartnerDetails {
   // Basic Information
@@ -209,7 +210,7 @@ export default function PartnerViewPage() {
     if (!data) return [];
     if (typeof data === 'string') {
       try {
-        return JSON.parse(data);
+        return safeJsonParse(data);
       } catch {
         return [];
       }

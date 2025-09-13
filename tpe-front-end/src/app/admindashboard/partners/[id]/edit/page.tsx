@@ -23,6 +23,7 @@ import {
   Star
 } from 'lucide-react';
 import { partnerApi } from '@/lib/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../../../utils/jsonHelpers';
 
 interface PartnerEditData {
   // Basic Information - All fields from database
@@ -263,7 +264,7 @@ export default function PartnerEditPage() {
     if (!data) return defaultValue;
     if (typeof data === 'string') {
       try {
-        return JSON.parse(data);
+        return safeJsonParse(data);
       } catch {
         return defaultValue;
       }

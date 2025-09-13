@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 export interface DemoItem {
   id: string;
@@ -92,7 +93,7 @@ export const DemoUploadList: React.FC<DemoUploadListProps> = ({
     formData.append('video', file);
 
     try {
-      const token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
       console.log('📹 Uploading video:', {
         name: file.name,
         size: `${(file.size / 1024 / 1024).toFixed(2)}MB`,
@@ -116,14 +117,14 @@ export const DemoUploadList: React.FC<DemoUploadListProps> = ({
         
         // Try to parse as JSON if possible
         try {
-          const errorData = JSON.parse(errorText);
+          const errorData = safeJsonParse(errorText);
           throw new Error(errorData.message || errorData.error || 'Upload failed');
         } catch {
           throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
         }
       }
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       const uploadedUrl = data.data.url.startsWith('http') 
         ? data.data.url 
         : `${baseUrl}${data.data.url}`;

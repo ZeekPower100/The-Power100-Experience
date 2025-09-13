@@ -20,6 +20,7 @@ import {
   X
 } from 'lucide-react';
 import { bulkApi } from '@/lib/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface BulkOperationsProps {
   searchType: 'contractors' | 'partners';
@@ -177,7 +178,7 @@ export default function BulkOperations({
         URL.revokeObjectURL(url);
       } else {
         // JSON export
-        const jsonStr = JSON.stringify(result, null, 2);
+        const jsonStr = safeJsonStringify(result, null, 2);
         const blob = new Blob([jsonStr], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');

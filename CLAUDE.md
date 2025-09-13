@@ -9,8 +9,43 @@
 - Frontend: **3002** (Next.js on http://localhost:3002)
 - Backend: **5000** (Express.js API on http://localhost:5000)
 
+## 🔴 CRITICAL: DATABASE IS THE SOURCE OF TRUTH
+**MANDATORY READING: `DATABASE-SOURCE-OF-TRUTH.md`**
+
+Before ANY data-related development:
+1. **ALWAYS check database schema FIRST** using `check_table_schema.bat [table]`
+2. **Build backend to match database columns EXACTLY**
+3. **Build frontend to send correct field names**
+4. **Never assume field names - VERIFY in database**
+
+Helper scripts available:
+- `check_table_schema.bat` - View exact column names and types
+- `check_field_exists.bat` - Verify a specific field exists
+- `list_array_fields.bat` - List all array/JSON fields
+
+## 🚨 CRITICAL: JSON & STORAGE HANDLING
+**MANDATORY READING: `docs/STORAGE-AND-JSON-GUIDELINES.md`**
+
+**NEVER use raw JSON methods or localStorage directly!**
+1. **ALWAYS use safe JSON helpers** (`safeJsonParse`, `safeJsonStringify`)
+2. **ALWAYS use storage helpers** (`getFromStorage`, `setToStorage`)
+3. **NEVER double-stringify** data before storage
+4. **FOLLOW naming conventions** for tokens, IDs, and timestamps
+
+Critical documents:
+- `docs/STORAGE-AND-JSON-GUIDELINES.md` - Complete development patterns
+- `JSON-MIGRATION-SPECIAL-CASES.md` - Edge cases and solutions
+- `JSON-MIGRATION-SYNTAX-GUIDE.md` - Backend vs Frontend syntax
+
 ## ⚠️ IMPORTANT: DATABASE CONFIGURATION
 **BOTH Development AND Production use PostgreSQL** 
+
+### 🔴 CRITICAL: BEFORE ANY DATABASE OPERATION
+**ALWAYS CHECK FIRST**: `DATABASE-CONNECTION-PATTERN.md`
+- **Location**: `C:\Users\broac\CascadeProjects\The-Power100-Experience\DATABASE-CONNECTION-PATTERN.md`
+- **NEVER** attempt database connection without checking this file
+- **ALWAYS** use the batch file pattern documented there
+- If you forget how to connect, CHECK `DATABASE-CONNECTION-PATTERN.md`
 
 ### LOCAL DEVELOPMENT Database
 - **Host**: localhost
@@ -18,7 +53,7 @@
 - **User**: postgres
 - **Password**: TPXP0stgres!!
 - **Port**: 5432
-- **Connection**: See tpe-backend/.env for configuration
+- **Connection Pattern**: See `DATABASE-CONNECTION-PATTERN.md` for EXACT steps
 
 ### PRODUCTION Database (AWS RDS)
 - **Host**: tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com
@@ -194,6 +229,13 @@ the-power100-experience/          # Project root
 
 ## 🔄 Development Workflow Requirements
 
+### 🛡️ MANDATORY: Start Development with Error Prevention
+**ALWAYS start your development session with:**
+```bash
+npm run safe
+```
+This provides automatic error prevention that catches JSON and array rendering errors in real-time as you code.
+
 ### Git Strategy
 - **NEVER work on main/master branch**
 - Always create feature branches: `feature/description` or `fix/description`
@@ -211,6 +253,7 @@ the-power100-experience/          # Project root
 - ESLint + Prettier for code formatting
 - Component-based architecture
 - Responsive design (mobile-first)
+- **ALWAYS use error prevention helpers**: `safeJsonParse()` and `SafeList` components
 
 ## 🚨 Critical Business Logic
 
@@ -425,6 +468,9 @@ tail -50 tpe-backend/server.log | grep -i error
 - Implement responsive design
 - Add proper error handling
 - Include loading states
+- **USE safe JSON helpers** (`safeJsonParse`, `safeJsonStringify`)
+- **USE storage helpers** (`getFromStorage`, `setToStorage`)
+- **READ `docs/STORAGE-AND-JSON-GUIDELINES.md`** before handling any data
 
 ### Never Do
 - Work directly on main/master branch
@@ -433,6 +479,9 @@ tail -50 tpe-backend/server.log | grep -i error
 - Ignore TypeScript errors
 - Hardcode values that should be configurable
 - Skip accessibility considerations
+- **USE raw `JSON.parse()` or `JSON.stringify()`**
+- **USE `localStorage` directly**
+- **DOUBLE-STRINGIFY data** (calling stringify before setToStorage)
 
 ### When Making Changes
 1. Analyze impact on contractor flow
@@ -560,6 +609,178 @@ The Power100 Experience includes a comprehensive plan for evolving from a basic 
 - User retention and repeat usage
 - wait for fresh build to finish if we have to build fresh for changes to be picked up and applied. Do NOT restart the front end in development mode to pick up the changes faster
 - always check data and database schema before migrating or pulling elements over into production
-- when restarting the backend of the development server always find where the port is being used then kill the server specifying the id of where it is being used then restart the server
-- always use syntax for windows when taskkill command is used
-- use dev-manager.js to handle all developer server maintenance actions.
+- **ALWAYS use dev-manager.js for ALL server operations** - NEVER manually kill processes or use npm scripts for server management
+- dev-manager.js handles all Windows-specific process management, port conflicts, and graceful restarts automatically
+
+## 🤖 System Auto Manager - IMPORTANT FOR DEVELOPMENT
+
+### ⚠️ KNOWN LIMITATION: Field Alignment Not Checked
+**The System Auto Manager checks file existence but NOT field name alignment!**
+Always run `database-field-validator.js` separately to ensure field names match across layers.
+
+### Always Start Development With System Protection
+**CRITICAL**: When starting development for the day, ALWAYS run BOTH:
+1. **System Auto Manager** - For file completeness
+2. **Database Field Validator** - For field alignment
+
+#### Starting Development (Two Options):
+
+**Option 1 - If servers already running:**
+```bash
+npm run system:watch
+```
+
+**Option 2 - Fresh start with everything:**
+```bash
+npm run dev:with-watch
+```
+This starts both dev servers AND the system watcher together.
+
+### What the System Auto Manager Does:
+- **Automatically detects** when you're adding new entities (controllers, routes, types, forms)
+- **Checks completeness** of all required files for each entity
+- **Prompts to auto-generate** missing files with proper content
+- **Updates existing files** (server.js, api.ts, matching services) automatically
+- **Ensures nothing is missed** when adding new components to the system
+
+### Available Commands:
+- `npm run system:watch` - Run in watch mode (recommended during development)
+- `npm run system:check` - One-time system integrity check
+- `npm run system:add webinar` - Manually add a complete new entity
+- `npm run dev:with-watch` - Start everything together
+
+### How It Works:
+1. When you create ANY entity file (e.g., `webinarController.js`), the system detects it
+2. Within 3 seconds, it checks what's missing
+3. Prompts: "Would you like to auto-generate missing files? (y/n)"
+4. If yes, creates all required files with proper boilerplate
+5. Prompts: "Would you like to auto-update existing files? (y/n)"
+6. If yes, updates server.js, api.ts, and all connection points
+
+### Example Protected Workflow:
+```bash
+# Start your day
+npm run dev:with-watch  # Or npm run system:watch if servers are running
+
+# Create a new controller
+touch tpe-backend/src/controllers/webinarController.js
+
+# System detects and prompts:
+# "Entity 'webinar' is incomplete! Auto-generate missing files? (y/n)"
+# Type 'y'
+
+# System creates:
+# - webinarRoutes.js
+# - webinar.ts (types)
+# - WebinarForm.tsx
+# - Admin page
+# - Updates server.js, api.ts, matching services
+
+# You're fully protected and can focus on business logic!
+```
+
+**Never develop without this safety net - it prevents hours of debugging missing connections!**
+
+## 🛠️ Server Management - ALWAYS USE dev-manager.js
+
+### CRITICAL: Always Use dev-manager.js for Server Operations
+**NEVER use npm scripts directly for server management. ALWAYS use dev-manager.js unless explicitly told otherwise.**
+
+#### Available Commands:
+```bash
+# Starting servers
+node dev-manager.js start all        # Start both frontend and backend
+node dev-manager.js start frontend   # Start only frontend
+node dev-manager.js start backend    # Start only backend
+
+# Stopping servers
+node dev-manager.js stop all         # Stop all servers
+node dev-manager.js stop frontend    # Stop only frontend
+node dev-manager.js stop backend     # Stop only backend
+
+# Restarting servers
+node dev-manager.js restart all      # Restart both servers
+node dev-manager.js restart frontend # Restart only frontend
+node dev-manager.js restart backend  # Restart only backend
+
+# Status check
+node dev-manager.js status           # Check status of all servers
+
+# Clean build artifacts
+node dev-manager.js clean            # Clean build folders
+```
+
+#### Why dev-manager.js?
+- Handles Windows-specific process management correctly
+- Properly kills processes using the correct PID
+- Manages port conflicts automatically
+- Provides graceful shutdown and restart
+- Ensures clean build artifacts
+- Prevents orphaned processes
+
+**Example Usage:**
+```bash
+# When backend code changes are made:
+node dev-manager.js restart backend
+
+# When starting development for the day:
+node dev-manager.js start all
+
+# When fixing port conflicts:
+node dev-manager.js restart all
+```
+
+**DO NOT USE:**
+- ❌ `npm run backend:restart`
+- ❌ `npm run dev`
+- ❌ `npm start`
+- ❌ Direct `taskkill` commands
+- ❌ Manual process killing
+
+**ALWAYS USE:**
+- ✅ `node dev-manager.js` for ALL server operations
+
+### 🛡️ CRITICAL: Always Start Development with Error Prevention
+
+**MANDATORY**: When starting development, ALWAYS use:
+```bash
+npm run safe
+```
+
+This command:
+1. Starts frontend and backend servers
+2. **Automatically watches for JSON and array rendering errors**
+3. **Checks your code in real-time as you save files**
+4. **Prevents 90% of runtime errors before they happen**
+
+**DO NOT USE:**
+- ❌ `npm run dev:start` (no error protection)
+- ❌ `node dev-manager.js start` (no error protection)
+- ❌ Starting servers individually
+
+**ALWAYS USE:**
+- ✅ `npm run safe` - Start with automatic error prevention
+- ✅ `npm run safe:restart` - Restart servers WITH error protection maintained
+- ✅ `npm run error:check` - Before any commit
+
+**For Server Maintenance:**
+```bash
+# When restarting servers (e.g., after backend changes):
+npm run safe:restart
+
+# NOT these:
+❌ node dev-manager.js restart  # No error protection
+❌ npm run dev:restart          # No error protection
+❌ Ctrl+C then restart manually # Loses error protection
+```
+
+This ensures:
+- JSON parsing errors are caught immediately
+- React array rendering errors are prevented
+- Error protection is maintained during restarts
+- You never test broken code
+- You never commit errors
+
+See `docs/AUTO-ERROR-PREVENTION.md` for full details.
+- whenever you are writing or referring to a current date, always do a web search and check what the current date is.
+- never request to do a hard git rest unless it is absolutely necessary. For issues related to unwanted files being staged and committed or anything similar this is never a suitable option because it runs the risk of permenantely losing progressive changes. Uncommitted first, then unstaging is the only via option for these sort of situations. A hard git reset is ony for dire scenarios where losing progressive changes actually carry benefit to the project overall.

@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 const { query, transaction } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
 
@@ -281,10 +283,10 @@ const exportContractors = async (req, res, next) => {
     const contractors = result.rows.map(contractor => ({
       ...contractor,
       focus_areas: typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]'
-        ? JSON.parse(contractor.focus_areas || '[]')
+        ? safeJsonParse(contractor.focus_areas || '[]')
         : Array.isArray(contractor.focus_areas) ? contractor.focus_areas : [],
       services_offered: typeof contractor.services_offered === 'string' && contractor.services_offered !== '[object Object]'
-        ? JSON.parse(contractor.services_offered || '[]')
+        ? safeJsonParse(contractor.services_offered || '[]')
         : Array.isArray(contractor.services_offered) ? contractor.services_offered : []
     }));
 
@@ -381,10 +383,10 @@ const exportPartners = async (req, res, next) => {
     const partners = result.rows.map(partner => ({
       ...partner,
       focus_areas_served: typeof partner.focus_areas_served === 'string' && partner.focus_areas_served !== '[object Object]'
-        ? JSON.parse(partner.focus_areas_served || '[]')
+        ? safeJsonParse(partner.focus_areas_served || '[]')
         : Array.isArray(partner.focus_areas_served) ? partner.focus_areas_served : [],
       target_revenue_range: typeof partner.target_revenue_range === 'string' && partner.target_revenue_range !== '[object Object]'
-        ? JSON.parse(partner.target_revenue_range || '[]')
+        ? safeJsonParse(partner.target_revenue_range || '[]')
         : Array.isArray(partner.target_revenue_range) ? partner.target_revenue_range : []
     }));
 

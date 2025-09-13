@@ -15,6 +15,7 @@ import { Calendar, User, Target, Sparkles, ArrowRight, ArrowLeft, AlertTriangle,
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Event } from '@/lib/types/event';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 // Focus areas for event matching
 const FOCUS_AREAS = [
@@ -216,14 +217,14 @@ export default function EventOnboardingForm() {
       const submissionData = {
         ...formData,
         // Stringify array fields for database storage
-        speaker_profiles: JSON.stringify(formData.speaker_profiles || []),
-        past_attendee_testimonials: JSON.stringify(formData.past_attendee_testimonials || []),
-        agenda_highlights: JSON.stringify(formData.agenda_highlights || []),
-        sponsors: JSON.stringify(formData.sponsors || []),
-        pre_registered_attendees: JSON.stringify(formData.pre_registered_attendees || []),
-        networking_opportunities: JSON.stringify(formData.networking_opportunities || []),
-        follow_up_resources: JSON.stringify(formData.follow_up_resources || []),
-        target_revenue: JSON.stringify(formData.target_revenue || []),
+        speaker_profiles: safeJsonStringify(formData.speaker_profiles || []),
+        past_attendee_testimonials: safeJsonStringify(formData.past_attendee_testimonials || []),
+        agenda_highlights: safeJsonStringify(formData.agenda_highlights || []),
+        sponsors: safeJsonStringify(formData.sponsors || []),
+        pre_registered_attendees: safeJsonStringify(formData.pre_registered_attendees || []),
+        networking_opportunities: safeJsonStringify(formData.networking_opportunities || []),
+        follow_up_resources: safeJsonStringify(formData.follow_up_resources || []),
+        target_revenue: safeJsonStringify(formData.target_revenue || []),
         focus_areas_covered: formData.focus_areas_covered?.join(', ') || '',
         // Boolean fields
         session_recordings: formData.session_recordings || false,

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Laptop, Settings, ArrowRight, Info } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 // Tech stack categories from partner onboarding form
 const TECH_STACK_CATEGORIES = {
@@ -88,7 +89,7 @@ export default function TechStackStep({ data, onNext, onPrev, onUpdate }: StepPr
         let stackArray = data[fieldName] as string[] | string;
         if (typeof stackArray === 'string') {
           try {
-            stackArray = JSON.parse(stackArray);
+            stackArray = safeJsonParse(stackArray);
           } catch {
             stackArray = [];
           }

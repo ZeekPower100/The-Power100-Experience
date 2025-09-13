@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { exportToPDF, exportToExcel, exportToCSV } from '@/utils/exportReports';
 import { getApiUrl } from '@/utils/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface PartnerDetailModalProps {
   partner: any;
@@ -30,12 +31,12 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
           // Use the partners-enhanced API to get all partner data
           const response = await fetch(getApiUrl('api/partners-enhanced/list'), {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+              'Authorization': `Bearer ${getFromStorage('authToken')}`,
             },
           });
           
           if (response.ok) {
-            const data = await response.json();
+            const data = await handleApiResponse(response);
             // Find the specific partner by ID
             const foundPartner = data.partners?.find((p: any) => p.id === partner.id);
             if (foundPartner) {
@@ -242,7 +243,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                       {(() => {
                         let categories = [];
                         try {
-                          const parsed = JSON.parse(partnerData.service_categories);
+                          const parsed = safeJsonParse(partnerData.service_categories);
                           categories = Array.isArray(parsed) ? parsed : [partnerData.service_categories];
                         } catch {
                           categories = partnerData.service_categories ? [partnerData.service_categories] : ['IT Services', 'Marketing'];
@@ -374,7 +375,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                     <div className="flex flex-wrap gap-2">
                       {(() => {
                         try {
-                          const audience = JSON.parse(partnerData.target_revenue_audience || '[]');
+                          const audience = safeJsonParse(partnerData.target_revenue_audience || '[]');
                           return Array.isArray(audience) ? audience.map((item: string, idx: number) => (
                             <Badge key={idx} variant="outline">{item}</Badge>
                           )) : <Badge variant="outline">{partnerData.target_revenue_audience || 'Not specified'}</Badge>;
@@ -389,7 +390,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                     <div className="flex flex-wrap gap-2">
                       {(() => {
                         try {
-                          const areas = JSON.parse(partnerData.service_areas || '[]');
+                          const areas = safeJsonParse(partnerData.service_areas || '[]');
                           return Array.isArray(areas) ? areas.map((item: string, idx: number) => (
                             <Badge key={idx} variant="outline">{item}</Badge>
                           )) : <Badge variant="outline">{partnerData.service_areas || 'Not specified'}</Badge>;
@@ -448,7 +449,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                   <div className="flex flex-wrap gap-2">
                     {(() => {
                       try {
-                        const areas = JSON.parse(partnerData.focus_areas_12_months || '[]');
+                        const areas = safeJsonParse(partnerData.focus_areas_12_months || '[]');
                         return Array.isArray(areas) ? areas.map((item: string, idx: number) => (
                           <Badge key={idx} variant="outline">{item}</Badge>
                         )) : <Badge variant="outline">{partnerData.focus_areas_12_months || 'Not specified'}</Badge>;
@@ -483,7 +484,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                         <div className="flex flex-wrap gap-1">
                           {(() => {
                             try {
-                              const tools = JSON.parse(partnerData[tech.key] || '[]');
+                              const tools = safeJsonParse(partnerData[tech.key] || '[]');
                               return Array.isArray(tools) ? tools.map((tool: string, idx: number) => (
                                 <Badge key={idx} variant="secondary" className="text-xs">{tool}</Badge>
                               )) : <span className="text-gray-500 text-sm">Not specified</span>;
@@ -512,7 +513,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                     <div className="flex flex-wrap gap-2">
                       {(() => {
                         try {
-                          const events = JSON.parse(partnerData.sponsored_events || '[]');
+                          const events = safeJsonParse(partnerData.sponsored_events || '[]');
                           return Array.isArray(events) ? events.map((event: string, idx: number) => (
                             <Badge key={idx} variant="outline">{event}</Badge>
                           )) : <span className="text-gray-500">None specified</span>;
@@ -527,7 +528,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                     <div className="flex flex-wrap gap-2">
                       {(() => {
                         try {
-                          const podcasts = JSON.parse(partnerData.podcast_appearances || '[]');
+                          const podcasts = safeJsonParse(partnerData.podcast_appearances || '[]');
                           return Array.isArray(podcasts) ? podcasts.map((podcast: string, idx: number) => (
                             <Badge key={idx} variant="outline">{podcast}</Badge>
                           )) : <span className="text-gray-500">None specified</span>;
@@ -561,7 +562,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                     <p className="text-sm text-gray-600 font-medium mb-2">Client Demos</p>
                     {(() => {
                       try {
-                        const demos = JSON.parse(partnerData.client_demos || '[]');
+                        const demos = safeJsonParse(partnerData.client_demos || '[]');
                         return Array.isArray(demos) && demos.length > 0 ? (
                           <div className="space-y-2">
                             {demos.map((demo: any, idx: number) => (
@@ -587,7 +588,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                     <p className="text-sm text-gray-600 font-medium mb-2">Client References (Minimum 5 for PowerConfidence)</p>
                     {(() => {
                       try {
-                        const references = JSON.parse(partnerData.client_references || '[]');
+                        const references = safeJsonParse(partnerData.client_references || '[]');
                         return Array.isArray(references) && references.length > 0 ? (
                           <div className="space-y-2">
                             <p className="text-xs text-gray-500 mb-2">Count: {references.length} / 5 minimum</p>
@@ -615,7 +616,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
                     <p className="text-sm text-gray-600 font-medium mb-2">Employee References (Minimum 5 for PowerConfidence)</p>
                     {(() => {
                       try {
-                        const employees = JSON.parse(partnerData.employee_references || '[]');
+                        const employees = safeJsonParse(partnerData.employee_references || '[]');
                         return Array.isArray(employees) && employees.length > 0 ? (
                           <div className="space-y-2">
                             <p className="text-xs text-gray-500 mb-2">Count: {employees.length} / 5 minimum</p>

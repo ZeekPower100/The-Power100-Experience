@@ -9,6 +9,7 @@ import { Slider } from '@/components/ui/slider';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Star, ArrowRight, ArrowLeft, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { getApiUrl } from '@/utils/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface PowerCardTemplate {
   id: string;
@@ -202,7 +203,7 @@ const PowerCardSurvey: React.FC<PowerCardSurveyProps> = ({ surveyLink, onComplet
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(submissionData)
+        body: safeJsonStringify(submissionData)
       });
 
       if (!response.ok) {

@@ -5,6 +5,7 @@ import { Button } from '../ui/button';
 import { Card } from '../ui/card';
 import { Upload, Link, Trash2, Image as ImageIcon, X, CheckCircle } from 'lucide-react';
 import { Progress } from '../ui/progress';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface LogoManagerProps {
   currentLogoUrl?: string | null;
@@ -96,7 +97,7 @@ export default function LogoManager({
 
     try {
       // Get auth token (optional - upload works without it for public forms)
-      const token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
       
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
       const baseUrl = apiUrl.endsWith('/api') ? apiUrl.replace('/api', '') : apiUrl;
@@ -117,7 +118,7 @@ export default function LogoManager({
         throw new Error('Upload failed');
       }
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       
       // Use the uploaded URL
       const uploadedUrl = data.data.url.startsWith('http') 

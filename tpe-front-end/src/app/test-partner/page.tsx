@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 export default function TestPartnerLogin() {
   const [email, setEmail] = useState('');
@@ -17,10 +18,10 @@ export default function TestPartnerLogin() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: safeJsonStringify({ email, password }),
       });
 
-      const data = await response.json();
+      const data = await handleApiResponse(response);
       
       if (data.success) {
         setMessage(`Login successful! Token: ${data.token.substring(0, 20)}...`);

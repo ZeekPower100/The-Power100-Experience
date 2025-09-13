@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 const { query } = require('../config/database');
 const outcomeTrackingService = require('./outcomeTrackingService');
 const matchingService = require('./matchingService');
@@ -10,7 +12,7 @@ const matchPodcast = async (contractor) => {
     let focusAreas = [];
     if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
       try {
-        focusAreas = JSON.parse(contractor.focus_areas);
+        focusAreas = safeJsonParse(contractor.focus_areas);
       } catch (e) {
         console.error('Error parsing contractor focus_areas:', contractor.focus_areas);
         focusAreas = [];
@@ -38,7 +40,7 @@ const matchPodcast = async (contractor) => {
       let focusAreasCovered = [];
       try {
         if (typeof podcast.focus_areas_covered === 'string') {
-          focusAreasCovered = JSON.parse(podcast.focus_areas_covered || '[]');
+          focusAreasCovered = safeJsonParse(podcast.focus_areas_covered || '[]');
         } else {
           focusAreasCovered = podcast.focus_areas_covered || [];
         }
@@ -50,7 +52,7 @@ const matchPodcast = async (contractor) => {
       let topics = [];
       try {
         if (typeof podcast.topics === 'string' && podcast.topics.startsWith('[')) {
-          topics = JSON.parse(podcast.topics);
+          topics = safeJsonParse(podcast.topics);
         } else if (typeof podcast.topics === 'string') {
           // Handle comma-separated string
           topics = podcast.topics.split(',').map(t => t.trim());
@@ -85,7 +87,7 @@ const matchPodcast = async (contractor) => {
         };
       }
     }
-    console.log("Podcast bestMatch:", bestMatch ? JSON.stringify(bestMatch).substring(0, 100) : "NULL");
+    console.log("Podcast bestMatch:", bestMatch ? safeJsonStringify(bestMatch).substring(0, 100) : "NULL");
     
     return bestMatch;
   } catch (error) {
@@ -101,7 +103,7 @@ const matchEvent = async (contractor) => {
     let focusAreas = [];
     if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
       try {
-        focusAreas = JSON.parse(contractor.focus_areas);
+        focusAreas = safeJsonParse(contractor.focus_areas);
       } catch (e) {
         console.error('Error parsing contractor focus_areas:', contractor.focus_areas);
         focusAreas = [];
@@ -128,7 +130,7 @@ const matchEvent = async (contractor) => {
       let focusAreasCovered = [];
       try {
         if (typeof event.focus_areas_covered === 'string') {
-          focusAreasCovered = JSON.parse(event.focus_areas_covered || '[]');
+          focusAreasCovered = safeJsonParse(event.focus_areas_covered || '[]');
         } else {
           focusAreasCovered = event.focus_areas_covered || [];
         }
@@ -164,7 +166,7 @@ const matchEvent = async (contractor) => {
         };
       }
     }
-    console.log("Event bestMatch:", bestMatch ? JSON.stringify(bestMatch).substring(0, 100) : "NULL");
+    console.log("Event bestMatch:", bestMatch ? safeJsonStringify(bestMatch).substring(0, 100) : "NULL");
     
     return bestMatch;
   } catch (error) {
@@ -180,7 +182,7 @@ const generatePodcastMatchReasons = (contractor, podcast, focusAreasCovered) => 
     let focusAreas = [];
     if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
       try {
-        focusAreas = JSON.parse(contractor.focus_areas);
+        focusAreas = safeJsonParse(contractor.focus_areas);
       } catch (e) {
         focusAreas = [];
       }
@@ -216,7 +218,7 @@ const generateEventMatchReasons = (contractor, event, focusAreasCovered) => {
     let focusAreas = [];
     if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
       try {
-        focusAreas = JSON.parse(contractor.focus_areas);
+        focusAreas = safeJsonParse(contractor.focus_areas);
       } catch (e) {
         focusAreas = [];
       }
@@ -254,7 +256,7 @@ const matchManufacturer = async (contractor) => {
     let focusAreas = [];
     if (typeof contractor.focus_areas === 'string' && contractor.focus_areas !== '[object Object]' && contractor.focus_areas.trim() !== '') {
       try {
-        focusAreas = JSON.parse(contractor.focus_areas);
+        focusAreas = safeJsonParse(contractor.focus_areas);
       } catch (e) {
         console.error('Error parsing contractor focus_areas:', contractor.focus_areas);
         focusAreas = [];
@@ -281,7 +283,7 @@ const matchManufacturer = async (contractor) => {
       let focusAreasServed = [];
       try {
         if (typeof manufacturer.focus_areas_served === 'string') {
-          focusAreasServed = JSON.parse(manufacturer.focus_areas_served || '[]');
+          focusAreasServed = safeJsonParse(manufacturer.focus_areas_served || '[]');
         } else {
           focusAreasServed = manufacturer.focus_areas_served || [];
         }
@@ -293,7 +295,7 @@ const matchManufacturer = async (contractor) => {
       let productCategories = [];
       try {
         if (typeof manufacturer.product_categories === 'string') {
-          productCategories = JSON.parse(manufacturer.product_categories || '[]');
+          productCategories = safeJsonParse(manufacturer.product_categories || '[]');
         } else {
           productCategories = manufacturer.product_categories || [];
         }
@@ -343,7 +345,7 @@ const matchManufacturer = async (contractor) => {
         };
       }
     }
-    console.log("Manufacturer bestMatch:", bestMatch ? JSON.stringify(bestMatch).substring(0, 100) : "NULL");
+    console.log("Manufacturer bestMatch:", bestMatch ? safeJsonStringify(bestMatch).substring(0, 100) : "NULL");
     
     return bestMatch;
   } catch (error) {
@@ -365,7 +367,7 @@ const generateManufacturerMatchReasons = (contractor, manufacturer, focusAreasSe
       const trimmed = contractor.focus_areas.trim();
       if (trimmed && trimmed !== '[object Object]') {
         try {
-          const parsed = JSON.parse(trimmed);
+          const parsed = safeJsonParse(trimmed);
           if (Array.isArray(parsed)) {
             focusAreas = parsed;
           } else if (typeof parsed === 'string') {
@@ -424,7 +426,7 @@ const getEnhancedMatches = async (contractor, focusAreaIndex = 0) => {
     console.log("=== CONTRACTOR DATA RECEIVED ===");
     console.log("contractor.focus_areas:", contractor.focus_areas);
     console.log("Type:", typeof contractor.focus_areas);
-    console.log("Raw value:", JSON.stringify(contractor.focus_areas));
+    console.log("Raw value:", safeJsonStringify(contractor.focus_areas));
     
     // Parse focus areas with more robust handling for production edge cases
     let focusAreas = [];
@@ -440,7 +442,7 @@ const getEnhancedMatches = async (contractor, focusAreaIndex = 0) => {
       if (trimmed && trimmed !== '[object Object]') {
         try {
           // Try to parse as JSON
-          const parsed = JSON.parse(trimmed);
+          const parsed = safeJsonParse(trimmed);
           // Ensure we got an array after parsing
           if (Array.isArray(parsed)) {
             focusAreas = parsed;

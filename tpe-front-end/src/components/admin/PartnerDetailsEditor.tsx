@@ -28,6 +28,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { partnerApi } from '@/lib/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface PartnerDetailsEditorProps {
   partnerId: string;
@@ -282,10 +283,10 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                     <div>
                       <Label>Trust Badges</Label>
                       <Textarea
-                        value={partner.trust_badges ? JSON.stringify(partner.trust_badges) : '[]'}
+                        value={partner.trust_badges ? safeJsonStringify(partner.trust_badges) : '[]'}
                         onChange={(e) => {
                           try {
-                            const badges = JSON.parse(e.target.value);
+                            const badges = safeJsonParse(e.target.value);
                             updateField('trust_badges', badges);
                           } catch (err) {
                             // Invalid JSON, don't update
@@ -301,10 +302,10 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                     <div>
                       <Label>Key Metrics</Label>
                       <Textarea
-                        value={partner.key_metrics ? JSON.stringify(partner.key_metrics, null, 2) : '[]'}
+                        value={partner.key_metrics ? safeJsonStringify(partner.key_metrics, null, 2) : '[]'}
                         onChange={(e) => {
                           try {
-                            const metrics = JSON.parse(e.target.value);
+                            const metrics = safeJsonParse(e.target.value);
                             updateField('key_metrics', metrics);
                           } catch (err) {
                             // Invalid JSON, don't update
@@ -362,10 +363,10 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                   <div>
                     <Label>Service Areas</Label>
                     <Textarea
-                      value={partner.service_areas ? JSON.stringify(partner.service_areas) : '[]'}
+                      value={partner.service_areas ? safeJsonStringify(partner.service_areas) : '[]'}
                       onChange={(e) => {
                         try {
-                          const areas = JSON.parse(e.target.value);
+                          const areas = safeJsonParse(e.target.value);
                           updateField('service_areas', areas);
                         } catch (err) {
                           // Invalid JSON
@@ -380,10 +381,10 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                   <div>
                     <Label>Focus Areas Served</Label>
                     <Textarea
-                      value={partner.focus_areas_served ? JSON.stringify(partner.focus_areas_served) : '[]'}
+                      value={partner.focus_areas_served ? safeJsonStringify(partner.focus_areas_served) : '[]'}
                       onChange={(e) => {
                         try {
-                          const areas = JSON.parse(e.target.value);
+                          const areas = safeJsonParse(e.target.value);
                           updateField('focus_areas_served', areas);
                         } catch (err) {
                           // Invalid JSON
@@ -399,10 +400,10 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                     <div>
                       <Label>Target Revenue Range</Label>
                       <Textarea
-                        value={partner.target_revenue_range ? JSON.stringify(partner.target_revenue_range) : '[]'}
+                        value={partner.target_revenue_range ? safeJsonStringify(partner.target_revenue_range) : '[]'}
                         onChange={(e) => {
                           try {
-                            const ranges = JSON.parse(e.target.value);
+                            const ranges = safeJsonParse(e.target.value);
                             updateField('target_revenue_range', ranges);
                           } catch (err) {
                             // Invalid JSON
@@ -416,10 +417,10 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                     <div>
                       <Label>Geographic Regions</Label>
                       <Textarea
-                        value={partner.geographic_regions ? JSON.stringify(partner.geographic_regions) : '[]'}
+                        value={partner.geographic_regions ? safeJsonStringify(partner.geographic_regions) : '[]'}
                         onChange={(e) => {
                           try {
-                            const regions = JSON.parse(e.target.value);
+                            const regions = safeJsonParse(e.target.value);
                             updateField('geographic_regions', regions);
                           } catch (err) {
                             // Invalid JSON
@@ -453,10 +454,10 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                   <div>
                     <Label>Client Testimonials</Label>
                     <Textarea
-                      value={partner.client_testimonials ? JSON.stringify(partner.client_testimonials, null, 2) : '[]'}
+                      value={partner.client_testimonials ? safeJsonStringify(partner.client_testimonials, null, 2) : '[]'}
                       onChange={(e) => {
                         try {
-                          const testimonials = JSON.parse(e.target.value);
+                          const testimonials = safeJsonParse(e.target.value);
                           updateField('client_testimonials', testimonials);
                         } catch (err) {
                           // Invalid JSON
@@ -479,10 +480,10 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                   <div>
                     <Label>Case Studies</Label>
                     <Textarea
-                      value={partner.case_studies ? JSON.stringify(partner.case_studies, null, 2) : '[]'}
+                      value={partner.case_studies ? safeJsonStringify(partner.case_studies, null, 2) : '[]'}
                       onChange={(e) => {
                         try {
-                          const studies = JSON.parse(e.target.value);
+                          const studies = safeJsonParse(e.target.value);
                           updateField('case_studies', studies);
                         } catch (err) {
                           // Invalid JSON
@@ -508,10 +509,10 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                       <div>
                         <Label>Client References (At least 5 for PowerConfidence)</Label>
                         <Textarea
-                          value={partner.client_references ? JSON.stringify(partner.client_references, null, 2) : '[]'}
+                          value={partner.client_references ? safeJsonStringify(partner.client_references, null, 2) : '[]'}
                           onChange={(e) => {
                             try {
-                              const references = JSON.parse(e.target.value);
+                              const references = safeJsonParse(e.target.value);
                               updateField('client_references', references);
                             } catch (err) {
                               // Invalid JSON
@@ -531,7 +532,7 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                         <p className="text-xs text-gray-500 mt-1">
                           {(() => {
                             try {
-                              const refs = JSON.parse(partner.client_references || '[]');
+                              const refs = safeJsonParse(partner.client_references || '[]');
                               return `${Array.isArray(refs) ? refs.length : 0} / 5 minimum clients`;
                             } catch {
                               return '0 / 5 minimum clients';
@@ -543,10 +544,10 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                       <div>
                         <Label>Employee References (At least 5 for PowerConfidence)</Label>
                         <Textarea
-                          value={partner.employee_references ? JSON.stringify(partner.employee_references, null, 2) : '[]'}
+                          value={partner.employee_references ? safeJsonStringify(partner.employee_references, null, 2) : '[]'}
                           onChange={(e) => {
                             try {
-                              const references = JSON.parse(e.target.value);
+                              const references = safeJsonParse(e.target.value);
                               updateField('employee_references', references);
                             } catch (err) {
                               // Invalid JSON
@@ -566,7 +567,7 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                         <p className="text-xs text-gray-500 mt-1">
                           {(() => {
                             try {
-                              const emps = JSON.parse(partner.employee_references || '[]');
+                              const emps = safeJsonParse(partner.employee_references || '[]');
                               return `${Array.isArray(emps) ? emps.length : 0} / 5 minimum employees`;
                             } catch {
                               return '0 / 5 minimum employees';

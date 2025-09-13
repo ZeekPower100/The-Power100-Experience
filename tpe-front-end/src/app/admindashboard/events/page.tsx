@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import EventForm from '@/components/admin/EventForm';
 import { Event } from '@/lib/types/event';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../utils/jsonHelpers';
 
 export default function EventsPage() {
   const router = useRouter();
@@ -35,7 +36,7 @@ export default function EventsPage() {
   const fetchEvents = async () => {
     try {
       // Get the auth token from localStorage (use authToken or adminToken)
-      const token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
       
       const response = await fetch('/api/events', {
         headers: {
@@ -45,7 +46,7 @@ export default function EventsPage() {
       });
       
       if (response.ok) {
-        const data = await response.json();
+        const data = await handleApiResponse(response);
         console.log('Fetched events data:', data);
         if (data.length > 0) {
           console.log('First event date fields:', {
@@ -69,7 +70,7 @@ export default function EventsPage() {
     if (!confirm('Are you sure you want to delete this event?')) return;
 
     try {
-      const token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
       
       const response = await fetch(`/api/events/${id}`, {
         method: 'DELETE',

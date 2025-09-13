@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sparkles, Star, ArrowRight, ArrowLeft, Calendar, ExternalLink } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { contractorApi } from '@/lib/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 // Real matching will be done via API call to backend
 
@@ -66,16 +67,16 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
           matchScore: match.matchScore,
           matchReasons: match.matchReasons,
           focus_areas_served: typeof match.partner.focus_areas_served === 'string' && match.partner.focus_areas_served !== '[object Object]'
-            ? JSON.parse(match.partner.focus_areas_served || '[]')
+            ? safeJsonParse(match.partner.focus_areas_served || '[]')
             : match.partner.focus_areas_served || [],
           target_revenue_range: typeof match.partner.target_revenue_range === 'string' && match.partner.target_revenue_range !== '[object Object]'
-            ? JSON.parse(match.partner.target_revenue_range || '[]')
+            ? safeJsonParse(match.partner.target_revenue_range || '[]')
             : match.partner.target_revenue_range || [],
           key_differentiators: typeof match.partner.key_differentiators === 'string' && match.partner.key_differentiators !== '[object Object]'
-            ? JSON.parse(match.partner.key_differentiators || '[]')
+            ? safeJsonParse(match.partner.key_differentiators || '[]')
             : match.partner.key_differentiators || [],
           client_testimonials: typeof match.partner.client_testimonials === 'string' && match.partner.client_testimonials !== '[object Object]'
-            ? JSON.parse(match.partner.client_testimonials || '[]')
+            ? safeJsonParse(match.partner.client_testimonials || '[]')
             : match.partner.client_testimonials || []
         }));
         
@@ -144,7 +145,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
         await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/data-collection/interaction`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          body: safeJsonStringify({
             type: 'focus_area_exploration',
             contractor_id: data.id,
             from_focus_area: allFocusAreas[currentFocusAreaIndex],
@@ -172,7 +173,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
         await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'}/data-collection/interaction`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          body: safeJsonStringify({
             type: 'focus_area_exploration',
             contractor_id: data.id,
             from_focus_area: allFocusAreas[currentFocusAreaIndex],
@@ -445,7 +446,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                         <p className="text-gray-700">
                           <strong>Featured Brands:</strong> {
                             typeof manufacturerMatch.brands_carried === 'string' 
-                              ? JSON.parse(manufacturerMatch.brands_carried).join(', ')
+                              ? safeJsonParse(manufacturerMatch.brands_carried).join(', ')
                               : manufacturerMatch.brands_carried.join(', ')
                           }
                         </p>

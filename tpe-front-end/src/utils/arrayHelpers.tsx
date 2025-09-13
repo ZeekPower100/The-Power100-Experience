@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from './jsonHelpers';
 
 /**
  * Safely ensure data is an array
@@ -185,7 +186,7 @@ export function renderJsonArrayField(
   let items = field;
   if (typeof field === 'string') {
     try {
-      items = JSON.parse(field);
+      items = safeJsonParse(field);
     } catch {
       items = [];
     }
@@ -206,7 +207,7 @@ export function renderJsonArrayField(
   // Default rendering
   return items.map((item, index) => (
     <span key={getItemKey(item, index)} className="mr-2">
-      {typeof item === 'object' ? JSON.stringify(item) : item}
+      {typeof item === 'object' ? safeJsonStringify(item) : item}
     </span>
   ));
 }
@@ -261,7 +262,7 @@ export function makeRenderable(value: any): React.ReactNode {
     if (value.value) return value.value;
     
     // Last resort: stringify
-    return JSON.stringify(value);
+    return safeJsonStringify(value);
   }
   
   return null;

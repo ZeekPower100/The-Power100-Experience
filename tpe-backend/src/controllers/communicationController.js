@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 // Communication Controller - Handles webhooks from n8n/GHL for SMS/Email tracking
 const { query } = require('../config/database');
 const { v4: uuidv4 } = require('uuid');
@@ -5,7 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 // Webhook endpoint to receive communication data from n8n/GHL
 const receiveCommunication = async (req, res) => {
   try {
-    console.log('📧 Received communication webhook:', JSON.stringify(req.body, null, 2));
+    console.log('📧 Received communication webhook:', safeJsonStringify(req.body, null, 2));
     
     const {
       // GHL fields
@@ -101,7 +103,7 @@ const receiveCommunication = async (req, res) => {
       to?.name || null,
       subject,
       message_body || body, // Use message_body if provided, fallback to body
-      JSON.stringify(attachments || []),
+      safeJsonStringify(attachments || []),
       campaignId || null,
       flowType || null,
       flowStep || null,
@@ -109,7 +111,7 @@ const receiveCommunication = async (req, res) => {
       conversationId || null,
       messageId || null,
       'ghl',
-      JSON.stringify(metadata)
+      safeJsonStringify(metadata)
     ];
     
     await query(insertQuery, values);

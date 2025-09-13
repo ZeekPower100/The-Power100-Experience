@@ -1,3 +1,5 @@
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
 const { query, transaction } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
 const { generateVerificationCode, sendSMSVerification } = require('../services/smsService');
@@ -128,7 +130,7 @@ const updateProfile = async (req, res, next) => {
   const updates = req.body;
   console.log("=== UPDATE PROFILE REQUEST ===");
   console.log("Contractor ID:", id);
-  console.log("Updates received:", JSON.stringify(updates));
+  console.log("Updates received:", safeJsonStringify(updates));
   console.log("focus_areas type:", typeof updates.focus_areas);
   console.log("focus_areas value:", updates.focus_areas);
 
@@ -187,7 +189,7 @@ const updateProfile = async (req, res, next) => {
       if (jsonFields.includes(key)) {
         console.log(`Processing JSON field ${key}:`, updates[key], "Type:", typeof updates[key]);
         // Stringify arrays/objects for JSON storage
-        values.push(typeof updates[key] === 'string' ? updates[key] : JSON.stringify(updates[key] || []));
+        values.push(typeof updates[key] === 'string' ? updates[key] : safeJsonStringify(updates[key] || []));
       } else {
         values.push(updates[key]);
       }
@@ -453,7 +455,7 @@ const searchContractors = async (req, res, next) => {
     offset = 0 
   } = req.body;
 
-  console.log('🔍 searchContractors called with:', JSON.stringify(req.body, null, 2));
+  console.log('🔍 searchContractors called with:', safeJsonStringify(req.body, null, 2));
 
   try {
     let whereClause = '1=1';
@@ -596,14 +598,14 @@ const searchContractors = async (req, res, next) => {
       focus_areas: contractor.focus_areas ? 
         (contractor.focus_areas === '[object Object]' ? [] : 
          (typeof contractor.focus_areas === 'string' ? 
-          JSON.parse(contractor.focus_areas || '[]') : contractor.focus_areas)) : [],
+          safeJsonParse(contractor.focus_areas || '[]') : contractor.focus_areas)) : [],
       services_offered: contractor.services_offered ? 
         (contractor.services_offered === '[object Object]' ? [] : 
          (typeof contractor.services_offered === 'string' ? 
-          JSON.parse(contractor.services_offered || '[]') : contractor.services_offered)) : [],
+          safeJsonParse(contractor.services_offered || '[]') : contractor.services_offered)) : [],
       tags: contractor.tags ? 
         (typeof contractor.tags === 'string' ? 
-         JSON.parse(contractor.tags || '[]') : contractor.tags) : []
+         safeJsonParse(contractor.tags || '[]') : contractor.tags) : []
     }));
 
     // Calculate pagination info

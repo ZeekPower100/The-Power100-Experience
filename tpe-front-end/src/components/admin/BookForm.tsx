@@ -12,6 +12,7 @@ import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
 import { ArrowLeft, Save, BookOpen, User, Building, Quote, Target, Sparkles, X, Upload } from 'lucide-react';
 import { Book } from '@/lib/types/book';
 import LogoManager from '@/components/admin/LogoManager';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
 interface BookFormProps {
   book?: Book;
@@ -104,7 +105,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
     their_expertise: string;
     citation_context: string;
   }>>(
-    book?.key_citations ? JSON.parse(book.key_citations) : [
+    book?.key_citations ? safeJsonParse(book.key_citations) : [
       { cited_person: '', their_expertise: '', citation_context: '' }
     ]
   );
@@ -118,7 +119,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
   const [keyTakeaways, setKeyTakeaways] = useState<string[]>(
     book?.key_takeaways ? 
       (typeof book.key_takeaways === 'string' ? 
-        (book.key_takeaways.startsWith('[') ? JSON.parse(book.key_takeaways) : book.key_takeaways.split(',').map(t => t.trim())) : 
+        (book.key_takeaways.startsWith('[') ? safeJsonParse(book.key_takeaways) : book.key_takeaways.split(',').map(t => t.trim())) : 
         Array.isArray(book.key_takeaways) ? book.key_takeaways : []
       ) : []
   );
@@ -126,7 +127,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
   const [testimonials, setTestimonials] = useState<string[]>(
     book?.testimonials ? 
       (typeof book.testimonials === 'string' ? 
-        (book.testimonials.startsWith('[') ? JSON.parse(book.testimonials) : book.testimonials.split(',').map(t => t.trim())) : 
+        (book.testimonials.startsWith('[') ? safeJsonParse(book.testimonials) : book.testimonials.split(',').map(t => t.trim())) : 
         Array.isArray(book.testimonials) ? book.testimonials : []
       ) : []
   );
@@ -171,9 +172,9 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
       const dataToSubmit = {
         ...formData,
         focus_areas_covered: selectedFocusAreas.join(', '),
-        key_citations: JSON.stringify(keyCitations.filter(c => c.cited_person)),
-        key_takeaways: JSON.stringify(keyTakeaways.filter(t => t.trim())),
-        testimonials: JSON.stringify(testimonials.filter(t => t.trim())),
+        key_citations: safeJsonStringify(keyCitations.filter(c => c.cited_person)),
+        key_takeaways: safeJsonStringify(keyTakeaways.filter(t => t.trim())),
+        testimonials: safeJsonStringify(testimonials.filter(t => t.trim())),
         submission_type: submissionType,
         // Set status based on whether it's a draft save or submission
         // If saving as draft, mark as 'draft'
@@ -188,7 +189,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
         }
       });
 
-      const token = localStorage.getItem('authToken') || localStorage.getItem('adminToken');
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
       
       const response = await fetch(`/api/books${book?.id ? `/${book.id}` : ''}`, {
         method: book?.id ? 'PUT' : 'POST',
@@ -196,7 +197,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(dataToSubmit),
+        body: safeJsonStringify(dataToSubmit),
       });
 
       if (!response.ok) {

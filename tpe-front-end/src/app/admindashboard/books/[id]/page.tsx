@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import BookForm from '@/components/admin/BookForm';
 import { BookOpen, ArrowLeft, Edit, User, Calendar, Link } from 'lucide-react';
 import { bookApi } from '@/lib/api';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../../utils/jsonHelpers';
 
 export default function BookDetailsPage() {
   const params = useParams();
@@ -130,7 +131,7 @@ export default function BookDetailsPage() {
               let areas = [];
               try {
                 areas = Array.isArray(book.focus_areas) ? book.focus_areas : 
-                        typeof book.focus_areas === 'string' ? JSON.parse(book.focus_areas) : [];
+                        typeof book.focus_areas === 'string' ? safeJsonParse(book.focus_areas) : [];
               } catch (e) {
                 areas = [];
               }
@@ -152,7 +153,7 @@ export default function BookDetailsPage() {
               let takeaways = [];
               try {
                 takeaways = Array.isArray(book.key_takeaways) ? book.key_takeaways : 
-                           typeof book.key_takeaways === 'string' ? JSON.parse(book.key_takeaways) : [];
+                           typeof book.key_takeaways === 'string' ? safeJsonParse(book.key_takeaways) : [];
               } catch (e) {
                 takeaways = [];
               }
