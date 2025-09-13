@@ -23,32 +23,69 @@ async function apiRequest<T>(
   };
 
   // Add auth token if available
-  // Use appropriate token based on endpoint context
+  // IMPORTANT: We need to determine which token to use based on the current page context
   let token = null;
-  
-  // Check if this is an admin/auth endpoint
-  const isAdminEndpoint = endpoint.includes('/admin') || 
-                          endpoint.includes('/auth') || 
-                          endpoint.includes('/partners-enhanced') ||
-                          endpoint.includes('/contractors-enhanced');
-  
-  if (isAdminEndpoint) {
-    // For admin endpoints, only use admin tokens
+
+  // Check what page we're on to determine which token to use
+  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+  const isAdminPage = currentPath.includes('/admindashboard') ||
+                      currentPath.includes('/admin');
+  const isPartnerPage = currentPath.includes('/partner');
+  const isContractorFlow = currentPath.includes('/contractorflow') ||
+                           currentPath.includes('/focus') ||
+                           currentPath.includes('/profile') ||
+                           currentPath.includes('/matching');
+
+  // Priority order for token selection based on context:
+  if (isAdminPage) {
+    // On admin pages, ALWAYS use admin token only
     token = getFromStorage('authToken') || getFromStorage('adminToken');
-  } else {
-    // For contractor endpoints, check contractor session first
+  } else if (isPartnerPage) {
+    // On partner pages, use partner token
+    token = getFromStorage('partnerToken');
+  } else if (isContractorFlow) {
+    // On contractor flow pages, use contractor session
     const sessionData = getFromStorage('tpe_contractor_session');
     if (sessionData) {
       try {
         const parsed = safeJsonParse(sessionData);
         token = parsed.token;
       } catch (e) {
-        // Fall back to admin token if session parse fails
+        console.error('Failed to parse contractor session');
+      }
+    }
+  } else {
+    // For other pages or API calls without clear context,
+    // check endpoint patterns to determine which token to use
+    const isAdminEndpoint = endpoint.includes('/contractors') ||
+                            endpoint.includes('/partners') ||
+                            endpoint.includes('/bookings') ||
+                            endpoint.includes('/events') ||
+                            endpoint.includes('/books') ||
+                            endpoint.includes('/podcasts') ||
+                            endpoint.includes('/admin') ||
+                            endpoint.includes('/auth') ||
+                            endpoint.includes('/partners-enhanced') ||
+                            endpoint.includes('/contractors-enhanced');
+
+    if (isAdminEndpoint) {
+      // Admin API endpoints need admin token
+      token = getFromStorage('authToken') || getFromStorage('adminToken');
+    } else {
+      // Check for contractor session for contractor-specific endpoints
+      const sessionData = getFromStorage('tpe_contractor_session');
+      if (sessionData) {
+        try {
+          const parsed = safeJsonParse(sessionData);
+          token = parsed.token;
+        } catch (e) {
+          // Fall back to admin token if session parse fails
+          token = getFromStorage('authToken') || getFromStorage('adminToken');
+        }
+      } else {
+        // No contractor session, use admin token if available
         token = getFromStorage('authToken') || getFromStorage('adminToken');
       }
-    } else {
-      // No contractor session, use admin token if available
-      token = getFromStorage('authToken') || getFromStorage('adminToken');
     }
   }
   
@@ -62,6 +99,8 @@ async function apiRequest<T>(
   try {
     // Uncomment for debugging API requests
     // console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
+    // console.log(`📡 Current page: ${currentPath}`);
+    // console.log(`📡 Token source: ${isAdminPage ? 'Admin' : isPartnerPage ? 'Partner' : isContractorFlow ? 'Contractor' : 'Auto-detected'}`);
     // console.log(`📡 Auth token: ${config.headers?.['Authorization'] ? 'Present' : 'Missing'}`);
     
     const response = await fetch(url, config);
