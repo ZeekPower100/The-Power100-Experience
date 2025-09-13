@@ -49,6 +49,39 @@ class DatabaseFieldValidator {
       podcasts: {
         'podcast_name': 'name',                     // Frontend uses podcast_ prefix
         'host_name': 'host',                        // Frontend more specific
+      },
+      // Partner-specific mappings
+      partners: {
+        // Contact field mappings (form field → database field)
+        'ceo_name': 'ceo_contact_name',
+        'ceo_email': 'ceo_contact_email',
+        'ceo_phone': 'ceo_contact_phone',
+        'ceo_title': 'ceo_contact_title',
+        'cx_name': 'cx_contact_name',
+        'cx_email': 'cx_contact_email',
+        'cx_phone': 'cx_contact_phone',
+        'cx_title': 'cx_contact_title',
+        'sales_name': 'sales_contact_name',
+        'sales_email': 'sales_contact_email',
+        'sales_phone': 'sales_contact_phone',
+        'sales_title': 'sales_contact_title',
+        'onboarding_name': 'onboarding_contact_name',
+        'onboarding_email': 'onboarding_contact_email',
+        'onboarding_phone': 'onboarding_contact_phone',
+        'onboarding_title': 'onboarding_contact_title',
+        'marketing_name': 'marketing_contact_name',
+        'marketing_email': 'marketing_contact_email',
+        'marketing_phone': 'marketing_contact_phone',
+        'marketing_title': 'marketing_contact_title',
+        'contact_name': 'primary_contact',
+        // Event/content relationships
+        'events_sponsored': 'sponsored_events',
+        'podcasts_appeared': 'podcast_appearances',
+        'books_recommended': 'books_read_recommended',
+        'referral_partnerships': 'best_working_partnerships',
+        'other_sponsored_events': 'sponsored_events',
+        'other_podcast_appearances': 'podcast_appearances'
+        // client_count now maps directly to client_count column (no mapping needed)
       }
     };
     
@@ -57,7 +90,7 @@ class DatabaseFieldValidator {
     this.dropdownValues = {
       events: {
         event_type: {
-          expected: ['Conference', 'Workshop', 'Seminar', 'Webinar', 'Networking', 'Training', 'Summit', 'Bootcamp', 'Other'],
+          expected: ['Conference', 'Workshop', 'Seminar', 'Webinar', 'Networking', 'Training', 'Summit', 'Bootcamp', 'Retreat', 'Other'],
           caseSensitive: true,
           description: 'Must use Capitalized values (e.g., "Conference" not "conference")'
         },
@@ -164,6 +197,8 @@ set PGPASSWORD=TPXP0stgres!!
     const fields = new Set();
     
     // Find destructuring patterns in create/update functions
+    // Only extract from req.body and mappedBody (actual data fields)
+    // Ignore req.query (search parameters) and req.params (URL parameters)
     const patterns = [
       /const\s*{\s*([^}]+)\s*}\s*=\s*req\.body/g,
       /const\s*{\s*([^}]+)\s*}\s*=\s*mappedBody/g,
@@ -172,13 +207,64 @@ set PGPASSWORD=TPXP0stgres!!
     patterns.forEach(pattern => {
       let match;
       while ((match = pattern.exec(content)) !== null) {
-        const fieldList = match[1]
+        // Remove comments and clean up the destructuring content
+        const cleanedContent = match[1]
+          .split('\n')
+          .map(line => {
+            // Remove single-line comments
+            const commentIndex = line.indexOf('//');
+            if (commentIndex !== -1) {
+              return line.substring(0, commentIndex);
+            }
+            return line;
+          })
+          .join(',');
+        
+        const fieldList = cleanedContent
           .split(',')
           .map(f => f.trim())
           .map(f => f.split('=')[0].trim())
-          .filter(f => f && !f.includes('...'));
+          .map(f => f.split(':')[0].trim()) // Handle "query: searchQuery" patterns
+          .filter(f => f && !f.includes('...') && !f.includes('//') && !f.includes('/*'));
         
-        fieldList.forEach(field => fields.add(field));
+        fieldList.forEach(field => {
+          // Additional filtering for edge cases
+          // Also exclude common non-database fields
+          const excludedFields = [
+            'submission_type',     // UI field, not in database
+            'contractor_id',       // From params, not body
+            'code',               // Verification code
+            'selected_partner_id', // Temporary selection
+            'query',              // Search parameter
+            'limit',              // Pagination
+            'offset',             // Pagination
+            'sortBy',             // Sorting
+            'sortOrder',          // Sorting
+            'focusAreas',         // Search filter
+            'revenueRange',       // Search filter
+            'revenueRanges',      // Search filter
+            'stage',              // Search filter
+            'isActive',           // Search filter
+            'verificationStatus', // Search filter
+            'teamSizeMin',        // Search filter
+            'teamSizeMax',        // Search filter
+            'readinessIndicators',// Search filter
+            'dateFrom',           // Date filter
+            'dateTo',             // Date filter
+            'confidenceScoreMin', // Search filter
+            'confidenceScoreMax', // Search filter
+            'barnes_noble_url',   // Not yet added to DB
+            'author_website_purchase_url', // Not yet added to DB
+            'onboarding_url',     // Computed field
+            'demo_booking_url'    // Computed field
+          ];
+          if (field && 
+              !field.startsWith('//') && 
+              !field.includes('\n') &&
+              !excludedFields.includes(field)) {
+            fields.add(field);
+          }
+        });
       }
     });
     
@@ -208,16 +294,40 @@ set PGPASSWORD=TPXP0stgres!!
       while ((match = pattern.exec(content)) !== null) {
         if (match[1]) {
           if (match[1].includes(':')) {
-            // Handle useState object
-            const fieldList = match[1]
+            // Handle useState object - remove comments
+            const cleanedContent = match[1]
+              .split('\n')
+              .map(line => {
+                const commentIndex = line.indexOf('//');
+                if (commentIndex !== -1) {
+                  return line.substring(0, commentIndex);
+                }
+                return line;
+              })
+              .join(',');
+            
+            const fieldList = cleanedContent
               .split(',')
               .map(f => f.trim())
               .map(f => f.split(':')[0].trim())
-              .filter(f => f && !f.includes('...'));
+              .filter(f => f && !f.includes('...') && !f.includes('//'));
             
-            fieldList.forEach(field => fields.add(field));
+            fieldList.forEach(field => {
+              // Filter out template syntax and invalid field names
+              if (field && 
+                  !field.includes('[') && 
+                  !field.includes(']') && 
+                  !field.includes('.') &&
+                  !field.startsWith('//') &&
+                  field.match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
+                fields.add(field);
+              }
+            });
           } else {
-            fields.add(match[1]);
+            // Filter out template syntax and invalid field names
+            if (match[1].match(/^[a-zA-Z_][a-zA-Z0-9_]*$/)) {
+              fields.add(match[1]);
+            }
           }
         }
       }

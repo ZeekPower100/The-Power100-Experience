@@ -655,6 +655,9 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           ...(formData.other_podcast_appearances || []).map(p => p.name)
         ],
         books_read_recommended: formData.books_read_recommended,
+        best_working_partnerships: formData.best_working_partnerships,
+        client_count: formData.client_count,
+        employee_count: formData.employee_count,
         
         // Client demos and references - now using proper columns
         client_demos: formData.client_demos.map(demo => ({
@@ -2250,14 +2253,14 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                 </div>
 
                 <div>
-                  <Label htmlFor="books_recommended">Books Read/Recommended</Label>
+                  <Label htmlFor="books_read_recommended">Books Read/Recommended</Label>
                   <p className="text-sm text-power100-grey mb-2">
                     Books you recommend or have found valuable
                   </p>
                   <Textarea
-                    id="books_recommended"
-                    value={formData.books_recommended}
-                    onChange={(e) => handleInputChange('books_recommended', e.target.value)}
+                    id="books_read_recommended"
+                    value={formData.books_read_recommended}
+                    onChange={(e) => handleInputChange('books_read_recommended', e.target.value)}
                     placeholder="List books you recommend, separated by commas or new lines"
                     rows={3}
                     className="mt-1"
@@ -2265,14 +2268,14 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                 </div>
 
                 <div>
-                  <Label htmlFor="referral_partnerships">Best Working/Referral Partnerships</Label>
+                  <Label htmlFor="best_working_partnerships">Best Working/Referral Partnerships</Label>
                   <p className="text-sm text-power100-grey mb-2">
                     Your most successful partnership relationships
                   </p>
                   <Textarea
-                    id="referral_partnerships"
-                    value={formData.referral_partnerships}
-                    onChange={(e) => handleInputChange('referral_partnerships', e.target.value)}
+                    id="best_working_partnerships"
+                    value={formData.best_working_partnerships}
+                    onChange={(e) => handleInputChange('best_working_partnerships', e.target.value)}
                     placeholder="Describe your key partnerships and referral relationships"
                     rows={3}
                     className="mt-1"
