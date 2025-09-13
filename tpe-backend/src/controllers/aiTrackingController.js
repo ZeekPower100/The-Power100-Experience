@@ -1,4 +1,4 @@
-import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../utils/jsonHelpers';
+const { safeJsonParse } = require('../utils/jsonHelpers');
 
 /**
  * AI Behavioral Tracking Controller
