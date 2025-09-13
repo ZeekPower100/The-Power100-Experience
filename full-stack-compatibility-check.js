@@ -7,6 +7,10 @@
  * It checks EVERYTHING: code, database, middleware, controllers, services, configs, and more.
  * 
  * Run before EVERY push to guarantee production works exactly like development.
+ * 
+ * NOTE: Updated to recognize safeJsonParse/safeJsonStringify as valid JSON handling methods
+ * following the JSON safety migration. These methods provide built-in error handling and
+ * are preferred over raw JSON.parse/JSON.stringify.
  */
 
 const fs = require('fs');
@@ -199,7 +203,7 @@ const SERVICE_CHECKS = [
         required_patterns: [
           'topics\\.startsWith\\(\'\\[\'\\)',  // Checks if JSON
           'topics\\.split\\(\',\'\\)',         // Splits comma-separated
-          'try\\s*{[\\s\\S]*?JSON\\.parse[\\s\\S]*?catch'  // Handles parse errors (multi-line)
+          '(try\\s*{[\\s\\S]*?JSON\\.parse[\\s\\S]*?catch|safeJsonParse)'  // Handles parse errors OR uses safeJsonParse
         ],
         forbidden_patterns: [
           'JSON\\.parse\\(.*topics.*\\|\\|.*\\[\\]'  // The bug we fixed!
@@ -207,7 +211,7 @@ const SERVICE_CHECKS = [
       },
       'focus_areas_handling': {
         required_patterns: [
-          'JSON\\.parse.*focus_areas',
+          '(JSON\\.parse.*focus_areas|safeJsonParse.*focus_areas)',  // Either JSON.parse or safeJsonParse
           'Array\\.isArray.*focus_areas'
         ]
       }
