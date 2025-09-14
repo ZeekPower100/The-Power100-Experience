@@ -168,6 +168,12 @@ app.use('/api/podcast-topics', require('./routes/podcastTopicsRoutes'));
 app.use('/api/episode-topics', require('./routes/episodeTopicsRoutes'));
 app.use('/api/podcast-guests', require('./routes/podcastGuestsRoutes'));
 
+// Video Analysis Pipeline Routes
+app.use('/api/video-content', require('./routes/videoContentRoutes'));
+app.use('/api/video-analysis', require('./routes/videoAnalysisRoutes'));
+app.use('/api/demo-segments', require('./routes/demoSegmentsRoutes'));
+app.use('/api/video-performance', require('./routes/videoPerformanceRoutes'));
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
