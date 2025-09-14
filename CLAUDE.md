@@ -1,5 +1,19 @@
 # The Power100 Experience (TPE) - Full-Stack Project Context
 
+## 🔴 AUTOMATIC TRIGGERS FOR CLAUDE - DATABASE CONNECTIONS
+When you see these keywords, use these SPECIFIC tools:
+
+**LOCAL DATABASE** (keywords: "check local database", "query local", "local table", "dev database"):
+→ Use: `powershell -Command ".\quick-db.bat \"YOUR SQL HERE\""`
+
+**PRODUCTION DATABASE** (keywords: "production database", "prod database", "check prod"):
+→ Use: `mcp__aws-production__exec` with command:
+```
+PGPASSWORD='dBP0wer100!!' psql -h tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com -U tpeadmin -d tpedb -c "YOUR SQL HERE"
+```
+
+**NEVER MIX THESE UP!** Local uses batch file, Production uses MCP tool.
+
 ## 🔌 IMPORTANT: PORT CONFIGURATION
 **PRODUCTION PORTS:**
 - Frontend: **3000** (Next.js on https://tpx.power100.io)
@@ -784,3 +798,8 @@ This ensures:
 See `docs/AUTO-ERROR-PREVENTION.md` for full details.
 - whenever you are writing or referring to a current date, always do a web search and check what the current date is.
 - never request to do a hard git rest unless it is absolutely necessary. For issues related to unwanted files being staged and committed or anything similar this is never a suitable option because it runs the risk of permenantely losing progressive changes. Uncommitted first, then unstaging is the only via option for these sort of situations. A hard git reset is ony for dire scenarios where losing progressive changes actually carry benefit to the project overall.
+- when there is a detection during our checker sequence, even if you feel like it can be bypassedm ALWAYS output an explanation
+   of what it is and an "answer in short" response so we understand what the error is about and how to address it. You can then
+   suggest to skip it if it makes sense with a via argument for doing so. If I decide we skip it after you plea your case, ONLY
+   THEN will we proceed to bypass our checkers. We should NEVER automatically bypass ur checkers. Its sole purpose is to check 
+  for issues so I am getting into the habit of going against that.

@@ -255,11 +255,14 @@ class DevManager {
   // Restart all servers
   async restartAll() {
     console.log('♻️ Restarting all servers...\n');
+    console.log('⚠️  WARNING: Use "npm run safe" for restarts with error protection!');
+    console.log('    Current restart does not include error watching.\n');
     await this.stopAll();
     await new Promise(resolve => setTimeout(resolve, 2000));
     await this.cleanBuildArtifacts();
     await new Promise(resolve => setTimeout(resolve, 1000));
     await this.startAll();
+    console.log('\n⚠️  Consider running "npm run safe" instead for error protection!');
   }
 
   // Handle graceful shutdown

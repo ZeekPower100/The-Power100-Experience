@@ -1,0 +1,159 @@
+{
+  "Safe Array Map": {
+    "prefix": "safemap",
+    "body": [
+      "{Array.isArray(${1:items}) && ${1:items}.length > 0 ? (",
+      "  ${1:items}.map((${2:item}, index) => (",
+      "    <div key={${2:item}.id || index}>",
+      "      {${2:item}.${3:name}}",
+      "    </div>",
+      "  ))",
+      ") : (",
+      "  <div>${4:No items to display}</div>",
+      ")}"
+    ],
+    "description": "Safe array mapping with all checks"
+  },
+  
+  "Safe Array Map Inline": {
+    "prefix": "mapinline",
+    "body": [
+      "{Array.isArray(${1:items}) && ${1:items}.map((${2:item}) => (",
+      "  <${3:div} key={${2:item}.id}>",
+      "    {${2:item}.${4:name}}",
+      "  </${3:div}>",
+      "))}"
+    ],
+    "description": "Inline safe array mapping"
+  },
+  
+  "Safe List Component": {
+    "prefix": "safelist",
+    "body": [
+      "<SafeList",
+      "  data={${1:items}}",
+      "  renderItem={(${2:item}) => (",
+      "    <div>",
+      "      {${2:item}.${3:name}}",
+      "    </div>",
+      "  )}",
+      "  emptyState={<${4:EmptyState} />}",
+      "  loading={${5:isLoading}}",
+      "/>"
+    ],
+    "description": "SafeList component usage"
+  },
+  
+  "Array Check Guard": {
+    "prefix": "arrayguard",
+    "body": [
+      "if (!Array.isArray(${1:data})) {",
+      "  return <div>${2:Invalid data}</div>;",
+      "}",
+      "",
+      "if (${1:data}.length === 0) {",
+      "  return <div>${3:No items found}</div>;",
+      "}"
+    ],
+    "description": "Array validation guards"
+  },
+  
+  "Ensure Array": {
+    "prefix": "ensurearray",
+    "body": [
+      "const ${1:safeItems} = ensureArray(${2:data});"
+    ],
+    "description": "Ensure value is an array"
+  },
+  
+  "Render Badges": {
+    "prefix": "badges",
+    "body": [
+      "{renderBadgeArray(",
+      "  ${1:items},",
+      "  '${2:badge-class}',",
+      "  '${3:None selected}'",
+      ")}"
+    ],
+    "description": "Render array as badges"
+  },
+  
+  "JSON Array Field": {
+    "prefix": "jsonarray",
+    "body": [
+      "{Array.isArray(${1:field}) ? (",
+      "  ${1:field}.map((item, idx) => (",
+      "    <span key={idx}>{item}</span>",
+      "  ))",
+      ") : typeof ${1:field} === 'string' ? (",
+      "  safeJsonParse(${1:field}, []).map((item, idx) => (",
+      "    <span key={idx}>{item}</span>",
+      "  ))",
+      ") : (",
+      "  <span>${2:None}</span>",
+      ")}"
+    ],
+    "description": "Handle JSON array field"
+  },
+  
+  "Table with Safe Rows": {
+    "prefix": "safetable",
+    "body": [
+      "<table>",
+      "  <tbody>",
+      "    {Array.isArray(${1:rows}) && ${1:rows}.length > 0 ? (",
+      "      ${1:rows}.map((${2:row}) => (",
+      "        <tr key={${2:row}.id}>",
+      "          <td>{${2:row}.${3:field}}</td>",
+      "        </tr>",
+      "      ))",
+      "    ) : (",
+      "      <tr>",
+      "        <td colSpan={${4:1}}>${5:No data}</td>",
+      "      </tr>",
+      "    )}",
+      "  </tbody>",
+      "</table>"
+    ],
+    "description": "Table with safe row rendering"
+  },
+  
+  "Nested Array": {
+    "prefix": "nestedarray",
+    "body": [
+      "{Array.isArray(${1:parent}) && ${1:parent}.map(${2:item} => (",
+      "  <div key={${2:item}.id}>",
+      "    <h3>{${2:item}.name}</h3>",
+      "    {Array.isArray(${2:item}.${3:children}) && (",
+      "      <ul>",
+      "        {${2:item}.${3:children}.map((${4:child}, idx) => (",
+      "          <li key={${4:child}.id || idx}>",
+      "            {${4:child}.${5:name}}",
+      "          </li>",
+      "        ))}",
+      "      </ul>",
+      "    )}",
+      "  </div>",
+      "))}"
+    ],
+    "description": "Nested array rendering"
+  },
+  
+  "Loading Array State": {
+    "prefix": "loadingarray",
+    "body": [
+      "{${1:loading} ? (",
+      "  <div>Loading...</div>",
+      ") : Array.isArray(${2:items}) && ${2:items}.length > 0 ? (",
+      "  ${2:items}.map(${3:item} => (",
+      "    <div key={${3:item}.id}>",
+      "      {${3:item}.${4:name}}",
+      "    </div>",
+      "  ))",
+      ") : (",
+      "  <div>${5:No items found}</div>",
+      ")}"
+    ],
+    "description": "Array with loading state"
+  }
+}

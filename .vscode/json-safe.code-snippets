@@ -1,0 +1,82 @@
+{
+  "Safe JSON Parse": {
+    "prefix": "safejson",
+    "body": [
+      "const ${1:data} = safeJsonParse(${2:input}, ${3:[]});"
+    ],
+    "description": "Safe JSON parsing with fallback"
+  },
+  
+  "Safe API Response": {
+    "prefix": "safeapi",
+    "body": [
+      "try {",
+      "  const response = await fetch('${1:endpoint}');",
+      "  const data = await handleApiResponse(response);",
+      "  if (!data) {",
+      "    console.error('Invalid response');",
+      "    return ${2:null};",
+      "  }",
+      "  return data;",
+      "} catch (error) {",
+      "  console.error('API error:', error);",
+      "  return ${2:null};",
+      "}"
+    ],
+    "description": "Safe API call with JSON handling"
+  },
+  
+  "Safe Storage Get": {
+    "prefix": "safeget",
+    "body": [
+      "const ${1:value} = getFromStorage('${2:key}', ${3:defaultValue});"
+    ],
+    "description": "Safe localStorage retrieval"
+  },
+  
+  "Safe Storage Set": {
+    "prefix": "safeset",
+    "body": [
+      "setToStorage('${1:key}', ${2:value});"
+    ],
+    "description": "Safe localStorage storage"
+  },
+  
+  "Parse JSON Fields": {
+    "prefix": "parsefields",
+    "body": [
+      "const ${1:parsed} = parseJsonFields(${2:record}, [",
+      "  '${3:focus_areas}',",
+      "  '${4:field2}'",
+      "]);"
+    ],
+    "description": "Parse multiple JSON fields from database record"
+  },
+  
+  "JSON Error Handler": {
+    "prefix": "jsonhandler",
+    "body": [
+      "function handle${1:Data}(data) {",
+      "  try {",
+      "    // Check if data exists",
+      "    if (!data) return ${2:null};",
+      "    ",
+      "    // Parse safely",
+      "    const parsed = safeJsonParse(data, ${3:[]});",
+      "    ",
+      "    // Validate structure",
+      "    if (!validateJsonStructure(parsed, '${4:array}')) {",
+      "      console.error('Invalid ${1:data} structure');",
+      "      return ${2:null};",
+      "    }",
+      "    ",
+      "    return parsed;",
+      "  } catch (error) {",
+      "    console.error('${1:Data} handling error:', error);",
+      "    return ${2:null};",
+      "  }",
+      "}"
+    ],
+    "description": "Complete JSON handler function"
+  }
+}

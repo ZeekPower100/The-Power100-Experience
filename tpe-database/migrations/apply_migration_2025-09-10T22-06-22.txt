@@ -1,0 +1,15 @@
+# MCP Commands to apply migration to production
+# Run these commands using the MCP tool:
+
+# Apply the migration:
+mcp__aws-production__exec --command "PGPASSWORD='dBP0wer100!!' psql -h tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com -U tpeadmin -d tpedb -p 5432 -f /path/to/migration_2025-09-10T22-06-22.sql"
+
+# Or apply individual changes:
+mcp__aws-production__exec --command "PGPASSWORD='dBP0wer100!!' psql -h tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com -U tpeadmin -d tpedb -p 5432 -c \"ALTER TABLE books\""
+
+mcp__aws-production__exec --command "PGPASSWORD='dBP0wer100!!' psql -h tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com -U tpeadmin -d tpedb -p 5432 -c \"ALTER TABLE events\""
+
+mcp__aws-production__exec --command "PGPASSWORD='dBP0wer100!!' psql -h tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com -U tpeadmin -d tpedb -p 5432 -c \"ALTER TABLE podcasts\""
+
+# Verify the changes:
+mcp__aws-production__exec --command "PGPASSWORD='dBP0wer100!!' psql -h tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com -U tpeadmin -d tpedb -p 5432 -c \"SELECT column_name FROM information_schema.columns WHERE table_name = 'events' AND column_name IN ('speaker_profiles', 'agenda_highlights', 'past_attendee_testimonials');\""

@@ -115,6 +115,83 @@ export const contractorBehavioralApi = {
   }
 };
 
+// Podcast Transcription APIs
+export const podcastTranscriptionApi = {
+  // Podcast Shows
+  shows: {
+    create: (show: any) => apiCall('/api/podcast-shows', 'POST', show),
+    getAll: () => apiCall('/api/podcast-shows'),
+    getById: (id: string) => apiCall(`/api/podcast-shows/${id}`),
+    getByCategory: (category: string) => apiCall(`/api/podcast-shows/category/${category}`),
+    update: (id: string, data: any) => apiCall(`/api/podcast-shows/${id}`, 'PUT', data),
+    delete: (id: string) => apiCall(`/api/podcast-shows/${id}`, 'DELETE')
+  },
+
+  // Podcast Episodes
+  episodes: {
+    create: (episode: any) => apiCall('/api/podcast-episodes', 'POST', episode),
+    getById: (id: string) => apiCall(`/api/podcast-episodes/${id}`),
+    getByShow: (showId: string) => apiCall(`/api/podcast-episodes/show/${showId}`),
+    getRecent: (limit?: number) => apiCall(`/api/podcast-episodes/recent${limit ? `?limit=${limit}` : ''}`),
+    getByGuest: (guestName: string) => apiCall(`/api/podcast-episodes/guest/${guestName}`),
+    update: (id: string, data: any) => apiCall(`/api/podcast-episodes/${id}`, 'PUT', data),
+    delete: (id: string) => apiCall(`/api/podcast-episodes/${id}`, 'DELETE')
+  },
+
+  // Episode Transcripts
+  transcripts: {
+    create: (transcript: any) => apiCall('/api/episode-transcripts', 'POST', transcript),
+    getById: (id: string) => apiCall(`/api/episode-transcripts/${id}`),
+    getByEpisode: (episodeId: string) => apiCall(`/api/episode-transcripts/episode/${episodeId}`),
+    updateStatus: (id: string, status: string) => apiCall(`/api/episode-transcripts/${id}/status`, 'PUT', { status }),
+    search: (query: string, filters?: any) => apiCall('/api/episode-transcripts/search', 'POST', { query, ...filters }),
+    update: (id: string, data: any) => apiCall(`/api/episode-transcripts/${id}`, 'PUT', data),
+    delete: (id: string) => apiCall(`/api/episode-transcripts/${id}`, 'DELETE')
+  },
+
+  // Episode Highlights
+  highlights: {
+    create: (highlight: any) => apiCall('/api/episode-highlights', 'POST', highlight),
+    getById: (id: string) => apiCall(`/api/episode-highlights/${id}`),
+    getByEpisode: (episodeId: string) => apiCall(`/api/episode-highlights/episode/${episodeId}`),
+    getByType: (type: string) => apiCall(`/api/episode-highlights/type/${type}`),
+    getTop: (limit?: number) => apiCall(`/api/episode-highlights/top${limit ? `?limit=${limit}` : ''}`),
+    update: (id: string, data: any) => apiCall(`/api/episode-highlights/${id}`, 'PUT', data),
+    delete: (id: string) => apiCall(`/api/episode-highlights/${id}`, 'DELETE')
+  },
+
+  // Podcast Topics
+  topics: {
+    create: (topic: any) => apiCall('/api/podcast-topics', 'POST', topic),
+    getAll: () => apiCall('/api/podcast-topics'),
+    getById: (id: string) => apiCall(`/api/podcast-topics/${id}`),
+    getTrending: (limit?: number) => apiCall(`/api/podcast-topics/trending${limit ? `?limit=${limit}` : ''}`),
+    update: (id: string, data: any) => apiCall(`/api/podcast-topics/${id}`, 'PUT', data),
+    delete: (id: string) => apiCall(`/api/podcast-topics/${id}`, 'DELETE')
+  },
+
+  // Episode Topics
+  episodeTopics: {
+    create: (episodeTopic: any) => apiCall('/api/episode-topics', 'POST', episodeTopic),
+    getById: (id: string) => apiCall(`/api/episode-topics/${id}`),
+    getByEpisode: (episodeId: string) => apiCall(`/api/episode-topics/episode/${episodeId}`),
+    getByRelevance: (threshold: number) => apiCall(`/api/episode-topics/relevance/${threshold}`),
+    update: (id: string, data: any) => apiCall(`/api/episode-topics/${id}`, 'PUT', data),
+    delete: (id: string) => apiCall(`/api/episode-topics/${id}`, 'DELETE')
+  },
+
+  // Podcast Guests
+  guests: {
+    create: (guest: any) => apiCall('/api/podcast-guests', 'POST', guest),
+    getAll: () => apiCall('/api/podcast-guests'),
+    getById: (id: string) => apiCall(`/api/podcast-guests/${id}`),
+    search: (query: string) => apiCall('/api/podcast-guests/search', 'POST', { query }),
+    getTop: (limit?: number) => apiCall(`/api/podcast-guests/top${limit ? `?limit=${limit}` : ''}`),
+    update: (id: string, data: any) => apiCall(`/api/podcast-guests/${id}`, 'PUT', data),
+    delete: (id: string) => apiCall(`/api/podcast-guests/${id}`, 'DELETE')
+  }
+};
+
 // API utility for handling API calls in production
 export function getApiUrl(path: string): string {
   // Remove leading slash if present

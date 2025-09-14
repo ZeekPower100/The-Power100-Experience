@@ -42,6 +42,25 @@ Automated analysis of all content:
 - **Document Analysis**: Book summaries, key concepts, actionable takeaways
 - **Real-time Tagging**: Auto-categorization for perfect matching
 
+### 5. **Event Experience Orchestrator** *(NEW from Greg's Vision)*
+AI-powered event companion that:
+- **Pre-Event Preparation**:
+  - Texts attendees to complete profile after registration
+  - Creates custom event experience based on focus areas
+  - Recommends "Top 3 speakers to pay attention to"
+  - Suggests sponsors to meet with prepared questions
+- **During-Event Guidance**:
+  - Real-time speaker alerts ("Brian is about to speak...")
+  - Contextual speaker relevance explanations
+  - Interactive note-taking via SMS (text "notes" to capture)
+  - Session attendance tracking and engagement
+  - Break-time sponsor visit prompts
+- **Post-Event Processing**:
+  - Speaker rating system (1-10 conversational)
+  - Polished event summary emailed to attendee
+  - Speaker Performance Reports with actual data
+  - Power Confidence Report (PCR) generation
+
 ---
 
 ## 📊 Current State vs. Target State

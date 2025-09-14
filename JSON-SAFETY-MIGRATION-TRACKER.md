@@ -111,6 +111,30 @@ const data = safeJsonParse(field, []);
 - Use appropriate fallback values ([] for arrays, {} for objects, null for unknown)
 - Run `test-json-safety-simple.js` after each batch
 
+## Enhanced Safety Tools
+### Import/Require Syntax Checker (NEW)
+**Created**: September 13, 2025
+**Purpose**: Prevent "Cannot use import statement outside a module" errors
+
+- **Tool**: `tools/import-require-checker.js`
+- **Checks**:
+  - Backend files using ES6 import (should use require)
+  - Frontend files using CommonJS require (should use import)
+  - Mixed syntax in same file
+  - Mismatched exports (export vs module.exports)
+
+**Usage**:
+```bash
+# One-time check
+npm run syntax:check
+
+# Watch mode (real-time checking)
+npm run syntax:watch
+
+# Combined error check (JSON + Arrays + Syntax)
+npm run error:check
+```
+
 ## Commands for Testing
 ```bash
 # Test JSON helpers
@@ -118,6 +142,12 @@ node test-json-safety-simple.js
 
 # Test full integration
 node test-json-safety.js
+
+# Check import/require syntax
+npm run syntax:check
+
+# Full error prevention check
+npm run error:check
 
 # Run migration script (10 files at a time)
 node json-safe-migration.js

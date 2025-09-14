@@ -159,6 +159,15 @@ app.use('/api/contractor-engagement-events', require('./routes/contractorEngagem
 app.use('/api/contractor-metrics-history', require('./routes/contractorMetricsHistoryRoutes'));
 app.use('/api/contractor-recommendations', require('./routes/contractorRecommendationsRoutes'));
 
+// Podcast Transcription Routes
+app.use('/api/podcast-shows', require('./routes/podcastShowsRoutes'));
+app.use('/api/podcast-episodes', require('./routes/podcastEpisodesRoutes'));
+app.use('/api/episode-transcripts', require('./routes/episodeTranscriptsRoutes'));
+app.use('/api/episode-highlights', require('./routes/episodeHighlightsRoutes'));
+app.use('/api/podcast-topics', require('./routes/podcastTopicsRoutes'));
+app.use('/api/episode-topics', require('./routes/episodeTopicsRoutes'));
+app.use('/api/podcast-guests', require('./routes/podcastGuestsRoutes'));
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({

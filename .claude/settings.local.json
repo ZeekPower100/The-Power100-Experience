@@ -15,7 +15,8 @@
       "Bash(git commit:*)",
       "Bash(find:*)",
       "mcp__aws-production__exec",
-      "Read(C:\\Users\\broac\\Downloads/**)"
+      "Read(C:\\Users\\broac\\Downloads/**)",
+      "Bash(npm run:*)"
     ]
   },
   "enableAllProjectMcpServers": true,
