@@ -174,6 +174,15 @@ app.use('/api/video-analysis', require('./routes/videoAnalysisRoutes'));
 app.use('/api/demo-segments', require('./routes/demoSegmentsRoutes'));
 app.use('/api/video-performance', require('./routes/videoPerformanceRoutes'));
 
+// Document Extraction Pipeline Routes
+app.use('/api/document-uploads', require('./routes/documentUploadsRoutes'));
+app.use('/api/document-extraction-jobs', require('./routes/documentExtractionJobsRoutes'));
+app.use('/api/extracted-content', require('./routes/extractedContentRoutes'));
+app.use('/api/chapter-analysis', require('./routes/chapterAnalysisRoutes'));
+app.use('/api/key-concepts', require('./routes/keyConceptsRoutes'));
+app.use('/api/actionable-insights', require('./routes/actionableInsightsRoutes'));
+app.use('/api/document-processing-metrics', require('./routes/documentProcessingMetricsRoutes'));
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
