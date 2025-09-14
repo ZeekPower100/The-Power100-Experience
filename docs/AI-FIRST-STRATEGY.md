@@ -317,6 +317,68 @@ graph LR
 - [ ] Build success prediction
 - [ ] Create self-improvement loops
 
+### Phase 6: Core System Integration - Recommendation Engine Replacement (Post-Phase 5)
+**CRITICAL INTEGRATION**: Replace existing matching service with AI recommendation algorithm
+
+#### Rationale for Integration
+The recommendation algorithm developed in Phase 3 should become the PRIMARY matching engine for the entire platform, not just the AI Concierge. This provides immediate value even for new contractors with no history.
+
+#### Why This Works for New Contractors
+- **Partner-Side Intelligence**: Even without contractor history, the algorithm leverages:
+  - PowerConfidence scores (partner performance ratings)
+  - Historical matching outcomes (which partners succeed)
+  - Partner engagement metrics (demo booking rates)
+  - Partner trending data (current "hot" partners)
+  - Partner similarity scores (complementary services)
+
+#### Current vs. Recommendation Algorithm Comparison
+| Aspect | Current Matching Service | AI Recommendation Algorithm |
+|--------|-------------------------|----------------------------|
+| **Scoring Method** | Basic weights (3.0, 2.0, 1.0) | Multi-factor (35% relevance, 20% recency, 20% popularity, 25% personalization) |
+| **Data Sources** | Focus areas only | Focus areas + engagement + outcomes + trends |
+| **Learning** | None | Continuous improvement from outcomes |
+| **Partner Intelligence** | None | PowerConfidence, success rates, trending |
+| **Configurability** | Hard-coded weights | Database-driven, adjustable without code |
+| **Tracking** | Basic | Full engagement and outcome tracking |
+
+#### Implementation Strategy
+1. **Option A: Direct Replacement** (Recommended)
+   ```javascript
+   // Update contractor flow to use recommendation API
+   const matches = await fetch(`/api/recommendations/contractors/${contractorId}/recommendations?type=partner`);
+   ```
+
+2. **Option B: Hybrid Approach**
+   - Keep matchingService.js for backward compatibility
+   - Have it internally call recommendationService
+   - Gradual migration with A/B testing
+
+#### Expected Outcomes
+- **Immediate**: Better partner matches for ALL contractors (new and existing)
+- **Short-term**: Improved demo booking rates through smarter matching
+- **Long-term**: Self-improving system that learns from every interaction
+
+#### Success Metrics
+- Match acceptance rate increase
+- Demo booking conversion improvement
+- Partner satisfaction scores
+- Contractor-partner relationship longevity
+
+#### Prerequisites
+- [ ] Recommendation system deployed to production
+- [ ] Partner performance data populated
+- [ ] Engagement tracking active
+- [ ] A/B testing framework ready
+
+#### Rollout Plan
+1. Deploy recommendation backend to production
+2. Test with small contractor cohort (5-10%)
+3. Compare metrics vs. existing matching
+4. Gradual rollout to all contractors
+5. Deprecate old matching service
+
+**NOTE**: This integration maximizes ROI on the AI infrastructure by improving the CORE user journey (contractor → partner matching) with intelligence gathered from the entire ecosystem.
+
 ---
 
 ## 🔧 Technical Requirements

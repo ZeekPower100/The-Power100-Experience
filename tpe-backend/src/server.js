@@ -183,6 +183,9 @@ app.use('/api/key-concepts', require('./routes/keyConceptsRoutes'));
 app.use('/api/actionable-insights', require('./routes/actionableInsightsRoutes'));
 app.use('/api/document-processing-metrics', require('./routes/documentProcessingMetricsRoutes'));
 
+// Recommendation System Routes
+app.use('/api/recommendations', require('./routes/recommendationRoutes'));
+
 // 404 handler
 app.use((req, res) => {
   res.status(404).json({
