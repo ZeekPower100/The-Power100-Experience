@@ -18,22 +18,18 @@ import { useRouter } from 'next/navigation';
 import { Book } from '@/lib/types/book';
 import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
-// Focus areas for book matching
+// Focus areas for book matching - aligned with contractor focus areas
 const FOCUS_AREAS = [
-  { value: 'revenue_growth', label: 'Revenue Growth' },
-  { value: 'team_building', label: 'Team Building' },
-  { value: 'hiring', label: 'Hiring' },
-  { value: 'operational_efficiency', label: 'Operational Efficiency' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'sales', label: 'Sales' },
-  { value: 'financial_management', label: 'Financial Management' },
-  { value: 'technology_implementation', label: 'Technology Implementation' },
-  { value: 'customer_experience', label: 'Customer Experience' },
-  { value: 'strategic_planning', label: 'Strategic Planning' },
-  { value: 'culture_development', label: 'Culture Development' },
-  { value: 'leadership_development', label: 'Leadership Development' },
-  { value: 'business_development', label: 'Business Development' },
-  { value: 'talent_management', label: 'Talent Management' }
+  { value: 'greenfield_growth', label: 'Market Expansion', description: 'Expanding into new markets and territories' },
+  { value: 'closing_higher_percentage', label: 'Sales Conversion', description: 'Improving close rates and sales effectiveness' },
+  { value: 'controlling_lead_flow', label: 'Lead Generation & Management', description: 'Managing and optimizing lead flow systems' },
+  { value: 'installation_quality', label: 'Service Delivery Excellence', description: 'Enhancing installation and service quality' },
+  { value: 'hiring_sales_leadership', label: 'Talent Acquisition', description: 'Recruiting sales teams and leadership' },
+  { value: 'marketing_automation', label: 'Marketing Systems', description: 'Automating and streamlining marketing' },
+  { value: 'customer_retention', label: 'Customer Success', description: 'Building long-term client relationships' },
+  { value: 'operational_efficiency', label: 'Operations Optimization', description: 'Streamlining internal processes' },
+  { value: 'technology_integration', label: 'Technology Solutions', description: 'Implementing new tech platforms' },
+  { value: 'financial_management', label: 'Financial Performance', description: 'Improving cash flow and profitability' }
 ];
 
 const TARGET_REVENUE_OPTIONS = [
@@ -178,7 +174,7 @@ export default function BookOnboardingForm() {
         key_takeaways: safeJsonStringify(formData.key_takeaways || []),
         testimonials: safeJsonStringify(formData.testimonials || []),
         key_citations: safeJsonStringify(keyCitations.filter(c => c.cited_person)),
-        focus_areas_covered: formData.focus_areas?.join(', ') || '',
+        focus_areas_covered: safeJsonStringify(formData.focus_areas || []),
         target_revenue: formData.target_revenue?.join(', ') || '',
         cover_image_url: formData.cover_image_url,
         // Remove original array fields to avoid conflicts
@@ -506,27 +502,47 @@ export default function BookOnboardingForm() {
             {currentStep === 2 && (
               <div className="space-y-6">
                 <div>
-                  <Label>Business Focus Areas *</Label>
+                  <Label className="font-semibold text-base">What contractor challenges does your book address? *</Label>
                   <p className="text-sm text-power100-grey mb-3">
-                    Select the business areas your book addresses
+                    Select all the business challenges your book helps contractors solve
                   </p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {FOCUS_AREAS.map(area => (
-                      <div key={area.value} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={area.value}
-                          checked={formData.focus_areas?.includes(area.value) || false}
-                          onCheckedChange={() => handleFocusAreaToggle(area.value)}
-                        />
-                        <Label
-                          htmlFor={area.value}
-                          className="text-sm font-normal cursor-pointer"
-                        >
-                          {area.label}
-                        </Label>
+                      <div
+                        key={area.value}
+                        className={`p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                          formData.focus_areas?.includes(area.value)
+                            ? 'border-power100-red bg-red-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => handleFocusAreaToggle(area.value)}
+                      >
+                        <div className="flex items-start space-x-2">
+                          <Checkbox
+                            id={area.value}
+                            checked={formData.focus_areas?.includes(area.value) || false}
+                            className="mt-0.5"
+                          />
+                          <div className="flex-1">
+                            <Label
+                              htmlFor={area.value}
+                              className="font-medium cursor-pointer text-sm"
+                            >
+                              {area.label}
+                            </Label>
+                            <p className="text-xs text-power100-grey mt-0.5">
+                              {area.description}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
+                  {formData.focus_areas && formData.focus_areas.length > 0 && (
+                    <p className="text-sm text-power100-grey mt-2">
+                      Selected: {formData.focus_areas.length} focus areas
+                    </p>
+                  )}
                 </div>
 
                 <div>

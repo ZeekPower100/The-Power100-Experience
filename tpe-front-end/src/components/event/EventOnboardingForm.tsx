@@ -17,22 +17,18 @@ import { useRouter } from 'next/navigation';
 import { Event } from '@/lib/types/event';
 import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
-// Focus areas for event matching
+// Focus areas for event matching - aligned with partner focus areas
 const FOCUS_AREAS = [
-  { value: 'revenue_growth', label: 'Revenue Growth' },
-  { value: 'team_building', label: 'Team Building' },
-  { value: 'hiring', label: 'Hiring' },
-  { value: 'operational_efficiency', label: 'Operational Efficiency' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'sales', label: 'Sales' },
-  { value: 'financial_management', label: 'Financial Management' },
-  { value: 'technology_implementation', label: 'Technology Implementation' },
-  { value: 'customer_experience', label: 'Customer Experience' },
-  { value: 'strategic_planning', label: 'Strategic Planning' },
-  { value: 'culture_development', label: 'Culture Development' },
-  { value: 'leadership_development', label: 'Leadership Development' },
-  { value: 'business_development', label: 'Business Development' },
-  { value: 'talent_management', label: 'Talent Management' }
+  { value: 'greenfield_growth', label: 'Market Expansion', description: 'Expanding into new markets and territories' },
+  { value: 'team_building', label: 'Team Development', description: 'Building and developing high-performing teams' },
+  { value: 'operational_efficiency', label: 'Operations & Efficiency', description: 'Streamlining processes and improving productivity' },
+  { value: 'marketing_sales', label: 'Marketing & Sales', description: 'Growing revenue through marketing and sales strategies' },
+  { value: 'financial_management', label: 'Financial Management', description: 'Managing finances, budgeting, and cash flow' },
+  { value: 'technology_implementation', label: 'Technology & Digital', description: 'Implementing technology solutions and digital transformation' },
+  { value: 'customer_experience', label: 'Customer Experience', description: 'Enhancing customer satisfaction and retention' },
+  { value: 'strategic_planning', label: 'Strategic Planning', description: 'Long-term planning and business strategy' },
+  { value: 'culture_development', label: 'Culture & Leadership', description: 'Building company culture and leadership development' },
+  { value: 'talent_management', label: 'Talent Management', description: 'Recruiting, retaining, and developing talent' }
 ];
 
 const TARGET_REVENUE_OPTIONS = [
@@ -225,7 +221,7 @@ export default function EventOnboardingForm() {
         networking_opportunities: safeJsonStringify(formData.networking_opportunities || []),
         follow_up_resources: safeJsonStringify(formData.follow_up_resources || []),
         target_revenue: safeJsonStringify(formData.target_revenue || []),
-        focus_areas_covered: formData.focus_areas_covered?.join(', ') || '',
+        focus_areas_covered: safeJsonStringify(formData.focus_areas_covered || []),
         // Boolean fields
         session_recordings: formData.session_recordings || false,
         implementation_support: formData.implementation_support || false,
@@ -435,24 +431,42 @@ export default function EventOnboardingForm() {
             {currentStep === 2 && (
               <div className="space-y-6">
                 <div>
-                  <Label>Business Focus Areas *</Label>
-                  <p className="text-sm text-power100-grey mb-3">
-                    Select the business areas your event addresses
+                  <Label className="text-lg font-semibold">What contractor challenges does your event address? *</Label>
+                  <p className="text-sm text-power100-grey mb-4">
+                    Select all the business challenges and focus areas your event helps contractors overcome
                   </p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {FOCUS_AREAS.map(area => (
-                      <div key={area.value} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={area.value}
-                          checked={formData.focus_areas_covered?.includes(area.value) || false}
-                          onCheckedChange={() => handleFocusAreaToggle(area.value)}
-                        />
-                        <Label
-                          htmlFor={area.value}
-                          className="text-sm font-normal cursor-pointer"
-                        >
-                          {area.label}
-                        </Label>
+                      <div
+                        key={area.value}
+                        className={`
+                          border rounded-lg p-3 cursor-pointer transition-all
+                          ${formData.focus_areas_covered?.includes(area.value)
+                            ? 'border-power100-green bg-green-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                          }
+                        `}
+                        onClick={() => handleFocusAreaToggle(area.value)}
+                      >
+                        <div className="flex items-start space-x-3">
+                          <Checkbox
+                            id={area.value}
+                            checked={formData.focus_areas_covered?.includes(area.value) || false}
+                            onCheckedChange={() => handleFocusAreaToggle(area.value)}
+                            className="mt-1"
+                          />
+                          <div className="flex-1">
+                            <Label
+                              htmlFor={area.value}
+                              className="font-medium cursor-pointer block"
+                            >
+                              {area.label}
+                            </Label>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {area.description}
+                            </p>
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>

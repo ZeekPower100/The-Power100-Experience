@@ -20,22 +20,18 @@ interface EventFormProps {
   onCancel?: () => void;
 }
 
-// Same focus areas as partners and books for consistency
+// Focus areas aligned with partner focus areas
 const FOCUS_AREAS = [
-  { value: 'revenue_growth', label: 'Revenue Growth' },
-  { value: 'team_building', label: 'Team Building' },
-  { value: 'hiring', label: 'Hiring' },
-  { value: 'operational_efficiency', label: 'Operational Efficiency' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'sales', label: 'Sales' },
-  { value: 'financial_management', label: 'Financial Management' },
-  { value: 'technology_implementation', label: 'Technology Implementation' },
-  { value: 'customer_experience', label: 'Customer Experience' },
-  { value: 'strategic_planning', label: 'Strategic Planning' },
-  { value: 'culture_development', label: 'Culture Development' },
-  { value: 'leadership_development', label: 'Leadership Development' },
-  { value: 'business_development', label: 'Business Development' },
-  { value: 'talent_management', label: 'Talent Management' }
+  { value: 'greenfield_growth', label: 'Market Expansion', description: 'Expanding into new markets and territories' },
+  { value: 'team_building', label: 'Team Development', description: 'Building and developing high-performing teams' },
+  { value: 'operational_efficiency', label: 'Operations & Efficiency', description: 'Streamlining processes and improving productivity' },
+  { value: 'marketing_sales', label: 'Marketing & Sales', description: 'Growing revenue through marketing and sales strategies' },
+  { value: 'financial_management', label: 'Financial Management', description: 'Managing finances, budgeting, and cash flow' },
+  { value: 'technology_implementation', label: 'Technology & Digital', description: 'Implementing technology solutions and digital transformation' },
+  { value: 'customer_experience', label: 'Customer Experience', description: 'Enhancing customer satisfaction and retention' },
+  { value: 'strategic_planning', label: 'Strategic Planning', description: 'Long-term planning and business strategy' },
+  { value: 'culture_development', label: 'Culture & Leadership', description: 'Building company culture and leadership development' },
+  { value: 'talent_management', label: 'Talent Management', description: 'Recruiting, retaining, and developing talent' }
 ];
 
 const TARGET_REVENUE_OPTIONS = [
@@ -164,9 +160,20 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
   });
 
   // Selected focus areas (for multi-select)
-  const [selectedFocusAreas, setSelectedFocusAreas] = useState<string[]>(
-    event?.focus_areas_covered ? event.focus_areas_covered.split(',').map(f => f.trim()) : []
-  );
+  const [selectedFocusAreas, setSelectedFocusAreas] = useState<string[]>(() => {
+    if (!event?.focus_areas_covered) return [];
+    try {
+      // Parse JSON array if it's a string
+      if (typeof event.focus_areas_covered === 'string') {
+        return JSON.parse(event.focus_areas_covered);
+      }
+      // If it's already an array, use it directly
+      return Array.isArray(event.focus_areas_covered) ? event.focus_areas_covered : [];
+    } catch {
+      // Fallback for comma-separated values
+      return event.focus_areas_covered.split(',').map(f => f.trim());
+    }
+  });
 
   // Selected target revenue (for multi-select)
   const [selectedTargetRevenue, setSelectedTargetRevenue] = useState<string[]>(() => {
@@ -279,7 +286,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
       // Prepare data for submission
       const dataToSubmit = {
         ...formData,
-        focus_areas_covered: selectedFocusAreas.join(', '),
+        focus_areas_covered: safeJsonStringify(selectedFocusAreas),
         target_revenue: safeJsonStringify(selectedTargetRevenue),
         speaker_profiles: safeJsonStringify(speakers.filter(s => s.trim())),
         agenda_highlights: safeJsonStringify(agendaHighlights.filter(a => a.trim())),

@@ -20,22 +20,18 @@ interface BookFormProps {
   onCancel?: () => void;
 }
 
-// Same focus areas as partners for consistency
+// Focus areas aligned with contractor focus areas for consistency
 const FOCUS_AREAS = [
-  { value: 'revenue_growth', label: 'Revenue Growth' },
-  { value: 'team_building', label: 'Team Building' },
-  { value: 'hiring', label: 'Hiring' },
-  { value: 'operational_efficiency', label: 'Operational Efficiency' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'sales', label: 'Sales' },
-  { value: 'financial_management', label: 'Financial Management' },
-  { value: 'technology_implementation', label: 'Technology Implementation' },
-  { value: 'customer_experience', label: 'Customer Experience' },
-  { value: 'strategic_planning', label: 'Strategic Planning' },
-  { value: 'culture_development', label: 'Culture Development' },
-  { value: 'leadership_development', label: 'Leadership Development' },
-  { value: 'business_development', label: 'Business Development' },
-  { value: 'talent_management', label: 'Talent Management' }
+  { value: 'greenfield_growth', label: 'Market Expansion', description: 'Expanding into new markets and territories' },
+  { value: 'closing_higher_percentage', label: 'Sales Conversion', description: 'Improving close rates and sales effectiveness' },
+  { value: 'controlling_lead_flow', label: 'Lead Generation & Management', description: 'Managing and optimizing lead flow systems' },
+  { value: 'installation_quality', label: 'Service Delivery Excellence', description: 'Enhancing installation and service quality' },
+  { value: 'hiring_sales_leadership', label: 'Talent Acquisition', description: 'Recruiting sales teams and leadership' },
+  { value: 'marketing_automation', label: 'Marketing Systems', description: 'Automating and streamlining marketing' },
+  { value: 'customer_retention', label: 'Customer Success', description: 'Building long-term client relationships' },
+  { value: 'operational_efficiency', label: 'Operations Optimization', description: 'Streamlining internal processes' },
+  { value: 'technology_integration', label: 'Technology Solutions', description: 'Implementing new tech platforms' },
+  { value: 'financial_management', label: 'Financial Performance', description: 'Improving cash flow and profitability' }
 ];
 
 export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
@@ -111,9 +107,20 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
   );
 
   // Selected focus areas (for multi-select)
-  const [selectedFocusAreas, setSelectedFocusAreas] = useState<string[]>(
-    book?.focus_areas_covered ? book.focus_areas_covered.split(',').map(f => f.trim()) : []
-  );
+  const [selectedFocusAreas, setSelectedFocusAreas] = useState<string[]>(() => {
+    if (!book?.focus_areas_covered) return [];
+    try {
+      // Parse JSON array if it's a string
+      if (typeof book.focus_areas_covered === 'string') {
+        return JSON.parse(book.focus_areas_covered);
+      }
+      // If it's already an array, use it directly
+      return Array.isArray(book.focus_areas_covered) ? book.focus_areas_covered : [];
+    } catch {
+      // Fallback for comma-separated values
+      return book.focus_areas_covered.split(',').map(f => f.trim());
+    }
+  });
 
   // Key takeaways and testimonials (array fields)
   const [keyTakeaways, setKeyTakeaways] = useState<string[]>(
@@ -171,7 +178,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
       // Prepare data for submission
       const dataToSubmit = {
         ...formData,
-        focus_areas_covered: selectedFocusAreas.join(', '),
+        focus_areas_covered: safeJsonStringify(selectedFocusAreas),
         key_citations: safeJsonStringify(keyCitations.filter(c => c.cited_person)),
         key_takeaways: safeJsonStringify(keyTakeaways.filter(t => t.trim())),
         testimonials: safeJsonStringify(testimonials.filter(t => t.trim())),
