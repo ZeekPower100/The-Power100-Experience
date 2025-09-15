@@ -166,6 +166,9 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
     // Service Areas
     service_areas: [] as string[],
     service_areas_other: '',
+
+    // Focus Areas Served (for matching with contractors)
+    focus_areas_served: [] as string[],
     
     // Sponsorships & Media - Updated field names
     sponsored_events: [] as string[],
@@ -400,6 +403,15 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           }
         })(),
         service_areas_other: partner.service_areas_other || '',
+
+        // Focus Areas Served (what they help contractors with)
+        focus_areas_served: (() => {
+          try {
+            return safeJsonParse(partner.focus_areas_served || '[]');
+          } catch {
+            return [];
+          }
+        })(),
         
         // Competitive Analysis
         service_category: partner.service_category || '',
@@ -638,7 +650,8 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         ceo_contact_title: formData.ceo_title,
         
         // Store comprehensive data as JSON in existing flexible fields
-        focus_areas_served: formData.service_areas,
+        focus_areas_served: formData.focus_areas_served || [], // Now using actual focus areas
+        service_areas: formData.service_areas || [], // Service types their ideal clients offer
         target_revenue_range: formData.target_revenue_audience,
         geographic_regions: [], // Will be expanded in future
         
@@ -1128,6 +1141,74 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Focus Areas Section */}
+        <div className="col-span-2 mt-8">
+          <h3 className="text-xl font-semibold text-power100-black mb-4 flex items-center gap-2">
+            <Target className="h-5 w-5 text-power100-red" />
+            Focus Areas Your Solutions Address
+          </h3>
+          <p className="text-sm text-power100-grey mb-4">
+            Select all business challenges your products/services help contractors solve
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {[
+              { value: 'greenfield_growth', label: 'Market Expansion', description: 'Helping contractors expand into new markets' },
+              { value: 'closing_higher_percentage', label: 'Sales Conversion', description: 'Improving close rates and sales effectiveness' },
+              { value: 'controlling_lead_flow', label: 'Lead Generation & Management', description: 'Managing and optimizing lead flow' },
+              { value: 'installation_quality', label: 'Service Delivery Excellence', description: 'Enhancing installation quality' },
+              { value: 'hiring_sales_leadership', label: 'Talent Acquisition', description: 'Recruiting sales teams and leadership' },
+              { value: 'marketing_automation', label: 'Marketing Systems', description: 'Automating marketing processes' },
+              { value: 'customer_retention', label: 'Customer Success', description: 'Building long-term relationships' },
+              { value: 'operational_efficiency', label: 'Operations Optimization', description: 'Streamlining workflows' },
+              { value: 'technology_integration', label: 'Technology Solutions', description: 'Implementing tech platforms' },
+              { value: 'financial_management', label: 'Financial Performance', description: 'Improving profitability' }
+            ].map(area => (
+              <div
+                key={area.value}
+                className={`p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                  (formData.focus_areas_served || []).includes(area.value)
+                    ? 'border-power100-red bg-red-50'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => {
+                  const currentAreas = formData.focus_areas_served || [];
+                  if (currentAreas.includes(area.value)) {
+                    setFormData(prev => ({
+                      ...prev,
+                      focus_areas_served: currentAreas.filter(a => a !== area.value)
+                    }));
+                  } else {
+                    setFormData(prev => ({
+                      ...prev,
+                      focus_areas_served: [...currentAreas, area.value]
+                    }));
+                  }
+                }}
+              >
+                <div className="flex items-start space-x-2">
+                  <Checkbox
+                    checked={(formData.focus_areas_served || []).includes(area.value)}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1">
+                    <Label className="font-medium cursor-pointer text-sm">
+                      {area.label}
+                    </Label>
+                    <p className="text-xs text-power100-grey mt-0.5">
+                      {area.description}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          {formData.focus_areas_served && formData.focus_areas_served.length > 0 && (
+            <p className="text-sm text-power100-grey mt-3">
+              Selected: {formData.focus_areas_served.length} focus areas
+            </p>
+          )}
         </div>
 
         {/* Section 4: Competitive Analysis */}

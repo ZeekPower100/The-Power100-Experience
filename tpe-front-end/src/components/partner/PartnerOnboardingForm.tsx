@@ -176,6 +176,9 @@ export default function PartnerOnboardingForm() {
     // Service Areas
     service_areas: [] as string[],
     service_areas_other: '',
+
+    // Focus Areas Served (for matching with contractors)
+    focus_areas_served: [] as string[],
     
     // Sponsorships & Media
     sponsored_events: [] as string[],
@@ -399,7 +402,7 @@ export default function PartnerOnboardingForm() {
         contact_phone: formData.ceo_phone,
         
         // Legacy fields for backward compatibility
-        focus_areas_served: formData.service_areas,
+        focus_areas_served: formData.focus_areas_served || [], // Now using actual focus areas instead of service areas
         target_revenue_range: formData.target_revenue_audience,
         geographic_regions: [],
         powerconfidence_score: 0,
@@ -1094,6 +1097,109 @@ export default function PartnerOnboardingForm() {
                             className="mt-1"
                           />
                         </div>
+                      )}
+                    </div>
+
+                    {/* Focus Areas Section - NEW */}
+                    <div>
+                      <Label className="font-semibold text-base">
+                        Select all of the areas your product/services address for your ideal client
+                      </Label>
+                      <p className="text-sm text-power100-grey mb-3">
+                        Choose all focus areas where your solutions provide value
+                      </p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {[
+                          {
+                            value: 'greenfield_growth',
+                            label: 'Market Expansion',
+                            description: 'Helping contractors expand into new markets and territories'
+                          },
+                          {
+                            value: 'closing_higher_percentage',
+                            label: 'Sales Conversion',
+                            description: 'Improving close rates and sales effectiveness'
+                          },
+                          {
+                            value: 'controlling_lead_flow',
+                            label: 'Lead Generation & Management',
+                            description: 'Managing and optimizing lead flow systems'
+                          },
+                          {
+                            value: 'installation_quality',
+                            label: 'Service Delivery Excellence',
+                            description: 'Enhancing installation and service quality standards'
+                          },
+                          {
+                            value: 'hiring_sales_leadership',
+                            label: 'Talent Acquisition',
+                            description: 'Recruiting and developing sales teams and leadership'
+                          },
+                          {
+                            value: 'marketing_automation',
+                            label: 'Marketing Systems',
+                            description: 'Automating and streamlining marketing processes'
+                          },
+                          {
+                            value: 'customer_retention',
+                            label: 'Customer Success',
+                            description: 'Building long-term client relationships and retention'
+                          },
+                          {
+                            value: 'operational_efficiency',
+                            label: 'Operations Optimization',
+                            description: 'Streamlining internal processes and workflows'
+                          },
+                          {
+                            value: 'technology_integration',
+                            label: 'Technology Solutions',
+                            description: 'Implementing and integrating tech platforms'
+                          },
+                          {
+                            value: 'financial_management',
+                            label: 'Financial Performance',
+                            description: 'Improving cash flow, profitability, and financial systems'
+                          }
+                        ].map(area => (
+                          <div
+                            key={area.value}
+                            className="p-4 rounded-lg border-2 border-gray-200 hover:border-power100-red transition-colors cursor-pointer"
+                            onClick={() => {
+                              const currentAreas = formData.focus_areas_served || [];
+                              if (currentAreas.includes(area.value)) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  focus_areas_served: currentAreas.filter(a => a !== area.value)
+                                }));
+                              } else {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  focus_areas_served: [...currentAreas, area.value]
+                                }));
+                              }
+                            }}
+                          >
+                            <div className="flex items-start space-x-3">
+                              <Checkbox
+                                checked={(formData.focus_areas_served || []).includes(area.value)}
+                                className="mt-1"
+                              />
+                              <div className="flex-1">
+                                <Label className="font-semibold cursor-pointer">
+                                  {area.label}
+                                </Label>
+                                <p className="text-sm text-power100-grey mt-1">
+                                  {area.description}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      {formData.focus_areas_served && formData.focus_areas_served.length > 0 && (
+                        <p className="text-sm text-power100-grey mt-3">
+                          Selected: {formData.focus_areas_served.length} areas
+                        </p>
                       )}
                     </div>
                   </div>

@@ -73,6 +73,7 @@ class RecommendationService {
       SELECT
         id, first_name, last_name, email, company_name,
         revenue_tier, team_size, focus_areas, readiness_indicators,
+        services_offered, service_area,
         is_verified, created_at
       FROM contractors
       WHERE id = $1
@@ -84,6 +85,7 @@ class RecommendationService {
       // Parse JSON fields
       contractor.focus_areas = safeJsonParse(contractor.focus_areas, []);
       contractor.readiness_indicators = safeJsonParse(contractor.readiness_indicators, []);
+      contractor.services_offered = safeJsonParse(contractor.services_offered, []);
       return contractor;
     }
     return null;
@@ -336,27 +338,72 @@ class RecommendationService {
   async recommendPartners(contractor, preferences, limit) {
     const focus_areas = contractor.focus_areas || [];
     const revenue_tier = contractor.revenue_tier;
+    const services_offered = contractor.services_offered || [];
 
-    console.log('DEBUG: recommendPartners - focus_areas:', focus_areas, 'revenue_tier:', revenue_tier);
+    console.log('DEBUG: recommendPartners - focus_areas:', focus_areas, 'revenue_tier:', revenue_tier, 'services:', services_offered);
 
     // Build WHERE conditions dynamically
     const whereClauses = ['sp.is_active = true'];
     const params = [];
     let paramCounter = 1;
 
-    // Add focus areas condition if provided
+    // Add focus areas condition using mapping table
     if (focus_areas.length > 0) {
-      const focusConditions = focus_areas.map(() => {
-        params.push(`%${focus_areas[params.length]}%`);
-        return `sp.focus_areas_served::text ILIKE $${paramCounter++}`;
-      });
-      whereClauses.push(`(${focusConditions.join(' OR ')})`);
+      // First check if we have mappings, otherwise fall back to direct ILIKE matching
+      const mappingCheckSql = `
+        SELECT DISTINCT partner_focus_area
+        FROM focus_area_mappings
+        WHERE contractor_focus_area = ANY($1)
+      `;
+      const mappingResult = await query(mappingCheckSql, [focus_areas]);
+
+      if (mappingResult.rows.length > 0) {
+        // Use mapped focus areas
+        const mappedAreas = mappingResult.rows.map(r => r.partner_focus_area);
+        console.log('DEBUG: Using mapped focus areas:', mappedAreas);
+
+        const focusConditions = mappedAreas.map(() => {
+          params.push(`%${mappedAreas[params.length]}%`);
+          return `sp.focus_areas_served::text ILIKE $${paramCounter++}`;
+        });
+        whereClauses.push(`(${focusConditions.join(' OR ')})`);
+      } else {
+        // Fallback to original ILIKE matching
+        console.log('DEBUG: No mappings found, using direct ILIKE matching');
+        const focusConditions = focus_areas.map(() => {
+          params.push(`%${focus_areas[params.length]}%`);
+          return `sp.focus_areas_served::text ILIKE $${paramCounter++}`;
+        });
+        whereClauses.push(`(${focusConditions.join(' OR ')})`);
+      }
     }
 
     // Add revenue tier condition if provided
     if (revenue_tier) {
       params.push(`%${revenue_tier}%`);
       whereClauses.push(`sp.revenue_tiers::text ILIKE $${paramCounter++}`);
+    }
+
+    // Add services matching condition - match contractor's services with partner's ideal client services
+    if (services_offered.length > 0) {
+      console.log('DEBUG: Matching contractor services:', services_offered);
+
+      // Match ANY of the contractor's services with partner's service_areas
+      // This ensures partners who work with contractors offering these services
+      const serviceConditions = services_offered.map((service) => {
+        // Handle both formats: "Windows & Doors" and "windows_doors"
+        const servicePattern = service.toLowerCase()
+          .replace(/&/g, '')
+          .replace(/\s+/g, '_')
+          .replace(/__+/g, '_');
+
+        params.push(`%${servicePattern}%`);
+        return `sp.service_areas::text ILIKE $${paramCounter++}`;
+      });
+
+      if (serviceConditions.length > 0) {
+        whereClauses.push(`(${serviceConditions.join(' OR ')})`);
+      }
     }
 
     // Add limit parameter
@@ -382,18 +429,36 @@ class RecommendationService {
 
     console.log('DEBUG: Partner query returned', result.rows.length, 'partners');
 
-    return result.rows.map(partner => ({
-      entity_type: 'partner',
-      entity_id: partner.id,
-      entity_name: partner.company_name,
-      reason: `Serves ${focus_areas.join(', ')} for ${revenue_tier || 'your revenue tier'}`,
-      metadata: {
-        powerconfidence_score: partner.powerconfidence_score,
-        client_count: partner.client_count,
-        geographic_regions: safeJsonParse(partner.geographic_regions, []),
-        service_category: partner.service_category
+    return result.rows.map(partner => {
+      const reasons = [];
+
+      if (focus_areas.length > 0) {
+        reasons.push(`Addresses ${focus_areas.join(', ')}`);
       }
-    }));
+
+      if (services_offered.length > 0) {
+        const serviceNames = services_offered.slice(0, 2).join(', ');
+        const more = services_offered.length > 2 ? ` +${services_offered.length - 2} more` : '';
+        reasons.push(`Works with ${serviceNames}${more} contractors`);
+      }
+
+      if (revenue_tier) {
+        reasons.push(`Serves ${revenue_tier} businesses`);
+      }
+
+      return {
+        entity_type: 'partner',
+        entity_id: partner.id,
+        entity_name: partner.company_name,
+        reason: reasons.join(' • '),
+        metadata: {
+          powerconfidence_score: partner.powerconfidence_score,
+          client_count: partner.client_count,
+          geographic_regions: safeJsonParse(partner.geographic_regions, []),
+          service_category: partner.service_category
+        }
+      };
+    });
   }
 
   /**
