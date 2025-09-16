@@ -34,7 +34,8 @@ async function apiRequest<T>(
   const isContractorFlow = currentPath.includes('/contractorflow') ||
                            currentPath.includes('/focus') ||
                            currentPath.includes('/profile') ||
-                           currentPath.includes('/matching');
+                           currentPath.includes('/matching') ||
+                           currentPath.includes('/ai-concierge');
 
   // Priority order for token selection based on context:
   if (isAdminPage) {
@@ -44,14 +45,23 @@ async function apiRequest<T>(
     // On partner pages, use partner token
     token = getFromStorage('partnerToken');
   } else if (isContractorFlow) {
-    // On contractor flow pages, use contractor session
-    const sessionData = getFromStorage('tpe_contractor_session');
-    if (sessionData) {
-      try {
-        const parsed = safeJsonParse(sessionData);
-        token = parsed.token;
-      } catch (e) {
-        console.error('Failed to parse contractor session');
+    // On contractor flow pages, use contractor token or session
+    // First check for direct contractor token (for authenticated contractors)
+    token = getFromStorage('contractorToken');
+    console.log('🔍 AI Concierge - contractorToken:', token ? 'Found' : 'Not found');
+
+    // If no direct token, check for contractor session (for flow completion)
+    if (!token) {
+      const sessionData = getFromStorage('tpe_contractor_session');
+      console.log('🔍 AI Concierge - sessionData:', sessionData ? 'Found' : 'Not found');
+      if (sessionData) {
+        try {
+          const parsed = safeJsonParse(sessionData);
+          token = parsed.token;
+          console.log('🔍 AI Concierge - session token:', token ? 'Extracted' : 'Not found in session');
+        } catch (e) {
+          console.error('Failed to parse contractor session:', e);
+        }
       }
     }
   } else {
@@ -72,19 +82,29 @@ async function apiRequest<T>(
       // Admin API endpoints need admin token
       token = getFromStorage('authToken') || getFromStorage('adminToken');
     } else {
-      // Check for contractor session for contractor-specific endpoints
-      const sessionData = getFromStorage('tpe_contractor_session');
-      if (sessionData) {
-        try {
-          const parsed = safeJsonParse(sessionData);
-          token = parsed.token;
-        } catch (e) {
-          // Fall back to admin token if session parse fails
+      // Check for contractor endpoints (ai-concierge, etc.)
+      const isContractorEndpoint = endpoint.includes('/ai-concierge');
+
+      if (isContractorEndpoint) {
+        // For contractor endpoints, try contractor token first
+        token = getFromStorage('contractorToken');
+      }
+
+      // If no contractor token, check for contractor session
+      if (!token) {
+        const sessionData = getFromStorage('tpe_contractor_session');
+        if (sessionData) {
+          try {
+            const parsed = safeJsonParse(sessionData);
+            token = parsed.token;
+          } catch (e) {
+            // Fall back to admin token if session parse fails
+            token = getFromStorage('authToken') || getFromStorage('adminToken');
+          }
+        } else {
+          // No contractor session, use admin token if available
           token = getFromStorage('authToken') || getFromStorage('adminToken');
         }
-      } else {
-        // No contractor session, use admin token if available
-        token = getFromStorage('authToken') || getFromStorage('adminToken');
       }
     }
   }
@@ -545,4 +565,45 @@ export const eventApi = {
   
   // Approve event
   approve: (id: string) => apiRequest(`/events/${id}/approve`, { method: 'PUT' })
+};
+
+// AI Concierge API
+export const aiConciergeApi = {
+  // Send message to AI Concierge
+  sendMessage: async (content: string, conversationId?: string, mediaFile?: File) => {
+    const formData = new FormData();
+    formData.append('content', content);
+    if (conversationId) {
+      formData.append('conversationId', conversationId);
+    }
+    if (mediaFile) {
+      formData.append('media', mediaFile);
+      formData.append('mediaType', mediaFile.type.split('/')[0]);
+    }
+
+    return fetch(`${API_BASE_URL}/ai-concierge/message`, {
+      method: 'POST',
+      headers: {
+        // Don't set Content-Type for FormData - browser will set it with boundary
+        'Authorization': `Bearer ${getFromStorage('contractorToken') || getFromStorage('authToken')}`
+      },
+      body: formData
+    }).then(handleApiResponse);
+  },
+
+  // Get conversation history
+  getConversations: () => apiRequest('/ai-concierge/conversations'),
+
+  // Get specific conversation
+  getConversation: (id: string) => apiRequest(`/ai-concierge/conversations/${id}`),
+
+  // Provide feedback on AI response
+  provideFeedback: (messageId: string, feedback: { helpful: boolean; rating?: number; feedback?: string }) =>
+    apiRequest(`/ai-concierge/feedback/${messageId}`, {
+      method: 'POST',
+      body: safeJsonStringify(feedback)
+    }),
+
+  // Check AI Concierge access
+  checkAccess: () => apiRequest('/ai-concierge/access-status')
 };

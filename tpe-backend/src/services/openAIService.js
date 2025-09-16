@@ -349,6 +349,316 @@ Provide a JSON response with exactly 5 actionable insights:
     this.initializeClient();
     return this.isConfigured;
   }
+
+  /**
+   * AI Concierge - Generate conversational response for contractor
+   */
+  async generateConciergeResponse(message, contractor, conversationHistory = [], partners = []) {
+    // Initialize on first use
+    this.initializeClient();
+
+    if (!this.isConfigured) {
+      throw new Error('OpenAI service not configured. Please set OPENAI_API_KEY in environment variables.');
+    }
+
+    // Format partner information for the AI
+    let partnerContext = '';
+    if (partners && partners.length > 0) {
+      const partnerList = partners.map(p => {
+        const focusAreas = Array.isArray(p.focus_areas_served)
+          ? p.focus_areas_served
+          : safeJsonParse(p.focus_areas_served || '[]');
+
+        return `- **${p.company_name}**: Specializes in ${focusAreas.join(', ')} (PowerConfidence Score: ${p.powerconfidence_score || 'N/A'})`;
+      }).join('\n');
+
+      partnerContext = `\n\nOur Strategic Partners in Your Network:\n${partnerList}\n\nWhen relevant to the contractor's question, recommend specific partners from this list by name. Explain why they would be a good fit based on their specializations and PowerConfidence scores.`;
+    }
+
+    const systemPrompt = `You are the AI Concierge for The Power100 Experience (TPX), a premium business growth platform that connects contractors with strategic partners and resources.
+
+Your role is to provide personalized, strategic business advice as a trusted advisor who knows their business intimately.
+
+Key Guidelines:
+- Be conversational and approachable, like a trusted business mentor
+- Provide specific, actionable advice tailored to their situation
+- Focus on practical strategies they can implement immediately
+- Reference industry best practices and success patterns you've observed
+- Be encouraging while maintaining realistic expectations${partnerContext}
+
+When discussing partners:
+- ONLY recommend partners from the list provided above (if available)
+- Mention specific partner names when relevant (e.g., "Buildr specializes in...")
+- Explain why a specific partner would be a good fit based on their focus areas
+- Include the PowerConfidence Score when mentioning a partner
+- If no partners match their need, acknowledge this and suggest what type of partner would help
+
+Your knowledge includes:
+- Construction industry best practices
+- Business growth strategies for contractors
+- Team building and operational efficiency
+- Financial management and cash flow optimization
+- Technology adoption and digital transformation
+- Marketing and customer acquisition strategies
+
+Always remember: You're here to be their AI-powered business advisor, providing insights and recommendations based on their unique situation and goals.`;
+
+    // Build contractor context
+    const contractorContext = `
+Contractor Information:
+- Name: ${contractor.name}
+- Company: ${contractor.company_name || contractor.company}
+- Revenue Tier: ${contractor.revenue_tier || 'Not specified'}
+- Team Size: ${contractor.team_size || 'Not specified'}
+- Focus Areas: ${Array.isArray(contractor.focus_areas) ? contractor.focus_areas.join(', ') : safeJsonParse(contractor.focus_areas || '[]').join(', ')}
+- Stage: ${contractor.stage || 'Active'}
+- Readiness Indicators: ${contractor.readiness_indicators ? safeJsonParse(contractor.readiness_indicators).join(', ') : 'Not specified'}
+    `.trim();
+
+    try {
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        { role: 'system', content: contractorContext }
+      ];
+
+      // Add conversation history (keep last 10 messages for context)
+      if (conversationHistory.length > 0) {
+        const recentHistory = conversationHistory.slice(-10);
+        recentHistory.forEach(msg => {
+          messages.push({
+            role: msg.message_type === 'user' ? 'user' : 'assistant',
+            content: msg.content
+          });
+        });
+      }
+
+      // Add current message
+      messages.push({ role: 'user', content: message });
+
+      const startTime = Date.now();
+
+      const completion = await this.client.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 1000,
+        top_p: 1,
+        frequency_penalty: 0,
+        presence_penalty: 0
+      });
+
+      const processingTime = Date.now() - startTime;
+      const response = completion.choices[0].message.content;
+
+      // Log the interaction
+      console.log(`✅ AI Concierge response generated in ${processingTime}ms`);
+
+      return {
+        content: response,
+        processingTime,
+        tokensUsed: completion.usage.total_tokens,
+        model: completion.model
+      };
+
+    } catch (error) {
+      console.error('❌ Error generating AI Concierge response:', error);
+
+      if (error.code === 'invalid_api_key') {
+        throw new Error('OpenAI API key is invalid. Please check your OPENAI_API_KEY environment variable.');
+      }
+
+      throw error;
+    }
+  }
+
+  /**
+   * Process image with Vision API
+   */
+  async processImageWithVision(imageBuffer, mimeType) {
+    // Initialize on first use
+    this.initializeClient();
+
+    if (!this.isConfigured) {
+      throw new Error('OpenAI service not configured');
+    }
+
+    try {
+      // Convert buffer to base64
+      const base64Image = imageBuffer.toString('base64');
+      const dataUrl = `data:${mimeType};base64,${base64Image}`;
+
+      console.log('🖼️ Processing image with Vision API...');
+
+      const completion = await this.client.chat.completions.create({
+        model: 'gpt-4o', // Updated model that supports vision
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Analyze this image and provide a detailed description. Focus on any business-relevant content, text, diagrams, or data shown. If it appears to be a business document, quote, invoice, or planning material, extract key information.'
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: dataUrl
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 500
+      });
+
+      const description = completion.choices[0].message.content;
+      console.log('✅ Image processed successfully');
+
+      return {
+        description,
+        tokensUsed: completion.usage?.total_tokens || 0
+      };
+
+    } catch (error) {
+      console.error('❌ Error processing image with Vision API:', error);
+
+      // Fallback response
+      return {
+        description: 'I received your image but am unable to analyze it at the moment. Please describe what you\'d like to discuss about this image.',
+        tokensUsed: 0
+      };
+    }
+  }
+
+  /**
+   * Transcribe audio with Whisper API
+   */
+  async transcribeAudioWithWhisper(audioBuffer, filename) {
+    // Initialize on first use
+    this.initializeClient();
+
+    if (!this.isConfigured) {
+      throw new Error('OpenAI service not configured');
+    }
+
+    try {
+      console.log('🎙️ Transcribing audio with Whisper API...');
+
+      // For Node.js, we need to use a different approach
+      const fs = require('fs');
+      const path = require('path');
+      const os = require('os');
+
+      // Create a temporary file
+      const tempDir = os.tmpdir();
+      const tempFilePath = path.join(tempDir, `whisper-${Date.now()}.webm`);
+      fs.writeFileSync(tempFilePath, audioBuffer);
+
+      try {
+        const transcription = await this.client.audio.transcriptions.create({
+          file: fs.createReadStream(tempFilePath),
+          model: 'whisper-1',
+          language: 'en', // English
+          response_format: 'text'
+        });
+
+        console.log('✅ Audio transcribed successfully');
+
+        // Clean up temp file
+        fs.unlinkSync(tempFilePath);
+
+        return {
+          transcription,
+          language: 'en'
+        };
+      } catch (error) {
+        // Clean up temp file on error
+        if (fs.existsSync(tempFilePath)) {
+          fs.unlinkSync(tempFilePath);
+        }
+        throw error;
+      }
+
+    } catch (error) {
+      console.error('❌ Error transcribing audio with Whisper API:', error);
+
+      // Fallback response
+      return {
+        transcription: 'I received your audio recording but am unable to transcribe it at the moment. Please summarize what you discussed in the recording.',
+        language: 'en'
+      };
+    }
+  }
+
+  /**
+   * Extract text from documents (PDF, Word, etc.)
+   */
+  async extractTextFromDocument(documentBuffer, mimeType) {
+    // For now, return a placeholder - in production, you'd use a library like pdf-parse or mammoth
+    console.log('📄 Processing document...');
+
+    // This would need additional libraries:
+    // - pdf-parse for PDFs
+    // - mammoth for Word docs
+    // - etc.
+
+    try {
+      // Simplified text extraction
+      let extractedText = '';
+
+      if (mimeType === 'text/plain') {
+        // Plain text files
+        extractedText = documentBuffer.toString('utf-8');
+      } else if (mimeType === 'application/pdf') {
+        // Would use pdf-parse here
+        extractedText = '[PDF content would be extracted here with pdf-parse library]';
+        console.log('⚠️ PDF parsing not fully implemented - install pdf-parse for production');
+      } else if (mimeType.includes('word')) {
+        // Would use mammoth here
+        extractedText = '[Word document content would be extracted here with mammoth library]';
+        console.log('⚠️ Word doc parsing not fully implemented - install mammoth for production');
+      }
+
+      return extractedText || 'Unable to extract text from this document type.';
+
+    } catch (error) {
+      console.error('❌ Error extracting document text:', error);
+      return 'Unable to process this document. Please describe its contents.';
+    }
+  }
+
+  /**
+   * AI Concierge - Generate partner recommendations
+   */
+  async generatePartnerRecommendations(contractor, userQuery) {
+    const prompt = `Based on this contractor's profile and their question: "${userQuery}"
+
+Please analyze which of our strategic partners would be most relevant and explain why. Focus on:
+1. Partners whose capabilities align with the contractor's focus areas
+2. Partners who work with contractors in similar revenue ranges
+3. Specific solutions that address the contractor's question
+
+Provide 2-3 specific partner recommendations with clear reasoning.`;
+
+    return await this.generateConciergeResponse(prompt, contractor);
+  }
+
+  /**
+   * AI Concierge - Generate action plan
+   */
+  async generateActionPlan(contractor, goals) {
+    const prompt = `Create a specific 90-day action plan for this contractor based on their goals: ${goals}
+
+Structure the plan with:
+1. Week 1-2: Immediate actions
+2. Week 3-4: Foundation building
+3. Month 2: Implementation
+4. Month 3: Optimization and scaling
+
+Include specific metrics to track and potential partners who could accelerate each phase.`;
+
+    return await this.generateConciergeResponse(prompt, contractor);
+  }
 }
 
 // Export singleton instance
