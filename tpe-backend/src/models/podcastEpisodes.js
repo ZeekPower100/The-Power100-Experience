@@ -133,6 +133,15 @@ class PodcastEpisodes {
       throw new Error(`Error fetching recent episodes: ${error.message}`);
     }
   }
+
+  // Alias methods for controller compatibility
+  static async findRecent(limit = 20) {
+    return this.getRecentEpisodes(limit);
+  }
+
+  static async findByShowId(showId) {
+    return this.getByShowId(showId);
+  }
 }
 
 module.exports = PodcastEpisodes;
