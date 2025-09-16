@@ -28,7 +28,7 @@ const startVerification = async (req, res, next) => {
   const verificationCode = generateVerificationCode();
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-  // Create or update contractor (SQLite doesn't support ON CONFLICT with complex updates)
+  // Create or update contractor
   // Try to update first, then insert if no rows affected
   const updateResult = await query(`
     UPDATE contractors SET 

@@ -17,12 +17,23 @@ const TIMEOUT = (process.env.DEPENDENCY_CHECK_TIMEOUT || 30) * 1000;
 const MAX_CONCURRENT_CHECKS = 10; // Check 10 packages at once
 const CHECK_MODE = process.env.CHECK_MODE || 'fast';
 
+// Node.js built-in modules to skip
+const BUILTIN_MODULES = new Set([
+  'fs', 'path', 'http', 'https', 'crypto', 'os', 'util', 'stream',
+  'events', 'child_process', 'cluster', 'net', 'url', 'querystring',
+  'buffer', 'process', 'zlib', 'dns', 'tls', 'readline', 'vm',
+  'assert', 'console', 'constants', 'domain', 'punycode', 'repl',
+  'string_decoder', 'timers', 'tty', 'dgram', 'v8', 'module',
+  'worker_threads', 'perf_hooks', 'async_hooks', 'inspector'
+]);
+
 class AsyncDependencyChecker {
   constructor() {
     this.startTime = Date.now();
     this.errors = [];
     this.warnings = [];
     this.criticalErrors = [];
+    this.missingPackages = new Set();
   }
 
   /**
@@ -260,11 +271,14 @@ class AsyncDependencyChecker {
   async runParallel() {
     console.log('🚀 Async Dependency Check');
     console.log(`   Mode: ${CHECK_MODE} | Timeout: ${TIMEOUT/1000}s | Parallel: ${MAX_CONCURRENT_CHECKS}`);
-    
+
     // Run both project checks in parallel
     const checkPromises = [
       this.checkProject('./tpe-backend', 'Backend'),
-      this.checkProject('./tpe-front-end', 'Frontend')
+      this.checkProject('./tpe-front-end', 'Frontend'),
+      // CRITICAL: Also check imports vs packages!
+      this.checkImportsVsPackages('./tpe-backend', 'Backend', ['.js']),
+      this.checkImportsVsPackages('./tpe-front-end', 'Frontend', ['.ts', '.tsx', '.js', '.jsx'])
     ];
     
     try {
@@ -287,9 +301,134 @@ class AsyncDependencyChecker {
     this.generateReport();
   }
 
+  /**
+   * Recursively get all files with specified extensions
+   */
+  getAllFiles(dirPath, extensions) {
+    let files = [];
+
+    try {
+      const items = fs.readdirSync(dirPath);
+
+      for (const item of items) {
+        const fullPath = path.join(dirPath, item);
+
+        try {
+          const stat = fs.statSync(fullPath);
+
+          if (stat.isDirectory() && !item.includes('node_modules') && !item.startsWith('.')) {
+            files = files.concat(this.getAllFiles(fullPath, extensions));
+          } else if (stat.isFile() && extensions.some(ext => fullPath.endsWith(ext))) {
+            files.push(fullPath);
+          }
+        } catch (e) {
+          // Skip files we can't access
+        }
+      }
+    } catch (e) {
+      // Skip directories we can't access
+    }
+
+    return files;
+  }
+
+  /**
+   * CRITICAL: Check if all imports have corresponding packages
+   * This is what catches missing dependencies like react-markdown!
+   */
+  async checkImportsVsPackages(projectPath, projectName, fileExtensions) {
+    console.log(`\n  📦 ${projectName} Import Validation (checking all imports...)`);
+
+    const packageJsonPath = path.join(projectPath, 'package.json');
+    if (!fs.existsSync(packageJsonPath)) {
+      return;
+    }
+
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+    const allDependencies = {
+      ...packageJson.dependencies,
+      ...packageJson.devDependencies,
+      ...packageJson.peerDependencies
+    };
+
+    // Find all source files
+    const srcPath = path.join(projectPath, 'src');
+    if (!fs.existsSync(srcPath)) {
+      return;
+    }
+
+    const files = this.getAllFiles(srcPath, fileExtensions);
+    const foundImports = new Map(); // Track which file has which import
+
+    // Scan all files for imports
+    for (const file of files) {
+      try {
+        const content = fs.readFileSync(file, 'utf8');
+
+        // Find all imports/requires - both ES6 and CommonJS
+        // Handles: import X from 'pkg', import 'pkg', require('pkg'), require("pkg")
+        const importPatterns = [
+          /import\s+.*?\s+from\s+['"]([^'"]+)['"]/g,  // import X from 'pkg'
+          /import\s+['"]([^'"]+)['"]/g,                // import 'pkg'
+          /require\s*\(\s*['"]([^'"]+)['"]\s*\)/g      // require('pkg')
+        ];
+
+        // Check all import patterns
+        for (const pattern of importPatterns) {
+          let match;
+          // Reset lastIndex for each pattern
+          pattern.lastIndex = 0;
+
+          while ((match = pattern.exec(content)) !== null) {
+            const importPath = match[1];
+
+            // Skip relative imports and TypeScript path aliases
+            if (importPath.startsWith('.') || importPath.startsWith('/') || importPath.startsWith('@/')) {
+              continue;
+            }
+
+            // Skip Node.js built-in modules
+            if (BUILTIN_MODULES.has(importPath) || BUILTIN_MODULES.has(importPath.split('/')[0])) {
+              continue;
+            }
+
+            // Extract package name (handle scoped packages like @radix-ui/react-dialog)
+            const packageName = importPath.startsWith('@')
+              ? importPath.split('/').slice(0, 2).join('/')
+              : importPath.split('/')[0];
+
+            // Check if package is in dependencies
+            if (!allDependencies[packageName]) {
+              const relativeFile = path.relative(process.cwd(), file);
+              if (!foundImports.has(packageName)) {
+                foundImports.set(packageName, []);
+              }
+              foundImports.get(packageName).push(relativeFile);
+            }
+          }
+        }
+      } catch (e) {
+        // Skip files we can't read
+      }
+    }
+
+    // Report missing packages
+    if (foundImports.size > 0) {
+      console.log(`    ❌ Missing packages detected!`);
+      for (const [pkg, files] of foundImports) {
+        this.missingPackages.add(pkg);
+        this.criticalErrors.push(`${projectName}: Package '${pkg}' is imported but not in package.json`);
+        console.log(`    ✗ Missing package: ${pkg}`);
+        console.log(`      Used in: ${files[0]}${files.length > 1 ? ` (+${files.length - 1} more)` : ''}`);
+      }
+    } else {
+      console.log(`    ✓ All imports have corresponding packages`);
+    }
+  }
+
   generateReport() {
     console.log('\n' + '='.repeat(40));
-    
+
     if (this.criticalErrors.length > 0) {
       console.log('🚨 CRITICAL ERRORS:');
       this.criticalErrors.forEach(err => console.log(`  ✗ ${err}`));

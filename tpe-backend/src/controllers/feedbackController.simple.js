@@ -1,7 +1,7 @@
 // Simplified PowerConfidence Feedback Controller
 const { query } = require('../config/database');
 
-// Get partner performance dashboard data (simplified for SQLite)
+// Get partner performance dashboard data
 const getPartnerPerformanceDashboard = async (req, res) => {
   try {
     // Get existing partners from PostgreSQL (using correct table name)

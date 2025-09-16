@@ -82,23 +82,17 @@ const optionalPartnerAuth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     if (decoded.type === 'partner') {
-      // Use direct database connection for consistency
-      const sqlite3 = require('sqlite3').verbose();
-      const { open } = require('sqlite');
-      
-      const db = await open({
-        filename: './power100.db',
-        driver: sqlite3.Database
-      });
-      
-      const partnerUser = await db.get(`
+      // Use PostgreSQL connection
+      const { query } = require('../config/database');
+
+      const result = await query(`
         SELECT pu.*, sp.is_active as partner_active, sp.company_name
         FROM partner_users pu
         JOIN strategic_partners sp ON pu.partner_id = sp.id
-        WHERE pu.id = ? AND pu.is_active = 1 AND sp.is_active = 1
+        WHERE pu.id = $1 AND pu.is_active = true AND sp.is_active = true
       `, [decoded.id]);
 
-      await db.close();
+      const partnerUser = result.rows[0];
 
       if (partnerUser) {
         req.partnerUser = {

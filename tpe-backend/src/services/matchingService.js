@@ -98,8 +98,8 @@ const matchContractorWithPartners = async (contractor) => {
         parsedContractor.id,
         match.partner.id,
         match.matchScore,
-        safeJsonStringify(match.matchReasons), // Convert array to JSON string for SQLite
-        i === 0 ? true : false // SQLite uses 1/0 for boolean
+        safeJsonStringify(match.matchReasons), // Convert array to JSON string
+        i === 0 ? true : false // First match is primary
       ]);
       
       // Track the match outcome

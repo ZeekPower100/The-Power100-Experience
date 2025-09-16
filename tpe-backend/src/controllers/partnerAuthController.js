@@ -164,55 +164,53 @@ const getPartnerProfile = async (req, res, next) => {
       return next(new AppError('Partner user not set by middleware', 401));
     }
     
-    // Use direct database connection for consistency
-    const sqlite3 = require('sqlite3').verbose();
-    const { open } = require('sqlite');
-    
-    const db = await open({
-      filename: './power100.db',
-      driver: sqlite3.Database
-    });
+    // Use PostgreSQL connection
+    const { query } = require('../config/database');
     
     // Get partner profile
-    const partner = await db.get(`
+    const partnerResult = await query(`
       SELECT pu.email, pu.last_login, pu.created_at,
              sp.company_name, sp.description, sp.website, sp.logo_url,
              sp.power_confidence_score, sp.is_active
       FROM partner_users pu
       JOIN partners sp ON pu.partner_id = sp.id
-      WHERE pu.id = ?
+      WHERE pu.id = $1
     `, [req.partnerUser.id]);
 
+    const partner = partnerResult.rows[0];
 
     if (!partner) {
-      await db.close();
       return next(new AppError('Partner not found', 404));
     }
 
     // Get analytics data for this partner
-    const analytics = await db.all(`
+    const analyticsResult = await query(`
       SELECT metric_type, metric_value, period_start, period_end
       FROM partner_analytics
-      WHERE partner_id = ?
+      WHERE partner_id = $1
       ORDER BY calculated_at DESC
     `, [req.partnerUser.partnerId]);
 
+    const analytics = analyticsResult.rows;
+
     // Get leads count for this month
     const thisMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
-    const leadsThisMonth = await db.get(`
+    const leadsResult = await query(`
       SELECT COUNT(*) as count
       FROM partner_leads
-      WHERE partner_id = ? AND created_at LIKE ?
+      WHERE partner_id = $1 AND created_at LIKE $2
     `, [req.partnerUser.partnerId, `${thisMonth}%`]);
 
+    const leadsThisMonth = leadsResult.rows[0];
+
     // Get demo requests count
-    const demoRequests = await db.get(`
+    const demoResult = await query(`
       SELECT COUNT(*) as count
       FROM partner_leads
-      WHERE partner_id = ? AND stage IN ('demo_requested', 'demo_scheduled')
+      WHERE partner_id = $1 AND stage IN ('demo_requested', 'demo_scheduled')
     `, [req.partnerUser.partnerId]);
 
-    await db.close();
+    const demoRequests = demoResult.rows[0];
 
     // Format analytics for frontend
     const analyticsMap = {};
@@ -255,23 +253,18 @@ const changePartnerPassword = async (req, res, next) => {
   }
 
   try {
-    // Use direct database connection for consistency
-    const sqlite3 = require('sqlite3').verbose();
-    const { open } = require('sqlite');
-    
-    const db = await open({
-      filename: './power100.db',
-      driver: sqlite3.Database
-    });
+    // Use PostgreSQL connection
+    const { query } = require('../config/database');
 
     // Get current user with password
-    const user = await db.get(
-      'SELECT password_hash FROM partner_users WHERE id = ?',
+    const userResult = await query(
+      'SELECT password_hash FROM partner_users WHERE id = $1',
       [req.partnerUser.id]
     );
 
+    const user = userResult.rows[0];
+
     if (!user) {
-      await db.close();
       return next(new AppError('User not found', 404));
     }
 
@@ -279,7 +272,6 @@ const changePartnerPassword = async (req, res, next) => {
     const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
 
     if (!isCurrentPasswordValid) {
-      await db.close();
       return next(new AppError('Current password is incorrect', 401));
     }
 
@@ -287,12 +279,10 @@ const changePartnerPassword = async (req, res, next) => {
     const newPasswordHash = await bcrypt.hash(newPassword, 12);
 
     // Update password
-    await db.run(
-      'UPDATE partner_users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    await query(
+      'UPDATE partner_users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [newPasswordHash, req.partnerUser.id]
     );
-
-    await db.close();
 
     res.status(200).json({
       success: true,

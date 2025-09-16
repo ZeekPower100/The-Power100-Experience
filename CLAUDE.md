@@ -803,3 +803,4 @@ See `docs/AUTO-ERROR-PREVENTION.md` for full details.
    suggest to skip it if it makes sense with a via argument for doing so. If I decide we skip it after you plea your case, ONLY
    THEN will we proceed to bypass our checkers. We should NEVER automatically bypass ur checkers. Its sole purpose is to check 
   for issues so I am getting into the habit of going against that.
+- We're only doing "Start all" options for the dev-manager.js for the time being when we are restarting the servers. Or more specifically stay away from "restart" because the backend keeps crashing when we use this command
