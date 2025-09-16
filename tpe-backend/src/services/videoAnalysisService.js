@@ -128,11 +128,26 @@ class VideoAnalysisService {
 
       // Prepare analysis prompt
       const analysisPrompt = `
-You are analyzing a partner demo video for The Power 100 Experience platform.
+You are analyzing a video that should be a partner demo or testimonial for The Power 100 Experience platform.
+This platform connects home improvement contractors with B2B service providers.
 Partner: ${partnerInfo.company_name || 'Unknown Partner'}
 Service Areas: ${partnerInfo.capabilities ? partnerInfo.capabilities.join(', ') : 'Not specified'}
 
-Please analyze this video content and provide:
+CRITICAL FIRST STEP - Content Relevance Check:
+1. Is this a business-related video? (not music, entertainment, gaming, etc.)
+2. Is this relevant to B2B services or home improvement industry?
+3. Is this a demo, testimonial, or educational content?
+
+If the video is NOT relevant (e.g., music video, movie trailer, gaming, etc.), return:
+{
+  "content_relevant": false,
+  "relevance_issue": "specific issue (e.g., 'This is a music video, not a business demo')",
+  "demo_quality_score": 0,
+  "scoring_reasoning": "Cannot score - video is not a business demo or testimonial. [Explain what it actually is]",
+  "recommendations": ["Upload an actual product demo video", "Use testimonial or case study content", "Ensure video showcases business solutions"]
+}
+
+If the video IS relevant, please analyze this video content and provide:
 
 1. **Demo Quality Score** (0-100) with detailed reasoning:
    - Overall score and WHY you gave this score
@@ -210,9 +225,47 @@ Provide the analysis in a structured JSON format.`;
 
       const analysis = safeJsonParse(completion.choices[0].message.content, {});
 
-      // Extract key insights for quick reference
+      // Check if content is relevant
+      if (analysis.content_relevant === false) {
+        console.log('⚠️ Video content not relevant for business analysis');
+
+        return {
+          success: true,
+          videoUrl,
+          partnerInfo,
+          contentRelevant: false,
+          relevanceIssue: analysis.relevance_issue || 'Video is not business-related content',
+          hasTranscript: transcript.hasTranscript,
+          frameCount: frames.length,
+          analysis: {
+            ...analysis,
+            demo_quality_score: 0,
+            scoring_reasoning: analysis.scoring_reasoning || `This appears to be ${analysis.relevance_issue}. A proper business demo or testimonial video is required for meaningful analysis.`
+          },
+          insights: {
+            quality_score: 0,
+            content_relevant: false,
+            relevance_issue: analysis.relevance_issue,
+            scoring_reasoning: analysis.scoring_reasoning || 'Content not relevant for business analysis',
+            recommendations: analysis.recommendations || [
+              'Upload a proper product demonstration video',
+              'Use customer testimonial videos',
+              'Ensure video content is business-related'
+            ]
+          },
+          metadata: {
+            analyzedAt: new Date().toISOString(),
+            videoId: this.extractYouTubeId(videoUrl),
+            thumbnailUrl: frames[0]?.url || null,
+            contentRelevant: false
+          }
+        };
+      }
+
+      // Extract key insights for relevant content
       const insights = {
         quality_score: analysis.demo_quality_score || 0,
+        content_relevant: analysis.content_relevant !== false,
         scoring_breakdown: analysis.scoring_breakdown || {},
         scoring_reasoning: analysis.scoring_reasoning || 'No detailed reasoning provided',
         key_features: analysis.key_features_demonstrated || [],
@@ -426,13 +479,38 @@ Format as actionable recommendations with specific examples.`;
    */
   generateScoreExplanation(analysis) {
     const score = analysis.insights?.quality_score || 0;
+    const contentRelevant = analysis.insights?.content_relevant !== false;
+    const relevanceIssue = analysis.insights?.relevance_issue;
     const breakdown = analysis.insights?.scoring_breakdown || {};
     const strengths = analysis.insights?.strengths || [];
     const improvements = analysis.insights?.improvements || [];
 
     let explanation = `## Demo Quality Score: ${score}/100\n\n`;
 
-    // Overall assessment
+    // Check content relevance first
+    if (!contentRelevant) {
+      explanation += `❌ **Content Not Relevant for Business Analysis**\n\n`;
+      explanation += `### Issue Detected:\n${relevanceIssue || 'This video does not appear to be business-related content.'}\n\n`;
+
+      explanation += `### Why Score is 0:\n`;
+      explanation += `${analysis.insights?.scoring_reasoning || 'Cannot evaluate non-business content using business demo criteria.'}\n\n`;
+
+      explanation += `### What You Need Instead:\n`;
+      const recommendations = analysis.insights?.recommendations || [];
+      if (recommendations.length > 0) {
+        recommendations.forEach(rec => {
+          explanation += `• ${rec}\n`;
+        });
+      } else {
+        explanation += `• Upload a proper product demonstration video\n`;
+        explanation += `• Use customer testimonial or case study videos\n`;
+        explanation += `• Ensure content showcases your business solutions\n`;
+      }
+
+      return explanation;
+    }
+
+    // Overall assessment for relevant content
     if (score >= 80) {
       explanation += "✅ **Excellent Demo** - This is a high-quality demonstration that effectively showcases value.\n\n";
     } else if (score >= 60) {

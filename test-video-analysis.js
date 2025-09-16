@@ -54,9 +54,27 @@ async function testVideoAnalysis() {
 
       if (insights) {
         console.log('\n🔍 Key Insights:');
-        console.log('  - Key Features:', insights.key_features?.slice(0, 3).join(', ') || 'None');
-        console.log('  - Strengths:', insights.strengths?.slice(0, 2).join(', ') || 'None');
-        console.log('  - Focus Areas:', insights.focus_areas?.slice(0, 3).join(', ') || 'None');
+
+        // Check content relevance
+        if (insights.content_relevant === false) {
+          console.log('\n⚠️ CONTENT RELEVANCE ISSUE DETECTED:');
+          console.log('  - Issue:', insights.relevance_issue || 'Not business content');
+          console.log('  - Reasoning:', insights.scoring_reasoning);
+          console.log('\n📝 Recommendations:');
+          if (insights.recommendations) {
+            insights.recommendations.forEach(rec => console.log(`  • ${rec}`));
+          }
+        } else {
+          console.log('  - Content Relevant: Yes');
+          console.log('  - Key Features:', insights.key_features?.slice(0, 3).join(', ') || 'None');
+          console.log('  - Strengths:', insights.strengths?.slice(0, 2).join(', ') || 'None');
+          console.log('  - Focus Areas:', insights.focus_areas?.slice(0, 3).join(', ') || 'None');
+        }
+
+        if (insights.scoring_reasoning) {
+          console.log('\n💭 Scoring Reasoning:');
+          console.log('  ', insights.scoring_reasoning);
+        }
       }
     }
 
