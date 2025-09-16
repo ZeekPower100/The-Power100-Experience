@@ -121,9 +121,9 @@ class PodcastEpisodes {
   static async getRecentEpisodes(limit = 20) {
     try {
       const result = await query(
-        `SELECT pe.*, ps.title as show_title
+        `SELECT pe.*, ps.name as show_title
          FROM podcast_episodes pe
-         JOIN podcast_shows ps ON pe.show_id = ps.id
+         LEFT JOIN podcast_shows ps ON pe.show_id = ps.id
          ORDER BY pe.publish_date DESC
          LIMIT $1`,
         [limit]
