@@ -353,7 +353,7 @@ Provide a JSON response with exactly 5 actionable insights:
   /**
    * AI Concierge - Generate conversational response for contractor
    */
-  async generateConciergeResponse(message, contractor, conversationHistory = [], partners = []) {
+  async generateConciergeResponse(message, contractor, conversationHistory = [], partners = [], knowledgeBase = {}) {
     // Initialize on first use
     this.initializeClient();
 
@@ -375,33 +375,148 @@ Provide a JSON response with exactly 5 actionable insights:
       partnerContext = `\n\nOur Strategic Partners in Your Network:\n${partnerList}\n\nWhen relevant to the contractor's question, recommend specific partners from this list by name. Explain why they would be a good fit based on their specializations and PowerConfidence scores.`;
     }
 
+    // Build comprehensive knowledge context
+    let knowledgeContext = '';
+
+    if (knowledgeBase && Object.keys(knowledgeBase).length > 0) {
+      // Add industry statistics
+      if (knowledgeBase.industryStats) {
+        const stats = knowledgeBase.industryStats;
+        const feedbackRate = stats.feedback_rate ? Number(stats.feedback_rate).toFixed(1) : '0';
+        knowledgeContext += `\n\nIndustry Insights:
+- ${stats.total_contractors} contractors in the TPX network
+- ${feedbackRate}% engagement rate
+- Common focus areas: ${stats.all_focus_areas ? 'customer retention, operational efficiency, growth strategies' : 'various'}`;
+      }
+
+      // Add book recommendations
+      if (knowledgeBase.books && knowledgeBase.books.length > 0) {
+        knowledgeContext += `\n\n=== BOOKS IN TPX LIBRARY (${knowledgeBase.books.length} total) ===`;
+        knowledgeContext += `\nALL THESE BOOKS ARE AVAILABLE IN OUR LIBRARY:\n`;
+        knowledgeBase.books.forEach((book, index) => {
+          const focusAreas = Array.isArray(book.focus_areas_covered)
+            ? book.focus_areas_covered.join(', ')
+            : book.focus_areas_covered || 'General business';
+          knowledgeContext += `\n${index + 1}. **"${book.title}"** by ${book.author}`;
+          knowledgeContext += `\n   Focus: ${focusAreas}`;
+          if (book.key_takeaways) {
+            knowledgeContext += `\n   Key Takeaways: ${book.key_takeaways.substring(0, 150)}`;
+          }
+          if (book.amazon_url) {
+            knowledgeContext += `\n   Purchase: ${book.amazon_url}`;
+          }
+          knowledgeContext += '\n';
+        });
+        knowledgeContext += `\n=== END OF BOOK LIST ===\n`;
+      }
+
+      // Add podcast insights
+      if (knowledgeBase.podcasts && knowledgeBase.podcasts.length > 0) {
+        knowledgeContext += `\n\n=== PODCASTS AVAILABLE IN TPX NETWORK (${knowledgeBase.podcasts.length} total) ===`;
+        knowledgeContext += `\nTHESE ARE ALL REAL PODCASTS IN OUR DATABASE. DO NOT SAY THEY DON'T EXIST:\n`;
+        knowledgeBase.podcasts.forEach((podcast, index) => {
+          const focusAreas = Array.isArray(podcast.focus_areas_covered)
+            ? podcast.focus_areas_covered.join(', ')
+            : podcast.focus_areas_covered || 'Industry insights';
+          const title = podcast.podcast_title || podcast.title;
+          const host = podcast.host || 'TPX Network';
+
+          knowledgeContext += `\n${index + 1}. **"${title}"** - Hosted by: ${host}`;
+          knowledgeContext += `\n   Focus Areas: ${focusAreas}`;
+          if (podcast.description) {
+            knowledgeContext += `\n   Description: ${podcast.description.substring(0, 150)}`;
+          }
+          if (podcast.spotify_url || podcast.apple_podcasts_url) {
+            knowledgeContext += `\n   Available on: `;
+            if (podcast.spotify_url) knowledgeContext += `Spotify `;
+            if (podcast.apple_podcasts_url) knowledgeContext += `Apple Podcasts`;
+          }
+          knowledgeContext += '\n';
+        });
+        knowledgeContext += `\n=== END OF PODCAST LIST ===\n`;
+      }
+
+      // Add upcoming events
+      if (knowledgeBase.events && knowledgeBase.events.length > 0) {
+        knowledgeContext += `\n\nUpcoming TPX Events & Workshops:`;
+        knowledgeBase.events.slice(0, 5).forEach(event => {
+          knowledgeContext += `\n- "${event.name}" (${event.event_type}) - ${event.location || 'Virtual'}.`;
+          if (event.date) {
+            knowledgeContext += ` Date: ${new Date(event.date).toLocaleDateString()}.`;
+          }
+          if (event.price_range) {
+            knowledgeContext += ` Price: ${event.price_range}.`;
+          }
+          if (event.registration_url) {
+            knowledgeContext += ` [Register: ${event.registration_url}]`;
+          }
+        });
+      }
+
+      // Add videos if available
+      if (knowledgeBase.videos && knowledgeBase.videos.length > 0) {
+        knowledgeContext += `\n\nTraining Videos & Resources:`;
+        knowledgeBase.videos.slice(0, 5).forEach(video => {
+          knowledgeContext += `\n- "${video.title}" - ${video.description ? video.description.substring(0, 80) + '...' : 'Training video'}`;
+          if (video.file_url) {
+            knowledgeContext += ` [Watch: ${video.file_url}]`;
+          }
+        });
+      }
+    }
+
     const systemPrompt = `You are the AI Concierge for The Power100 Experience (TPX), a premium business growth platform that connects contractors with strategic partners and resources.
 
-Your role is to provide personalized, strategic business advice as a trusted advisor who knows their business intimately.
+Your role is to provide personalized, strategic business advice as a trusted advisor who knows their business intimately. You have access to comprehensive industry data, partner feedback, and continuous learning from all TPX resources.
+
+CRITICAL INSTRUCTION: You have access to REAL resources from our database, clearly marked in === sections below.
+- Everything in the === BOOKS IN TPX LIBRARY === section is a REAL book we have
+- Everything in the === PODCASTS AVAILABLE IN TPX NETWORK === section is a REAL podcast we have
+- Everything in the === STRATEGIC PARTNERS === section is a REAL partner we work with
+- DO NOT say something isn't available if it's listed in these sections
+- DO NOT recommend resources outside these lists${partnerContext}${knowledgeContext}
 
 Key Guidelines:
 - Be conversational and approachable, like a trusted business mentor
-- Provide specific, actionable advice tailored to their situation
-- Focus on practical strategies they can implement immediately
-- Reference industry best practices and success patterns you've observed
-- Be encouraging while maintaining realistic expectations${partnerContext}
+- ALWAYS recommend specific TPX partners by name with their PowerConfidence scores
+- ALWAYS suggest specific books from our library with titles and authors
+- ALWAYS mention specific podcasts, events, or videos when relevant
+- Provide actionable advice with specific TPX resources, not generic suggestions
+- Include contact info, URLs, and pricing when available
+- Reference actual data like satisfaction scores, engagement rates, testimonials
 
 When discussing partners:
-- ONLY recommend partners from the list provided above (if available)
-- Mention specific partner names when relevant (e.g., "Buildr specializes in...")
-- Explain why a specific partner would be a good fit based on their focus areas
-- Include the PowerConfidence Score when mentioning a partner
-- If no partners match their need, acknowledge this and suggest what type of partner would help
+- ALWAYS use specific partner names from the list above (e.g., "I recommend Destination Motivation (PowerConfidence Score: 85) for...")
+- Include their website, contact email, and pricing model when available
+- Explain why THIS SPECIFIC partner matches their needs
+- Share their unique value proposition and success stories
+- Never say "consider strategic partners" - name the actual partners
+
+When making recommendations:
+- FOR BOOKS: ONLY recommend books that are in the "Recommended Books Available in TPX Library" section above
+  Example: "I recommend 'Traction' by Gino Wickman from our TPX library, which focuses on operational efficiency"
+  DO NOT recommend books like "SPIN Selling" or "Influence" unless they are in our TPX library above
+- FOR PODCASTS: ALL podcasts listed in the "Podcasts Available in TPX Network" section above ARE part of our network
+  When a user asks about ANY podcast that appears in that list, you MUST acknowledge it exists
+  Read the ENTIRE podcast list carefully - every single podcast listed there is available
+  DO NOT claim a podcast isn't in our network if it appears in the list above
+- FOR EVENTS: ONLY recommend events from the "Upcoming TPX Events & Workshops" section above
+- FOR VIDEOS: ONLY recommend videos from the "Training Videos & Resources" section above
+- NEVER give generic recommendations when specific TPX resources are available
+- ALWAYS cite the specific resource from the lists provided above
 
 Your knowledge includes:
-- Construction industry best practices
-- Business growth strategies for contractors
-- Team building and operational efficiency
-- Financial management and cash flow optimization
-- Technology adoption and digital transformation
-- Marketing and customer acquisition strategies
+- Construction industry best practices from hundreds of contractors
+- Business growth strategies validated by TPX network data
+- Team building and operational efficiency patterns
+- Financial management insights from industry leaders
+- Technology adoption trends in home improvement
+- Marketing strategies proven successful in the field
+- Real feedback data from PowerCard surveys
+- Transcribed insights from industry podcasts and videos
+- Key takeaways from recommended business books
 
-Always remember: You're here to be their AI-powered business advisor, providing insights and recommendations based on their unique situation and goals.`;
+Always remember: You're here to be their AI-powered business advisor, providing insights and recommendations based on their unique situation, goals, AND the collective intelligence of the entire TPX ecosystem.`;
 
     // Build contractor context
     const contractorContext = `
@@ -416,6 +531,7 @@ Contractor Information:
     `.trim();
 
     try {
+
       const messages = [
         { role: 'system', content: systemPrompt },
         { role: 'system', content: contractorContext }

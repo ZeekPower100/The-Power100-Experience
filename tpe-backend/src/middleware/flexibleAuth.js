@@ -122,6 +122,14 @@ const identifyAndValidateToken = async (token) => {
 
 // Flexible protect middleware - works with any token type
 const flexibleProtect = async (req, res, next) => {
+  // Development mode bypass for AI Concierge
+  console.log('🔍 Request path in middleware:', req.path, 'Original URL:', req.originalUrl);
+  if (process.env.NODE_ENV === 'development' && (req.originalUrl.includes('/ai-concierge') || req.baseUrl?.includes('/ai-concierge')) && !req.headers.authorization) {
+    console.log('🔧 Dev mode: Bypassing auth for AI Concierge');
+    req.contractor = { id: '1', name: 'Test User', company_name: 'Test Company' };
+    return next();
+  }
+
   let token;
 
   // Check for token in headers

@@ -174,8 +174,9 @@ export default function AIConciergePage() {
         const container = chatContainerRef.current;
         const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
 
-        // Show scroll button if not near bottom
-        setShowScrollButton(!isNearBottom && messages.length > 1);
+        // Show scroll button if not near bottom and there are messages
+        const shouldShowButton = !isNearBottom && messages.length > 1;
+        setShowScrollButton(shouldShowButton);
 
         // If user scrolled away from bottom, mark as manual scroll
         if (!isNearBottom && messages.length > 1) {
@@ -189,6 +190,8 @@ export default function AIConciergePage() {
     const container = chatContainerRef.current;
     if (container) {
       container.addEventListener('scroll', handleScroll);
+      // Trigger initial check
+      handleScroll();
       return () => container.removeEventListener('scroll', handleScroll);
     }
   }, [messages.length]);
@@ -336,34 +339,33 @@ export default function AIConciergePage() {
   const checkContractorAccess = async () => {
     try {
       // In development, use fetch directly without token to trigger dev bypass
-      if (process.env.NODE_ENV === 'development') {
+      const isDevelopment = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      if (isDevelopment) {
         const response = await fetch('http://localhost:5000/api/ai-concierge/access-status');
         const accessResponse = await response.json();
 
-        if (accessResponse.success && accessResponse.contractor) {
-          const profile: ContractorProfile = {
-            name: accessResponse.contractor.name,
-            company: accessResponse.contractor.company,
-            focusAreas: accessResponse.contractor.focusAreas || [],
-            completedFeedback: accessResponse.contractor.completedFeedback,
-            aiConciergeAccess: accessResponse.contractor.aiCoachAccess
+        const profile: ContractorProfile = {
+          name: accessResponse.contractor?.name || 'Test User',
+          company: accessResponse.contractor?.company || 'Test Company',
+          focusAreas: accessResponse.contractor?.focusAreas || [],
+          completedFeedback: true, // In dev mode, always true
+          aiConciergeAccess: accessResponse.hasAccess || true // Use hasAccess from response
+        };
+
+        setContractorProfile(profile);
+        setIsLoading(false);
+
+        // Initialize welcome message if access granted (always true in dev)
+        if (profile.aiConciergeAccess) {
+          const welcomeMessage: Message = {
+            id: 'welcome-' + Date.now(),
+            type: 'ai',
+            content: `Hello ${profile.name}! 👋 I'm your AI Concierge, your always-available business advisor powered by insights from our partner network and business intelligence. I'm here to help you grow ${profile.company} with personalized recommendations tailored to your specific needs. What challenges can I help you solve today?`,
+            timestamp: new Date()
           };
-
-          setContractorProfile(profile);
-          setIsLoading(false);
-
-          // Initialize welcome message if access granted
-          if (profile.aiConciergeAccess && profile.completedFeedback) {
-            const welcomeMessage: Message = {
-              id: 'welcome-' + Date.now(),
-              type: 'ai',
-              content: `Hello ${profile.name}! 👋 I'm your AI Concierge, your always-available business advisor powered by insights from our partner network and business intelligence. I'm here to help you grow ${profile.company} with personalized recommendations tailored to your specific needs. What challenges can I help you solve today?`,
-              timestamp: new Date()
-            };
-            setMessages([welcomeMessage]);
-          }
-          return;
+          setMessages([welcomeMessage]);
         }
+        return; // Always return in dev mode
       }
 
       // Production flow - use normal API with auth
@@ -406,7 +408,8 @@ export default function AIConciergePage() {
   const loadConversationHistory = async () => {
     try {
       // In development, use fetch directly without token to trigger dev bypass
-      if (process.env.NODE_ENV === 'development') {
+      const isDevelopment = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      if (isDevelopment) {
         const response = await fetch('http://localhost:5000/api/ai-concierge/conversations');
         const data = await response.json();
 
@@ -658,15 +661,16 @@ export default function AIConciergePage() {
     try {
       // In development, use fetch directly without token to trigger dev bypass
       let response;
-      if (process.env.NODE_ENV === 'development') {
+      const isDevelopment = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+      if (isDevelopment) {
         const res = await fetch('http://localhost:5000/api/ai-concierge/message', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            content,
-            conversationId: currentConversationId || undefined
+            message: content,  // Changed from 'content' to 'message' to match backend
+            session_id: currentConversationId || undefined
           })
         });
         response = await res.json();
@@ -1084,27 +1088,21 @@ export default function AIConciergePage() {
         <Card className="w-full max-w-md text-center">
           <CardContent className="p-8">
             <Lock className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">AI Concierge Access Required</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Personalize Your AI Concierge</h2>
             <p className="text-gray-600 mb-6">
-              Complete the feedback loop process to unlock access to your personalized AI Concierge.
+              The value our platform brings is tailored specifically to your unique business needs.
+              Before gaining access to your AI Concierge, tell us a bit about yourself so we can
+              customize your experience to provide maximum value.
             </p>
-            <div className="space-y-3 mb-6">
-              <div className="flex items-center justify-center gap-2">
-                {contractorProfile?.completedFeedback ? (
-                  <CheckCircle className="w-5 h-5 text-green-500" />
-                ) : (
-                  <XCircle className="w-5 h-5 text-red-500" />
-                )}
-                <span className={contractorProfile?.completedFeedback ? 'text-green-600' : 'text-red-600'}>
-                  Feedback Loop Completion
-                </span>
-              </div>
-            </div>
-            <Button 
-              onClick={() => router.push('/feedback/survey')}
-              className="w-full bg-red-600 hover:bg-red-700 text-white"
+            <p className="text-sm text-gray-500 mb-6">
+              Your AI Concierge will use this information to provide personalized recommendations,
+              connect you with the right partners, and anticipate your business growth needs.
+            </p>
+            <Button
+              onClick={() => router.push('/contractorflow')}
+              className="w-full bg-power100-green hover:bg-green-600 text-white font-semibold"
             >
-              Complete Feedback Survey
+              Tell Us A Bit About Yourself
             </Button>
           </CardContent>
         </Card>
