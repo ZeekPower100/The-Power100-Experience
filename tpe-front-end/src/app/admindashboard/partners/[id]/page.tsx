@@ -378,8 +378,18 @@ export default function PartnerViewPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
-            <label className="text-sm font-medium text-gray-500">Service Category</label>
-            <p className="text-lg">{partner.service_category || 'N/A'}</p>
+            <label className="text-sm font-medium text-gray-500">Services Offered by Ideal Client</label>
+            <div className="flex flex-wrap gap-2 mt-1">
+              {parseJSON(partner.service_areas).length > 0 ? (
+                parseJSON(partner.service_areas).map((service: string, idx: number) => (
+                  <Badge key={idx} className="bg-blue-100 text-blue-800">
+                    {service}
+                  </Badge>
+                ))
+              ) : (
+                <span className="text-lg">N/A</span>
+              )}
+            </div>
           </div>
           
           <div>

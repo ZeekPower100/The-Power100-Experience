@@ -804,3 +804,4 @@ See `docs/AUTO-ERROR-PREVENTION.md` for full details.
    THEN will we proceed to bypass our checkers. We should NEVER automatically bypass ur checkers. Its sole purpose is to check 
   for issues so I am getting into the habit of going against that.
 - We're only doing "Start all" options for the dev-manager.js for the time being when we are restarting the servers. Or more specifically stay away from "restart" because the backend keeps crashing when we use this command
+- 13-14 minutes is the average time it takes for auto deployment (via remote git push to master branch) to complete and updates to show in production

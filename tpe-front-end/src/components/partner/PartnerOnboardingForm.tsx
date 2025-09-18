@@ -76,8 +76,7 @@ const FOCUS_AREAS_12_MONTHS = [
   { value: 'operations', label: 'Operations' },
   { value: 'customer_experience', label: 'Customer Experience' },
   { value: 'technology', label: 'Technology' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'sales', label: 'Sales' },
+  { value: 'sales', label: 'Increasing Sales' },
   { value: 'financing', label: 'Financing' },
   { value: 'partnerships', label: 'Partnerships' },
   { value: 'marketing_efforts', label: 'Marketing Efforts' },
@@ -456,16 +455,11 @@ export default function PartnerOnboardingForm() {
         focus_areas_12_months: formData.focus_areas_12_months,
         
         // Step 6: Marketing & Sponsorships
-        // Combine predefined events with custom events (just the names)
-        sponsored_events: [
-          ...formData.sponsored_events,
-          ...formData.other_sponsored_events.map(e => e.name)
-        ],
-        // Combine predefined podcasts with custom podcasts (just the names)
-        podcast_appearances: [
-          ...formData.podcast_appearances,
-          ...formData.other_podcast_appearances.map(e => e.name)
-        ],
+        // Send as separate fields for backend processing
+        sponsored_events: formData.sponsored_events,
+        other_sponsored_events: formData.other_sponsored_events,
+        podcast_appearances: formData.podcast_appearances,
+        other_podcast_appearances: formData.other_podcast_appearances,
         books_read_recommended: formData.books_read_recommended,
         
         // Step 7: Strategic Partners

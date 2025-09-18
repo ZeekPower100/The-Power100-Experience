@@ -70,8 +70,7 @@ const FOCUS_AREAS_12_MONTHS = [
   { value: 'operations', label: 'Operations' },
   { value: 'customer_experience', label: 'Customer Experience' },
   { value: 'technology', label: 'Technology' },
-  { value: 'marketing', label: 'Marketing' },
-  { value: 'sales', label: 'Sales' },
+  { value: 'sales', label: 'Increasing Sales' },
   { value: 'financing', label: 'Financing' },
   { value: 'partnerships', label: 'Partnerships' },
   { value: 'marketing_efforts', label: 'Marketing Efforts' },
@@ -658,16 +657,25 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         power_confidence_score: formData.power_confidence_score,
         pricing_model: formData.pricing_model,
         onboarding_process: formData.onboarding_process,
-        
-        // Sponsorships & Media - combine predefined and custom entries
-        sponsored_events: [
-          ...formData.sponsored_events,
-          ...(formData.other_sponsored_events || []).map(e => e.name)
-        ],
-        podcast_appearances: [
-          ...formData.podcast_appearances,
-          ...(formData.other_podcast_appearances || []).map(p => p.name)
-        ],
+
+        // Competitive Analysis fields
+        service_category: formData.service_category,
+        why_clients_choose_you: formData.why_clients_choose_you,
+        why_clients_choose_competitors: formData.why_clients_choose_competitors,
+        value_proposition: formData.value_proposition,
+        focus_areas_12_months: formData.focus_areas_12_months,
+
+        // Sponsorships & Media - keep separate for backend
+        sponsored_events: formData.sponsored_events,
+        other_sponsored_events: formData.other_sponsored_events?.map(e => ({
+          name: e.name,
+          url: e.url
+        })) || [],
+        podcast_appearances: formData.podcast_appearances,
+        other_podcast_appearances: formData.other_podcast_appearances?.map(p => ({
+          name: p.name,
+          url: p.url
+        })) || [],
         books_read_recommended: formData.books_read_recommended,
         best_working_partnerships: formData.best_working_partnerships,
         client_count: formData.client_count,
@@ -684,17 +692,8 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
         })),
         client_references: formData.client_references,
         
-        // Store additional comprehensive data in key_differentiators as JSON
-        key_differentiators: [
-          `Service Category: ${formData.service_category}`,
-          `Why Clients Choose Us: ${formData.why_clients_choose_you}`,
-          `Why Clients Choose Competitors: ${formData.why_clients_choose_competitors}`,
-          `Focus Areas 12 Months: ${formData.focus_areas_12_months.join(', ')}`,
-          `Ownership Type: ${formData.ownership_type}`,
-          `Established: ${formData.established_year}`,
-          `Employee Count: ${formData.employee_count}`,
-          `Client Count: ${formData.client_count}`
-        ].filter(item => !item.includes(': undefined') && !item.includes(': ')),
+        // Key differentiators - reserved for AI-generated contextual insights
+        key_differentiators: formData.key_differentiators || [],
         
         is_active: formData.is_active,
         last_quarterly_report: formData.last_quarterly_report || null
@@ -1466,11 +1465,14 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
               </div>
               <div className="mt-4">
                 <Label htmlFor="other_podcast_appearances">Other podcasts not listed above</Label>
-                <SimpleDynamicList
+                <p className="text-sm text-power100-grey mb-2">
+                  Add any additional podcasts with their URLs
+                </p>
+                <DynamicListWithUrl
                   items={formData.other_podcast_appearances || []}
                   onChange={(items) => handleInputChange('other_podcast_appearances', items)}
-                  placeholder="Enter additional podcast name"
-                  className="mt-1"
+                  namePlaceholder="Enter additional podcast name"
+                  urlPlaceholder="Enter podcast URL (optional)"
                   addButtonText="Add Podcast"
                 />
               </div>

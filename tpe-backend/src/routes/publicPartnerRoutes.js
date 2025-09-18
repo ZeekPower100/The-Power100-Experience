@@ -115,10 +115,12 @@ router.post('/apply', async (req, res) => {
     const jsonFields = [
       'target_revenue_audience', 'service_areas', 'focus_areas_12_months',
       'tech_stack_sales', 'tech_stack_operations', 'tech_stack_marketing',
-      'tech_stack_customer_experience', 'tech_stack_installation_pm', 
-      'tech_stack_accounting_finance', 'sponsored_events', 'podcast_appearances',
+      'tech_stack_customer_experience', 'tech_stack_installation_pm',
+      'tech_stack_accounting_finance', 'sponsored_events', 'other_sponsored_events',
+      'podcast_appearances', 'other_podcast_appearances',
       'client_demos', 'client_references', 'employee_references', 'client_testimonials', 'focus_areas_served',
-      'target_revenue_range', 'geographic_regions', 'key_differentiators', 'best_working_partnerships'
+      'target_revenue_range', 'geographic_regions', 'key_differentiators', 'best_working_partnerships',
+      'books_read_recommended'
     ];
     
     jsonFields.forEach(field => {
@@ -137,13 +139,14 @@ router.post('/apply', async (req, res) => {
       'sales_contact_name', 'sales_contact_email', 'sales_contact_phone', 
       'onboarding_contact_name', 'onboarding_contact_email', 'onboarding_contact_phone',
       'marketing_contact_name', 'marketing_contact_email', 'marketing_contact_phone',
-      'target_revenue_audience', 'service_areas', 'sponsored_events', 'podcast_appearances',
-      'value_proposition', 'why_clients_choose_you', 'focus_areas_12_months',
+      'target_revenue_audience', 'service_areas', 'sponsored_events', 'other_sponsored_events',
+      'podcast_appearances', 'other_podcast_appearances',
+      'value_proposition', 'why_clients_choose_you', 'why_clients_choose_competitors', 'focus_areas_12_months',
       'tech_stack_marketing', 'tech_stack_crm', 'tech_stack_analytics', 'tech_stack_communication',
       'tech_stack_financial', 'tech_stack_project_management',
       'client_demos', 'client_references', 'employee_references', 'landing_page_videos',
       'primary_contact', 'secondary_contact', 'company_description', 'best_working_partnerships',
-      'completed_steps'
+      'books_read_recommended', 'completed_steps'
     ];
     
     // Filter to only include valid columns

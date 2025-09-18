@@ -149,7 +149,8 @@ const createPartner = async (req, res, next) => {
     tech_stack_analytics, tech_stack_marketing, tech_stack_financial,
     
     // Step 7: Marketing & Partnership
-    sponsored_events, podcast_appearances, books_read_recommended, best_working_partnerships,
+    sponsored_events, other_sponsored_events, podcast_appearances, other_podcast_appearances,
+    books_read_recommended, best_working_partnerships,
     
     // Step 8: Client Demos & References
     client_demos, client_references
@@ -176,9 +177,10 @@ const createPartner = async (req, res, next) => {
       focus_areas_12_months,
       tech_stack_crm, tech_stack_project_management, tech_stack_communication,
       tech_stack_analytics, tech_stack_marketing, tech_stack_financial,
-      sponsored_events, podcast_appearances, books_read_recommended, best_working_partnerships,
+      sponsored_events, other_sponsored_events, podcast_appearances, other_podcast_appearances,
+      books_read_recommended, best_working_partnerships,
       client_demos, client_references
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66)
     RETURNING *
   `, [
     // Basic values
@@ -200,7 +202,9 @@ const createPartner = async (req, res, next) => {
     safeJsonStringify(focus_areas_12_months || []),
     safeJsonStringify(tech_stack_crm || []), safeJsonStringify(tech_stack_project_management || []), safeJsonStringify(tech_stack_communication || []),
     safeJsonStringify(tech_stack_analytics || []), safeJsonStringify(tech_stack_marketing || []), safeJsonStringify(tech_stack_financial || []),
-    safeJsonStringify(sponsored_events || []), safeJsonStringify(podcast_appearances || []), books_read_recommended, best_working_partnerships,
+    safeJsonStringify(sponsored_events || []), safeJsonStringify(other_sponsored_events || []),
+    safeJsonStringify(podcast_appearances || []), safeJsonStringify(other_podcast_appearances || []),
+    books_read_recommended, best_working_partnerships,
     safeJsonStringify(client_demos || []), safeJsonStringify(client_references || [])
   ]);
 
@@ -259,8 +263,8 @@ const updatePartner = async (req, res, next) => {
     'tech_stack_analytics', 'tech_stack_marketing', 'tech_stack_financial',
     
     // Marketing & Partnerships
-    'sponsored_events', 'podcast_appearances', 'books_read_recommended',
-    'best_working_partnerships',
+    'sponsored_events', 'other_sponsored_events', 'podcast_appearances', 'other_podcast_appearances',
+    'books_read_recommended', 'best_working_partnerships',
     
     // Client Information
     'client_demos', 'client_references', 'client_testimonials',
@@ -290,7 +294,8 @@ const updatePartner = async (req, res, next) => {
         'key_differentiators', 'service_areas', 'target_revenue_audience',
         'focus_areas_12_months', 'tech_stack_crm', 'tech_stack_project_management',
         'tech_stack_communication', 'tech_stack_analytics', 'tech_stack_marketing',
-        'tech_stack_financial', 'sponsored_events', 'podcast_appearances',
+        'tech_stack_financial', 'sponsored_events', 'other_sponsored_events',
+        'podcast_appearances', 'other_podcast_appearances',
         'client_demos', 'client_references', 'client_testimonials', 'landing_page_videos'
       ];
       
