@@ -7,9 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
-import { Mic, Headphones, Users, BarChart, Phone, X } from 'lucide-react';
+import { Mic, Headphones, Users, BarChart, Phone, X, Check } from 'lucide-react';
 import { Podcast } from '@/lib/types/podcast';
 import LogoManager from '@/components/admin/LogoManager';
 import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
@@ -481,12 +480,24 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
                 <p className="text-sm text-power100-grey mb-3">Ensures your podcast reaches the right contractors</p>
                 <div className="grid grid-cols-2 gap-3">
                   {FOCUS_AREAS.map(area => (
-                    <div key={area.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={area.value}
-                        checked={selectedFocusAreas.includes(area.value)}
-                        onCheckedChange={() => handleFocusAreaToggle(area.value)}
-                      />
+                    <div
+                      key={area.value}
+                      className="flex items-center space-x-2 cursor-pointer"
+                      onClick={() => handleFocusAreaToggle(area.value)}
+                    >
+                      <div
+                        className={`
+                          h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                          ${selectedFocusAreas.includes(area.value)
+                            ? 'bg-black border-black'
+                            : 'border-gray-300 bg-white'
+                          }
+                        `}
+                      >
+                        {selectedFocusAreas.includes(area.value) && (
+                          <Check className="h-3 w-3 text-white" />
+                        )}
+                      </div>
                       <Label htmlFor={area.value} className="font-normal cursor-pointer">
                         {area.label}
                       </Label>
@@ -641,12 +652,23 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
                   />
                 </div>
                 
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="is_host"
-                    checked={formData.is_host}
-                    onCheckedChange={(checked) => handleCheckboxChange('is_host', checked as boolean)}
-                  />
+                <div
+                  className="flex items-center space-x-2 cursor-pointer"
+                  onClick={() => handleCheckboxChange('is_host', !formData.is_host)}
+                >
+                  <div
+                    className={`
+                      h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                      ${formData.is_host
+                        ? 'bg-black border-black'
+                        : 'border-gray-300 bg-white'
+                      }
+                    `}
+                  >
+                    {formData.is_host && (
+                      <Check className="h-3 w-3 text-white" />
+                    )}
+                  </div>
                   <Label htmlFor="is_host" className="font-normal">
                     Submitter is the host
                   </Label>
@@ -717,14 +739,23 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
               </div>
 
               <div className="border-t pt-4">
-                <div className="flex items-center space-x-2 mb-4">
-                  <Checkbox
-                    id="accepts_guests"
-                    checked={formData.accepts_guest_requests}
-                    onCheckedChange={(checked) => 
-                      setFormData(prev => ({ ...prev, accepts_guest_requests: checked as boolean }))
-                    }
-                  />
+                <div
+                  className="flex items-center space-x-2 mb-4 cursor-pointer"
+                  onClick={() => setFormData(prev => ({ ...prev, accepts_guest_requests: !prev.accepts_guest_requests }))}
+                >
+                  <div
+                    className={`
+                      h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                      ${formData.accepts_guest_requests
+                        ? 'bg-black border-black'
+                        : 'border-gray-300 bg-white'
+                      }
+                    `}
+                  >
+                    {formData.accepts_guest_requests && (
+                      <Check className="h-3 w-3 text-white" />
+                    )}
+                  </div>
                   <Label htmlFor="accepts_guests">I accept guest requests from contractors</Label>
                 </div>
 

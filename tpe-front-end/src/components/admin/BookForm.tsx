@@ -7,9 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
-import { ArrowLeft, Save, BookOpen, User, Building, Quote, Target, Sparkles, X, Upload } from 'lucide-react';
+import { ArrowLeft, Save, BookOpen, User, Building, Quote, Target, Sparkles, X, Upload, Check } from 'lucide-react';
 import { Book } from '@/lib/types/book';
 import LogoManager from '@/components/admin/LogoManager';
 import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
@@ -407,12 +406,23 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
                   />
                 </div>
                 
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="is_author"
-                    checked={formData.is_author}
-                    onCheckedChange={(checked) => handleCheckboxChange('is_author', checked as boolean)}
-                  />
+                <div
+                  className="flex items-center space-x-2 cursor-pointer"
+                  onClick={() => handleCheckboxChange('is_author', !formData.is_author)}
+                >
+                  <div
+                    className={`
+                      h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                      ${formData.is_author
+                        ? 'bg-black border-black'
+                        : 'border-gray-300 bg-white'
+                      }
+                    `}
+                  >
+                    {formData.is_author && (
+                      <Check className="h-3 w-3 text-white" />
+                    )}
+                  </div>
                   <Label htmlFor="is_author" className="font-normal">
                     Submitter is the author
                   </Label>
@@ -473,14 +483,23 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
               </div>
 
               <div className="border-t pt-4">
-                <div className="flex items-center space-x-2 mb-4">
-                  <Checkbox
-                    id="has_ea"
-                    checked={formData.has_executive_assistant}
-                    onCheckedChange={(checked) => 
-                      setFormData(prev => ({ ...prev, has_executive_assistant: checked as boolean }))
-                    }
-                  />
+                <div
+                  className="flex items-center space-x-2 mb-4 cursor-pointer"
+                  onClick={() => setFormData(prev => ({ ...prev, has_executive_assistant: !prev.has_executive_assistant }))}
+                >
+                  <div
+                    className={`
+                      h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                      ${formData.has_executive_assistant
+                        ? 'bg-black border-black'
+                        : 'border-gray-300 bg-white'
+                      }
+                    `}
+                  >
+                    {formData.has_executive_assistant && (
+                      <Check className="h-3 w-3 text-white" />
+                    )}
+                  </div>
                   <Label htmlFor="has_ea">I have an executive assistant</Label>
                 </div>
 
@@ -602,12 +621,24 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
                 <p className="text-sm text-power100-grey mb-3">Ensures your book reaches the right contractors</p>
                 <div className="grid grid-cols-2 gap-3">
                   {FOCUS_AREAS.map(area => (
-                    <div key={area.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={area.value}
-                        checked={selectedFocusAreas.includes(area.value)}
-                        onCheckedChange={() => handleFocusAreaToggle(area.value)}
-                      />
+                    <div
+                      key={area.value}
+                      className="flex items-center space-x-2 cursor-pointer"
+                      onClick={() => handleFocusAreaToggle(area.value)}
+                    >
+                      <div
+                        className={`
+                          h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                          ${selectedFocusAreas.includes(area.value)
+                            ? 'bg-black border-black'
+                            : 'border-gray-300 bg-white'
+                          }
+                        `}
+                      >
+                        {selectedFocusAreas.includes(area.value) && (
+                          <Check className="h-3 w-3 text-white" />
+                        )}
+                      </div>
                       <Label htmlFor={area.value} className="font-normal cursor-pointer">
                         {area.label}
                       </Label>

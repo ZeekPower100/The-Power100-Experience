@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
 import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
 import { DynamicListWithUrl, ItemWithUrl } from '@/components/ui/dynamic-list-with-url';
 import { ClientReferenceList, type ClientReference } from '@/components/ui/client-reference-list';
@@ -15,7 +14,7 @@ import { DemoUploadList, type DemoItem } from '@/components/ui/demo-upload-list'
 import LogoManager from '@/components/admin/LogoManager';
 import { partnerApi } from '@/lib/api';
 import { getApiUrl } from '@/utils/api';
-import { Building2, AlertTriangle, Users, FileText, Star, Target, CheckCircle, Plus, X, Search, UserPlus } from 'lucide-react';
+import { Building2, AlertTriangle, Users, FileText, Star, Target, CheckCircle, Plus, X, Search, UserPlus, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
@@ -416,6 +415,7 @@ export default function PartnerOnboardingForm() {
         // Comprehensive Onboarding Fields - Step 1: Company Information
         established_year: formData.established_year,
         employee_count: formData.employee_count,
+        client_count: formData.client_count,
         ownership_type: formData.ownership_type,
         company_description: formData.company_description,
         
@@ -998,28 +998,41 @@ export default function PartnerOnboardingForm() {
                       <Label className="font-semibold text-base">Ideal Client's Revenue Range (Select up to 3) *</Label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
                         {TARGET_REVENUE_OPTIONS.map(option => (
-                          <div key={option.value} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`revenue-${option.value}`}
-                              checked={formData.target_revenue_audience.includes(option.value)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  if (formData.target_revenue_audience.length < 3) {
-                                    setFormData(prev => ({
-                                      ...prev,
-                                      target_revenue_audience: [...prev.target_revenue_audience, option.value]
-                                    }));
-                                  }
-                                } else {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    target_revenue_audience: prev.target_revenue_audience.filter(r => r !== option.value)
-                                  }));
+                          <div
+                            key={option.value}
+                            className="flex items-center space-x-2 cursor-pointer"
+                            onClick={() => {
+                              if (formData.target_revenue_audience.includes(option.value)) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  target_revenue_audience: prev.target_revenue_audience.filter(r => r !== option.value)
+                                }));
+                              } else if (formData.target_revenue_audience.length < 3) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  target_revenue_audience: [...prev.target_revenue_audience, option.value]
+                                }));
+                              }
+                            }}
+                          >
+                            <div
+                              className={`
+                                h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                                ${formData.target_revenue_audience.includes(option.value)
+                                  ? 'bg-black border-black'
+                                  : 'border-gray-300 bg-white'
                                 }
-                              }}
-                              disabled={!formData.target_revenue_audience.includes(option.value) && formData.target_revenue_audience.length >= 3}
-                            />
-                            <Label htmlFor={`revenue-${option.value}`} className="text-sm cursor-pointer">
+                                ${!formData.target_revenue_audience.includes(option.value) && formData.target_revenue_audience.length >= 3
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : ''
+                                }
+                              `}
+                            >
+                              {formData.target_revenue_audience.includes(option.value) && (
+                                <Check className="h-3 w-3 text-white" />
+                              )}
+                            </div>
+                            <Label htmlFor={`revenue-${option.value}`} className="text-sm cursor-pointer select-none">
                               {option.label}
                             </Label>
                           </div>
@@ -1062,25 +1075,37 @@ export default function PartnerOnboardingForm() {
                       </div>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {SERVICE_AREAS.map(service => (
-                          <div key={service.value} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`service-${service.value}`}
-                              checked={formData.service_areas.includes(service.value)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    service_areas: [...prev.service_areas, service.value]
-                                  }));
-                                } else {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    service_areas: prev.service_areas.filter(s => s !== service.value)
-                                  }));
+                          <div
+                            key={service.value}
+                            className="flex items-center space-x-2 cursor-pointer"
+                            onClick={() => {
+                              if (formData.service_areas.includes(service.value)) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  service_areas: prev.service_areas.filter(s => s !== service.value)
+                                }));
+                              } else {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  service_areas: [...prev.service_areas, service.value]
+                                }));
+                              }
+                            }}
+                          >
+                            <div
+                              className={`
+                                h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                                ${formData.service_areas.includes(service.value)
+                                  ? 'bg-black border-black'
+                                  : 'border-gray-300 bg-white'
                                 }
-                              }}
-                            />
-                            <Label htmlFor={`service-${service.value}`} className="text-sm cursor-pointer">
+                              `}
+                            >
+                              {formData.service_areas.includes(service.value) && (
+                                <Check className="h-3 w-3 text-white" />
+                              )}
+                            </div>
+                            <Label htmlFor={`service-${service.value}`} className="text-sm cursor-pointer select-none">
                               {service.label}
                             </Label>
                           </div>
@@ -1163,7 +1188,7 @@ export default function PartnerOnboardingForm() {
                         ].map(area => (
                           <div
                             key={area.value}
-                            className="p-4 rounded-lg border-2 border-gray-200 hover:border-power100-red transition-colors cursor-pointer"
+                            className={`p-4 rounded-lg border-2 transition-colors cursor-pointer ${(formData.focus_areas_served || []).includes(area.value) ? 'border-power100-red' : 'border-gray-200 hover:border-power100-red'}`}
                             onClick={() => {
                               const currentAreas = formData.focus_areas_served || [];
                               if (currentAreas.includes(area.value)) {
@@ -1180,10 +1205,21 @@ export default function PartnerOnboardingForm() {
                             }}
                           >
                             <div className="flex items-start space-x-3">
-                              <Checkbox
-                                checked={(formData.focus_areas_served || []).includes(area.value)}
-                                className="mt-1"
-                              />
+                              {/* Custom checkbox to avoid Radix UI infinite loop - styled to match */}
+                              <div
+                                className={`
+                                  mt-1 h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                                  ${(formData.focus_areas_served || []).includes(area.value)
+                                    ? 'bg-black border-black'
+                                    : 'border-gray-300 bg-white'
+                                  }
+                                `}
+                                style={{ pointerEvents: 'none' }}
+                              >
+                                {(formData.focus_areas_served || []).includes(area.value) && (
+                                  <Check className="h-3 w-3 text-white" />
+                                )}
+                              </div>
                               <div className="flex-1">
                                 <Label className="font-semibold cursor-pointer">
                                   {area.label}
@@ -1264,26 +1300,38 @@ export default function PartnerOnboardingForm() {
                           'International Pool, Spa, and Patio Expo',
                           'Storm Restoration Conference'
                         ].map(event => (
-                          <div key={event} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`event-${event.replace(/\s+/g, '-').toLowerCase()}`}
-                              checked={(formData.sponsored_events || []).includes(event)}
-                              onCheckedChange={(checked) => {
-                                const currentEvents = formData.sponsored_events || [];
-                                if (checked) {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    sponsored_events: [...currentEvents, event]
-                                  }));
-                                } else {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    sponsored_events: currentEvents.filter(e => e !== event)
-                                  }));
+                          <div
+                            key={event}
+                            className="flex items-center space-x-2 cursor-pointer"
+                            onClick={() => {
+                              const currentEvents = formData.sponsored_events || [];
+                              if (currentEvents.includes(event)) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  sponsored_events: currentEvents.filter(e => e !== event)
+                                }));
+                              } else {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  sponsored_events: [...currentEvents, event]
+                                }));
+                              }
+                            }}
+                          >
+                            <div
+                              className={`
+                                h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                                ${(formData.sponsored_events || []).includes(event)
+                                  ? 'bg-black border-black'
+                                  : 'border-gray-300 bg-white'
                                 }
-                              }}
-                            />
-                            <Label htmlFor={`event-${event.replace(/\s+/g, '-').toLowerCase()}`} className="text-sm cursor-pointer">
+                              `}
+                            >
+                              {(formData.sponsored_events || []).includes(event) && (
+                                <Check className="h-3 w-3 text-white" />
+                              )}
+                            </div>
+                            <Label htmlFor={`event-${event.replace(/\s+/g, '-').toLowerCase()}`} className="text-sm cursor-pointer select-none">
                               {event}
                             </Label>
                           </div>
@@ -1314,26 +1362,38 @@ export default function PartnerOnboardingForm() {
                           'Contractor Evolution',
                           'Business of Contracting'
                         ].map(podcast => (
-                          <div key={podcast} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`podcast-${podcast.replace(/\s+/g, '-').toLowerCase()}`}
-                              checked={formData.podcast_appearances?.includes(podcast) || false}
-                              onCheckedChange={(checked) => {
-                                const currentPodcasts = formData.podcast_appearances || [];
-                                if (checked) {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    podcast_appearances: [...currentPodcasts, podcast]
-                                  }));
-                                } else {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    podcast_appearances: currentPodcasts.filter(p => p !== podcast)
-                                  }));
+                          <div
+                            key={podcast}
+                            className="flex items-center space-x-2 cursor-pointer"
+                            onClick={() => {
+                              const currentPodcasts = formData.podcast_appearances || [];
+                              if (currentPodcasts.includes(podcast)) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  podcast_appearances: currentPodcasts.filter(p => p !== podcast)
+                                }));
+                              } else {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  podcast_appearances: [...currentPodcasts, podcast]
+                                }));
+                              }
+                            }}
+                          >
+                            <div
+                              className={`
+                                h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                                ${(formData.podcast_appearances || []).includes(podcast)
+                                  ? 'bg-black border-black'
+                                  : 'border-gray-300 bg-white'
                                 }
-                              }}
-                            />
-                            <Label htmlFor={`podcast-${podcast.replace(/\s+/g, '-').toLowerCase()}`} className="text-sm cursor-pointer">
+                              `}
+                            >
+                              {(formData.podcast_appearances || []).includes(podcast) && (
+                                <Check className="h-3 w-3 text-white" />
+                              )}
+                            </div>
+                            <Label htmlFor={`podcast-${podcast.replace(/\s+/g, '-').toLowerCase()}`} className="text-sm cursor-pointer select-none">
                               {podcast}
                             </Label>
                           </div>
@@ -1405,26 +1465,38 @@ export default function PartnerOnboardingForm() {
                       <Label className="font-semibold text-base">Service Categories (Check all that apply) *</Label>
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
                         {CONTRACTOR_SERVICE_CATEGORIES.map(category => (
-                          <div key={category.value} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`category-${category.value}`}
-                              checked={formData.service_categories?.includes(category.value) || false}
-                              onCheckedChange={(checked) => {
-                                const currentCategories = formData.service_categories || [];
-                                if (checked) {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    service_categories: [...currentCategories, category.value]
-                                  }));
-                                } else {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    service_categories: currentCategories.filter(c => c !== category.value)
-                                  }));
+                          <div
+                            key={category.value}
+                            className="flex items-center space-x-2 cursor-pointer"
+                            onClick={() => {
+                              const currentCategories = formData.service_categories || [];
+                              if (currentCategories.includes(category.value)) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  service_categories: currentCategories.filter(c => c !== category.value)
+                                }));
+                              } else {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  service_categories: [...currentCategories, category.value]
+                                }));
+                              }
+                            }}
+                          >
+                            <div
+                              className={`
+                                h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                                ${(formData.service_categories || []).includes(category.value)
+                                  ? 'bg-black border-black'
+                                  : 'border-gray-300 bg-white'
                                 }
-                              }}
-                            />
-                            <Label htmlFor={`category-${category.value}`} className="text-sm cursor-pointer">
+                              `}
+                            >
+                              {(formData.service_categories || []).includes(category.value) && (
+                                <Check className="h-3 w-3 text-white" />
+                              )}
+                            </div>
+                            <Label htmlFor={`category-${category.value}`} className="text-sm cursor-pointer select-none">
                               {category.label}
                             </Label>
                           </div>
@@ -1508,28 +1580,41 @@ export default function PartnerOnboardingForm() {
                       <Label className="font-semibold text-base">Select up to 3 focus areas *</Label>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
                         {FOCUS_AREAS_12_MONTHS.map(area => (
-                          <div key={area.value} className="flex items-center space-x-2">
-                            <Checkbox
-                              id={`focus-${area.value}`}
-                              checked={formData.focus_areas_12_months.includes(area.value)}
-                              onCheckedChange={(checked) => {
-                                if (checked) {
-                                  if (formData.focus_areas_12_months.length < 3) {
-                                    setFormData(prev => ({
-                                      ...prev,
-                                      focus_areas_12_months: [...prev.focus_areas_12_months, area.value]
-                                    }));
-                                  }
-                                } else {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    focus_areas_12_months: prev.focus_areas_12_months.filter(f => f !== area.value)
-                                  }));
+                          <div
+                            key={area.value}
+                            className="flex items-center space-x-2 cursor-pointer"
+                            onClick={() => {
+                              if (formData.focus_areas_12_months.includes(area.value)) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  focus_areas_12_months: prev.focus_areas_12_months.filter(f => f !== area.value)
+                                }));
+                              } else if (formData.focus_areas_12_months.length < 3) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  focus_areas_12_months: [...prev.focus_areas_12_months, area.value]
+                                }));
+                              }
+                            }}
+                          >
+                            <div
+                              className={`
+                                h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                                ${formData.focus_areas_12_months.includes(area.value)
+                                  ? 'bg-black border-black'
+                                  : 'border-gray-300 bg-white'
                                 }
-                              }}
-                              disabled={!formData.focus_areas_12_months.includes(area.value) && formData.focus_areas_12_months.length >= 3}
-                            />
-                            <Label htmlFor={`focus-${area.value}`} className="text-sm cursor-pointer">
+                                ${!formData.focus_areas_12_months.includes(area.value) && formData.focus_areas_12_months.length >= 3
+                                  ? 'opacity-50 cursor-not-allowed'
+                                  : ''
+                                }
+                              `}
+                            >
+                              {formData.focus_areas_12_months.includes(area.value) && (
+                                <Check className="h-3 w-3 text-white" />
+                              )}
+                            </div>
+                            <Label htmlFor={`focus-${area.value}`} className="text-sm cursor-pointer select-none">
                               {area.label}
                             </Label>
                           </div>

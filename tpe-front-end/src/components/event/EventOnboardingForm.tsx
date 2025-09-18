@@ -7,11 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
 import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
 import LogoManager from '@/components/admin/LogoManager';
 import { eventApi } from '@/lib/api';
-import { Calendar, User, Target, Sparkles, ArrowRight, ArrowLeft, AlertTriangle, MapPin } from 'lucide-react';
+import { Calendar, User, Target, Sparkles, ArrowRight, ArrowLeft, AlertTriangle, MapPin, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Event } from '@/lib/types/event';
@@ -449,12 +448,17 @@ export default function EventOnboardingForm() {
                         onClick={() => handleFocusAreaToggle(area.value)}
                       >
                         <div className="flex items-start space-x-3">
-                          <Checkbox
-                            id={area.value}
-                            checked={formData.focus_areas_covered?.includes(area.value) || false}
-                            onCheckedChange={() => handleFocusAreaToggle(area.value)}
-                            className="mt-1"
-                          />
+                          <div
+                            className={`h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center mt-1
+                              ${formData.focus_areas_covered?.includes(area.value)
+                                ? 'bg-black border-black'
+                                : 'border-gray-300 bg-white'}`}
+                            style={{ pointerEvents: 'none' }}
+                          >
+                            {formData.focus_areas_covered?.includes(area.value) && (
+                              <Check className="h-3 w-3 text-white" />
+                            )}
+                          </div>
                           <div className="flex-1">
                             <Label
                               htmlFor={area.value}
@@ -479,12 +483,21 @@ export default function EventOnboardingForm() {
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     {TARGET_REVENUE_OPTIONS.map(option => (
-                      <div key={option.value} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={option.value}
-                          checked={formData.target_revenue?.includes(option.value) || false}
-                          onCheckedChange={() => handleTargetRevenueToggle(option.value)}
-                        />
+                      <div key={option.value} className="flex items-center space-x-2"
+                        onClick={() => handleTargetRevenueToggle(option.value)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div
+                          className={`h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                            ${formData.target_revenue?.includes(option.value)
+                              ? 'bg-black border-black'
+                              : 'border-gray-300 bg-white'}`}
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          {formData.target_revenue?.includes(option.value) && (
+                            <Check className="h-3 w-3 text-white" />
+                          )}
+                        </div>
                         <Label
                           htmlFor={option.value}
                           className="text-sm font-normal cursor-pointer"
@@ -517,18 +530,27 @@ export default function EventOnboardingForm() {
             {currentStep === 3 && (
               <div className="space-y-6">
                 <div>
-                  <div className="flex items-center space-x-2 mb-4">
-                    <Checkbox
-                      id="multi_day"
-                      checked={isMultiDay}
-                      onCheckedChange={(checked) => {
-                        setIsMultiDay(checked as boolean);
-                        if (!checked) {
-                          // Clear end_date if switching to single day
-                          handleFieldChange('end_date', '');
-                        }
-                      }}
-                    />
+                  <div className="flex items-center space-x-2 mb-4"
+                    onClick={() => {
+                      setIsMultiDay(!isMultiDay);
+                      if (isMultiDay) {
+                        // Clear end_date if switching to single day
+                        handleFieldChange('end_date', '');
+                      }
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <div
+                      className={`h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                        ${isMultiDay
+                          ? 'bg-black border-black'
+                          : 'border-gray-300 bg-white'}`}
+                      style={{ pointerEvents: 'none' }}
+                    >
+                      {isMultiDay && (
+                        <Check className="h-3 w-3 text-white" />
+                      )}
+                    </div>
                     <Label htmlFor="multi_day">Multi-day event</Label>
                   </div>
 
@@ -780,12 +802,21 @@ export default function EventOnboardingForm() {
                   </p>
                   <div className="grid grid-cols-2 gap-3 mt-2">
                     {NETWORKING_OPTIONS.map(option => (
-                      <div key={option.value} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={option.value}
-                          checked={formData.networking_opportunities?.includes(option.value) || false}
-                          onCheckedChange={() => handleNetworkingToggle(option.value)}
-                        />
+                      <div key={option.value} className="flex items-center space-x-2"
+                        onClick={() => handleNetworkingToggle(option.value)}
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <div
+                          className={`h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                            ${formData.networking_opportunities?.includes(option.value)
+                              ? 'bg-black border-black'
+                              : 'border-gray-300 bg-white'}`}
+                          style={{ pointerEvents: 'none' }}
+                        >
+                          {formData.networking_opportunities?.includes(option.value) && (
+                            <Check className="h-3 w-3 text-white" />
+                          )}
+                        </div>
                         <Label
                           htmlFor={option.value}
                           className="text-sm font-normal cursor-pointer"
@@ -797,12 +828,21 @@ export default function EventOnboardingForm() {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="session_recordings"
-                    checked={formData.session_recordings || false}
-                    onCheckedChange={(checked) => handleFieldChange('session_recordings', checked)}
-                  />
+                <div className="flex items-center space-x-2"
+                  onClick={() => handleFieldChange('session_recordings', !formData.session_recordings)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div
+                    className={`h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                      ${formData.session_recordings
+                        ? 'bg-black border-black'
+                        : 'border-gray-300 bg-white'}`}
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {formData.session_recordings && (
+                      <Check className="h-3 w-3 text-white" />
+                    )}
+                  </div>
                   <Label htmlFor="session_recordings" className="cursor-pointer">
                     Session recordings will be available after the event
                   </Label>
@@ -823,12 +863,21 @@ export default function EventOnboardingForm() {
                   />
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="implementation_support"
-                    checked={formData.implementation_support || false}
-                    onCheckedChange={(checked) => handleFieldChange('implementation_support', checked)}
-                  />
+                <div className="flex items-center space-x-2"
+                  onClick={() => handleFieldChange('implementation_support', !formData.implementation_support)}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div
+                    className={`h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                      ${formData.implementation_support
+                        ? 'bg-black border-black'
+                        : 'border-gray-300 bg-white'}`}
+                    style={{ pointerEvents: 'none' }}
+                  >
+                    {formData.implementation_support && (
+                      <Check className="h-3 w-3 text-white" />
+                    )}
+                  </div>
                   <Label htmlFor="implementation_support" className="cursor-pointer">
                     Implementation support is provided after the event
                   </Label>

@@ -126,7 +126,7 @@ const createPartner = async (req, res, next) => {
     
     // Comprehensive Onboarding Fields
     // Step 1: Company Information
-    established_year, employee_count, ownership_type, company_description,
+    established_year, employee_count, client_count, ownership_type, company_description,
     
     // Step 2: Contact Information (5 contact types)
     ceo_contact_name, ceo_contact_email, ceo_contact_phone, ceo_contact_title,
@@ -160,12 +160,12 @@ const createPartner = async (req, res, next) => {
       -- Basic fields
       company_name, description, logo_url, website, contact_email,
       contact_phone, power100_subdomain, focus_areas_served, target_revenue_range,
-      geographic_regions, powerconfidence_score, key_differentiators, 
+      geographic_regions, powerconfidence_score, key_differentiators,
       pricing_model, onboarding_process, client_testimonials, is_active,
       last_quarterly_report, onboarding_url, demo_booking_url,
-      
+
       -- Comprehensive onboarding fields
-      established_year, employee_count, ownership_type, company_description,
+      established_year, employee_count, client_count, ownership_type, company_description,
       ceo_contact_name, ceo_contact_email, ceo_contact_phone, ceo_contact_title,
       cx_contact_name, cx_contact_email, cx_contact_phone, cx_contact_title,
       sales_contact_name, sales_contact_email, sales_contact_phone, sales_contact_title,
@@ -178,7 +178,7 @@ const createPartner = async (req, res, next) => {
       tech_stack_analytics, tech_stack_marketing, tech_stack_financial,
       sponsored_events, podcast_appearances, books_read_recommended, best_working_partnerships,
       client_demos, client_references
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64)
     RETURNING *
   `, [
     // Basic values
@@ -189,7 +189,7 @@ const createPartner = async (req, res, next) => {
     is_active !== undefined ? is_active : true, last_quarterly_report, onboarding_url, demo_booking_url,
     
     // Comprehensive onboarding values
-    established_year, employee_count, ownership_type, company_description,
+    established_year, employee_count, client_count, ownership_type, company_description,
     ceo_contact_name, ceo_contact_email, ceo_contact_phone, ceo_contact_title,
     cx_contact_name, cx_contact_email, cx_contact_phone, cx_contact_title,
     sales_contact_name, sales_contact_email, sales_contact_phone, sales_contact_title,
@@ -227,7 +227,7 @@ const updatePartner = async (req, res, next) => {
     'contact_phone', 'power100_subdomain',
     
     // Business Details
-    'established_year', 'employee_count', 'ownership_type', 'company_description',
+    'established_year', 'employee_count', 'client_count', 'ownership_type', 'company_description',
     
     // Service Information
     'focus_areas_served', 'target_revenue_range', 'geographic_regions',

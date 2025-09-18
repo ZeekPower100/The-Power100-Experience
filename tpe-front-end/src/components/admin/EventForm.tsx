@@ -7,9 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
-import { Calendar, MapPin, Users, DollarSign, Phone, X } from 'lucide-react';
+import { Calendar, MapPin, Users, DollarSign, Phone, X, Check } from 'lucide-react';
 import { Event } from '@/lib/types/event';
 import LogoManager from '@/components/admin/LogoManager';
 import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
@@ -391,17 +390,28 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
               </div>
 
               <div className="space-y-4">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="multi_day"
-                    checked={isMultiDay}
-                    onCheckedChange={(checked) => {
-                      setIsMultiDay(checked as boolean);
-                      if (!checked) {
-                        setFormData(prev => ({ ...prev, end_date: '' }));
+                <div
+                  className="flex items-center space-x-2 cursor-pointer"
+                  onClick={() => {
+                    setIsMultiDay(!isMultiDay);
+                    if (isMultiDay) {
+                      setFormData(prev => ({ ...prev, end_date: '' }));
+                    }
+                  }}
+                >
+                  <div
+                    className={`
+                      h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                      ${isMultiDay
+                        ? 'bg-black border-black'
+                        : 'border-gray-300 bg-white'
                       }
-                    }}
-                  />
+                    `}
+                  >
+                    {isMultiDay && (
+                      <Check className="h-3 w-3 text-white" />
+                    )}
+                  </div>
                   <Label htmlFor="multi_day">Multi-day event</Label>
                 </div>
 
@@ -646,12 +656,24 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
                 <p className="text-sm text-power100-grey mb-3">Ensures your event reaches the right contractors</p>
                 <div className="grid grid-cols-2 gap-3">
                   {FOCUS_AREAS.map(area => (
-                    <div key={area.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={area.value}
-                        checked={selectedFocusAreas.includes(area.value)}
-                        onCheckedChange={() => handleFocusAreaToggle(area.value)}
-                      />
+                    <div
+                      key={area.value}
+                      className="flex items-center space-x-2 cursor-pointer"
+                      onClick={() => handleFocusAreaToggle(area.value)}
+                    >
+                      <div
+                        className={`
+                          h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                          ${selectedFocusAreas.includes(area.value)
+                            ? 'bg-black border-black'
+                            : 'border-gray-300 bg-white'
+                          }
+                        `}
+                      >
+                        {selectedFocusAreas.includes(area.value) && (
+                          <Check className="h-3 w-3 text-white" />
+                        )}
+                      </div>
                       <Label htmlFor={area.value} className="font-normal cursor-pointer">
                         {area.label}
                       </Label>
@@ -665,12 +687,24 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
                 <p className="text-sm text-power100-grey mb-3">What revenue ranges should attendees be in?</p>
                 <div className="grid grid-cols-2 gap-3">
                   {TARGET_REVENUE_OPTIONS.map(option => (
-                    <div key={option.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`revenue-${option.value}`}
-                        checked={selectedTargetRevenue.includes(option.value)}
-                        onCheckedChange={() => handleTargetRevenueToggle(option.value)}
-                      />
+                    <div
+                      key={option.value}
+                      className="flex items-center space-x-2 cursor-pointer"
+                      onClick={() => handleTargetRevenueToggle(option.value)}
+                    >
+                      <div
+                        className={`
+                          h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                          ${selectedTargetRevenue.includes(option.value)
+                            ? 'bg-black border-black'
+                            : 'border-gray-300 bg-white'
+                          }
+                        `}
+                      >
+                        {selectedTargetRevenue.includes(option.value) && (
+                          <Check className="h-3 w-3 text-white" />
+                        )}
+                      </div>
                       <Label htmlFor={`revenue-${option.value}`} className="font-normal cursor-pointer">
                         {option.label}
                       </Label>
@@ -778,12 +812,24 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
                 <p className="text-sm text-power100-grey mb-2">Select all networking formats available</p>
                 <div className="grid grid-cols-2 gap-3 mt-2">
                   {NETWORKING_OPTIONS.map(option => (
-                    <div key={option.value} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`networking-${option.value}`}
-                        checked={selectedNetworkingOpportunities.includes(option.value)}
-                        onCheckedChange={() => handleNetworkingToggle(option.value)}
-                      />
+                    <div
+                      key={option.value}
+                      className="flex items-center space-x-2 cursor-pointer"
+                      onClick={() => handleNetworkingToggle(option.value)}
+                    >
+                      <div
+                        className={`
+                          h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                          ${selectedNetworkingOpportunities.includes(option.value)
+                            ? 'bg-black border-black'
+                            : 'border-gray-300 bg-white'
+                          }
+                        `}
+                      >
+                        {selectedNetworkingOpportunities.includes(option.value) && (
+                          <Check className="h-3 w-3 text-white" />
+                        )}
+                      </div>
                       <Label htmlFor={`networking-${option.value}`} className="font-normal cursor-pointer">
                         {option.label}
                       </Label>
@@ -812,12 +858,23 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
                 <p className="text-sm text-power100-grey mt-1">TPE assessment based on past events</p>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="session_recordings"
-                  checked={formData.session_recordings || false}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, session_recordings: checked as boolean }))}
-                />
+              <div
+                className="flex items-center space-x-2 cursor-pointer"
+                onClick={() => setFormData(prev => ({ ...prev, session_recordings: !prev.session_recordings }))}
+              >
+                <div
+                  className={`
+                    h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                    ${formData.session_recordings
+                      ? 'bg-black border-black'
+                      : 'border-gray-300 bg-white'
+                    }
+                  `}
+                >
+                  {formData.session_recordings && (
+                    <Check className="h-3 w-3 text-white" />
+                  )}
+                </div>
                 <Label htmlFor="session_recordings" className="cursor-pointer">
                   Session recordings will be available after the event
                 </Label>
@@ -836,12 +893,23 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
                 <p className="text-sm text-power100-grey mt-1">What support do attendees receive after the event?</p>
               </div>
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="implementation_support"
-                  checked={formData.implementation_support || false}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, implementation_support: checked as boolean }))}
-                />
+              <div
+                className="flex items-center space-x-2 cursor-pointer"
+                onClick={() => setFormData(prev => ({ ...prev, implementation_support: !prev.implementation_support }))}
+              >
+                <div
+                  className={`
+                    h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                    ${formData.implementation_support
+                      ? 'bg-black border-black'
+                      : 'border-gray-300 bg-white'
+                    }
+                  `}
+                >
+                  {formData.implementation_support && (
+                    <Check className="h-3 w-3 text-white" />
+                  )}
+                </div>
                 <Label htmlFor="implementation_support" className="cursor-pointer">
                   Implementation support is provided after the event
                 </Label>

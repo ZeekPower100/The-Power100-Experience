@@ -131,7 +131,7 @@ router.post('/apply', async (req, res) => {
     const validColumns = [
       'company_name', 'description', 'website', 'logo_url', 'primary_email', 'contact_email', 'contact_phone',
       'focus_areas_served', 'target_revenue_range', 'geographic_regions', 'powerconfidence_score',
-      'is_active', 'status', 'established_year', 'employee_count', 'ownership_type',
+      'is_active', 'status', 'established_year', 'employee_count', 'client_count', 'ownership_type',
       'ceo_contact_name', 'ceo_contact_email', 'ceo_contact_phone', 
       'cx_contact_name', 'cx_contact_email', 'cx_contact_phone',
       'sales_contact_name', 'sales_contact_email', 'sales_contact_phone', 

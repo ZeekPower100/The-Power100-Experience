@@ -7,12 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
 import LogoManager from '@/components/admin/LogoManager';
 import { bookApi } from '@/lib/api';
-import { BookOpen, User, Building, Quote, Target, Sparkles, ArrowRight, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { BookOpen, User, Building, Quote, Target, Sparkles, ArrowRight, ArrowLeft, AlertTriangle, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Book } from '@/lib/types/book';
@@ -361,12 +360,23 @@ export default function BookOnboardingForm() {
 
                 {/* Executive Assistant Section */}
                 <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="has_executive_assistant"
-                      checked={formData.has_executive_assistant}
-                      onCheckedChange={(checked) => handleFieldChange('has_executive_assistant', checked)}
-                    />
+                  <div
+                    className="flex items-center space-x-2 cursor-pointer"
+                    onClick={() => handleFieldChange('has_executive_assistant', !formData.has_executive_assistant)}
+                  >
+                    <div
+                      className={`
+                        h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                        ${formData.has_executive_assistant
+                          ? 'bg-black border-black'
+                          : 'border-gray-300 bg-white'
+                        }
+                      `}
+                    >
+                      {formData.has_executive_assistant && (
+                        <Check className="h-3 w-3 text-white" />
+                      )}
+                    </div>
                     <Label htmlFor="has_executive_assistant" className="text-sm font-medium cursor-pointer">
                       Does the author have an Executive Assistant (EA)?
                     </Label>
@@ -518,11 +528,20 @@ export default function BookOnboardingForm() {
                         onClick={() => handleFocusAreaToggle(area.value)}
                       >
                         <div className="flex items-start space-x-2">
-                          <Checkbox
-                            id={area.value}
-                            checked={formData.focus_areas?.includes(area.value) || false}
-                            className="mt-0.5"
-                          />
+                          <div
+                            className={`
+                              mt-0.5 h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                              ${formData.focus_areas?.includes(area.value)
+                                ? 'bg-black border-black'
+                                : 'border-gray-300 bg-white'
+                              }
+                            `}
+                            style={{ pointerEvents: 'none' }}
+                          >
+                            {formData.focus_areas?.includes(area.value) && (
+                              <Check className="h-3 w-3 text-white" />
+                            )}
+                          </div>
                           <div className="flex-1">
                             <Label
                               htmlFor={area.value}
@@ -552,12 +571,24 @@ export default function BookOnboardingForm() {
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     {TARGET_REVENUE_OPTIONS.map(option => (
-                      <div key={option.value} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={option.value}
-                          checked={formData.target_revenue?.includes(option.value) || false}
-                          onCheckedChange={() => handleTargetRevenueToggle(option.value)}
-                        />
+                      <div
+                        key={option.value}
+                        className="flex items-center space-x-2 cursor-pointer"
+                        onClick={() => handleTargetRevenueToggle(option.value)}
+                      >
+                        <div
+                          className={`
+                            h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                            ${formData.target_revenue?.includes(option.value)
+                              ? 'bg-black border-black'
+                              : 'border-gray-300 bg-white'
+                            }
+                          `}
+                        >
+                          {formData.target_revenue?.includes(option.value) && (
+                            <Check className="h-3 w-3 text-white" />
+                          )}
+                        </div>
                         <Label
                           htmlFor={option.value}
                           className="text-sm font-normal cursor-pointer"

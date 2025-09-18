@@ -7,12 +7,11 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
 import { SimpleDynamicList } from '@/components/ui/simple-dynamic-list';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import LogoManager from '@/components/admin/LogoManager';
 import { podcastApi } from '@/lib/api';
-import { Mic, User, Target, Sparkles, ArrowRight, ArrowLeft, AlertTriangle, Headphones } from 'lucide-react';
+import { Mic, User, Target, Sparkles, ArrowRight, ArrowLeft, AlertTriangle, Headphones, Check } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { Podcast } from '@/lib/types/podcast';
@@ -333,12 +332,20 @@ export default function PodcastOnboardingForm() {
                         onClick={() => handleFocusAreaToggle(area.value)}
                       >
                         <div className="flex items-start space-x-3">
-                          <Checkbox
-                            id={area.value}
-                            checked={formData.focus_areas_covered?.includes(area.value) || false}
-                            onCheckedChange={() => handleFocusAreaToggle(area.value)}
-                            className="mt-1"
-                          />
+                          <div
+                            className={`
+                              mt-1 h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                              ${formData.focus_areas_covered?.includes(area.value)
+                                ? 'bg-black border-black'
+                                : 'border-gray-300 bg-white'
+                              }
+                            `}
+                            style={{ pointerEvents: 'none' }}
+                          >
+                            {formData.focus_areas_covered?.includes(area.value) && (
+                              <Check className="h-3 w-3 text-white" />
+                            )}
+                          </div>
                           <div className="flex-1">
                             <Label
                               htmlFor={area.value}
@@ -363,12 +370,24 @@ export default function PodcastOnboardingForm() {
                   </p>
                   <div className="grid grid-cols-2 gap-3">
                     {TARGET_REVENUE_OPTIONS.map(option => (
-                      <div key={option.value} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={option.value}
-                          checked={formData.target_revenue?.includes(option.value) || false}
-                          onCheckedChange={() => handleTargetRevenueToggle(option.value)}
-                        />
+                      <div
+                        key={option.value}
+                        className="flex items-center space-x-2 cursor-pointer"
+                        onClick={() => handleTargetRevenueToggle(option.value)}
+                      >
+                        <div
+                          className={`
+                            h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                            ${formData.target_revenue?.includes(option.value)
+                              ? 'bg-black border-black'
+                              : 'border-gray-300 bg-white'
+                            }
+                          `}
+                        >
+                          {formData.target_revenue?.includes(option.value) && (
+                            <Check className="h-3 w-3 text-white" />
+                          )}
+                        </div>
                         <Label
                           htmlFor={option.value}
                           className="text-sm font-normal cursor-pointer"
@@ -563,12 +582,23 @@ export default function PodcastOnboardingForm() {
 
                 {/* Guest Management Section */}
                 <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="accepts_guest_requests"
-                      checked={formData.accepts_guest_requests || false}
-                      onCheckedChange={(checked) => handleFieldChange('accepts_guest_requests', checked)}
-                    />
+                  <div
+                    className="flex items-center space-x-2 cursor-pointer"
+                    onClick={() => handleFieldChange('accepts_guest_requests', !formData.accepts_guest_requests)}
+                  >
+                    <div
+                      className={`
+                        h-4 w-4 shrink-0 rounded-sm border flex items-center justify-center
+                        ${formData.accepts_guest_requests
+                          ? 'bg-black border-black'
+                          : 'border-gray-300 bg-white'
+                        }
+                      `}
+                    >
+                      {formData.accepts_guest_requests && (
+                        <Check className="h-3 w-3 text-white" />
+                      )}
+                    </div>
                     <Label htmlFor="accepts_guest_requests">I accept guest requests from contractors</Label>
                   </div>
 
