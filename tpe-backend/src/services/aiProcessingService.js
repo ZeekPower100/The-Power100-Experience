@@ -59,10 +59,21 @@ Generate differentiators that are:
 4. Action-oriented when possible
 5. Measurable or concrete when possible
 
-Return ONLY a JSON array of strings. Each string should be one complete differentiator. Do not nest JSON or include extra formatting. Example format:
-["Specializes in HVAC contractors with 10-50 employees", "Proven track record with 50+ successful implementations", "24-hour response time guarantee"]
+You MUST respond with a valid JSON object containing a property called "differentiators" that is an array of strings.
+Each string should be one complete, concise differentiator (under 100 characters).
 
-IMPORTANT: Return ONLY the array, no wrapper object, no additional text.`;
+Example of the EXACT format required:
+{
+  "differentiators": [
+    "Specializes in HVAC contractors with 10-50 employees",
+    "Proven track record with 50+ successful implementations",
+    "24-hour response time guarantee for all clients",
+    "Proprietary AI system delivering 300% ROI in 6 months",
+    "500+ contractors served since 2015"
+  ]
+}
+
+IMPORTANT: Return ONLY valid JSON. No additional text or explanation.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4-turbo-preview",
@@ -83,37 +94,68 @@ IMPORTANT: Return ONLY the array, no wrapper object, no additional text.`;
 
     // Parse the response
     const responseText = completion.choices[0].message.content;
-    const parsed = safeJsonParse(responseText, { differentiators: [] });
+    console.log('Raw AI response:', responseText);
 
-    // Extract array from response (handle both direct array and object with array property)
+    // First try to parse as JSON
+    const parsed = safeJsonParse(responseText, null);
+
+    // Extract array from response (handle various formats)
     let differentiators = [];
 
     if (Array.isArray(parsed)) {
+      // Direct array response
       differentiators = parsed;
     } else if (typeof parsed === 'object' && parsed !== null) {
-      // Look for any property that contains an array
-      const possibleKeys = Object.keys(parsed);
-      for (const key of possibleKeys) {
-        if (Array.isArray(parsed[key])) {
-          differentiators = parsed[key];
-          break;
-        }
-      }
+      // Check common property names first (case-insensitive)
+      const keys = Object.keys(parsed);
+      const arrayKey = keys.find(key => {
+        const lowerKey = key.toLowerCase();
+        return lowerKey.includes('differentiator') ||
+               lowerKey.includes('unique') ||
+               lowerKey === 'items' ||
+               lowerKey === 'results' ||
+               Array.isArray(parsed[key]);
+      });
 
-      // If no array found in properties, check common keys
-      if (differentiators.length === 0) {
+      if (arrayKey && Array.isArray(parsed[arrayKey])) {
+        differentiators = parsed[arrayKey];
+      } else {
+        // Try specific known keys
         differentiators = parsed.differentiators ||
                          parsed.key_differentiators ||
                          parsed['Unique Key Differentiators'] ||
+                         parsed['differentiators'] ||
                          [];
+      }
+
+      // If still no array and parsed has error message, log it
+      if (differentiators.length === 0 && parsed.error) {
+        console.error('AI returned error:', parsed.error);
+        return null;
       }
     }
 
+    // Clean up differentiators - remove any that are objects or malformed
+    differentiators = differentiators.filter(item => {
+      if (typeof item === 'string' && item.trim()) {
+        return true;
+      }
+      if (typeof item === 'object' && item.text) {
+        // Convert object with text property to string
+        differentiators.push(item.text);
+        return false;
+      }
+      return false;
+    });
+
     // Validate the differentiators
     if (!Array.isArray(differentiators) || differentiators.length === 0) {
-      console.error('Invalid AI response format:', responseText);
+      console.error('No valid differentiators extracted from AI response');
+      console.error('Parsed object:', parsed);
       return null;
     }
+
+    console.log(`Extracted ${differentiators.length} differentiators`);
 
     // Calculate confidence score based on data completeness
     const dataPoints = [
@@ -135,7 +177,11 @@ IMPORTANT: Return ONLY the array, no wrapper object, no additional text.`;
     };
 
   } catch (error) {
-    console.error('Error generating key differentiators:', error);
+    console.error('Error generating key differentiators:', error.message);
+    if (error.response) {
+      console.error('OpenAI API Error Response:', error.response.data);
+    }
+    console.error('Full error:', error);
     return null;
   }
 }

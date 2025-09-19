@@ -1,4 +1,5 @@
 const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+const axios = require('axios');
 
 const { query } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
@@ -14,23 +15,19 @@ const triggerAIProcessing = async (partnerId, action, aiStatus = 'pending') => {
   try {
     const webhookUrl = process.env.N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/partner-ai-processing';
 
-    const response = await fetch(webhookUrl, {
-      method: 'POST',
+    console.log(`🔔 Triggering n8n webhook for partner ${partnerId} to ${webhookUrl}`);
+
+    const response = await axios.post(webhookUrl, {
+      partner_id: partnerId,
+      action: action, // 'created' or 'updated'
+      ai_processing_status: aiStatus
+    }, {
       headers: {
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        partner_id: partnerId,
-        action: action, // 'created' or 'updated'
-        ai_processing_status: aiStatus
-      })
+      }
     });
 
-    if (!response.ok) {
-      console.error(`Webhook failed with status ${response.status}`);
-    } else {
-      console.log(`AI processing webhook triggered for partner ${partnerId} (${action})`);
-    }
+    console.log(`✅ AI processing webhook triggered for partner ${partnerId} (${action}), status: ${response.status}`);
   } catch (error) {
     console.error('Failed to trigger AI processing webhook:', error.message);
     // Don't fail the partner operation if webhook fails
@@ -156,7 +153,7 @@ const createPartner = async (req, res, next) => {
     contact_phone, power100_subdomain, focus_areas_served, target_revenue_range,
     geographic_regions, powerconfidence_score, key_differentiators, 
     pricing_model, onboarding_process, client_testimonials, is_active,
-    last_quarterly_report, onboarding_url, demo_booking_url,
+    last_quarterly_report,
     
     // Comprehensive Onboarding Fields
     // Step 1: Company Information
@@ -201,7 +198,7 @@ const createPartner = async (req, res, next) => {
       contact_phone, power100_subdomain, focus_areas_served, target_revenue_range,
       geographic_regions, powerconfidence_score, key_differentiators,
       pricing_model, onboarding_process, client_testimonials, is_active,
-      last_quarterly_report, onboarding_url, demo_booking_url,
+      last_quarterly_report,
 
       -- Comprehensive onboarding fields
       established_year, employee_count, client_count, ownership_type, company_description,
@@ -220,7 +217,7 @@ const createPartner = async (req, res, next) => {
       client_demos, client_references,
       is_test_data, ai_generated_differentiators, ai_processing_status,
       last_ai_analysis, ai_confidence_score
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $70, $71)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69)
     RETURNING *
   `, [
     // Basic values
@@ -228,7 +225,7 @@ const createPartner = async (req, res, next) => {
     power100_subdomain, safeJsonStringify(focus_areas_served || []), safeJsonStringify(target_revenue_range || []),
     safeJsonStringify(geographic_regions || []), powerconfidence_score || 0, safeJsonStringify(key_differentiators || []),
     pricing_model, onboarding_process, safeJsonStringify(client_testimonials || []), 
-    is_active !== undefined ? is_active : true, last_quarterly_report, onboarding_url, demo_booking_url,
+    is_active !== undefined ? is_active : true, last_quarterly_report,
     
     // Comprehensive onboarding values
     established_year, employee_count, client_count, ownership_type, company_description,

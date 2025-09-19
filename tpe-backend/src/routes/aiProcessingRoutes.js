@@ -198,4 +198,73 @@ router.post('/mark-for-reprocessing', protect, async (req, res) => {
   }
 });
 
+// MANUAL TRIGGER - Process partners on demand (simulates webhook)
+router.post('/trigger-processing', async (req, res) => {
+  try {
+    console.log('🔄 Manual AI processing trigger initiated');
+
+    // Find all pending partners
+    const pendingResult = await query(`
+      SELECT id, company_name, ai_processing_status
+      FROM strategic_partners
+      WHERE ai_processing_status = 'pending'
+      LIMIT 5
+    `);
+
+    if (pendingResult.rows.length === 0) {
+      return res.json({
+        success: true,
+        message: 'No pending partners to process'
+      });
+    }
+
+    console.log(`Found ${pendingResult.rows.length} pending partners`);
+
+    const results = [];
+    for (const partner of pendingResult.rows) {
+      console.log(`Processing: ${partner.company_name} (ID: ${partner.id})`);
+      try {
+        const aiResult = await processPartnerAI(partner.id);
+        results.push({
+          partnerId: partner.id,
+          name: partner.company_name,
+          success: true,
+          result: aiResult
+        });
+      } catch (error) {
+        results.push({
+          partnerId: partner.id,
+          name: partner.company_name,
+          success: false,
+          error: error.message
+        });
+      }
+
+      // Add delay to avoid rate limiting
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+
+    const successful = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+
+    res.json({
+      success: true,
+      message: `Processed ${results.length} partners`,
+      summary: {
+        total: results.length,
+        successful,
+        failed
+      },
+      results
+    });
+
+  } catch (error) {
+    console.error('Error in manual trigger:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;

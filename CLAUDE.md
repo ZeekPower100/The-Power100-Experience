@@ -124,10 +124,10 @@ the-power100-experience/          # Project root
 
 ### Contractor Flow (5-Step Process)
 1. **Verification**: Phone/email verification with SMS opt-in for AI coaching
-2. **Focus Areas**: Select top 3 business focus areas for next 12-18 months  
+2. **Focus Areas**: Select top 3 business focus areas for next 12-18 months
 3. **Business Profiling**: Revenue, team size, readiness indicators
 4. **Partner Matching**: AI algorithm matches with approved partners
-5. **Completion**: Demo booking and email introduction
+5. **Completion**: Demo booking and email introduction (See `docs/PARTNER-BOOKING-SYSTEM-GHL-IMPLEMENTATION.md`)
 
 ### Admin Dashboard
 - Contractor management and analytics
@@ -286,6 +286,8 @@ This provides automatic error prevention that catches JSON and array rendering e
 2. Email introduction (Power100 → Partner subdomain)
 3. Automatic response triggers accounting/booking team CC
 4. Partner takes over with their cadence
+
+**📚 Implementation Details**: See `docs/PARTNER-BOOKING-SYSTEM-GHL-IMPLEMENTATION.md` for the complete Go High Level + n8n orchestration system that handles email automation, booking confirmation, follow-ups, and performance tracking.
 
 ### PowerConfidence Scoring
 - Quarterly customer satisfaction calls
