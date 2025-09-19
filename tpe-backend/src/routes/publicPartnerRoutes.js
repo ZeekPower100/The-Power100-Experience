@@ -146,7 +146,9 @@ router.post('/apply', async (req, res) => {
       'tech_stack_financial', 'tech_stack_project_management',
       'client_demos', 'client_references', 'employee_references', 'landing_page_videos',
       'primary_contact', 'secondary_contact', 'company_description', 'best_working_partnerships',
-      'books_read_recommended', 'completed_steps'
+      'books_read_recommended', 'completed_steps',
+      'is_test_data', 'ai_generated_differentiators', 'ai_processing_status',
+      'last_ai_analysis', 'ai_confidence_score'
     ];
     
     // Filter to only include valid columns

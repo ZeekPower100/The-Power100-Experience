@@ -3,6 +3,40 @@ const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const { query } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
 
+// Helper function to trigger AI processing via n8n webhook
+const triggerAIProcessing = async (partnerId, action, aiStatus = 'pending') => {
+  // Only trigger if AI processing is needed
+  if (aiStatus !== 'pending') {
+    console.log(`Partner ${partnerId} AI status is ${aiStatus}, skipping webhook trigger`);
+    return;
+  }
+
+  try {
+    const webhookUrl = process.env.N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/partner-ai-processing';
+
+    const response = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        partner_id: partnerId,
+        action: action, // 'created' or 'updated'
+        ai_processing_status: aiStatus
+      })
+    });
+
+    if (!response.ok) {
+      console.error(`Webhook failed with status ${response.status}`);
+    } else {
+      console.log(`AI processing webhook triggered for partner ${partnerId} (${action})`);
+    }
+  } catch (error) {
+    console.error('Failed to trigger AI processing webhook:', error.message);
+    // Don't fail the partner operation if webhook fails
+  }
+};
+
 // Get all active partners (public)
 const getActivePartners = async (req, res, next) => {
   const result = await query(`
@@ -153,7 +187,11 @@ const createPartner = async (req, res, next) => {
     books_read_recommended, best_working_partnerships,
     
     // Step 8: Client Demos & References
-    client_demos, client_references
+    client_demos, client_references,
+
+    // AI Processing Fields
+    is_test_data, ai_generated_differentiators, ai_processing_status,
+    last_ai_analysis, ai_confidence_score
   } = req.body;
 
   const result = await query(`
@@ -179,8 +217,10 @@ const createPartner = async (req, res, next) => {
       tech_stack_analytics, tech_stack_marketing, tech_stack_financial,
       sponsored_events, other_sponsored_events, podcast_appearances, other_podcast_appearances,
       books_read_recommended, best_working_partnerships,
-      client_demos, client_references
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66)
+      client_demos, client_references,
+      is_test_data, ai_generated_differentiators, ai_processing_status,
+      last_ai_analysis, ai_confidence_score
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $70, $71)
     RETURNING *
   `, [
     // Basic values
@@ -205,12 +245,18 @@ const createPartner = async (req, res, next) => {
     safeJsonStringify(sponsored_events || []), safeJsonStringify(other_sponsored_events || []),
     safeJsonStringify(podcast_appearances || []), safeJsonStringify(other_podcast_appearances || []),
     books_read_recommended, best_working_partnerships,
-    safeJsonStringify(client_demos || []), safeJsonStringify(client_references || [])
+    safeJsonStringify(client_demos || []), safeJsonStringify(client_references || []),
+    is_test_data || false, ai_generated_differentiators || null, ai_processing_status || 'pending',
+    last_ai_analysis || null, ai_confidence_score || null
   ]);
+
+  // Trigger AI processing webhook for new partner
+  const newPartner = result.rows[0];
+  await triggerAIProcessing(newPartner.id, 'created', newPartner.ai_processing_status);
 
   res.status(201).json({
     success: true,
-    partner: result.rows[0]
+    partner: newPartner
   });
 };
 
@@ -275,7 +321,11 @@ const updatePartner = async (req, res, next) => {
     'last_quarterly_report',
     
     // Landing Page Content
-    'landing_page_videos'
+    'landing_page_videos',
+
+    // AI Processing Fields
+    'is_test_data', 'ai_generated_differentiators', 'ai_processing_status',
+    'last_ai_analysis', 'ai_confidence_score'
   ];
 
   const setClause = [];
@@ -312,6 +362,28 @@ const updatePartner = async (req, res, next) => {
     return res.status(400).json({ error: 'No valid fields to update' });
   }
 
+  // Check if significant fields are being updated that should trigger AI reprocessing
+  const significantFields = [
+    'description', 'service_areas', 'focus_areas_served',
+    'value_proposition', 'why_clients_choose_you', 'why_clients_choose_competitors',
+    'target_revenue_range', 'client_count', 'client_testimonials',
+    'sponsored_events', 'other_sponsored_events', 'podcast_appearances',
+    'other_podcast_appearances', 'books_read_recommended', 'best_working_partnerships',
+    'service_category', 'focus_areas_12_months'
+  ];
+
+  const hasSignificantChanges = Object.keys(updates).some(key =>
+    significantFields.includes(key)
+  );
+
+  // If significant changes, reset AI processing status to trigger reprocessing
+  if (hasSignificantChanges && !updates.hasOwnProperty('ai_processing_status')) {
+    setClause.push(`ai_processing_status = $${paramCounter}`);
+    values.push('pending');
+    paramCounter++;
+    console.log(`Partner ${id} marked for AI reprocessing due to significant changes`);
+  }
+
   values.push(id);
 
   try {
@@ -331,9 +403,13 @@ const updatePartner = async (req, res, next) => {
       return next(new AppError('Partner not found', 404));
     }
 
+    // Trigger AI processing webhook if partner was updated and needs processing
+    const updatedPartner = result.rows[0];
+    await triggerAIProcessing(updatedPartner.id, 'updated', updatedPartner.ai_processing_status);
+
     res.status(200).json({
       success: true,
-      partner: result.rows[0]
+      partner: updatedPartner
     });
   } catch (error) {
     console.error('❌ Update partner database error:', error.message);
