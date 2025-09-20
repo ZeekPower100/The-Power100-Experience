@@ -1,7 +1,7 @@
 const AIConcierge = require('../models/aiConcierge');
 const openAIService = require('../services/openAIService');
 const { query } = require('../config/database');
-const { safeJsonParse } = require('../utils/jsonHelpers');
+const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const { v4: uuidv4 } = require('uuid');
 
 const aiConciergeController = {
@@ -571,10 +571,40 @@ const aiConciergeController = {
         0
       );
 
-      // Get ALL matching entities for comprehensive knowledge
+      // Use the new AI Knowledge Service for dynamic data retrieval
+      const aiKnowledgeService = require('../services/aiKnowledgeService');
 
-      // 1. STRATEGIC PARTNERS - Complete Swiss Army Knife Data
-      const partnersResult = await query(
+      // Force refresh in development for testing (req is not available in this context)
+      const forceRefresh = false; // Can be passed as parameter if needed
+
+      // Get comprehensive knowledge base with all AI-enhanced fields
+      const knowledgeBase = await aiKnowledgeService.getComprehensiveKnowledge(contractorId);
+
+      // Get cross-entity insights based on contractor's focus areas
+      // Parse focus_areas in case it's a JSON string from the database
+      const focusAreas = safeJsonParse(contractor?.focus_areas, []);
+      const crossEntityInsights = await aiKnowledgeService.getCrossEntityInsights(focusAreas);
+
+      // Build comprehensive context for AI
+      const enhancedKnowledge = {
+        ...knowledgeBase,
+        crossEntityInsights,
+        conversationHistory
+      };
+
+      // Debug logging
+      console.log('📚 Knowledge base loaded:', {
+        tables: knowledgeBase._metadata?.tablesIncluded || [],
+        totalRecords: knowledgeBase._metadata?.totalRecords || 0,
+        aiFields: (knowledgeBase._metadata?.aiFieldsAvailable || []).length
+      });
+
+      // LEGACY CODE KEPT FOR FALLBACK - Remove after testing
+      if (!knowledgeBase || Object.keys(knowledgeBase).length === 0) {
+        console.log('[AIConcierg] Falling back to legacy queries...');
+
+        // 1. STRATEGIC PARTNERS - Complete Swiss Army Knife Data
+        const partnersResult = await query(
         `SELECT
           sp.company_name,
           sp.focus_areas_served,
@@ -872,13 +902,30 @@ const aiConciergeController = {
       if (events.length > 0) {
         console.log('Sample event:', events[0].name);
       }
+      } // End of legacy fallback block
+
+      // Use dynamic knowledge if available, otherwise use legacy
+      const finalKnowledge = enhancedKnowledge && enhancedKnowledge._metadata
+        ? enhancedKnowledge
+        : knowledgeBase;
+
+      // Debug what partners we're passing
+      // Use the full strategic_partners data from knowledge base, not the limited crossEntityInsights
+      const partnersToPass = enhancedKnowledge.strategic_partners?.data ||
+                            knowledgeBase.strategic_partners?.data ||
+                            crossEntityInsights?.matchingPartners ||
+                            partners || [];
+      console.log('[AIConcierg] Passing partners to OpenAI:', partnersToPass?.length || 0, 'partners');
+      if (partnersToPass && partnersToPass.length > 0) {
+        console.log('[AIConcierg] First partner:', JSON.stringify(partnersToPass[0]));
+      }
 
       const response = await openAIService.generateConciergeResponse(
         userInput,
         contractor,
         conversationHistory,
-        partners,
-        knowledgeBase  // Pass the full knowledge base
+        partnersToPass,
+        finalKnowledge  // Pass the full knowledge base
       );
 
       // Extract just the content from the response object

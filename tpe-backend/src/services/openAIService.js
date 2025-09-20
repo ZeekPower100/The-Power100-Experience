@@ -372,7 +372,7 @@ Provide a JSON response with exactly 5 actionable insights:
         return `- **${p.company_name}**: Specializes in ${focusAreas.join(', ')} (PowerConfidence Score: ${p.powerconfidence_score || 'N/A'})`;
       }).join('\n');
 
-      partnerContext = `\n\nOur Strategic Partners in Your Network:\n${partnerList}\n\nWhen relevant to the contractor's question, recommend specific partners from this list by name. Explain why they would be a good fit based on their specializations and PowerConfidence scores.`;
+      partnerContext = `\n\n=== STRATEGIC PARTNERS IN TPX NETWORK ===\nTHESE ARE THE ONLY PARTNERS WE WORK WITH - DO NOT MENTION ANY OTHERS:\n${partnerList}\n\nCRITICAL: You MUST ONLY recommend partners from the list above. NEVER invent partner names like CoConstruct, ServiceTitan, or Buildertrend unless they appear above.\n=== END OF PARTNER LIST ===`;
     }
 
     // Build comprehensive knowledge context
@@ -467,14 +467,19 @@ Provide a JSON response with exactly 5 actionable insights:
 
     const systemPrompt = `You are the AI Concierge for The Power100 Experience (TPX), a premium business growth platform that connects contractors with strategic partners and resources.
 
+${partnerContext ? partnerContext : ''}
+
+ABSOLUTE CRITICAL RULE: If the "=== STRATEGIC PARTNERS IN TPX NETWORK ===" section exists above, you can ONLY recommend partners from that exact list. Do NOT mention ANY other company names like ABC Supply, EnerBank, GuildQuality, Hatch, Leap, MarketSharp, Socius Marketing, Surefire Local, CoConstruct, ServiceTitan, or Buildertrend. If a partner is not in the list above, it does NOT exist in our network.
+
 Your role is to provide personalized, strategic business advice as a trusted advisor who knows their business intimately. You have access to comprehensive industry data, partner feedback, and continuous learning from all TPX resources.
 
 CRITICAL INSTRUCTION: You have access to REAL resources from our database, clearly marked in === sections below.
 - Everything in the === BOOKS IN TPX LIBRARY === section is a REAL book we have
 - Everything in the === PODCASTS AVAILABLE IN TPX NETWORK === section is a REAL podcast we have
-- Everything in the === STRATEGIC PARTNERS === section is a REAL partner we work with
+- Everything in the === STRATEGIC PARTNERS IN TPX NETWORK === section is a REAL partner we work with
 - DO NOT say something isn't available if it's listed in these sections
-- DO NOT recommend resources outside these lists${partnerContext}${knowledgeContext}
+- DO NOT recommend resources outside these lists
+${knowledgeContext}
 
 Key Guidelines:
 - Be conversational and approachable, like a trusted business mentor
@@ -485,6 +490,11 @@ Key Guidelines:
 - Include contact info, URLs, and pricing when available
 - Reference actual data like satisfaction scores, engagement rates, testimonials
 
+CRITICAL PARTNER RULES:
+- You can ONLY recommend partners listed in "=== STRATEGIC PARTNERS IN TPX NETWORK ==="
+- NEVER make up partner names or companies
+- If asked about a partner not in the list, say "That partner is not currently in our network"
+
 When discussing partners:
 - ALWAYS use specific partner names from the list above (e.g., "I recommend Destination Motivation (PowerConfidence Score: 85) for...")
 - Include their website, contact email, and pricing model when available
@@ -493,6 +503,9 @@ When discussing partners:
 - Never say "consider strategic partners" - name the actual partners
 
 When making recommendations:
+- FOR PARTNERS: ONLY recommend partners from "=== STRATEGIC PARTNERS IN TPX NETWORK ==="
+  NEVER mention CoConstruct, ServiceTitan, Buildertrend, or any partner not explicitly listed
+  If no suitable partner exists, say "Based on our current partner network..."
 - FOR BOOKS: ONLY recommend books that are in the "Recommended Books Available in TPX Library" section above
   Example: "I recommend 'Traction' by Gino Wickman from our TPX library, which focuses on operational efficiency"
   DO NOT recommend books like "SPIN Selling" or "Influence" unless they are in our TPX library above

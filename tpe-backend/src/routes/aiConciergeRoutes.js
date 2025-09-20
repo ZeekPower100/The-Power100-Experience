@@ -90,6 +90,76 @@ if (process.env.NODE_ENV === 'development') {
 
   // Test knowledge base loading
   router.get('/test-knowledge', aiConciergeController.testKnowledgeBase);
+
+  // Schema discovery endpoints
+  router.get('/schema/discover', async (req, res) => {
+    try {
+      const schemaDiscovery = require('../services/schemaDiscoveryService');
+      const schema = await schemaDiscovery.discoverSchema();
+      res.json({
+        success: true,
+        tablesDiscovered: Object.keys(schema).length,
+        schema
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  router.get('/schema/summary', async (req, res) => {
+    try {
+      const schemaDiscovery = require('../services/schemaDiscoveryService');
+      const summary = await schemaDiscovery.getSchemaSummary();
+      res.json({
+        success: true,
+        summary
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  router.get('/schema/ai-relevant', async (req, res) => {
+    try {
+      const schemaDiscovery = require('../services/schemaDiscoveryService');
+      const relevantSchema = await schemaDiscovery.getAIRelevantSchema();
+      res.json({
+        success: true,
+        tablesRelevant: Object.keys(relevantSchema).length,
+        schema: relevantSchema
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  // Force refresh schema cache
+  router.post('/schema/refresh', async (req, res) => {
+    try {
+      const schemaDiscovery = require('../services/schemaDiscoveryService');
+      const schema = await schemaDiscovery.forceRefresh();
+      res.json({
+        success: true,
+        message: 'Schema cache refreshed',
+        tablesDiscovered: Object.keys(schema).length,
+        refreshedAt: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
 }
 
 module.exports = router;
