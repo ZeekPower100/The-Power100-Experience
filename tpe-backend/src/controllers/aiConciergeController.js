@@ -562,6 +562,57 @@ const aiConciergeController = {
     }
   },
 
+  /**
+   * Map database table names to API property names
+   * Uses metadata from ai_metadata table to ensure correct naming
+   */
+  async mapKnowledgeBaseToApiProperties(knowledgeBase) {
+    try {
+      const { query } = require('../config/database');
+
+      // Get API property mappings from database
+      const result = await query(`
+        SELECT table_name, api_property_name
+        FROM ai_metadata
+        WHERE is_entity_table = true
+        AND include_in_knowledge_base = true
+      `);
+
+      const mappedKnowledge = { ...knowledgeBase };
+
+      // Map each table to its API property name
+      result.rows.forEach(({ table_name, api_property_name }) => {
+        if (knowledgeBase[table_name]?.data) {
+          console.log(`[AIConcierg] Mapping ${table_name} to ${api_property_name} with ${knowledgeBase[table_name].data.length} records`);
+          mappedKnowledge[api_property_name] = knowledgeBase[table_name].data;
+        } else if (knowledgeBase[table_name]) {
+          console.log(`[AIConcierg] Table ${table_name} has no data property`);
+        }
+      });
+
+      // Ensure critical properties exist
+      mappedKnowledge.videos = mappedKnowledge.videos || knowledgeBase.video_content?.data || [];
+      mappedKnowledge.books = mappedKnowledge.books || knowledgeBase.books?.data || [];
+      mappedKnowledge.podcasts = mappedKnowledge.podcasts || knowledgeBase.podcasts?.data || [];
+      mappedKnowledge.events = mappedKnowledge.events || knowledgeBase.events?.data || [];
+      mappedKnowledge.partners = mappedKnowledge.partners || knowledgeBase.strategic_partners?.data || [];
+
+      return mappedKnowledge;
+    } catch (error) {
+      console.error('[AIConcierg] Error mapping knowledge base:', error);
+
+      // Fallback to manual mapping if database query fails
+      return {
+        ...knowledgeBase,
+        videos: knowledgeBase.video_content?.data || [],
+        books: knowledgeBase.books?.data || [],
+        podcasts: knowledgeBase.podcasts?.data || [],
+        events: knowledgeBase.events?.data || [],
+        partners: knowledgeBase.strategic_partners?.data || []
+      };
+    }
+  },
+
   async generateAIResponse(userInput, contractor, contractorId) {
     try {
       // Get recent conversation history
@@ -904,15 +955,15 @@ const aiConciergeController = {
       }
       } // End of legacy fallback block
 
-      // Use dynamic knowledge if available, otherwise use legacy
+      // Use dynamic knowledge if available (already has API property names)
       const finalKnowledge = enhancedKnowledge && enhancedKnowledge._metadata
         ? enhancedKnowledge
         : knowledgeBase;
 
       // Debug what partners we're passing
-      // Use the full strategic_partners data from knowledge base, not the limited crossEntityInsights
-      const partnersToPass = enhancedKnowledge.strategic_partners?.data ||
-                            knowledgeBase.strategic_partners?.data ||
+      // Use the full partners data (now mapped from strategic_partners)
+      const partnersToPass = enhancedKnowledge.partners?.data ||
+                            finalKnowledge.partners?.data ||
                             crossEntityInsights?.matchingPartners ||
                             partners || [];
       console.log('[AIConcierg] Passing partners to OpenAI:', partnersToPass?.length || 0, 'partners');

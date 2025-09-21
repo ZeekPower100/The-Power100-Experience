@@ -35,6 +35,11 @@ class SchemaDiscoveryService {
 
       console.log('[SchemaDiscovery] Starting schema discovery...');
 
+      // Load entity metadata ONCE at the beginning
+      if (forceRefresh || !this.entityTablesCache || this.isMetadataCacheStale()) {
+        await this.loadEntityTablesFromMetadata();
+      }
+
       // Get all tables
       const tablesResult = await query(`
         SELECT 
@@ -108,8 +113,9 @@ class SchemaDiscoveryService {
           foreignKeys: {},
           hasAIFields: false,
           hasSensitiveData: false,
-          isEntityTable: this.isEntityTable(tableName),
-          aiRelevance: this.calculateAIRelevance(tableName, columnsResult.rows)
+          isEntityTable: await this.isEntityTable(tableName, forceRefresh),
+          apiPropertyName: this.getApiPropertyName(tableName),
+          aiRelevance: await this.calculateAIRelevance(tableName, columnsResult.rows)
         };
 
         // Process columns
@@ -144,7 +150,7 @@ class SchemaDiscoveryService {
       }
 
       // Detect relationships between tables
-      this.detectRelationships(schema);
+      await this.detectRelationships(schema);
 
       // Cache the schema
       this.schemaCache = schema;
@@ -180,23 +186,80 @@ class SchemaDiscoveryService {
 
   /**
    * Determine if a table is a main entity table
+   * Now reads from database metadata for dynamic configuration
    */
-  isEntityTable(tableName) {
-    const entityTables = [
-      'contractors', 'strategic_partners', 'books', 'podcasts', 'events',
-      'demo_bookings', 'contractor_partner_matches', 'videos', 'webinars'
-    ];
-    return entityTables.includes(tableName);
+  async isEntityTable(tableName, forceRefresh = false) {
+    try {
+      // Only reload if explicitly forced or cache is missing
+      if (forceRefresh || !this.entityTablesCache) {
+        await this.loadEntityTablesFromMetadata();
+      }
+
+      return this.entityTablesCache.includes(tableName);
+    } catch (error) {
+      console.error('[SchemaDiscovery] Error checking entity table status:', error);
+      // Fallback to hardcoded list if metadata fails
+      const fallbackTables = [
+        'contractors', 'strategic_partners', 'books', 'podcasts', 'events',
+        'demo_bookings', 'contractor_partner_matches', 'video_content', 'video_analysis', 'webinars'
+      ];
+      return fallbackTables.includes(tableName);
+    }
+  }
+
+  /**
+   * Load entity tables from database metadata
+   */
+  async loadEntityTablesFromMetadata() {
+    try {
+      const result = await query(`
+        SELECT table_name, api_property_name
+        FROM ai_metadata
+        WHERE is_entity_table = true
+        AND include_in_knowledge_base = true
+      `);
+
+      this.entityTablesCache = result.rows.map(row => row.table_name);
+      this.tableApiMappings = {};
+      result.rows.forEach(row => {
+        this.tableApiMappings[row.table_name] = row.api_property_name;
+      });
+      this.metadataCacheTime = new Date();
+
+      console.log('[SchemaDiscovery] Loaded entity tables from metadata:', this.entityTablesCache);
+    } catch (error) {
+      console.error('[SchemaDiscovery] Error loading entity tables from metadata:', error);
+      // Initialize with empty cache to prevent repeated failures
+      this.entityTablesCache = [];
+      this.tableApiMappings = {};
+    }
+  }
+
+  /**
+   * Check if metadata cache is stale
+   */
+  isMetadataCacheStale() {
+    if (!this.metadataCacheTime) return true;
+    const minutesSinceCache = (Date.now() - this.metadataCacheTime.getTime()) / (1000 * 60);
+    // Reduced to 5 minutes for faster updates when new tables are added
+    return minutesSinceCache > 5; // Refresh every 5 minutes
+  }
+
+  /**
+   * Get API property name for a table
+   */
+  getApiPropertyName(tableName) {
+    return this.tableApiMappings?.[tableName] || tableName;
   }
 
   /**
    * Calculate how relevant a table is for AI operations
    */
-  calculateAIRelevance(tableName, columns) {
+  async calculateAIRelevance(tableName, columns) {
     let score = 0;
 
     // Entity tables are highly relevant
-    if (this.isEntityTable(tableName)) score += 50;
+    if (await this.isEntityTable(tableName)) score += 50;
 
     // Tables with AI fields are very relevant
     const hasAIFields = columns.some(col => 
@@ -256,14 +319,14 @@ class SchemaDiscoveryService {
   /**
    * Detect relationships between tables
    */
-  detectRelationships(schema) {
+  async detectRelationships(schema) {
     for (const [tableName, tableInfo] of Object.entries(schema)) {
       // Look for foreign keys that reference entity tables
       for (const [columnName, fkInfo] of Object.entries(tableInfo.foreignKeys)) {
         const referencedTable = fkInfo.referencedTable;
-        
+
         // Mark cross-references
-        if (this.isEntityTable(referencedTable)) {
+        if (await this.isEntityTable(referencedTable)) {
           if (!tableInfo.relatedEntities) {
             tableInfo.relatedEntities = [];
           }
@@ -359,9 +422,15 @@ class SchemaDiscoveryService {
    * Force refresh the schema cache
    */
   async forceRefresh() {
-    console.log('[SchemaDiscovery] Force refreshing schema...');
+    console.log('[SchemaDiscovery] Force refreshing schema AND metadata...');
+    // Clear main schema cache
     this.schemaCache = null;
     this.lastDiscoveryTime = null;
+    // Clear entity tables metadata cache
+    this.entityTablesCache = null;
+    this.metadataCacheTime = null;
+    this.tableApiMappings = null;
+    console.log('[SchemaDiscovery] All caches cleared, forcing full refresh');
     return await this.discoverSchema(true);
   }
 

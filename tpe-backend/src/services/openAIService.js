@@ -15,6 +15,75 @@ class OpenAIService {
     this.initialized = false;
   }
 
+  /**
+   * Dynamically build knowledge context from ANY entities in the knowledge base
+   * Automatically handles any entity type without hardcoding
+   */
+  buildDynamicKnowledgeContext(knowledgeBase) {
+    const { safeJsonParse } = require('../utils/jsonHelpers');
+    let knowledgeContext = '';
+
+    // Process each entity in the knowledge base
+    Object.entries(knowledgeBase).forEach(([key, data]) => {
+      // Skip non-data entries
+      if (key.startsWith('_') || key === 'industryStats' || key === 'conversationHistory' || key === 'crossEntityInsights') {
+        return;
+      }
+
+      // Extract array data from object or use directly if already array
+      let items = Array.isArray(data) ? data : (data && data.data ? data.data : null);
+
+      // Skip if no data
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return;
+      }
+
+      // Convert camelCase to Title Case for display
+      const displayName = key
+        .replace(/([A-Z])/g, ' $1') // Add space before capitals
+        .replace(/^./, str => str.toUpperCase()) // Capitalize first letter
+        .trim();
+
+      console.log(`[OpenAI] Adding ${key} to prompt: ${items.length} items`);
+
+      // Build section header
+      knowledgeContext += `\n\n=== ${displayName.toUpperCase()} IN TPX (${items.length} total) ===`;
+
+      // Process items (limit for token management)
+      items.slice(0, 15).forEach((item, index) => {
+        // Extract common fields intelligently
+        const title = item.title || item.name || item.company_name || `${displayName} ${index + 1}`;
+        const description = item.description || item.summary || item.ai_summary || item.value_proposition || '';
+
+        knowledgeContext += `\n${index + 1}. **${title}**`;
+
+        // Add description
+        if (description) {
+          knowledgeContext += `\n   ${description.substring(0, 200)}${description.length > 200 ? '...' : ''}`;
+        }
+
+        // Add AI insights if present
+        if (item.ai_insights) {
+          const insights = Array.isArray(item.ai_insights) ? item.ai_insights : safeJsonParse(item.ai_insights, []);
+          if (insights.length > 0) {
+            knowledgeContext += `\n   Insights: ${insights.slice(0, 2).join('; ')}`;
+          }
+        }
+
+        // Add specific metrics based on entity type
+        if (item.powerconfidence_score) knowledgeContext += ` (PowerConfidence: ${item.powerconfidence_score})`;
+        if (item.results) knowledgeContext += `\n   Results: ${item.results.substring(0, 100)}`;
+        if (item.revenue_impact) knowledgeContext += `\n   Revenue Impact: ${item.revenue_impact}`;
+        if (item.focus_areas_covered) {
+          const areas = Array.isArray(item.focus_areas_covered) ? item.focus_areas_covered : safeJsonParse(item.focus_areas_covered, []);
+          if (areas.length > 0) knowledgeContext += `\n   Focus: ${areas.join(', ')}`;
+        }
+      });
+    });
+
+    return knowledgeContext;
+  }
+
   initializeClient() {
     // Only initialize once
     if (this.initialized) {
@@ -375,12 +444,30 @@ Provide a JSON response with exactly 5 actionable insights:
       partnerContext = `\n\n=== STRATEGIC PARTNERS IN TPX NETWORK ===\nTHESE ARE THE ONLY PARTNERS WE WORK WITH - DO NOT MENTION ANY OTHERS:\n${partnerList}\n\nCRITICAL: You MUST ONLY recommend partners from the list above. NEVER invent partner names like CoConstruct, ServiceTitan, or Buildertrend unless they appear above.\n=== END OF PARTNER LIST ===`;
     }
 
-    // Build comprehensive knowledge context
+    // Build comprehensive knowledge context using dynamic prompt builder
     let knowledgeContext = '';
 
     // Debug the knowledge base structure
     console.log('🔍 Knowledge base structure:', Object.keys(knowledgeBase));
-    if (knowledgeBase.books) {
+    console.log('🔍 Knowledge base details:', Object.entries(knowledgeBase).map(([k, v]) =>
+      `${k}: ${Array.isArray(v) ? `Array(${v.length})` : typeof v}`
+    ));
+
+    // Use the dynamic prompt builder to include ALL entities automatically
+    knowledgeContext = this.buildDynamicKnowledgeContext(knowledgeBase);
+
+    // Add industry stats if available (not handled by dynamic builder)
+    if (knowledgeBase.industryStats) {
+      const stats = knowledgeBase.industryStats;
+      const feedbackRate = stats.feedback_rate ? Number(stats.feedback_rate).toFixed(1) : '0';
+      knowledgeContext += `\n\nIndustry Insights:
+- ${stats.total_contractors} contractors in the TPX network
+- ${feedbackRate}% engagement rate
+- Common focus areas: ${stats.all_focus_areas ? 'customer retention, operational efficiency, growth strategies' : 'various'}`;
+    }
+
+    // Legacy handling - REMOVE AFTER TESTING
+    if (false && knowledgeBase.books) {
       console.log('📚 Books structure:', {
         hasData: !!knowledgeBase.books.data,
         dataLength: knowledgeBase.books.data?.length,

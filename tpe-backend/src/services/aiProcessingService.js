@@ -524,6 +524,143 @@ Format your response as a JSON object with these exact keys:
   }
 }
 
+/**
+ * Process AI extraction for a video
+ */
+async function processVideoAI(videoId) {
+  try {
+    // Fetch video data
+    const result = await query(
+      'SELECT * FROM video_content WHERE id = $1',
+      [videoId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error(`Video not found: ${videoId}`);
+    }
+
+    const video = result.rows[0];
+    console.log(`🎥 Processing video AI for: ${video.title}`);
+
+    // Check if it's a partner demo video
+    const isPartnerVideo = video.entity_type === 'partner';
+    let partnerContext = '';
+
+    if (isPartnerVideo) {
+      // Fetch partner details for context
+      const partnerResult = await query(
+        'SELECT company_name, description, value_proposition FROM strategic_partners WHERE id = $1',
+        [video.entity_id]
+      );
+
+      if (partnerResult.rows.length > 0) {
+        const partner = partnerResult.rows[0];
+        partnerContext = `
+Partner Company: ${partner.company_name}
+Partner Description: ${partner.description || ''}
+Value Proposition: ${partner.value_proposition || ''}`;
+      }
+    }
+
+    // Extract AI insights using OpenAI
+    const prompt = `Analyze this ${isPartnerVideo ? 'partner demo' : 'business'} video and provide insights:
+
+Video Title: ${video.title}
+Description: ${video.description || ''}
+Duration: ${video.duration_seconds ? `${Math.round(video.duration_seconds/60)} minutes` : 'Unknown'}
+Type: ${video.video_type || 'Demo'}
+${partnerContext}
+
+Based on the video information${isPartnerVideo ? ' and knowing this is a partner demo video' : ''}, provide:
+
+1. ai_summary - A comprehensive 2-3 paragraph summary of what this video covers and its key value
+2. ai_insights - An array of 5-7 key insights or takeaways (as an array of strings)
+3. ai_key_topics - An array of 5-8 main topics covered (as an array of strings)
+4. ai_sentiment_analysis - Analysis of tone and sentiment as an object with:
+   - overall_tone: (professional/casual/energetic/calm)
+   - confidence_level: (high/medium/low)
+   - authenticity_score: (1-10)
+   - engagement_potential: (high/medium/low)
+5. ai_engagement_score - Overall engagement score (1-100) based on likely viewer retention
+
+${isPartnerVideo ? `
+For partner demo videos, specifically evaluate:
+- How clearly they communicate their value proposition
+- Professional quality of the presentation
+- Strength of their call-to-action
+- Technical competence demonstrated
+- Overall persuasiveness for contractors` : ''}
+
+Return as JSON with these exact field names.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: "You are an AI video analyst specializing in business and partner demo videos. Extract actionable insights and evaluate video effectiveness. Always return valid JSON only with no additional text."
+        },
+        {
+          role: "user",
+          content: prompt + "\n\nReturn ONLY valid JSON with no additional text or markdown."
+        }
+      ],
+      temperature: 0.3
+    });
+
+    // Clean up any potential markdown or extra text
+    let responseContent = completion.choices[0].message.content;
+    // Remove markdown code blocks if present
+    responseContent = responseContent.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+
+    const aiData = JSON.parse(responseContent);
+
+    // Update video with AI-generated data
+    await query(
+      `UPDATE video_content
+       SET ai_summary = $1,
+           ai_insights = $2,
+           ai_key_topics = $3,
+           ai_sentiment_analysis = $4,
+           ai_engagement_score = $5,
+           ai_processing_status = 'completed',
+           last_ai_analysis = NOW()
+       WHERE id = $6`,
+      [
+        aiData.ai_summary || '',
+        safeJsonStringify(aiData.ai_insights || []),
+        safeJsonStringify(aiData.ai_key_topics || []),
+        safeJsonStringify(aiData.ai_sentiment_analysis || {}),
+        aiData.ai_engagement_score || 50,  // Default to 50 if not provided
+        videoId
+      ]
+    );
+
+    console.log(`✅ Video AI processing completed for: ${video.title}`);
+
+    return {
+      success: true,
+      videoId,
+      title: video.title,
+      ai_fields: aiData
+    };
+
+  } catch (error) {
+    console.error(`Error processing video ${videoId}:`, error);
+
+    // Mark as failed
+    await query(
+      `UPDATE video_content
+       SET ai_processing_status = 'failed',
+           last_ai_analysis = NOW()
+       WHERE id = $1`,
+      [videoId]
+    );
+
+    throw error;
+  }
+}
+
 module.exports = {
   generateKeyDifferentiators,
   processPartnerAI,
@@ -531,5 +668,6 @@ module.exports = {
   generateContextualDifferentiators,
   markPartnersForReprocessing,
   triggerPartnerReprocessing,
-  processBookAI
+  processBookAI,
+  processVideoAI
 };

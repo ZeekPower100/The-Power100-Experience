@@ -91,6 +91,46 @@ if (process.env.NODE_ENV === 'development') {
   // Test knowledge base loading
   router.get('/test-knowledge', aiConciergeController.testKnowledgeBase);
 
+  // Debug endpoint to see what's in the knowledge base
+  router.get('/debug-knowledge', async (req, res) => {
+    try {
+      const aiKnowledgeService = require('../services/aiKnowledgeService');
+      const knowledge = await aiKnowledgeService.getComprehensiveKnowledge();
+
+      // List all keys and their types
+      const summary = {};
+      Object.entries(knowledge).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          summary[key] = {
+            type: 'array',
+            count: value.length,
+            sample: value[0] ? Object.keys(value[0]).slice(0, 5) : []
+          };
+        } else if (value && typeof value === 'object' && value.data) {
+          summary[key] = {
+            type: 'object with data',
+            count: value.data ? value.data.length : 0,
+            sample: value.data && value.data[0] ? Object.keys(value.data[0]).slice(0, 5) : []
+          };
+        } else {
+          summary[key] = { type: typeof value };
+        }
+      });
+
+      res.json({
+        success: true,
+        keys: Object.keys(knowledge),
+        summary,
+        caseStudiesPresent: !!knowledge.caseStudies,
+        caseStudiesData: knowledge.caseStudies ?
+          (Array.isArray(knowledge.caseStudies) ? knowledge.caseStudies : knowledge.caseStudies.data) :
+          null
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Schema discovery endpoints
   router.get('/schema/discover', async (req, res) => {
     try {
@@ -133,6 +173,24 @@ if (process.env.NODE_ENV === 'development') {
         success: true,
         tablesRelevant: Object.keys(relevantSchema).length,
         schema: relevantSchema
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  // Auto-detect new entity tables and AI columns
+  router.post('/auto-detect', async (req, res) => {
+    try {
+      const autoDetector = require('../services/autoEntityDetector');
+      const results = await autoDetector.runAutoDetection();
+
+      res.json({
+        success: true,
+        ...results
       });
     } catch (error) {
       res.status(500).json({

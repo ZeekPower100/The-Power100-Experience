@@ -8,7 +8,8 @@ const {
   generateContextualDifferentiators,
   markPartnersForReprocessing,
   triggerPartnerReprocessing,
-  processBookAI
+  processBookAI,
+  processVideoAI
 } = require('../services/aiProcessingService');
 const { query } = require('../config/database.postgresql');
 
@@ -25,6 +26,26 @@ router.post('/process-book/:id', apiKeyAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error processing book AI:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Process a specific video (uses API key auth for n8n)
+router.post('/process-video/:id', apiKeyAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await processVideoAI(id);
+
+    res.json({
+      success: true,
+      message: 'Video AI processing completed successfully',
+      result
+    });
+  } catch (error) {
+    console.error('Error processing video AI:', error);
     res.status(500).json({
       success: false,
       error: error.message

@@ -28,6 +28,7 @@ class AIKnowledgeService {
 
       // Fetch data for each relevant table
       for (const [tableName, tableInfo] of Object.entries(relevantSchema)) {
+        console.log(`[AIKnowledge] Processing table: ${tableName}, isEntity: ${tableInfo.isEntityTable}, apiName: ${tableInfo.apiPropertyName}`);
         if (!tableInfo.isEntityTable) continue;
 
         // Build dynamic query based on discovered columns
@@ -37,9 +38,12 @@ class AIKnowledgeService {
 
         if (!columns) continue;
 
+        // Use API property name for caching
+        const apiKey = tableInfo.apiPropertyName || tableName;
+
         // Check cache first
-        if (this.isCacheValid(tableName)) {
-          knowledge[tableName] = this.knowledgeCache[tableName];
+        if (this.isCacheValid(apiKey)) {
+          knowledge[apiKey] = this.knowledgeCache[apiKey];
           continue;
         }
 
@@ -70,7 +74,8 @@ class AIKnowledgeService {
           queryStr += ' LIMIT 100';
 
           const result = await query(queryStr);
-          knowledge[tableName] = {
+
+          knowledge[apiKey] = {
             data: result.rows,
             count: result.rows.length,
             hasAIFields: tableInfo.hasAIFields,
@@ -79,11 +84,11 @@ class AIKnowledgeService {
             relationships: tableInfo.relatedEntities || []
           };
 
-          // Cache the result
-          this.knowledgeCache[tableName] = knowledge[tableName];
-          this.lastCacheTime[tableName] = Date.now();
+          // Cache with API key
+          this.knowledgeCache[apiKey] = knowledge[apiKey];
+          this.lastCacheTime[apiKey] = Date.now();
 
-          console.log(`[AIKnowledge] Loaded ${result.rows.length} ${tableName}`);
+          console.log(`[AIKnowledge] Loaded ${result.rows.length} ${tableName} as ${apiKey}`);
         } catch (error) {
           console.error(`[AIKnowledge] Error loading ${tableName}:`, error.message);
           knowledge[tableName] = { data: [], error: error.message };
@@ -420,6 +425,15 @@ class AIKnowledgeService {
   isCacheValid(tableName) {
     if (!this.lastCacheTime[tableName]) return false;
     return (Date.now() - this.lastCacheTime[tableName]) < this.cacheExpiry;
+  }
+
+  /**
+   * Clear all caches - useful when metadata changes
+   */
+  clearCache() {
+    this.knowledgeCache = {};
+    this.lastCacheTime = {};
+    console.log('[AIKnowledge] Cache cleared');
   }
 
   /**

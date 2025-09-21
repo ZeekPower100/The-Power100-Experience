@@ -1,10 +1,60 @@
 const VideoContent = require('../models/videoContent');
+const axios = require('axios');
+
+// Content fields that should trigger AI processing
+const AI_TRIGGER_FIELDS = [
+  'title',
+  'description',
+  'file_url',
+  'entity_type',
+  'entity_id',
+  'video_type'
+];
+
+// Trigger AI processing via n8n webhook
+async function triggerVideoAIProcessing(videoId, action, updates = {}) {
+  try {
+    // Only trigger if it's a new video or content fields changed
+    const shouldTrigger = action === 'created' ||
+                         Object.keys(updates).some(field => AI_TRIGGER_FIELDS.includes(field));
+
+    if (!shouldTrigger) {
+      console.log(`⏭️ Skipping AI processing for video ${videoId} - only metadata changed`);
+      return;
+    }
+
+    const webhookUrl = process.env.N8N_VIDEO_WEBHOOK_URL;
+    if (!webhookUrl) {
+      console.warn('⚠️ N8N_VIDEO_WEBHOOK_URL not configured - skipping AI trigger');
+      return;
+    }
+
+    console.log(`🔄 Triggering ${action} AI processing for video ${videoId}`);
+
+    const response = await axios.post(webhookUrl, {
+      video_id: videoId,
+      ai_processing_status: 'pending',
+      action,
+      updated_fields: Object.keys(updates)
+    });
+
+    console.log(`✅ AI processing triggered for video ${videoId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`❌ Failed to trigger AI processing for video ${videoId}:`, error.message);
+    // Don't throw - we don't want to fail the main operation if AI trigger fails
+  }
+}
 
 const videoContentController = {
   // Create new video content
   async create(req, res) {
     try {
       const video = await VideoContent.create(req.body);
+
+      // Trigger AI processing for new video
+      triggerVideoAIProcessing(video.id, 'created');
+
       res.status(201).json({
         success: true,
         data: video
@@ -125,6 +175,10 @@ const videoContentController = {
           error: 'Video not found'
         });
       }
+
+      // Trigger AI processing if content fields changed
+      triggerVideoAIProcessing(req.params.id, 'updated', req.body);
+
       res.json({
         success: true,
         data: video
