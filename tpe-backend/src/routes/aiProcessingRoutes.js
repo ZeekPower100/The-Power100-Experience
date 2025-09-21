@@ -1,17 +1,39 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
+const { apiKeyAuth } = require('../middleware/apiKeyAuth');
 const {
   processPartnerAI,
   processAllPendingPartners,
   generateContextualDifferentiators,
   markPartnersForReprocessing,
-  triggerPartnerReprocessing
+  triggerPartnerReprocessing,
+  processBookAI
 } = require('../services/aiProcessingService');
 const { query } = require('../config/database.postgresql');
 
-// Process a specific partner
-router.post('/process-partner/:id', protect, async (req, res) => {
+// Process a specific book (uses API key auth for n8n)
+router.post('/process-book/:id', apiKeyAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await processBookAI(id);
+
+    res.json({
+      success: true,
+      message: 'Book AI processing completed successfully',
+      result
+    });
+  } catch (error) {
+    console.error('Error processing book AI:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Process a specific partner (uses API key auth for n8n)
+router.post('/process-partner/:id', apiKeyAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const result = await processPartnerAI(id);

@@ -14,6 +14,27 @@ PGPASSWORD='dBP0wer100!!' psql -h tpe-database-production.cmtcsi0kytrf.us-east-1
 
 **NEVER MIX THESE UP!** Local uses batch file, Production uses MCP tool.
 
+## 🧪 AI CONCIERGE TESTING - CRITICAL COMMANDS
+**ALWAYS USE THESE WHEN TESTING AI FEATURES:**
+
+### Force Refresh Schema (After ANY Database Changes)
+```bash
+curl -X POST http://localhost:5000/api/ai-concierge/schema/refresh
+```
+**Use after:** Adding columns, processing AI data, updating differentiators
+
+### Check What AI Can See
+```bash
+curl http://localhost:5000/api/ai-concierge/schema/summary | jq
+```
+
+### Development Auto-Refresh
+- Cache: **5 minutes** (vs 24 hours in production)
+- New columns: **Automatically discovered**
+- AI fields: **Automatically included**
+
+**See `docs/AI-CONCIERGE-TESTING-GUIDE.md` for complete testing guide**
+
 ## 🔌 IMPORTANT: PORT CONFIGURATION
 **PRODUCTION PORTS:**
 - Frontend: **3000** (Next.js on https://tpx.power100.io)
@@ -36,6 +57,19 @@ Helper scripts available:
 - `check_table_schema.bat` - View exact column names and types
 - `check_field_exists.bat` - Verify a specific field exists
 - `list_array_fields.bat` - List all array/JSON fields
+
+## 🤖 AI FIELD NAMING FOR AUTOMATIC CONCIERGE ACCESS
+**MANDATORY READING: `docs/AI-FIELD-NAMING-CONVENTIONS.md`**
+
+**Golden Rule:** If it starts with `ai_`, it's automatically in the AI Concierge!
+
+When adding ANY AI-processed field to the database:
+1. **Follow naming convention**: `ai_summary`, `ai_insights`, `ai_tags`, etc.
+2. **Use correct data types**: TEXT for summaries, JSONB for arrays
+3. **No code changes needed**: Fields are auto-discovered and formatted
+4. **Test immediately**: Force schema refresh and test in AI Concierge
+
+See `docs/AI-FIELD-NAMING-CONVENTIONS.md` for complete patterns and examples.
 
 ## 🚨 CRITICAL: JSON & STORAGE HANDLING
 **MANDATORY READING: `docs/STORAGE-AND-JSON-GUIDELINES.md`**

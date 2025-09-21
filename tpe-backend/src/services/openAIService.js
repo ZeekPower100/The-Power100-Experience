@@ -378,6 +378,16 @@ Provide a JSON response with exactly 5 actionable insights:
     // Build comprehensive knowledge context
     let knowledgeContext = '';
 
+    // Debug the knowledge base structure
+    console.log('🔍 Knowledge base structure:', Object.keys(knowledgeBase));
+    if (knowledgeBase.books) {
+      console.log('📚 Books structure:', {
+        hasData: !!knowledgeBase.books.data,
+        dataLength: knowledgeBase.books.data?.length,
+        directLength: Array.isArray(knowledgeBase.books) ? knowledgeBase.books.length : 'not array'
+      });
+    }
+
     if (knowledgeBase && Object.keys(knowledgeBase).length > 0) {
       // Add industry statistics
       if (knowledgeBase.industryStats) {
@@ -389,16 +399,56 @@ Provide a JSON response with exactly 5 actionable insights:
 - Common focus areas: ${stats.all_focus_areas ? 'customer retention, operational efficiency, growth strategies' : 'various'}`;
       }
 
-      // Add book recommendations
-      if (knowledgeBase.books && knowledgeBase.books.length > 0) {
-        knowledgeContext += `\n\n=== BOOKS IN TPX LIBRARY (${knowledgeBase.books.length} total) ===`;
+      // Add book recommendations - check ALL possible structures
+      const booksData = knowledgeBase.books?.data ||
+                       knowledgeBase.books ||
+                       knowledgeBase.crossEntityInsights?.relevantBooks ||
+                       [];
+
+      console.log('📚 Looking for books in:', {
+        'books.data': knowledgeBase.books?.data?.length || 0,
+        'books direct': Array.isArray(knowledgeBase.books) ? knowledgeBase.books.length : 0,
+        'crossEntityInsights.relevantBooks': knowledgeBase.crossEntityInsights?.relevantBooks?.length || 0
+      });
+
+      if (booksData.length > 0) {
+        console.log('📚 Books found:', booksData.length);
+        console.log('First book:', booksData[0].title, 'has AI summary:', !!booksData[0].ai_summary, 'has AI insights:', !!booksData[0].ai_insights);
+        knowledgeContext += `\n\n=== BOOKS IN TPX LIBRARY (${booksData.length} total) ===`;
         knowledgeContext += `\nALL THESE BOOKS ARE AVAILABLE IN OUR LIBRARY:\n`;
-        knowledgeBase.books.forEach((book, index) => {
+        // Check if E-Myth is in the list
+        const emyth = booksData.find(b => b.title?.includes('E-Myth'));
+        if (emyth) {
+          console.log('✅ E-Myth Contractor found!');
+          console.log('AI insights:', emyth.ai_insights);
+        } else {
+          console.log('❌ E-Myth Contractor NOT in the books list');
+        }
+
+        booksData.forEach((book, index) => {
           const focusAreas = Array.isArray(book.focus_areas_covered)
             ? book.focus_areas_covered.join(', ')
             : book.focus_areas_covered || 'General business';
           knowledgeContext += `\n${index + 1}. **"${book.title}"** by ${book.author}`;
           knowledgeContext += `\n   Focus: ${focusAreas}`;
+
+          // Include AI-generated summary if available
+          if (book.ai_summary) {
+            knowledgeContext += `\n   Summary: ${book.ai_summary.substring(0, 200)}...`;
+          }
+
+          // Include AI insights if available
+          if (book.ai_insights) {
+            const insights = Array.isArray(book.ai_insights) ? book.ai_insights : safeJsonParse(book.ai_insights, []);
+            console.log(`Book ${book.title} - AI insights type:`, typeof book.ai_insights, 'Is Array:', Array.isArray(book.ai_insights));
+            if (insights.length > 0) {
+              knowledgeContext += `\n   AI-Generated Insights:`;
+              insights.forEach(insight => {
+                knowledgeContext += `\n   • ${insight}`;
+              });
+            }
+          }
+
           if (book.key_takeaways) {
             knowledgeContext += `\n   Key Takeaways: ${book.key_takeaways.substring(0, 150)}`;
           }
@@ -408,6 +458,12 @@ Provide a JSON response with exactly 5 actionable insights:
           knowledgeContext += '\n';
         });
         knowledgeContext += `\n=== END OF BOOK LIST ===\n`;
+
+        // DEBUG: Log what we're sending about E-Myth
+        const emythInContext = knowledgeContext.includes('E-Myth');
+        const insightsInContext = knowledgeContext.includes('Building systems instead of dependencies');
+        console.log('📊 E-Myth in context:', emythInContext);
+        console.log('📊 Actual insights in context:', insightsInContext);
       }
 
       // Add podcast insights
@@ -507,7 +563,9 @@ When making recommendations:
   NEVER mention CoConstruct, ServiceTitan, Buildertrend, or any partner not explicitly listed
   If no suitable partner exists, say "Based on our current partner network..."
 - FOR BOOKS: ONLY recommend books that are in the "Recommended Books Available in TPX Library" section above
-  Example: "I recommend 'Traction' by Gino Wickman from our TPX library, which focuses on operational efficiency"
+  When discussing a book, ALWAYS use the "AI-Generated Insights" if provided - these are our actual analyzed insights
+  Example: "According to our AI analysis of 'The E-Myth Contractor', the key insights are: [list the actual AI-Generated Insights]"
+  DO NOT make up generic insights if AI-Generated Insights are provided in the book listing
   DO NOT recommend books like "SPIN Selling" or "Influence" unless they are in our TPX library above
 - FOR PODCASTS: ALL podcasts listed in the "Podcasts Available in TPX Network" section above ARE part of our network
   When a user asks about ANY podcast that appears in that list, you MUST acknowledge it exists

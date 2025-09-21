@@ -1,4 +1,62 @@
 const db = require('../config/database');
+const axios = require('axios');
+
+// Fields that should trigger AI processing when updated
+const AI_TRIGGER_FIELDS = [
+  'description',
+  'key_takeaways',
+  'table_of_contents',
+  'chapter_summaries',
+  'key_concepts',
+  'topics',
+  'focus_areas_covered',
+  'implementation_guides',
+  'intended_solutions',
+  'book_goals',
+  'actionable_ratio',
+  'target_audience',
+  'writing_influence',
+  'testimonials'
+];
+
+// Helper function to trigger AI processing via n8n webhook
+const triggerBookAIProcessing = async (bookId, action, updates = {}) => {
+  try {
+    // Check if this is a new book or if any AI trigger fields were updated
+    const shouldTrigger = action === 'created' ||
+                         Object.keys(updates).some(field => AI_TRIGGER_FIELDS.includes(field));
+
+    if (!shouldTrigger) {
+      console.log(`📚 Book ${bookId}: No AI-relevant fields updated, skipping AI processing`);
+      return;
+    }
+
+    // Use -dev suffix for development, production will use without suffix
+    const webhookPath = process.env.NODE_ENV === 'production'
+      ? 'book-ai-processing'
+      : 'book-ai-processing-dev';
+    const webhookUrl = process.env.N8N_BOOK_WEBHOOK_URL || `http://localhost:5678/webhook/${webhookPath}`;
+    console.log(`🔔 Triggering book AI processing for book ${bookId} (${action})`);
+
+    const response = await axios.post(webhookUrl, {
+      book_id: bookId,
+      action: action,
+      updated_fields: Object.keys(updates)
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      timeout: 30000 // 30 second timeout
+    });
+
+    console.log(`✅ Book AI processing triggered successfully for book ${bookId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`⚠️ Failed to trigger book AI processing for book ${bookId}:`, error.message);
+    // Don't throw error to prevent blocking the main operation
+    // AI processing can be retried later if needed
+  }
+};
 
 // Get all books
 exports.getAllBooks = async (req, res) => {
@@ -216,7 +274,12 @@ exports.createBook = async (req, res) => {
     `;
 
     const result = await db.query(insertQuery, values);
-    res.status(201).json(result.rows[0]);
+
+    // Trigger AI processing for new book
+    const newBook = result.rows[0];
+    await triggerBookAIProcessing(newBook.id, 'created');
+
+    res.status(201).json(newBook);
   } catch (error) {
     console.error('Error creating book:', error);
     res.status(500).json({ error: 'Failed to create book', details: error.message });
@@ -266,12 +329,16 @@ exports.updateBook = async (req, res) => {
     `;
 
     const result = await db.query(updateQuery, values);
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Book not found' });
     }
-    
-    res.json(result.rows[0]);
+
+    // Trigger AI processing if content fields were updated
+    const updatedBook = result.rows[0];
+    await triggerBookAIProcessing(updatedBook.id, 'updated', updates);
+
+    res.json(updatedBook);
   } catch (error) {
     console.error('Error updating book:', error);
     res.status(500).json({ error: 'Failed to update book', details: error.message });

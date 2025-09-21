@@ -396,11 +396,140 @@ async function triggerPartnerReprocessing(partnerId) {
   }
 }
 
+/**
+ * Process AI extraction for a book
+ */
+async function processBookAI(bookId) {
+  try {
+    // Fetch book data
+    const result = await query(
+      'SELECT * FROM books WHERE id = $1',
+      [bookId]
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error(`Book not found: ${bookId}`);
+    }
+
+    const book = result.rows[0];
+    console.log(`📚 Processing book AI for: ${book.title}`);
+
+    // Prepare content for AI extraction
+    const bookContent = {
+      title: book.title,
+      author: book.author,
+      description: book.description,
+      key_takeaways: book.key_takeaways,
+      table_of_contents: book.table_of_contents,
+      chapter_summaries: book.chapter_summaries,
+      topics: book.topics,
+      focus_areas_covered: book.focus_areas_covered,
+      target_audience: book.target_audience,
+      intended_solutions: book.intended_solutions,
+      book_goals: book.book_goals,
+      testimonials: book.testimonials
+    };
+
+    // Extract AI insights using OpenAI
+    const prompt = `Analyze this business book and extract the following:
+
+Book Title: ${book.title}
+Author: ${book.author}
+Description: ${book.description || ''}
+Key Takeaways: ${book.key_takeaways || ''}
+Table of Contents: ${book.table_of_contents || ''}
+Chapter Summaries: ${book.chapter_summaries || ''}
+Topics: ${book.topics || ''}
+Focus Areas: ${book.focus_areas_covered || ''}
+Target Audience: ${book.target_audience || ''}
+Book Goals: ${book.book_goals || ''}
+
+Please extract and provide:
+1. AI Summary - A concise 2-3 paragraph executive summary
+2. AI Insights - 5-7 key business insights from the book (as an array of strings)
+3. AI Tags - 5-10 relevant tags for categorization
+4. Actionable Items - 5 specific actions readers can implement
+5. Implementation Difficulty - Scale of 1-10 (1=easy, 10=very complex)
+6. Time to Value - Estimated time to see results from implementing concepts
+7. Chapter Highlights - Key point from each chapter (if table of contents provided)
+
+Format your response as a JSON object with these exact keys:
+{
+  "ai_summary": "Executive summary text here...",
+  "ai_insights": ["insight1", "insight2", "insight3", "insight4", "insight5"],
+  "ai_tags": ["tag1", "tag2", ...],
+  "actionable_items": ["action1", "action2", ...],
+  "implementation_difficulty": 5,
+  "time_to_value": "3-6 months",
+  "chapter_highlights": {...}
+}`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert business book analyst specializing in extracting actionable insights for contractors and home improvement businesses.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000
+    });
+
+    const aiResponse = completion.choices[0].message.content;
+    const aiData = safeJsonParse(aiResponse, {});
+
+    // Update book with AI-generated data
+    await query(
+      `UPDATE books
+       SET ai_summary = $1,
+           ai_insights = $2,
+           ai_tags = $3,
+           actionable_ratio = $4,
+           implementation_guides = $5,
+           updated_at = NOW()
+       WHERE id = $6`,
+      [
+        aiData.ai_summary || null,
+        safeJsonStringify(aiData.ai_insights || []),  // ai_insights needs to be JSON
+        safeJsonStringify(aiData.ai_tags || []),
+        aiData.implementation_difficulty || null,
+        safeJsonStringify(aiData.actionable_items || []),
+        bookId
+      ]
+    );
+
+    console.log(`✅ Book AI processing completed for: ${book.title}`);
+
+    return {
+      success: true,
+      bookId,
+      title: book.title,
+      ai_fields: aiData
+    };
+  } catch (error) {
+    console.error(`❌ Error processing book AI for ${bookId}:`, error);
+
+    // Mark as failed in database
+    await query(
+      `UPDATE books SET updated_at = NOW() WHERE id = $1`,
+      [bookId]
+    );
+
+    throw error;
+  }
+}
+
 module.exports = {
   generateKeyDifferentiators,
   processPartnerAI,
   processAllPendingPartners,
   generateContextualDifferentiators,
   markPartnersForReprocessing,
-  triggerPartnerReprocessing
+  triggerPartnerReprocessing,
+  processBookAI
 };
