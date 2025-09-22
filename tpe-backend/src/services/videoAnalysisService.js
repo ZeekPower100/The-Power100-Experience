@@ -1,6 +1,8 @@
 const OpenAI = require('openai');
 const fs = require('fs');
 const path = require('path');
+const axios = require('axios');
+const FormData = require('form-data');
 const { YoutubeTranscript } = require('youtube-transcript');
 const { query } = require('../config/database');
 const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
@@ -109,6 +111,91 @@ class VideoAnalysisService {
   }
 
   /**
+   * Transcribe video audio using OpenAI Whisper API
+   */
+  async transcribeVideoWithWhisper(videoUrl) {
+    try {
+      console.log('🎤 Starting Whisper transcription for:', videoUrl);
+
+      // For YouTube videos, try to extract audio URL
+      if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+        // First try YouTube transcript API (faster and free)
+        const ytTranscript = await this.getYouTubeTranscript(videoUrl);
+        if (ytTranscript.hasTranscript) {
+          console.log('✅ Using YouTube transcript (faster)');
+          return ytTranscript;
+        }
+      }
+
+      // For direct video files or when YouTube transcript fails
+      // Note: This requires downloading the video/audio first
+      // In production, you'd want to use a service to extract audio
+
+      console.log('📥 Downloading video for transcription...');
+
+      // Download video/audio (simplified - in production use proper streaming)
+      const response = await axios.get(videoUrl, {
+        responseType: 'stream',
+        timeout: 30000,
+        maxContentLength: 25 * 1024 * 1024 // 25MB limit for Whisper API
+      });
+
+      // Create form data for Whisper API
+      const formData = new FormData();
+      formData.append('file', response.data, {
+        filename: 'video.mp4',
+        contentType: 'video/mp4'
+      });
+      formData.append('model', 'whisper-1');
+      formData.append('response_format', 'verbose_json');
+      formData.append('language', 'en'); // Assume English, could be detected
+
+      console.log('🎯 Calling Whisper API...');
+
+      // Call Whisper API
+      const transcriptionResponse = await this.openai.audio.transcriptions.create({
+        file: response.data,
+        model: 'whisper-1',
+        response_format: 'verbose_json',
+        language: 'en'
+      });
+
+      console.log('✅ Whisper transcription complete');
+
+      // Format the response
+      const segments = transcriptionResponse.segments || [];
+      const fullText = transcriptionResponse.text || '';
+
+      return {
+        fullText,
+        segments: segments.map(seg => ({
+          text: seg.text,
+          start: seg.start,
+          duration: seg.end - seg.start
+        })),
+        hasTranscript: true,
+        language: transcriptionResponse.language || 'en'
+      };
+
+    } catch (error) {
+      console.error('❌ Whisper transcription error:', error.message);
+
+      // If it's a YouTube video and Whisper fails, note that we tried
+      if (videoUrl.includes('youtube')) {
+        console.log('💡 Tip: YouTube transcript API failed, and Whisper cannot directly access YouTube videos');
+        console.log('   Consider using a YouTube downloader service first');
+      }
+
+      return {
+        fullText: '',
+        segments: [],
+        hasTranscript: false,
+        error: `Transcription failed: ${error.message}`
+      };
+    }
+  }
+
+  /**
    * Analyze video content using Vision API for frames and GPT-4 for transcript
    */
   async analyzePartnerDemoVideo(videoUrl, partnerInfo = {}) {
@@ -119,11 +206,20 @@ class VideoAnalysisService {
       const frames = await this.extractFramesFromVideo(videoUrl);
       console.log(`📸 Extracted ${frames.length} frames`);
 
-      // Get transcript if available (YouTube)
+      // Get transcript - try YouTube first, then Whisper
       let transcript = { fullText: '', segments: [], hasTranscript: false };
+
       if (videoUrl.includes('youtube.com') || videoUrl.includes('youtu.be')) {
+        // Try YouTube transcript API first (free and faster)
         transcript = await this.getYouTubeTranscript(videoUrl);
-        console.log(`📝 Transcript available: ${transcript.hasTranscript}`);
+        console.log(`📝 YouTube transcript available: ${transcript.hasTranscript}`);
+      }
+
+      // If no transcript yet and it's a direct video URL, try Whisper
+      if (!transcript.hasTranscript && !videoUrl.includes('youtube')) {
+        console.log('🎤 Attempting Whisper transcription for direct video...');
+        transcript = await this.transcribeVideoWithWhisper(videoUrl);
+        console.log(`📝 Whisper transcript available: ${transcript.hasTranscript}`);
       }
 
       // Prepare analysis prompt

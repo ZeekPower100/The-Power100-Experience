@@ -9,6 +9,9 @@ router.use(authenticateToken);
 // Process video (trigger analysis)
 router.post('/process', videoAnalysisController.processVideo);
 
+// Process all pending videos
+router.post('/process-pending', videoAnalysisController.processPendingVideos);
+
 // CRUD operations
 router.post('/', videoAnalysisController.create);
 router.get('/stats', videoAnalysisController.getStats);

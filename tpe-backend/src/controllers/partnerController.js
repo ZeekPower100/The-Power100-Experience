@@ -251,6 +251,29 @@ const createPartner = async (req, res, next) => {
   const newPartner = result.rows[0];
   await triggerAIProcessing(newPartner.id, 'created', newPartner.ai_processing_status);
 
+  // Process video if demo_video_url was provided
+  if (demo_video_url) {
+    try {
+      console.log(`📹 Processing video for new partner ${newPartner.id}`);
+      const axios = require('axios');
+      const videoResponse = await axios.post(
+        'http://localhost:5000/api/video-analysis/process-pending',
+        { partner_id: newPartner.id },
+        {
+          headers: {
+            'Authorization': req.headers.authorization,
+            'Content-Type': 'application/json'
+          },
+          timeout: 60000
+        }
+      );
+      console.log(`✅ Video processing result:`, videoResponse.data.message);
+    } catch (videoError) {
+      console.error(`⚠️ Video processing failed (non-blocking):`, videoError.message);
+      // Don't fail the creation, just log the error
+    }
+  }
+
   res.status(201).json({
     success: true,
     partner: newPartner
@@ -403,6 +426,29 @@ const updatePartner = async (req, res, next) => {
     // Trigger AI processing webhook if partner was updated and needs processing
     const updatedPartner = result.rows[0];
     await triggerAIProcessing(updatedPartner.id, 'updated', updatedPartner.ai_processing_status);
+
+    // Process pending videos if demo_video_url was updated
+    if (updates.demo_video_url) {
+      try {
+        console.log(`📹 Processing video for partner ${id}`);
+        const axios = require('axios');
+        const videoResponse = await axios.post(
+          'http://localhost:5000/api/video-analysis/process-pending',
+          { partner_id: id },
+          {
+            headers: {
+              'Authorization': req.headers.authorization,
+              'Content-Type': 'application/json'
+            },
+            timeout: 60000
+          }
+        );
+        console.log(`✅ Video processing result:`, videoResponse.data.message);
+      } catch (videoError) {
+        console.error(`⚠️ Video processing failed (non-blocking):`, videoError.message);
+        // Don't fail the update, just log the error
+      }
+    }
 
     res.status(200).json({
       success: true,

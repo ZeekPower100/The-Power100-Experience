@@ -1,0 +1,94 @@
+{
+  "name": "Video AI Analysis Trigger - Dev",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "trigger-video-analysis-dev",
+        "options": {}
+      },
+      "id": "webhook_trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "trigger-video-analysis-dev"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5000/api/video-analysis/process",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiaWF0IjoxNzU4MjUwNzcwLCJleHAiOjE3NjA4NDI3NzB9.PtmoaJoMjR-Kwm8RGeQLagfUFOszyRrY22yRirQ7wuQ"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  video_url: $json.body.video_url,\n  partner_id: $json.body.partner_id || null,\n  analysis_type: $json.body.analysis_type || 'demo_analysis'\n}) }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "call_api",
+      "name": "Call Process Video API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  status: $json.success ? 'success' : 'error',\n  message: $json.message || 'Video analysis completed',\n  video_url: $json.data?.video_url || $json.body?.video_url,\n  partner_id: $json.data?.partner_id || $json.body?.partner_id,\n  quality_score: $json.data?.quality_score,\n  analysis_id: $json.data?.analysis_id,\n  insights: $json.data?.insights,\n  processed_at: new Date().toISOString()\n}) }}",
+        "options": {}
+      },
+      "id": "webhook_response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [650, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Call Process Video API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Process Video API": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "video-ai-analysis-trigger-dev"
+  },
+  "tags": ["ai", "video", "analysis", "dev", "webhook"]
+}

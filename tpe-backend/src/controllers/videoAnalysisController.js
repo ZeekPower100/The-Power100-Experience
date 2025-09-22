@@ -266,7 +266,7 @@ const videoAnalysisController = {
           unique_value_props: analysisResult.insights?.strengths || [],
           use_cases_mentioned: analysisResult.insights?.focus_areas || [],
           frames_analyzed: analysisResult.frameCount || 0,
-          ai_models_used: ['gpt-4o', 'whisper-1'],
+          ai_models_used: analysisResult.hasTranscript ? ['gpt-4o', 'whisper-1'] : ['gpt-4o'],
           analysis_date: new Date()
         };
 
@@ -313,6 +313,157 @@ const videoAnalysisController = {
       }
     } catch (error) {
       console.error('Error processing video:', error);
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  },
+
+  // Process all pending videos
+  async processPendingVideos(req, res) {
+    try {
+      const { partner_id } = req.body;
+      const { query } = require('../config/database');
+
+      // Get pending videos (optionally filtered by partner)
+      let queryText = `
+        SELECT vc.*, p.company_name, p.capabilities
+        FROM video_content vc
+        LEFT JOIN partners p ON (vc.entity_type = 'partner' AND vc.entity_id = p.id)
+        WHERE vc.ai_processing_status = 'pending'
+      `;
+      const queryParams = [];
+
+      if (partner_id) {
+        queryText += ' AND vc.entity_id = $1 AND vc.entity_type = \'partner\'';
+        queryParams.push(partner_id);
+      }
+
+      queryText += ' ORDER BY vc.created_at ASC LIMIT 5'; // Process max 5 at a time
+
+      const pendingVideos = await query(queryText, queryParams);
+
+      if (pendingVideos.rows.length === 0) {
+        return res.json({
+          success: true,
+          message: 'No pending videos to process',
+          processed: 0
+        });
+      }
+
+      console.log(`📹 Processing ${pendingVideos.rows.length} pending videos`);
+
+      const VideoAnalysisService = require('../services/videoAnalysisService');
+      const videoService = new VideoAnalysisService();
+      const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+
+      const results = [];
+
+      for (const video of pendingVideos.rows) {
+        try {
+          console.log(`Processing video ${video.id}: ${video.file_url}`);
+
+          // Mark as processing
+          await query(
+            'UPDATE video_content SET ai_processing_status = $1 WHERE id = $2',
+            ['processing', video.id]
+          );
+
+          // Prepare partner info
+          const partnerInfo = video.company_name ? {
+            company_name: video.company_name,
+            capabilities: safeJsonParse(video.capabilities, [])
+          } : {};
+
+          // Analyze the video
+          const analysisResult = await videoService.analyzePartnerDemoVideo(
+            video.file_url,
+            partnerInfo
+          );
+
+          if (analysisResult.success) {
+            // Update video_content with results
+            await query(`
+              UPDATE video_content SET
+                ai_processing_status = 'completed',
+                ai_summary = $1,
+                ai_insights = $2,
+                ai_engagement_score = $3,
+                last_ai_analysis = NOW(),
+                updated_at = NOW()
+              WHERE id = $4
+            `, [
+              analysisResult.insights?.scoring_reasoning || 'Analysis complete',
+              safeJsonStringify(analysisResult.insights || {}),
+              analysisResult.insights?.quality_score || 0,
+              video.id
+            ]);
+
+            // Update partner if applicable
+            if (video.entity_type === 'partner' && video.entity_id) {
+              await query(`
+                UPDATE partners SET
+                  demo_quality_score = $1,
+                  demo_analysis = $2,
+                  updated_at = NOW()
+                WHERE id = $3
+              `, [
+                Math.round(analysisResult.insights?.quality_score || 0),
+                safeJsonStringify(analysisResult),
+                video.entity_id
+              ]);
+            }
+
+            results.push({
+              video_id: video.id,
+              url: video.file_url,
+              status: 'completed',
+              quality_score: analysisResult.insights?.quality_score
+            });
+          } else {
+            // Mark as failed
+            await query(
+              'UPDATE video_content SET ai_processing_status = $1, updated_at = NOW() WHERE id = $2',
+              ['failed', video.id]
+            );
+
+            results.push({
+              video_id: video.id,
+              url: video.file_url,
+              status: 'failed',
+              error: analysisResult.error
+            });
+          }
+        } catch (error) {
+          console.error(`Error processing video ${video.id}:`, error);
+
+          await query(
+            'UPDATE video_content SET ai_processing_status = $1, updated_at = NOW() WHERE id = $2',
+            ['failed', video.id]
+          );
+
+          results.push({
+            video_id: video.id,
+            url: video.file_url,
+            status: 'failed',
+            error: error.message
+          });
+        }
+      }
+
+      const successful = results.filter(r => r.status === 'completed').length;
+
+      res.json({
+        success: true,
+        message: `Processed ${successful} of ${pendingVideos.rows.length} videos`,
+        processed: pendingVideos.rows.length,
+        successful,
+        results
+      });
+
+    } catch (error) {
+      console.error('Error processing pending videos:', error);
       res.status(500).json({
         success: false,
         error: error.message
