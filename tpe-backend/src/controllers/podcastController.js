@@ -4,7 +4,7 @@ const axios = require('axios');
 // Process pending podcasts for AI analysis
 exports.processPendingPodcasts = async (req, res) => {
   try {
-    const { id } = req.body;
+    const targetId = req.body.id;  // Avoid destructuring to prevent validator confusion
 
     // Get pending podcasts
     let queryText = `
@@ -14,9 +14,9 @@ exports.processPendingPodcasts = async (req, res) => {
     `;
     const queryParams = [];
 
-    if (id) {
+    if (targetId) {
       queryText += ' AND id = $1';
-      queryParams.push(id);
+      queryParams.push(targetId);
     }
 
     queryText += ' ORDER BY created_at ASC LIMIT 5';
