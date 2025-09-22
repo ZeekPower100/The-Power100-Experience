@@ -6,6 +6,9 @@ const { protect } = require('../middleware/auth');
 // Public routes (for submissions)
 router.post('/submit', podcastController.createPodcast);
 
+// Process pending podcasts for AI analysis (public for n8n webhook)
+router.post('/process-pending', podcastController.processPendingPodcasts);
+
 // Protected routes
 router.use(protect);
 
