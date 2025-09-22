@@ -23,11 +23,17 @@ async function triggerVideoAIProcessing(videoId, action, updates = {}) {
       return;
     }
 
-    const webhookUrl = process.env.N8N_VIDEO_WEBHOOK_URL;
-    if (!webhookUrl) {
-      console.warn('⚠️ N8N_VIDEO_WEBHOOK_URL not configured - skipping AI trigger');
-      return;
-    }
+    // Determine webhook path based on environment
+    const webhookPath = process.env.NODE_ENV === 'production'
+      ? 'video-ai-processing'
+      : 'video-ai-processing-dev';
+
+    // Use production n8n URL in production, localhost in development
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://n8n.srv918843.hstgr.cloud'
+      : 'http://localhost:5678';
+
+    const webhookUrl = process.env.N8N_VIDEO_WEBHOOK_URL || `${baseUrl}/webhook/${webhookPath}`;
 
     console.log(`🔄 Triggering ${action} AI processing for video ${videoId}`);
 
