@@ -13,7 +13,17 @@ const triggerAIProcessing = async (partnerId, action, aiStatus = 'pending') => {
   }
 
   try {
-    const webhookUrl = process.env.N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/partner-ai-processing';
+    // Determine webhook path based on environment
+    const webhookPath = process.env.NODE_ENV === 'production'
+      ? 'partner-ai-processing'
+      : 'partner-ai-processing-dev';
+
+    // Use production n8n URL in production, localhost in development
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://n8n.srv918843.hstgr.cloud'
+      : 'http://localhost:5678';
+
+    const webhookUrl = process.env.N8N_WEBHOOK_URL || `${baseUrl}/webhook/${webhookPath}`;
 
     console.log(`🔔 Triggering n8n webhook for partner ${partnerId} to ${webhookUrl}`);
 

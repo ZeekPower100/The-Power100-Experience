@@ -399,7 +399,16 @@ exports.createPodcast = async (req, res) => {
     if ((createdPodcast.rss_feed_url || createdPodcast.youtube_url) && createdPodcast.ai_processing_status === 'pending') {
       try {
         console.log('🎙️ Triggering podcast AI processing via n8n webhook...');
-        await axios.post('https://n8n.srv918843.hstgr.cloud/webhook/podcast-ai-processing-dev',
+        // Determine webhook URL based on environment
+        const webhookPath = process.env.NODE_ENV === 'production'
+          ? 'podcast-ai-processing'
+          : 'podcast-ai-processing-dev';
+        const baseUrl = process.env.NODE_ENV === 'production'
+          ? 'https://n8n.srv918843.hstgr.cloud'
+          : 'http://localhost:5678';
+        const webhookUrl = `${baseUrl}/webhook/${webhookPath}`;
+
+        await axios.post(webhookUrl,
           { id: createdPodcast.id },
           { timeout: 5000 }
         );
@@ -469,7 +478,16 @@ exports.updatePodcast = async (req, res) => {
     if ((updates.rss_feed_url || updates.youtube_url) && result.rows[0].ai_processing_status === 'pending') {
       try {
         console.log('🎙️ Triggering podcast AI processing via n8n webhook...');
-        await axios.post('https://n8n.srv918843.hstgr.cloud/webhook/podcast-ai-processing-dev',
+        // Determine webhook URL based on environment
+        const webhookPath = process.env.NODE_ENV === 'production'
+          ? 'podcast-ai-processing'
+          : 'podcast-ai-processing-dev';
+        const baseUrl = process.env.NODE_ENV === 'production'
+          ? 'https://n8n.srv918843.hstgr.cloud'
+          : 'http://localhost:5678';
+        const webhookUrl = `${baseUrl}/webhook/${webhookPath}`;
+
+        await axios.post(webhookUrl,
           { id: id },
           { timeout: 5000 }
         );
