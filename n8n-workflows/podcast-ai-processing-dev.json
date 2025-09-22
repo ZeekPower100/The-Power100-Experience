@@ -32,8 +32,8 @@
         "bodyParameters": {
           "parameters": [
             {
-              "name": "podcast_id",
-              "value": "={{ $json[\"podcast_id\"] }}"
+              "name": "id",
+              "value": "={{ $json[\"id\"] }}"
             }
           ]
         },

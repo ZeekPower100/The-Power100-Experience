@@ -4,7 +4,7 @@ const axios = require('axios');
 // Process pending podcasts for AI analysis
 exports.processPendingPodcasts = async (req, res) => {
   try {
-    const { podcast_id } = req.body;
+    const { id } = req.body;
 
     // Get pending podcasts
     let queryText = `
@@ -14,9 +14,9 @@ exports.processPendingPodcasts = async (req, res) => {
     `;
     const queryParams = [];
 
-    if (podcast_id) {
+    if (id) {
       queryText += ' AND id = $1';
-      queryParams.push(podcast_id);
+      queryParams.push(id);
     }
 
     queryText += ' ORDER BY created_at ASC LIMIT 5';
@@ -142,7 +142,7 @@ exports.processPendingPodcasts = async (req, res) => {
         `, [aiSummary || 'Podcast analyzed successfully', JSON.stringify(aiTags), podcast.id]);
 
         results.push({
-          podcast_id: podcast.id,
+          id: podcast.id,
           title: podcast.title,
           status: 'completed'
         });
@@ -156,7 +156,7 @@ exports.processPendingPodcasts = async (req, res) => {
         );
 
         results.push({
-          podcast_id: podcast.id,
+          id: podcast.id,
           title: podcast.title,
           status: 'failed',
           error: error.message
@@ -400,7 +400,7 @@ exports.createPodcast = async (req, res) => {
       try {
         console.log('🎙️ Triggering podcast AI processing via n8n webhook...');
         await axios.post('https://n8n.srv918843.hstgr.cloud/webhook/podcast-ai-processing-dev',
-          { podcast_id: createdPodcast.id },
+          { id: createdPodcast.id },
           { timeout: 5000 }
         );
         console.log('✅ Podcast AI processing triggered');
@@ -470,7 +470,7 @@ exports.updatePodcast = async (req, res) => {
       try {
         console.log('🎙️ Triggering podcast AI processing via n8n webhook...');
         await axios.post('https://n8n.srv918843.hstgr.cloud/webhook/podcast-ai-processing-dev',
-          { podcast_id: id },
+          { id: id },
           { timeout: 5000 }
         );
         console.log('✅ Podcast AI processing triggered');
