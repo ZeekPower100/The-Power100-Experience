@@ -194,7 +194,7 @@ const createPartner = async (req, res, next) => {
     books_read_recommended, best_working_partnerships,
     
     // Step 8: Client Demos & References
-    client_demos, client_references,
+    client_demos, client_references, demo_video_url,
 
     // AI Processing Fields
     is_test_data, ai_generated_differentiators, ai_processing_status,
@@ -224,10 +224,10 @@ const createPartner = async (req, res, next) => {
       tech_stack_analytics, tech_stack_marketing, tech_stack_financial,
       sponsored_events, other_sponsored_events, podcast_appearances, other_podcast_appearances,
       books_read_recommended, best_working_partnerships,
-      client_demos, client_references,
+      client_demos, client_references, demo_video_url,
       is_test_data, ai_generated_differentiators, ai_processing_status,
       last_ai_analysis, ai_confidence_score
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $70)
     RETURNING *
   `, [
     // Basic values
@@ -252,7 +252,7 @@ const createPartner = async (req, res, next) => {
     safeJsonStringify(sponsored_events || []), safeJsonStringify(other_sponsored_events || []),
     safeJsonStringify(podcast_appearances || []), safeJsonStringify(other_podcast_appearances || []),
     books_read_recommended, best_working_partnerships,
-    safeJsonStringify(client_demos || []), safeJsonStringify(client_references || []),
+    safeJsonStringify(client_demos || []), safeJsonStringify(client_references || []), demo_video_url || null,
     is_test_data || false, ai_generated_differentiators || null, ai_processing_status || 'pending',
     last_ai_analysis || null, ai_confidence_score || null
   ]);
