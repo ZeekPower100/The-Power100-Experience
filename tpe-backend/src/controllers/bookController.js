@@ -32,10 +32,17 @@ const triggerBookAIProcessing = async (bookId, action, updates = {}) => {
     }
 
     // Use -dev suffix for development, production will use without suffix
+    // Determine webhook path based on environment
     const webhookPath = process.env.NODE_ENV === 'production'
       ? 'book-ai-processing'
       : 'book-ai-processing-dev';
-    const webhookUrl = process.env.N8N_BOOK_WEBHOOK_URL || `http://localhost:5678/webhook/${webhookPath}`;
+
+    // Use production n8n URL in production, localhost in development
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://n8n.srv918843.hstgr.cloud'
+      : 'http://localhost:5678';
+
+    const webhookUrl = process.env.N8N_BOOK_WEBHOOK_URL || `${baseUrl}/webhook/${webhookPath}`;
     console.log(`🔔 Triggering book AI processing for book ${bookId} (${action})`);
 
     const response = await axios.post(webhookUrl, {
