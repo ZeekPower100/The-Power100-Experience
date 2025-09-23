@@ -405,7 +405,7 @@ Provide the analysis in a structured JSON format.`;
     try {
       // Get partner info
       const partnerResult = await query(
-        'SELECT * FROM partners WHERE id = $1',
+        'SELECT * FROM strategic_partners WHERE id = $1',
         [partnerId]
       );
 
@@ -443,7 +443,7 @@ Provide the analysis in a structured JSON format.`;
         console.log(`\n📹 Analyzing video: ${url}`);
         const analysis = await this.analyzePartnerDemoVideo(url, {
           company_name: partner.company_name,
-          capabilities: safeJsonParse(partner.capabilities, [])
+          capabilities: safeJsonParse(partner.service_areas, [])
         });
         analyses.push(analysis);
       }
@@ -469,7 +469,7 @@ Provide the analysis in a structured JSON format.`;
 
       // Store analysis results in database
       const updateResult = await query(`
-        UPDATE partners
+        UPDATE strategic_partners
         SET
           demo_analysis = $1,
           demo_quality_score = $2,

@@ -262,13 +262,24 @@ const createPartner = async (req, res, next) => {
   await triggerAIProcessing(newPartner.id, 'created', newPartner.ai_processing_status);
 
   // Process videos if client_demos URLs were provided
-  if (client_demos && client_demos.length > 0) {
+  console.log('🔍 DEBUG - client_demos value:', client_demos);
+  console.log('🔍 DEBUG - client_demos type:', typeof client_demos);
+
+  // Parse client_demos if it's a string (from req.body it might be an array already)
+  const demosArray = typeof client_demos === 'string'
+    ? safeJsonParse(client_demos, [])
+    : (client_demos || []);
+
+  console.log('🔍 DEBUG - demosArray:', demosArray);
+  console.log('🔍 DEBUG - demosArray length:', demosArray.length);
+
+  if (demosArray && demosArray.length > 0) {
     try {
-      console.log(`📹 Processing ${client_demos.length} demo videos for new partner ${newPartner.id}`);
+      console.log(`📹 Processing ${demosArray.length} demo videos for new partner ${newPartner.id}`);
       const axios = require('axios');
 
       // Process each demo URL
-      for (const demo of client_demos) {
+      for (const demo of demosArray) {
         // Handle both string URLs and objects with URL property
         const demoUrl = typeof demo === 'string' ? demo : (demo.url || demo.video_url);
 

@@ -204,7 +204,7 @@ const videoAnalysisController = {
         const { safeJsonParse } = require('../utils/jsonHelpers');
 
         const partnerResult = await query(
-          'SELECT company_name, capabilities, focus_areas_served FROM partners WHERE id = $1',
+          'SELECT company_name, service_areas, focus_areas_served FROM strategic_partners WHERE id = $1',
           [partner_id]
         );
 
@@ -212,7 +212,7 @@ const videoAnalysisController = {
           const partner = partnerResult.rows[0];
           partnerInfo = {
             company_name: partner.company_name,
-            capabilities: safeJsonParse(partner.capabilities, []),
+            capabilities: safeJsonParse(partner.service_areas, []),
             focus_areas: safeJsonParse(partner.focus_areas_served, [])
           };
         }
@@ -277,20 +277,26 @@ const videoAnalysisController = {
           const { query } = require('../config/database');
           const { safeJsonStringify } = require('../utils/jsonHelpers');
 
-          await query(`
-            UPDATE partners
+          console.log(`📊 Updating partner ${partner_id} with analysis results:`, {
+            quality_score: Math.round(analysisResult.insights?.quality_score || 0),
+            has_analysis: true
+          });
+
+          const updateResult = await query(`
+            UPDATE strategic_partners
             SET
-              demo_video_url = $1,
-              demo_analysis = $2,
-              demo_quality_score = $3,
+              demo_analysis = $1,
+              demo_quality_score = $2,
               updated_at = CURRENT_TIMESTAMP
-            WHERE id = $4
+            WHERE id = $3
+            RETURNING id, demo_quality_score
           `, [
-            video_url,
             safeJsonStringify(analysisResult),
             Math.round(analysisResult.insights?.quality_score || 0),
             partner_id
           ]);
+
+          console.log(`📊 Partner update result:`, updateResult.rows);
         }
 
         res.json({
@@ -403,7 +409,7 @@ const videoAnalysisController = {
             // Update partner if applicable
             if (video.entity_type === 'partner' && video.entity_id) {
               await query(`
-                UPDATE partners SET
+                UPDATE strategic_partners SET
                   demo_quality_score = $1,
                   demo_analysis = $2,
                   updated_at = NOW()
