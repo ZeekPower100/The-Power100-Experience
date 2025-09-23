@@ -275,7 +275,7 @@ const completeFlow = async (req, res, next) => {
 
       // Send introduction email
       const contractorResult = await client.query(`SELECT * FROM contractors WHERE id = $1`, [id]);
-      const partnerResult = await client.query(`SELECT * FROM partners WHERE id = $1`, [selected_partner_id]);
+      const partnerResult = await client.query(`SELECT * FROM strategic_partners WHERE id = $1`, [selected_partner_id]);
 
       if (contractorResult.rows.length > 0 && partnerResult.rows.length > 0) {
         try {
@@ -368,7 +368,7 @@ const getContractor = async (req, res, next) => {
     const matchesResult = await query(`
       SELECT p.id, p.company_name, m.match_score, m.is_primary_match
       FROM contractor_partner_matches m
-      LEFT JOIN partners p ON m.partner_id = p.id
+      LEFT JOIN strategic_partners p ON m.partner_id = p.id
       WHERE m.contractor_id = $1
     `, [id]);
 
@@ -376,7 +376,7 @@ const getContractor = async (req, res, next) => {
     const bookingsResult = await query(`
       SELECT b.id, sp.company_name as partner_name, b.scheduled_date, b.status
       FROM demo_bookings b
-      LEFT JOIN partners sp ON b.partner_id = sp.id
+      LEFT JOIN strategic_partners sp ON b.partner_id = sp.id
       WHERE b.contractor_id = $1
     `, [id]);
 

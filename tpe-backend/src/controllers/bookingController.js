@@ -52,7 +52,7 @@ const getBooking = async (req, res, next) => {
            row_to_json(p) as partner
     FROM demo_bookings b
     JOIN contractors c ON b.contractor_id = c.id
-    JOIN partners p ON b.partner_id = p.id
+    JOIN strategic_partners p ON b.partner_id = p.id
     WHERE b.id = $1
   `, [id]);
 
@@ -172,7 +172,7 @@ const getBookingStats = async (req, res, next) => {
         COUNT(b.id) FILTER (WHERE b.status = 'completed')::numeric / 
         NULLIF(COUNT(b.id), 0) * 100, 2
       ) as completion_rate
-    FROM partners p
+    FROM strategic_partners p
     LEFT JOIN demo_bookings b ON p.id = b.partner_id
     GROUP BY p.id, p.company_name
     ORDER BY total_bookings DESC

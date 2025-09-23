@@ -92,7 +92,7 @@ const partnerLogin = async (req, res, next) => {
     if (email === 'demo@techflow.com' && password === 'Demo123!') {
       // Find the partner in partners table
       const partnerResult = await query(
-        'SELECT * FROM partners WHERE contact_email = $1',
+        'SELECT * FROM strategic_partners WHERE contact_email = $1',
         [email]
       );
 
@@ -100,7 +100,7 @@ const partnerLogin = async (req, res, next) => {
       if (partnerResult.rows.length === 0) {
         // Create demo partner if doesn't exist
         const insertResult = await query(`
-          INSERT INTO partners (
+          INSERT INTO strategic_partners (
             company_name, contact_email, website, is_active, power_confidence_score, score_trend
           ) VALUES ($1, $2, $3, $4, $5, $6)
         `, ['TechFlow Solutions', email, 'https://techflow.com', 1, 87, 'up']);
@@ -173,7 +173,7 @@ const getPartnerProfile = async (req, res, next) => {
              sp.company_name, sp.description, sp.website, sp.logo_url,
              sp.power_confidence_score, sp.is_active
       FROM partner_users pu
-      JOIN partners sp ON pu.partner_id = sp.id
+      JOIN strategic_partners sp ON pu.partner_id = sp.id
       WHERE pu.id = $1
     `, [req.partnerUser.id]);
 

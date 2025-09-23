@@ -1,6 +1,182 @@
 const db = require('../config/database');
 const axios = require('axios');
 
+// Fields that should trigger AI reprocessing when updated
+const AI_TRIGGER_FIELDS = [
+  'title',           // Used in AI summary
+  'host',            // Used in AI summary
+  'description',     // Used in AI analysis
+  'rss_feed_url',    // Source data change
+  'youtube_url',     // Source data change
+  'category',        // Context for analysis
+  'frequency',       // May affect insights
+  'target_audience'  // Used in analysis
+];
+
+// Process a single podcast (extracted for reuse without n8n)
+async function processSinglePodcast(podcastId) {
+  const podcastService = require('../services/podcastProcessingService');
+
+  // Get the podcast
+  const podcastResult = await db.query(
+    'SELECT * FROM podcasts WHERE id = $1',
+    [podcastId]
+  );
+
+  if (podcastResult.rows.length === 0) {
+    throw new Error(`Podcast not found: ${podcastId}`);
+  }
+
+  const podcast = podcastResult.rows[0];
+  console.log(`🎙️ Processing podcast ${podcast.id}: ${podcast.title}`);
+
+  // Mark as processing
+  await db.query(
+    'UPDATE podcasts SET ai_processing_status = $1 WHERE id = $2',
+    ['processing', podcast.id]
+  );
+
+  try {
+    let aiSummary = '';
+    let aiTags = [];
+
+    // Process based on available URL (YouTube or RSS)
+    if (podcast.youtube_url) {
+      // Video podcast - use YouTube transcript
+      console.log('Processing video podcast from YouTube...');
+      const VideoAnalysisService = require('../services/videoAnalysisService');
+      const videoService = new VideoAnalysisService();
+
+      try {
+        const transcriptData = await videoService.getYouTubeTranscript(podcast.youtube_url);
+        if (transcriptData.hasTranscript && transcriptData.transcript) {
+          const analysis = await podcastService.analyzeTranscription(
+            transcriptData.transcript,
+            {
+              title: podcast.title,
+              description: podcast.description,
+              host: podcast.host
+            }
+          );
+
+          aiSummary = analysis.summary || `Podcast by ${podcast.host}: ${podcast.title}`;
+          aiTags = [
+            ...(analysis.keyTopics || []),
+            ...(analysis.targetAudience?.focusAreas || []),
+            analysis.estimatedValue ? `value-${analysis.estimatedValue}` : null,
+            analysis.targetAudience?.businessStage
+          ].filter(Boolean);
+        } else {
+          aiSummary = `Video podcast: ${podcast.title} by ${podcast.host}. ${podcast.description || ''}`;
+          aiTags = ['video-podcast'];
+        }
+      } catch (transcriptError) {
+        console.error('YouTube transcript extraction failed:', transcriptError.message);
+        aiSummary = `Video podcast: ${podcast.title} by ${podcast.host}. ${podcast.description || ''}`;
+        aiTags = ['video-podcast'];
+      }
+    } else if (podcast.rss_feed_url) {
+      // Audio podcast - process RSS feed
+      console.log('Processing audio podcast from RSS feed...');
+      const episodes = await podcastService.processRssFeed(podcast.rss_feed_url, podcast.id);
+
+      let transcriptSummary = '';
+      if (episodes && episodes.length > 0) {
+        const latestEpisode = episodes[0];
+        if (latestEpisode.audioUrl) {
+          try {
+            const transcription = await podcastService.transcribeAudio(latestEpisode.audioUrl);
+            transcriptSummary = transcription.summary || '';
+
+            if (transcription.fullText) {
+              const analysis = await podcastService.analyzeTranscription(
+                transcription.fullText,
+                {
+                  title: podcast.title,
+                  description: podcast.description,
+                  host: podcast.host
+                }
+              );
+
+              aiSummary = analysis.summary || transcriptSummary;
+              aiTags = [
+                ...(analysis.keyTopics || []),
+                ...(analysis.targetAudience?.focusAreas || []),
+                analysis.targetAudience?.businessStage
+              ].filter(Boolean);
+            }
+          } catch (transcriptError) {
+            console.error('Audio transcription failed:', transcriptError.message);
+          }
+        }
+      }
+
+      if (!aiSummary) {
+        aiSummary = `Audio podcast: ${podcast.title} by ${podcast.host}. ${episodes.length} episodes available. ${podcast.description || ''}`;
+        aiTags = ['audio-podcast', `episodes-${episodes.length}`];
+      }
+    } else {
+      aiSummary = `${podcast.title} by ${podcast.host}. ${podcast.description || ''}`;
+      aiTags = ['pending-feed'];
+    }
+
+    // Update podcast with AI-generated content
+    await db.query(
+      `UPDATE podcasts
+       SET ai_summary = $1,
+           ai_tags = $2::jsonb,
+           ai_processing_status = $3,
+           last_ai_analysis = NOW()
+       WHERE id = $4`,
+      [aiSummary, JSON.stringify(aiTags), 'completed', podcast.id]
+    );
+
+    console.log(`✅ Successfully processed podcast ${podcast.id}`);
+    return { success: true, podcastId: podcast.id, summary: aiSummary, tags: aiTags };
+
+  } catch (error) {
+    console.error(`Failed to process podcast ${podcast.id}:`, error);
+    await db.query(
+      'UPDATE podcasts SET ai_processing_status = $1 WHERE id = $2',
+      ['failed', podcast.id]
+    );
+    throw error;
+  }
+}
+
+// Helper function to trigger AI processing directly (no n8n)
+async function triggerPodcastAIProcessing(podcastId, action, updates = {}) {
+  try {
+    // Check if this is a new podcast or if any AI trigger fields were updated
+    const shouldTrigger = action === 'created' ||
+                         Object.keys(updates).some(field => AI_TRIGGER_FIELDS.includes(field));
+
+    if (!shouldTrigger) {
+      console.log(`🎙️ Podcast ${podcastId}: No AI-relevant fields updated, skipping AI processing`);
+      return;
+    }
+
+    console.log(`🎙️ Processing podcast AI for podcast ${podcastId} (${action})`);
+
+    // Mark as pending if updating trigger fields
+    if (action === 'updated' && shouldTrigger) {
+      await db.query(
+        'UPDATE podcasts SET ai_processing_status = $1 WHERE id = $2',
+        ['pending', podcastId]
+      );
+    }
+
+    // Call the processing function directly (no n8n webhook)
+    const result = await processSinglePodcast(podcastId);
+
+    console.log(`✅ Podcast AI processing completed successfully for podcast ${podcastId}`);
+    return result;
+  } catch (error) {
+    console.error(`⚠️ Failed to process podcast AI for podcast ${podcastId}:`, error.message);
+    // Don't throw error to prevent blocking the main operation
+  }
+}
+
 // Process pending podcasts for AI analysis
 exports.processPendingPodcasts = async (req, res) => {
   try {
@@ -394,30 +570,9 @@ exports.createPodcast = async (req, res) => {
 
     const result = await db.query(insertQuery, values);
 
-    // Trigger AI processing if RSS or YouTube URL was provided and status is pending
-    const createdPodcast = result.rows[0];
-    if ((createdPodcast.rss_feed_url || createdPodcast.youtube_url) && createdPodcast.ai_processing_status === 'pending') {
-      try {
-        console.log('🎙️ Triggering podcast AI processing via n8n webhook...');
-        // Determine webhook URL based on environment
-        const webhookPath = process.env.NODE_ENV === 'production'
-          ? 'podcast-ai-processing'
-          : 'podcast-ai-processing-dev';
-        const baseUrl = process.env.NODE_ENV === 'production'
-          ? 'https://n8n.srv918843.hstgr.cloud'
-          : 'http://localhost:5678';
-        const webhookUrl = `${baseUrl}/webhook/${webhookPath}`;
-
-        await axios.post(webhookUrl,
-          { id: createdPodcast.id },
-          { timeout: 5000 }
-        );
-        console.log('✅ Podcast AI processing triggered');
-      } catch (webhookError) {
-        console.error('Warning: Could not trigger n8n webhook:', webhookError.message);
-        // Continue anyway - the podcast is marked as pending
-      }
-    }
+    // Trigger AI processing for new podcast
+    const newPodcast = result.rows[0];
+    await triggerPodcastAIProcessing(newPodcast.id, 'created');
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
@@ -474,31 +629,11 @@ exports.updatePodcast = async (req, res) => {
       return res.status(404).json({ error: 'Podcast not found' });
     }
 
-    // Trigger AI processing if RSS or YouTube URL was added/updated
-    if ((updates.rss_feed_url || updates.youtube_url) && result.rows[0].ai_processing_status === 'pending') {
-      try {
-        console.log('🎙️ Triggering podcast AI processing via n8n webhook...');
-        // Determine webhook URL based on environment
-        const webhookPath = process.env.NODE_ENV === 'production'
-          ? 'podcast-ai-processing'
-          : 'podcast-ai-processing-dev';
-        const baseUrl = process.env.NODE_ENV === 'production'
-          ? 'https://n8n.srv918843.hstgr.cloud'
-          : 'http://localhost:5678';
-        const webhookUrl = `${baseUrl}/webhook/${webhookPath}`;
+    // Trigger AI processing if content fields were updated
+    const updatedPodcast = result.rows[0];
+    await triggerPodcastAIProcessing(updatedPodcast.id, 'updated', updates);
 
-        await axios.post(webhookUrl,
-          { id: id },
-          { timeout: 5000 }
-        );
-        console.log('✅ Podcast AI processing triggered');
-      } catch (webhookError) {
-        console.error('Warning: Could not trigger n8n webhook:', webhookError.message);
-        // Continue anyway - the podcast is marked as pending
-      }
-    }
-
-    res.json(result.rows[0]);
+    res.json(updatedPodcast);
   } catch (error) {
     console.error('Error updating podcast:', error);
     res.status(500).json({ error: 'Failed to update podcast', details: error.message });

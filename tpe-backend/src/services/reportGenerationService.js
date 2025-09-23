@@ -21,7 +21,7 @@ class ReportGenerationService {
       
       // Get partner details
       const partnerResult = await query(
-        'SELECT * FROM partners WHERE id = $1',
+        'SELECT * FROM strategic_partners WHERE id = $1',
         [partnerId]
       );
       

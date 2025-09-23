@@ -43,7 +43,7 @@ const matchContractorWithPartners = async (contractor) => {
 
   // Get all active partners
   const partnersResult = await query(
-    'SELECT * FROM partners WHERE is_active = true'
+    'SELECT * FROM strategic_partners WHERE is_active = true'
   );
   
   // Parse JSON fields for each partner

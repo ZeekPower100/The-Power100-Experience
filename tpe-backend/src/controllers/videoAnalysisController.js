@@ -193,15 +193,15 @@ const videoAnalysisController = {
         });
       }
 
-      // Import the video analysis service
+      // Import required modules at the top
       const VideoAnalysisService = require('../services/videoAnalysisService');
       const videoService = new VideoAnalysisService();
+      const { query } = require('../config/database');
+      const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 
       // Get partner info if provided
       let partnerInfo = {};
       if (partner_id) {
-        const { query } = require('../config/database');
-        const { safeJsonParse } = require('../utils/jsonHelpers');
 
         const partnerResult = await query(
           'SELECT company_name, service_areas, focus_areas_served FROM strategic_partners WHERE id = $1',
@@ -233,6 +233,21 @@ const videoAnalysisController = {
 
         let videoId;
         if (videoResult.rows.length === 0) {
+          // Get partner name and count existing videos for naming
+          let videoTitle = 'Partner Demo Video';
+          if (partner_id) {
+            // Count existing videos for this partner to generate number
+            const countResult = await query(
+              'SELECT COUNT(*) as video_count FROM video_content WHERE entity_type = $1 AND entity_id = $2',
+              ['partner', partner_id]
+            );
+            const videoNumber = parseInt(countResult.rows[0].video_count) + 1;
+
+            // Use partner name if available
+            const partnerName = partnerInfo.company_name || 'Partner';
+            videoTitle = `${partnerName} Demo Video ${videoNumber}`;
+          }
+
           // Create new video_content record
           const insertResult = await query(`
             INSERT INTO video_content (
@@ -243,7 +258,7 @@ const videoAnalysisController = {
             'partner',
             partner_id || 0,
             'demo',
-            'Partner Demo Video',
+            videoTitle,
             video_url,
             analysisResult.metadata?.thumbnailUrl || ''
           ]);
@@ -272,10 +287,26 @@ const videoAnalysisController = {
 
         const createdAnalysis = await VideoAnalysis.create(analysisData);
 
+        // Update video_content with AI columns
+        console.log(`📹 Updating video_content ${videoId} with AI analysis`);
+        await query(`
+          UPDATE video_content SET
+            ai_processing_status = 'completed',
+            ai_summary = $1,
+            ai_insights = $2,
+            ai_engagement_score = $3,
+            last_ai_analysis = NOW(),
+            updated_at = NOW()
+          WHERE id = $4
+        `, [
+          analysisResult.insights?.scoring_reasoning || 'Analysis complete',
+          safeJsonStringify(analysisResult.insights || {}),
+          analysisResult.insights?.quality_score || 0,
+          videoId
+        ]);
+
         // Update partner record if partner_id provided
         if (partner_id) {
-          const { query } = require('../config/database');
-          const { safeJsonStringify } = require('../utils/jsonHelpers');
 
           console.log(`📊 Updating partner ${partner_id} with analysis results:`, {
             quality_score: Math.round(analysisResult.insights?.quality_score || 0),
@@ -334,9 +365,9 @@ const videoAnalysisController = {
 
       // Get pending videos (optionally filtered by partner)
       let queryText = `
-        SELECT vc.*, p.company_name, p.capabilities
+        SELECT vc.*, p.company_name, p.service_areas
         FROM video_content vc
-        LEFT JOIN partners p ON (vc.entity_type = 'partner' AND vc.entity_id = p.id)
+        LEFT JOIN strategic_partners p ON (vc.entity_type = 'partner' AND vc.entity_id = p.id)
         WHERE vc.ai_processing_status = 'pending'
       `;
       const queryParams = [];
@@ -379,7 +410,7 @@ const videoAnalysisController = {
           // Prepare partner info
           const partnerInfo = video.company_name ? {
             company_name: video.company_name,
-            capabilities: safeJsonParse(video.capabilities, [])
+            capabilities: safeJsonParse(video.service_areas, [])
           } : {};
 
           // Analyze the video

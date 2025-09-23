@@ -192,7 +192,7 @@ const getSmsCampaigns = async (req, res) => {
              p.company_name as partner_name,
              au.full_name as created_by_name
       FROM sms_campaigns sc
-      LEFT JOIN partners p ON sc.partner_id = p.id
+      LEFT JOIN strategic_partners p ON sc.partner_id = p.id
       LEFT JOIN admin_users au ON sc.created_by = au.id
       WHERE 1=1
     `;

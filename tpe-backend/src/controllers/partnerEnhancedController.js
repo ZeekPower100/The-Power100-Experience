@@ -36,7 +36,7 @@ const getEnhancedPartnerList = async (req, res) => {
     const enhancedPartners = partners.map((partner, index) => ({
       ...partner,
       service_categories: partner.focus_areas || partner.service_category, // Map for frontend compatibility
-      current_powerconfidence_score: partner.powerconfidence_score || 0, // Map field name
+      powerconfidence_score: partner.powerconfidence_score || 0,
       recent_feedback_count: Math.floor(Math.random() * 10) + 1,
       highest_priority_insight: Math.floor(Math.random() * 3) + 1, // 1-3 priority level
       score_trend: 'stable', // Default to stable
@@ -60,9 +60,9 @@ const getEnhancedPartnerList = async (req, res) => {
         total_partners: enhancedPartners.length,
         active_partners: enhancedPartners.filter(p => p.is_active).length,
         avg_powerconfidence: Math.round(
-          enhancedPartners.reduce((sum, p) => sum + p.current_powerconfidence_score, 0) / enhancedPartners.length
+          enhancedPartners.reduce((sum, p) => sum + p.powerconfidence_score, 0) / enhancedPartners.length
         ),
-        high_performers: enhancedPartners.filter(p => p.current_powerconfidence_score >= 85).length
+        high_performers: enhancedPartners.filter(p => p.powerconfidence_score >= 85).length
       }
     });
 
@@ -86,12 +86,12 @@ const getPartnerDetailedAnalytics = async (req, res) => {
     const partnerQuery = `
       SELECT 
         *,
-        COALESCE(current_powerconfidence_score, power_confidence_score, 75) as current_powerconfidence_score,
+        COALESCE(powerconfidence_score, power_confidence_score, 75) as powerconfidence_score,
         COALESCE(previous_powerconfidence_score, power_confidence_score, 73) as previous_powerconfidence_score,
         COALESCE(score_trend, 'stable') as score_trend,
         COALESCE(total_contractor_engagements, 5) as total_contractor_engagements,
         COALESCE(avg_contractor_satisfaction, 7.8) as avg_contractor_satisfaction
-      FROM partners 
+      FROM strategic_partners
       WHERE id = ? AND is_active = true
     `;
 
@@ -108,7 +108,7 @@ const getPartnerDetailedAnalytics = async (req, res) => {
 
     // Mock PowerConfidence history (4 quarters)
     const scoreHistory = [
-      { quarter: '2025-Q1', score: partner.current_powerconfidence_score, date: '2025-03-15' },
+      { quarter: '2025-Q1', score: partner.powerconfidence_score, date: '2025-03-15' },
       { quarter: '2024-Q4', score: partner.previous_powerconfidence_score, date: '2024-12-15' },
       { quarter: '2024-Q3', score: partner.previous_powerconfidence_score - 2, date: '2024-09-15' },
       { quarter: '2024-Q2', score: partner.previous_powerconfidence_score - 5, date: '2024-06-15' }
@@ -116,10 +116,10 @@ const getPartnerDetailedAnalytics = async (req, res) => {
 
     // Mock category breakdown
     const categoryScores = {
-      service: Math.max(65, partner.current_powerconfidence_score - 5 + Math.floor(Math.random() * 10)),
-      communication: Math.max(65, partner.current_powerconfidence_score - 2 + Math.floor(Math.random() * 8)),
-      results: Math.max(65, partner.current_powerconfidence_score - 8 + Math.floor(Math.random() * 12)),
-      value: Math.max(65, partner.current_powerconfidence_score - 3 + Math.floor(Math.random() * 6))
+      service: Math.max(65, partner.powerconfidence_score - 5 + Math.floor(Math.random() * 10)),
+      communication: Math.max(65, partner.powerconfidence_score - 2 + Math.floor(Math.random() * 8)),
+      results: Math.max(65, partner.powerconfidence_score - 8 + Math.floor(Math.random() * 12)),
+      value: Math.max(65, partner.powerconfidence_score - 3 + Math.floor(Math.random() * 6))
     };
 
     // Mock insights based on partner performance
@@ -163,7 +163,7 @@ const getPartnerDetailedAnalytics = async (req, res) => {
 
     // Mock engagement metrics
     const engagementMetrics = {
-      demo_performance_score: Math.round(partner.current_powerconfidence_score * 0.9),
+      demo_performance_score: Math.round(partner.powerconfidence_score * 0.9),
       contractor_retention_rate: Math.round(65 + Math.random() * 30), // 65-95%
       ai_coach_mentions: Math.floor(Math.random() * 15) + 5,
       support_ticket_volume: Math.floor(Math.random() * 5) // Low is better
@@ -172,7 +172,7 @@ const getPartnerDetailedAnalytics = async (req, res) => {
     const detailedAnalytics = {
       partner,
       powerconfidence: {
-        current_score: partner.current_powerconfidence_score,
+        current_score: partner.powerconfidence_score,
         previous_score: partner.previous_powerconfidence_score,
         trend: partner.score_trend,
         trend_icon: partner.score_trend === 'up' ? '↗' : 
@@ -234,12 +234,12 @@ const updatePartnerPowerConfidence = async (req, res) => {
 
     // Get current score to set as previous
     const currentScoreQuery = `
-      SELECT current_powerconfidence_score 
-      FROM partners 
+      SELECT powerconfidence_score
+      FROM strategic_partners
       WHERE id = ?
     `;
     const currentResult = await query(currentScoreQuery, [partnerId]);
-    const previousScore = currentResult.rows[0]?.current_powerconfidence_score || 75;
+    const previousScore = currentResult.rows[0]?.powerconfidence_score || 75;
 
     // Calculate trend
     const trend = score > previousScore ? 'up' : 
@@ -247,9 +247,9 @@ const updatePartnerPowerConfidence = async (req, res) => {
 
     // Update partner record
     const updateQuery = `
-      UPDATE partners 
+      UPDATE strategic_partners
       SET 
-        current_powerconfidence_score = ?,
+        powerconfidence_score = ?,
         previous_powerconfidence_score = ?,
         score_trend = ?,
         last_score_update = CURRENT_TIMESTAMP

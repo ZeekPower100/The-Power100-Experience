@@ -414,18 +414,17 @@ Provide the analysis in a structured JSON format.`;
         throw new Error('Partner not found');
       }
 
-      // Get demo videos from partner metadata or demo_video_url field
+      // Get demo videos from client_demos field
       const demoUrls = [];
 
-      if (partner.demo_video_url) {
-        demoUrls.push(partner.demo_video_url);
-      }
-
-      // Check for additional videos in metadata
-      if (partner.metadata) {
-        const metadata = safeJsonParse(partner.metadata, {});
-        if (metadata.demo_videos && Array.isArray(metadata.demo_videos)) {
-          demoUrls.push(...metadata.demo_videos);
+      if (partner.client_demos) {
+        const demos = safeJsonParse(partner.client_demos, []);
+        for (const demo of demos) {
+          // Handle both string URLs and objects with URL property
+          const demoUrl = typeof demo === 'string' ? demo : (demo.url || demo.video_url);
+          if (demoUrl && demoUrl.includes('http')) {
+            demoUrls.push(demoUrl);
+          }
         }
       }
 

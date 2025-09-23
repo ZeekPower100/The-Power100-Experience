@@ -1,8 +1,10 @@
 const db = require('../config/database');
-const axios = require('axios');
+const { processBookAI } = require('../services/aiProcessingService');
 
 // Fields that should trigger AI processing when updated
 const AI_TRIGGER_FIELDS = [
+  'title',                  // Used in AI summary
+  'author',                 // Used in AI summary
   'description',
   'key_takeaways',
   'table_of_contents',
@@ -16,10 +18,12 @@ const AI_TRIGGER_FIELDS = [
   'actionable_ratio',
   'target_audience',
   'writing_influence',
-  'testimonials'
+  'testimonials',
+  'publication_year',       // Context for relevance
+  'amazon_url'              // Source data change
 ];
 
-// Helper function to trigger AI processing via n8n webhook
+// Helper function to trigger AI processing directly (no n8n)
 const triggerBookAIProcessing = async (bookId, action, updates = {}) => {
   try {
     // Check if this is a new book or if any AI trigger fields were updated
@@ -31,33 +35,13 @@ const triggerBookAIProcessing = async (bookId, action, updates = {}) => {
       return;
     }
 
-    // Use -dev suffix for development, production will use without suffix
-    // Determine webhook path based on environment
-    const webhookPath = process.env.NODE_ENV === 'production'
-      ? 'book-ai-processing'
-      : 'book-ai-processing-dev';
+    console.log(`📚 Processing book AI for book ${bookId} (${action})`);
 
-    // Use production n8n URL in production, localhost in development
-    const baseUrl = process.env.NODE_ENV === 'production'
-      ? 'https://n8n.srv918843.hstgr.cloud'
-      : 'http://localhost:5678';
+    // Call the AI processing service directly (no n8n webhook)
+    const result = await processBookAI(bookId);
 
-    const webhookUrl = process.env.N8N_BOOK_WEBHOOK_URL || `${baseUrl}/webhook/${webhookPath}`;
-    console.log(`🔔 Triggering book AI processing for book ${bookId} (${action})`);
-
-    const response = await axios.post(webhookUrl, {
-      book_id: bookId,
-      action: action,
-      updated_fields: Object.keys(updates)
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      timeout: 30000 // 30 second timeout
-    });
-
-    console.log(`✅ Book AI processing triggered successfully for book ${bookId}`);
-    return response.data;
+    console.log(`✅ Book AI processing completed successfully for book ${bookId}`);
+    return result;
   } catch (error) {
     console.error(`⚠️ Failed to trigger book AI processing for book ${bookId}:`, error.message);
     // Don't throw error to prevent blocking the main operation

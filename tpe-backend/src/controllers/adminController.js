@@ -24,7 +24,7 @@ const getDashboardStats = async (req, res, next) => {
       COUNT(*) as total,
       COUNT(*) FILTER (WHERE is_active = true) as active,
       AVG(powerconfidence_score) as avg_confidence_score
-    FROM partners
+    FROM strategic_partners
   `);
 
   // Get booking stats
@@ -62,7 +62,7 @@ const getDashboardStats = async (req, res, next) => {
         b.status
       FROM demo_bookings b
       JOIN contractors c ON b.contractor_id = c.id
-      JOIN partners p ON b.partner_id = p.id
+      JOIN strategic_partners p ON b.partner_id = p.id
       ORDER BY b.created_at DESC
       LIMIT 5
     )
@@ -143,7 +143,7 @@ const exportContractors = async (req, res, next) => {
 const exportPartners = async (req, res, next) => {
   const { format = 'json', active } = req.query;
 
-  let queryText = 'SELECT * FROM partners';
+  let queryText = 'SELECT * FROM strategic_partners';
   
   if (active !== undefined) {
     queryText += ` WHERE is_active = ${active === 'true'}`;
@@ -179,7 +179,7 @@ const exportBookings = async (req, res, next) => {
       p.company_name as partner_name
     FROM demo_bookings b
     JOIN contractors c ON b.contractor_id = c.id
-    JOIN partners p ON b.partner_id = p.id
+    JOIN strategic_partners p ON b.partner_id = p.id
   `;
 
   const conditions = [];

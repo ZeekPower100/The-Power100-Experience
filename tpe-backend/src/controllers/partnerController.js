@@ -1,46 +1,45 @@
 const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
-const axios = require('axios');
+const { processPartnerAI } = require('../services/aiProcessingService');
 
 const { query } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
 
-// Helper function to trigger AI processing via n8n webhook
-const triggerAIProcessing = async (partnerId, action, aiStatus = 'pending') => {
-  // Only trigger if AI processing is needed
-  if (aiStatus !== 'pending') {
-    console.log(`Partner ${partnerId} AI status is ${aiStatus}, skipping webhook trigger`);
-    return;
-  }
+// Fields that should trigger AI processing when updated
+const AI_TRIGGER_FIELDS = [
+  'company_name',           // Used in AI summary
+  'description',            // Core content for analysis
+  'service_areas',          // Capabilities analysis
+  'focus_areas_served',     // Target market analysis
+  'case_studies',           // Success stories for insights
+  'testimonials',           // Social proof for analysis
+  'key_differentiators',    // Would regenerate if changed
+  'target_revenue_range',   // Market positioning
+  'ideal_client_profile',   // Target audience
+  'client_demos'            // Demo videos for analysis
+];
 
+// Helper function to trigger AI processing directly (no n8n)
+const triggerAIProcessing = async (partnerId, action, updates = {}) => {
   try {
-    // Determine webhook path based on environment
-    const webhookPath = process.env.NODE_ENV === 'production'
-      ? 'partner-ai-processing'
-      : 'partner-ai-processing-dev';
+    // Check if this is a new partner or if any AI trigger fields were updated
+    const shouldTrigger = action === 'created' ||
+                         Object.keys(updates).some(field => AI_TRIGGER_FIELDS.includes(field));
 
-    // Use production n8n URL in production, localhost in development
-    const baseUrl = process.env.NODE_ENV === 'production'
-      ? 'https://n8n.srv918843.hstgr.cloud'
-      : 'http://localhost:5678';
+    if (!shouldTrigger) {
+      console.log(`🤝 Partner ${partnerId}: No AI-relevant fields updated, skipping AI processing`);
+      return;
+    }
 
-    const webhookUrl = process.env.N8N_WEBHOOK_URL || `${baseUrl}/webhook/${webhookPath}`;
+    console.log(`🤝 Processing partner AI for partner ${partnerId} (${action})`);
 
-    console.log(`🔔 Triggering n8n webhook for partner ${partnerId} to ${webhookUrl}`);
+    // Call the AI processing service directly (no n8n webhook)
+    const result = await processPartnerAI(partnerId);
 
-    const response = await axios.post(webhookUrl, {
-      partner_id: partnerId,
-      action: action, // 'created' or 'updated'
-      ai_processing_status: aiStatus
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-      }
-    });
-
-    console.log(`✅ AI processing webhook triggered for partner ${partnerId} (${action}), status: ${response.status}`);
+    console.log(`✅ Partner AI processing completed successfully for partner ${partnerId}`);
+    return result;
   } catch (error) {
-    console.error('Failed to trigger AI processing webhook:', error.message);
-    // Don't fail the partner operation if webhook fails
+    console.error(`⚠️ Failed to process partner AI for partner ${partnerId}:`, error.message);
+    // Don't throw error to prevent blocking the main operation
   }
 };
 
@@ -257,9 +256,9 @@ const createPartner = async (req, res, next) => {
     last_ai_analysis || null, ai_confidence_score || null
   ]);
 
-  // Trigger AI processing webhook for new partner
+  // Trigger AI processing for new partner
   const newPartner = result.rows[0];
-  await triggerAIProcessing(newPartner.id, 'created', newPartner.ai_processing_status);
+  await triggerAIProcessing(newPartner.id, 'created');
 
   // Process videos if client_demos URLs were provided
   console.log('🔍 DEBUG - client_demos value:', client_demos);
@@ -446,6 +445,17 @@ const updatePartner = async (req, res, next) => {
   values.push(id);
 
   try {
+    // Get the OLD client_demos BEFORE update (for video comparison)
+    let oldDemoUrls = [];
+    if (updates.client_demos) {
+      const oldPartnerResult = await query(
+        'SELECT client_demos FROM strategic_partners WHERE id = $1',
+        [id]
+      );
+      const oldDemos = oldPartnerResult.rows[0] ? safeJsonParse(oldPartnerResult.rows[0].client_demos, []) : [];
+      oldDemoUrls = oldDemos.map(d => typeof d === 'string' ? d : (d.url || d.video_url)).filter(Boolean);
+    }
+
     // Admin-created partners are automatically approved
     req.body.status = 'approved';
     req.body.is_active = true;
@@ -462,23 +472,28 @@ const updatePartner = async (req, res, next) => {
       return next(new AppError('Partner not found', 404));
     }
 
-    // Trigger AI processing webhook if partner was updated and needs processing
+    // Trigger AI processing if content fields were updated
     const updatedPartner = result.rows[0];
-    await triggerAIProcessing(updatedPartner.id, 'updated', updatedPartner.ai_processing_status);
+    await triggerAIProcessing(updatedPartner.id, 'updated', updates);
 
     // Process videos if client_demos was updated with new URLs
     if (updates.client_demos) {
       try {
-        const demos = safeJsonParse(updates.client_demos, []);
-        if (demos.length > 0) {
-          console.log(`📹 Processing ${demos.length} demo videos for partner ${id}`);
+        // Get the NEW demos
+        const newDemos = safeJsonParse(updates.client_demos, []);
+        const newDemoUrls = newDemos.map(d => typeof d === 'string' ? d : (d.url || d.video_url)).filter(Boolean);
+
+        // Find which URLs are actually NEW (not in old list)
+        const addedUrls = newDemoUrls.filter(url => !oldDemoUrls.includes(url));
+
+        if (addedUrls.length > 0) {
+          console.log(`📹 Processing ${addedUrls.length} NEW demo videos for partner ${id} (out of ${newDemoUrls.length} total)`);
           const axios = require('axios');
 
-          for (const demo of demos) {
-            const demoUrl = typeof demo === 'string' ? demo : (demo.url || demo.video_url);
+          for (const demoUrl of addedUrls) {
             if (demoUrl && demoUrl.includes('http')) {
               try {
-                console.log(`  Processing video: ${demoUrl}`);
+                console.log(`  Processing NEW video: ${demoUrl}`);
                 const videoResponse = await axios.post(
                   'http://localhost:5000/api/video-analysis/process',
                   {
@@ -500,6 +515,8 @@ const updatePartner = async (req, res, next) => {
               }
             }
           }
+        } else {
+          console.log(`📹 No new videos to process for partner ${id} (all ${newDemoUrls.length} videos already processed)`);
         }
       } catch (error) {
         console.error(`⚠️ Video processing setup failed (non-blocking):`, error.message);
