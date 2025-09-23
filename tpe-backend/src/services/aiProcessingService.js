@@ -207,8 +207,55 @@ async function processPartnerAI(partnerId) {
     // Generate key differentiators
     const aiResult = await generateKeyDifferentiators(partner);
 
+    // Generate AI summary for the partner
+    let aiSummary = null;
     if (aiResult) {
-      // Update partner with AI-generated data
+      try {
+        const summaryPrompt = `Based on this strategic partner information, provide a comprehensive 2-3 paragraph executive summary that contractors can use to quickly understand this partner's value:
+
+Company: ${partner.company_name}
+Description: ${partner.description || 'N/A'}
+Value Proposition: ${partner.value_proposition || 'N/A'}
+Service Areas: ${safeJsonParse(partner.service_areas, []).join(', ') || 'N/A'}
+Focus Areas: ${safeJsonParse(partner.focus_areas_served, []).join(', ') || 'N/A'}
+Target Revenue: ${safeJsonParse(partner.target_revenue_range, []).join(', ') || 'N/A'}
+Why Clients Choose Them: ${partner.why_clients_choose_you || 'N/A'}
+Client Count: ${partner.client_count || 'N/A'}
+Established: ${partner.established_year || 'N/A'}
+Key Differentiators: ${aiResult.differentiators.join('; ')}
+
+Write a professional summary that highlights:
+1. What makes this partner unique in the market
+2. Their core expertise and who they serve best
+3. The specific value they bring to contractors
+Keep it concise but informative.`;
+
+        const summaryCompletion = await openai.chat.completions.create({
+          model: 'gpt-4',
+          messages: [
+            {
+              role: "system",
+              content: "You are a business analyst writing executive summaries for strategic partnerships in the construction/contractor industry."
+            },
+            {
+              role: "user",
+              content: summaryPrompt
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 500
+        });
+
+        aiSummary = summaryCompletion.choices[0].message.content;
+        console.log(`✅ Generated AI summary for partner ${partnerId}`);
+      } catch (error) {
+        console.error(`⚠️ Failed to generate AI summary for partner ${partnerId}:`, error.message);
+        // Continue without summary - differentiators are more important
+      }
+    }
+
+    if (aiResult) {
+      // Update partner with AI-generated data including summary
       // Mark test data differently in status
       const status = partner.is_test_data ? 'completed_test' : 'completed';
 
@@ -217,18 +264,20 @@ async function processPartnerAI(partnerId) {
          SET ai_generated_differentiators = $1,
              ai_confidence_score = $2,
              ai_processing_status = $3,
+             ai_summary = $4,
              last_ai_analysis = NOW()
-         WHERE id = $4`,
+         WHERE id = $5`,
         [
           safeJsonStringify(aiResult.differentiators),
           aiResult.confidenceScore,
           status,
+          aiSummary,
           partnerId
         ]
       );
 
-      console.log(`AI processing completed for ${partner.is_test_data ? 'TEST' : 'REAL'} partner ${partnerId} with confidence ${aiResult.confidenceScore}%`);
-      return aiResult;
+      console.log(`AI processing completed for ${partner.is_test_data ? 'TEST' : 'REAL'} partner ${partnerId} with confidence ${aiResult.confidenceScore}%${aiSummary ? ' (with summary)' : ''}`);
+      return { ...aiResult, aiSummary };
     } else {
       // Mark as failed
       await query(
