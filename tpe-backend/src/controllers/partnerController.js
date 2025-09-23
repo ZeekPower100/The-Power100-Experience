@@ -285,8 +285,11 @@ const createPartner = async (req, res, next) => {
         if (demoUrl && demoUrl.includes('http')) {
           try {
             console.log(`  Processing video: ${demoUrl}`);
+            const baseUrl = process.env.NODE_ENV === 'production'
+              ? 'https://tpx.power100.io'
+              : 'http://localhost:5000';
             const videoResponse = await axios.post(
-              'http://localhost:5000/api/video-analysis/process',
+              `${baseUrl}/api/video-analysis/process`,
               {
                 video_url: demoUrl,
                 partner_id: newPartner.id
@@ -494,8 +497,11 @@ const updatePartner = async (req, res, next) => {
             if (demoUrl && demoUrl.includes('http')) {
               try {
                 console.log(`  Processing NEW video: ${demoUrl}`);
+                const baseUrl = process.env.NODE_ENV === 'production'
+                  ? 'https://tpx.power100.io'
+                  : 'http://localhost:5000';
                 const videoResponse = await axios.post(
-                  'http://localhost:5000/api/video-analysis/process',
+                  `${baseUrl}/api/video-analysis/process`,
                   {
                     video_url: demoUrl,
                     partner_id: id
