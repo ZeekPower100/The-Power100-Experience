@@ -194,7 +194,7 @@ const createPartner = async (req, res, next) => {
     books_read_recommended, best_working_partnerships,
     
     // Step 8: Client Demos & References
-    client_demos, client_references, demo_video_url,
+    client_demos, client_references,
 
     // AI Processing Fields
     is_test_data, ai_generated_differentiators, ai_processing_status,
@@ -224,10 +224,10 @@ const createPartner = async (req, res, next) => {
       tech_stack_analytics, tech_stack_marketing, tech_stack_financial,
       sponsored_events, other_sponsored_events, podcast_appearances, other_podcast_appearances,
       books_read_recommended, best_working_partnerships,
-      client_demos, client_references, demo_video_url,
+      client_demos, client_references,
       is_test_data, ai_generated_differentiators, ai_processing_status,
       last_ai_analysis, ai_confidence_score
-    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69, $70)
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65, $66, $67, $68, $69)
     RETURNING *
   `, [
     // Basic values
@@ -252,7 +252,7 @@ const createPartner = async (req, res, next) => {
     safeJsonStringify(sponsored_events || []), safeJsonStringify(other_sponsored_events || []),
     safeJsonStringify(podcast_appearances || []), safeJsonStringify(other_podcast_appearances || []),
     books_read_recommended, best_working_partnerships,
-    safeJsonStringify(client_demos || []), safeJsonStringify(client_references || []), demo_video_url || null,
+    safeJsonStringify(client_demos || []), safeJsonStringify(client_references || []),
     is_test_data || false, ai_generated_differentiators || null, ai_processing_status || 'pending',
     last_ai_analysis || null, ai_confidence_score || null
   ]);
@@ -261,25 +261,43 @@ const createPartner = async (req, res, next) => {
   const newPartner = result.rows[0];
   await triggerAIProcessing(newPartner.id, 'created', newPartner.ai_processing_status);
 
-  // Process video if demo_video_url was provided
-  if (demo_video_url) {
+  // Process videos if client_demos URLs were provided
+  if (client_demos && client_demos.length > 0) {
     try {
-      console.log(`📹 Processing video for new partner ${newPartner.id}`);
+      console.log(`📹 Processing ${client_demos.length} demo videos for new partner ${newPartner.id}`);
       const axios = require('axios');
-      const videoResponse = await axios.post(
-        'http://localhost:5000/api/video-analysis/process-pending',
-        { partner_id: newPartner.id },
-        {
-          headers: {
-            'Authorization': req.headers.authorization,
-            'Content-Type': 'application/json'
-          },
-          timeout: 60000
+
+      // Process each demo URL
+      for (const demo of client_demos) {
+        // Handle both string URLs and objects with URL property
+        const demoUrl = typeof demo === 'string' ? demo : (demo.url || demo.video_url);
+
+        if (demoUrl && demoUrl.includes('http')) {
+          try {
+            console.log(`  Processing video: ${demoUrl}`);
+            const videoResponse = await axios.post(
+              'http://localhost:5000/api/video-analysis/process',
+              {
+                video_url: demoUrl,
+                partner_id: newPartner.id
+              },
+              {
+                headers: {
+                  'Authorization': req.headers.authorization,
+                  'Content-Type': 'application/json'
+                },
+                timeout: 60000
+              }
+            );
+            console.log(`  ✅ Video processed: ${videoResponse.data.message}`);
+          } catch (videoError) {
+            console.error(`  ⚠️ Failed to process video ${demoUrl}:`, videoError.message);
+            // Continue processing other videos
+          }
         }
-      );
-      console.log(`✅ Video processing result:`, videoResponse.data.message);
-    } catch (videoError) {
-      console.error(`⚠️ Video processing failed (non-blocking):`, videoError.message);
+      }
+    } catch (error) {
+      console.error(`⚠️ Video processing setup failed (non-blocking):`, error.message);
       // Don't fail the creation, just log the error
     }
   }
@@ -437,25 +455,43 @@ const updatePartner = async (req, res, next) => {
     const updatedPartner = result.rows[0];
     await triggerAIProcessing(updatedPartner.id, 'updated', updatedPartner.ai_processing_status);
 
-    // Process pending videos if demo_video_url was updated
-    if (updates.demo_video_url) {
+    // Process videos if client_demos was updated with new URLs
+    if (updates.client_demos) {
       try {
-        console.log(`📹 Processing video for partner ${id}`);
-        const axios = require('axios');
-        const videoResponse = await axios.post(
-          'http://localhost:5000/api/video-analysis/process-pending',
-          { partner_id: id },
-          {
-            headers: {
-              'Authorization': req.headers.authorization,
-              'Content-Type': 'application/json'
-            },
-            timeout: 60000
+        const demos = safeJsonParse(updates.client_demos, []);
+        if (demos.length > 0) {
+          console.log(`📹 Processing ${demos.length} demo videos for partner ${id}`);
+          const axios = require('axios');
+
+          for (const demo of demos) {
+            const demoUrl = typeof demo === 'string' ? demo : (demo.url || demo.video_url);
+            if (demoUrl && demoUrl.includes('http')) {
+              try {
+                console.log(`  Processing video: ${demoUrl}`);
+                const videoResponse = await axios.post(
+                  'http://localhost:5000/api/video-analysis/process',
+                  {
+                    video_url: demoUrl,
+                    partner_id: id
+                  },
+                  {
+                    headers: {
+                      'Authorization': req.headers.authorization,
+                      'Content-Type': 'application/json'
+                    },
+                    timeout: 60000
+                  }
+                );
+                console.log(`  ✅ Video processed: ${videoResponse.data.message}`);
+              } catch (videoError) {
+                console.error(`  ⚠️ Failed to process video ${demoUrl}:`, videoError.message);
+                // Continue processing other videos
+              }
+            }
           }
-        );
-        console.log(`✅ Video processing result:`, videoResponse.data.message);
-      } catch (videoError) {
-        console.error(`⚠️ Video processing failed (non-blocking):`, videoError.message);
+        }
+      } catch (error) {
+        console.error(`⚠️ Video processing setup failed (non-blocking):`, error.message);
         // Don't fail the update, just log the error
       }
     }
