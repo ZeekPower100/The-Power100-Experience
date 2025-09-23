@@ -53,13 +53,22 @@ class OpenAIService {
       items.slice(0, 15).forEach((item, index) => {
         // Extract common fields intelligently
         const title = item.title || item.name || item.company_name || `${displayName} ${index + 1}`;
-        const description = item.description || item.summary || item.ai_summary || item.value_proposition || '';
+
+        // For partners, prioritize ai_summary over description
+        let description = '';
+        if (key === 'partners' && item.ai_summary) {
+          description = item.ai_summary;
+          console.log(`[OpenAI] Partner ${item.company_name} has AI summary (${item.ai_summary.length} chars)`);
+        } else {
+          description = item.description || item.summary || item.ai_summary || item.value_proposition || '';
+        }
 
         knowledgeContext += `\n${index + 1}. **${title}**`;
 
-        // Add description
+        // Add description - show more for AI summaries
         if (description) {
-          knowledgeContext += `\n   ${description.substring(0, 200)}${description.length > 200 ? '...' : ''}`;
+          const maxLength = item.ai_summary ? 500 : 200; // Show more of AI summaries
+          knowledgeContext += `\n   ${description.substring(0, maxLength)}${description.length > maxLength ? '...' : ''}`;
         }
 
         // Add AI insights if present
@@ -430,6 +439,9 @@ Provide a JSON response with exactly 5 actionable insights:
       throw new Error('OpenAI service not configured. Please set OPENAI_API_KEY in environment variables.');
     }
 
+    // Import the proper DynamicPromptBuilder (already instantiated)
+    const promptBuilder = require('./dynamicPromptBuilder');
+
     // Format partner information for the AI
     let partnerContext = '';
     if (partners && partners.length > 0) {
@@ -444,7 +456,7 @@ Provide a JSON response with exactly 5 actionable insights:
       partnerContext = `\n\n=== STRATEGIC PARTNERS IN TPX NETWORK ===\nTHESE ARE THE ONLY PARTNERS WE WORK WITH - DO NOT MENTION ANY OTHERS:\n${partnerList}\n\nCRITICAL: You MUST ONLY recommend partners from the list above. NEVER invent partner names like CoConstruct, ServiceTitan, or Buildertrend unless they appear above.\n=== END OF PARTNER LIST ===`;
     }
 
-    // Build comprehensive knowledge context using dynamic prompt builder
+    // Build comprehensive knowledge context using the PROPER dynamic prompt builder
     let knowledgeContext = '';
 
     // Debug the knowledge base structure
@@ -453,8 +465,24 @@ Provide a JSON response with exactly 5 actionable insights:
       `${k}: ${Array.isArray(v) ? `Array(${v.length})` : typeof v}`
     ));
 
-    // Use the dynamic prompt builder to include ALL entities automatically
-    knowledgeContext = this.buildDynamicKnowledgeContext(knowledgeBase);
+    // Use the PROPER DynamicPromptBuilder to format all entities
+    Object.entries(knowledgeBase).forEach(([entityName, entityData]) => {
+      // Skip metadata and non-entity data
+      if (entityName.startsWith('_') || entityName === 'industryStats' ||
+          entityName === 'conversationHistory' || entityName === 'crossEntityInsights') {
+        return;
+      }
+
+      // Extract data array from entity
+      const data = entityData?.data || (Array.isArray(entityData) ? entityData : null);
+      if (!data || data.length === 0) return;
+
+      // Build context with the proper prompt builder
+      const entityContext = promptBuilder.buildEntityContext(entityName, data, entityData);
+      if (entityContext) {
+        knowledgeContext += entityContext;
+      }
+    });
 
     // Add industry stats if available (not handled by dynamic builder)
     if (knowledgeBase.industryStats) {

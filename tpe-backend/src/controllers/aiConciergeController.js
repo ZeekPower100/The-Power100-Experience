@@ -650,6 +650,18 @@ const aiConciergeController = {
         aiFields: (knowledgeBase._metadata?.aiFieldsAvailable || []).length
       });
 
+      // Debug check for partner 93
+      if (knowledgeBase.partners && knowledgeBase.partners.data) {
+        const partner93 = knowledgeBase.partners.data.find(p => p.id === 93);
+        if (partner93) {
+          console.log('🔍 Partner 93 found in knowledge base');
+          console.log('🔍 Partner 93 has ai_summary?', !!partner93.ai_summary);
+          console.log('🔍 Partner 93 ai_summary length:', partner93.ai_summary ? partner93.ai_summary.length : 0);
+        } else {
+          console.log('🔍 Partner 93 NOT found in knowledge base');
+        }
+      }
+
       // LEGACY CODE KEPT FOR FALLBACK - Remove after testing
       if (!knowledgeBase || Object.keys(knowledgeBase).length === 0) {
         console.log('[AIConcierg] Falling back to legacy queries...');

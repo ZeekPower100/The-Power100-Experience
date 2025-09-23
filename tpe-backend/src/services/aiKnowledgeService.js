@@ -36,6 +36,12 @@ class AIKnowledgeService {
           .filter(col => !tableInfo.columns[col].isSensitive || tableInfo.columns[col].isAIProcessed)
           .join(', ');
 
+        // Debug logging for strategic_partners
+        if (tableName === 'strategic_partners') {
+          console.log(`[AIKnowledge] strategic_partners columns selected: ${columns.substring(0, 200)}...`);
+          console.log(`[AIKnowledge] AI columns included:`, Object.keys(tableInfo.columns).filter(col => col.startsWith('ai_')));
+        }
+
         if (!columns) continue;
 
         // Use API property name for caching
@@ -74,6 +80,13 @@ class AIKnowledgeService {
           queryStr += ' LIMIT 100';
 
           const result = await query(queryStr);
+
+          // Debug logging for partners
+          if (tableName === 'strategic_partners' && result.rows.length > 0) {
+            console.log(`[AIKnowledge] Sample partner row keys:`, Object.keys(result.rows[0]).slice(0, 20));
+            console.log(`[AIKnowledge] Has ai_summary?`, 'ai_summary' in result.rows[0]);
+            console.log(`[AIKnowledge] ai_summary value:`, result.rows[0].ai_summary ? 'Present' : 'NULL/Missing');
+          }
 
           knowledge[apiKey] = {
             data: result.rows,
@@ -429,15 +442,6 @@ class AIKnowledgeService {
 
   /**
    * Clear all caches - useful when metadata changes
-   */
-  clearCache() {
-    this.knowledgeCache = {};
-    this.lastCacheTime = {};
-    console.log('[AIKnowledge] Cache cleared');
-  }
-
-  /**
-   * Clear all caches
    */
   clearCache() {
     this.knowledgeCache = {};

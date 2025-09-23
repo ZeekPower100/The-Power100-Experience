@@ -91,6 +91,47 @@ if (process.env.NODE_ENV === 'development') {
   // Test knowledge base loading
   router.get('/test-knowledge', aiConciergeController.testKnowledgeBase);
 
+  // Test partner 93 specifically
+  router.get('/test-partner-93', async (req, res) => {
+    try {
+      const aiKnowledgeService = require('../services/aiKnowledgeService');
+      const knowledge = await aiKnowledgeService.getComprehensiveKnowledge();
+
+      // Check if partners exist
+      if (!knowledge.partners || !knowledge.partners.data) {
+        return res.json({ error: 'No partners in knowledge base', keys: Object.keys(knowledge) });
+      }
+
+      // Find partner 93
+      const partner93 = knowledge.partners.data.find(p => p.id === 93);
+
+      if (!partner93) {
+        return res.json({
+          error: 'Partner 93 not found',
+          totalPartners: knowledge.partners.data.length,
+          partnerIds: knowledge.partners.data.map(p => p.id)
+        });
+      }
+
+      // Check what fields are present
+      const fields = Object.keys(partner93);
+      const aiFields = fields.filter(f => f.startsWith('ai_'));
+
+      res.json({
+        found: true,
+        id: partner93.id,
+        company_name: partner93.company_name,
+        totalFields: fields.length,
+        aiFieldsCount: aiFields.length,
+        aiFields: aiFields,
+        hasAiSummary: 'ai_summary' in partner93,
+        aiSummaryValue: partner93.ai_summary ? partner93.ai_summary.substring(0, 100) + '...' : null
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Debug endpoint to see what's in the knowledge base
   router.get('/debug-knowledge', async (req, res) => {
     try {
