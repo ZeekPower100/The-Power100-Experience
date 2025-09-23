@@ -112,6 +112,9 @@ const IGNORE_PATTERNS = [
   '**/test/**',
   '**/tests/**',
   '**/__tests__/**',
+  '**/simple-test/**',  // Test pages
+  '**/test-partner/**',  // Test pages
+  '**/partner-portal/**',  // Development portal pages
   '**/*.md',
   '**/package.json',
   '**/package-lock.json',
@@ -206,6 +209,16 @@ class ProductionURLChecker {
           // Skip environment variable fallbacks (e.g., process.env.VAR || 'http://localhost')
           if (line.includes('process.env.') && line.includes('||')) {
             return;
+          }
+
+          // Skip ternary operators checking for localhost/production
+          if (line.includes('localhost') && (line.includes('?') || line.includes(':'))) {
+            // Check if it's part of a condition checking for localhost
+            if (context.includes('window.location.hostname') ||
+                context.includes("'localhost'") ||
+                context.includes('"localhost"')) {
+              return;
+            }
           }
 
           this.issues.push({

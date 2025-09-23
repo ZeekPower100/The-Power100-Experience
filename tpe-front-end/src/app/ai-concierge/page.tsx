@@ -830,7 +830,8 @@ export default function AIConciergePage() {
           formData.append('conversationId', currentConversationId);
         }
 
-        const res = await fetch('http://localhost:5000/api/ai-concierge/message', {
+        const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+        const res = await fetch(`${baseUrl}/api/ai-concierge/message`, {
           method: 'POST',
           body: formData
         });
@@ -989,7 +990,8 @@ export default function AIConciergePage() {
                 formData.append('conversationId', currentConversationId);
               }
 
-              const res = await fetch('http://localhost:5000/api/ai-concierge/message', {
+              const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+              const res = await fetch(`${baseUrl}/api/ai-concierge/message`, {
                 method: 'POST',
                 body: formData
               });
