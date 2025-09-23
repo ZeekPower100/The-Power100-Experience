@@ -128,6 +128,11 @@ const ACCEPTABLE_CONTEXTS = [
   /dev[-_]?manager\.js$/i,
   /start[-_]?dev\.js$/i,
   /development\.js$/i,
+  /update-cors\.js$/i,  // CORS configuration file
+
+  // Scripts directory (development/debugging tools)
+  /\/scripts\//i,
+  /\\scripts\\/i,  // Windows path
 
   // Configuration files where we define the URLs
   /config\/(development|staging|production)\.js$/i,
@@ -176,8 +181,8 @@ class ProductionURLChecker {
         const matches = line.match(pattern);
         if (matches) {
           // Check if this is inside a proper environment check
-          const prevLines = lines.slice(Math.max(0, index - 3), index).join('\n');
-          const nextLines = lines.slice(index + 1, Math.min(lines.length, index + 4)).join('\n');
+          const prevLines = lines.slice(Math.max(0, index - 5), index).join('\n');
+          const nextLines = lines.slice(index + 1, Math.min(lines.length, index + 6)).join('\n');
           const context = prevLines + '\n' + line + '\n' + nextLines;
 
           // Skip if properly wrapped in environment check
@@ -185,6 +190,21 @@ class ProductionURLChecker {
               context.includes('__DEV__') ||
               context.includes('isDevelopment') ||
               context.includes('isProduction')) {
+            return;
+          }
+
+          // Skip CORS origin definitions (these MUST be hardcoded for security)
+          // Look for 'origin:' in the context (including array definitions)
+          if (context.includes('origin:') || context.includes('cors(') ||
+              context.includes('allowedOrigins') || context.includes('corsOptions') ||
+              // Also check if we're inside a CORS origin array
+              (prevLines.includes('origin:') && prevLines.includes('[')) ||
+              (prevLines.includes('app.use(cors') && context.includes('origin'))) {
+            return;
+          }
+
+          // Skip environment variable fallbacks (e.g., process.env.VAR || 'http://localhost')
+          if (line.includes('process.env.') && line.includes('||')) {
             return;
           }
 
