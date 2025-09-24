@@ -37,6 +37,8 @@ const powerConfidenceRoutes = require('./routes/powerConfidence');
 const reportRoutes = require('./routes/reports');
 const contactTaggingRoutes = require('./routes/contactTagging');
 const uploadRoutes = require('./routes/upload');
+const eventCheckInRoutes = require('./routes/eventCheckInRoutes');
+// const eventMessagingRoutes = require('./routes/eventMessagingRoutes');
 const bookRoutes = require('./routes/bookRoutes');
 const eventRoutes = require('./routes/eventRoutes');
 const podcastRoutes = require('./routes/podcastRoutes');
@@ -151,6 +153,8 @@ app.use('/api/books', bookRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/podcasts', podcastRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/event-check-in', eventCheckInRoutes);
+// app.use('/api/event-messaging', eventMessagingRoutes);
 
 // Contractor Behavioral Tracking Routes
 app.use('/api/contractor-business-goals', require('./routes/contractorBusinessGoalsRoutes'));
