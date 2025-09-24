@@ -158,11 +158,16 @@ const flexibleProtect = async (req, res, next) => {
   // Add user and type to request
   req.user = validationResult.user;
   req.userType = validationResult.type;
-  
-  console.log('✅ Auth successful:', { 
-    type: req.userType, 
+
+  // For contractors, also set req.contractor for backward compatibility
+  if (validationResult.type === 'contractor') {
+    req.contractor = validationResult.user;
+  }
+
+  console.log('✅ Auth successful:', {
+    type: req.userType,
     userId: req.user.id || req.user.contractorId,
-    email: req.user.email 
+    email: req.user.email
   });
 
   next();

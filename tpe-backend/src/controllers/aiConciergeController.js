@@ -280,9 +280,16 @@ const aiConciergeController = {
         });
       }
 
-      const contractorId = req.contractor?.id;
-      const { message, session_id } = req.body;
+      // Allow admins to specify a contractorId for testing
+      let contractorId = req.contractor?.id;
+      const { message, session_id, contractorId: adminSpecifiedContractorId } = req.body;
       const file = req.file;
+
+      // If user is admin and provides a contractorId, use it for testing
+      if (req.user?.userType === 'admin' && adminSpecifiedContractorId) {
+        console.log(`🔑 Admin override: Testing as contractor ${adminSpecifiedContractorId}`);
+        contractorId = adminSpecifiedContractorId;
+      }
 
       if (!contractorId) {
         return res.status(400).json({
