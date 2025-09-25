@@ -264,7 +264,7 @@ export default function PartnerViewPage() {
             {partner.is_active ? 'Active' : 'Inactive'}
           </Badge>
         </div>
-        <Button onClick={handleEdit} className="bg-power100-green hover:bg-green-600">
+        <Button onClick={handleEdit} className="bg-power100-green hover:bg-green-600 text-white text-shadow-soft">
           <Edit className="w-4 h-4 mr-2" />
           Edit Partner
         </Button>

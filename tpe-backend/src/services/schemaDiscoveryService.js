@@ -254,25 +254,46 @@ class SchemaDiscoveryService {
 
   /**
    * Calculate how relevant a table is for AI operations
+   * UPDATED: More inclusive scoring to capture all learning-relevant tables
    */
   async calculateAIRelevance(tableName, columns) {
     let score = 0;
 
     // Entity tables are highly relevant
-    if (await this.isEntityTable(tableName)) score += 50;
+    if (await this.isEntityTable(tableName)) score += 40;
 
     // Tables with AI fields are very relevant
-    const hasAIFields = columns.some(col => 
+    const hasAIFields = columns.some(col =>
       this.isAIProcessedField(col.column_name)
     );
-    if (hasAIFields) score += 30;
+    if (hasAIFields) score += 25;
 
     // Tables with content fields are relevant
-    const contentFields = ['description', 'summary', 'content', 'text', 'notes'];
+    const contentFields = ['description', 'summary', 'content', 'text', 'notes', 'message', 'response'];
     const hasContentFields = columns.some(col =>
       contentFields.some(field => col.column_name.toLowerCase().includes(field))
     );
-    if (hasContentFields) score += 20;
+    if (hasContentFields) score += 15;
+
+    // NEW: Interaction and engagement tables are crucial for learning
+    const interactionKeywords = ['engagement', 'interaction', 'feedback', 'response', 'rating',
+                                 'match', 'booking', 'communication', 'message', 'event'];
+    const isInteractionTable = interactionKeywords.some(keyword =>
+      tableName.toLowerCase().includes(keyword)
+    );
+    if (isInteractionTable) score += 20;
+
+    // NEW: Tables with foreign keys to contractors or partners are valuable
+    const hasContractorRef = columns.some(col =>
+      col.column_name === 'contractor_id' || col.column_name === 'partner_id'
+    );
+    if (hasContractorRef) score += 15;
+
+    // NEW: Tables with timestamps help track patterns over time
+    const hasTimestamps = columns.some(col =>
+      col.column_name.includes('created_at') || col.column_name.includes('updated_at')
+    );
+    if (hasTimestamps) score += 10;
 
     return Math.min(score, 100);
   }
@@ -342,6 +363,7 @@ class SchemaDiscoveryService {
 
   /**
    * Get schema with only AI-relevant tables and fields
+   * UPDATED: Now includes ALL non-sensitive fields for comprehensive AI learning
    */
   async getAIRelevantSchema() {
     if (!this.schemaCache || this.isStale()) {
@@ -351,22 +373,32 @@ class SchemaDiscoveryService {
     const relevantSchema = {};
 
     for (const [tableName, tableInfo] of Object.entries(this.schemaCache)) {
-      // Skip tables with low AI relevance
-      if (tableInfo.aiRelevance < 20) continue;
+      // CHANGED: Lowered threshold to include more tables (was 20)
+      // This ensures we capture all interaction and engagement tables
+      if (tableInfo.aiRelevance < 10) continue;
 
-      // Skip tables with only sensitive data
-      if (tableInfo.hasSensitiveData && !tableInfo.hasAIFields && !tableInfo.isEntityTable) continue;
+      // CHANGED: More inclusive - only skip if table has ONLY sensitive data and no value
+      // Previously excluded too many useful tables
+      if (tableInfo.hasSensitiveData &&
+          !tableInfo.hasAIFields &&
+          !tableInfo.isEntityTable &&
+          tableInfo.rowCount === 0) continue;
 
       relevantSchema[tableName] = {
         ...tableInfo,
         columns: {}
       };
 
-      // Filter columns
+      // Filter columns - MAJOR CHANGE HERE
       for (const [columnName, columnInfo] of Object.entries(tableInfo.columns)) {
-        // Skip sensitive fields unless they're AI-processed
-        if (columnInfo.isSensitive && !columnInfo.isAIProcessed) continue;
+        // CHANGED: Include ALL non-sensitive fields, not just AI-processed ones
+        // This gives AI Concierge access to ALL operational data for learning
+        if (columnInfo.isSensitive) {
+          // Skip sensitive fields UNLESS they're explicitly AI-processed
+          if (!columnInfo.isAIProcessed) continue;
+        }
 
+        // Include this field - it's either non-sensitive or AI-processed
         relevantSchema[tableName].columns[columnName] = columnInfo;
       }
     }

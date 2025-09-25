@@ -108,6 +108,18 @@ class AIKnowledgeService {
         }
       }
 
+      // Get events with full details (speakers and sponsors included)
+      const eventsWithDetails = await this.getEventsWithDetails();
+      if (eventsWithDetails.length > 0) {
+        knowledge.eventsWithDetails = {
+          data: eventsWithDetails,
+          count: eventsWithDetails.length,
+          hasAIFields: true,
+          aiFields: ['ai_summary', 'ai_tags'],
+          includedRelations: ['speakers', 'sponsors']
+        };
+      }
+
       // Get aggregated statistics (privacy-safe)
       if (contractorId) {
         knowledge.industryStats = await this.getIndustryStatistics(contractorId);
@@ -193,6 +205,87 @@ class AIKnowledgeService {
     } catch (error) {
       console.error(`[AIKnowledge] Error getting ${entityType} knowledge:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Get events with their speakers and sponsors
+   */
+  async getEventsWithDetails() {
+    try {
+      const eventsQuery = `
+        SELECT
+          e.id,
+          e.name,
+          e.date,
+          e.location,
+          e.description,
+          e.expected_attendance,
+          e.speaker_profiles,
+          e.sponsors,
+          e.focus_areas_covered,
+          e.ai_summary,
+          e.ai_tags,
+          -- Get speakers as JSON
+          (
+            SELECT json_agg(json_build_object(
+              'name', es.name,
+              'title', es.title,
+              'company', es.company,
+              'bio', es.bio,
+              'session_title', es.session_title
+            ))
+            FROM event_speakers es
+            WHERE es.event_id = e.id
+          ) as speakers,
+          -- Get sponsors as JSON
+          (
+            SELECT json_agg(json_build_object(
+              'sponsor_name', esp.sponsor_name,
+              'partner_id', esp.partner_id,
+              'sponsor_tier', esp.sponsor_tier,
+              'booth_location', esp.booth_location,
+              'partner_name', sp.company_name
+            ))
+            FROM event_sponsors esp
+            LEFT JOIN strategic_partners sp ON esp.partner_id = sp.id
+            WHERE esp.event_id = e.id
+          ) as sponsor_details,
+          -- Get attendee count and registration info
+          (
+            SELECT COUNT(*)
+            FROM event_attendees ea
+            WHERE ea.event_id = e.id
+          ) as registered_attendees,
+          (
+            SELECT COUNT(*)
+            FROM event_attendees ea
+            WHERE ea.event_id = e.id AND ea.check_in_time IS NOT NULL
+          ) as checked_in_attendees,
+          -- Get notable attendees (first 5 registered contractors)
+          (
+            SELECT json_agg(json_build_object(
+              'name', c.name,
+              'company', c.company_name,
+              'registered_date', ea.registration_date,
+              'checked_in', ea.check_in_time IS NOT NULL
+            ) ORDER BY ea.registration_date)
+            FROM event_attendees ea
+            JOIN contractors c ON ea.contractor_id = c.id
+            WHERE ea.event_id = e.id
+            LIMIT 5
+          ) as notable_attendees
+        FROM events e
+        WHERE e.is_active = true
+        ORDER BY e.date DESC
+        LIMIT 50
+      `;
+
+      const result = await query(eventsQuery);
+      return result.rows;
+    } catch (error) {
+      console.error('[AIKnowledge] Error fetching events with details:', error);
+      return [];
     }
   }
 

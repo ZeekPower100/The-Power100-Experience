@@ -135,7 +135,7 @@ export default function EventsPage() {
           </div>
           <Button
             onClick={() => setShowForm(true)}
-            className="bg-power100-green hover:bg-green-600 text-white"
+            className="bg-power100-green hover:bg-green-600 text-white text-shadow-soft"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add New Event
@@ -171,7 +171,7 @@ export default function EventsPage() {
               </p>
               <Button
                 onClick={() => setShowForm(true)}
-                className="bg-power100-green hover:bg-green-600 text-white"
+                className="bg-power100-green hover:bg-green-600 text-white text-shadow-soft"
               >
                 Add First Event
               </Button>
@@ -255,6 +255,15 @@ export default function EventsPage() {
                       <Button
                         size="sm"
                         variant="outline"
+                        onClick={() => router.push(`/admindashboard/events/${event.id}`)}
+                        className="bg-power100-green hover:bg-green-600 text-white text-shadow-soft"
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        Details
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
                         onClick={() => {
                           setSelectedEvent(event);
                           setShowForm(true);
@@ -263,16 +272,6 @@ export default function EventsPage() {
                         <Edit className="h-3 w-3 mr-1" />
                         Edit
                       </Button>
-                      {event.website && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => window.open(event.website, '_blank')}
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          View
-                        </Button>
-                      )}
                     </div>
                     <Button
                       size="sm"

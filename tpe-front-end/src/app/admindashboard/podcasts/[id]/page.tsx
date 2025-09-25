@@ -86,7 +86,7 @@ export default function PodcastDetailsPage() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          <Button onClick={() => setEditMode(true)} className="bg-power100-green">
+          <Button onClick={() => setEditMode(true)} className="bg-power100-green hover:bg-green-600 text-white text-shadow-soft">
             <Edit className="mr-2 h-4 w-4" />
             Edit Podcast
           </Button>

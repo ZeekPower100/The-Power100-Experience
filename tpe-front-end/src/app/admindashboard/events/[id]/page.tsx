@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import EventForm from '@/components/admin/EventForm';
-import { Calendar, ArrowLeft, Edit, MapPin, Users, DollarSign } from 'lucide-react';
+import { Calendar, ArrowLeft, Edit, MapPin, Users, DollarSign, UserCheck } from 'lucide-react';
 import { eventApi } from '@/lib/api';
 import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../../utils/jsonHelpers';
 
@@ -104,10 +104,19 @@ export default function EventDetailsPage() {
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          <Button onClick={() => setEditMode(true)} className="bg-power100-green">
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Event
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => router.push(`/admindashboard/events/${params.id}/check-in`)}
+              className="bg-power100-red hover:bg-red-700 text-white"
+            >
+              <UserCheck className="mr-2 h-4 w-4" />
+              Manage Attendees
+            </Button>
+            <Button onClick={() => setEditMode(true)} className="bg-power100-green hover:bg-green-700 text-white text-shadow-soft">
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Event
+            </Button>
+          </div>
         </div>
 
         {/* Main Info Card */}

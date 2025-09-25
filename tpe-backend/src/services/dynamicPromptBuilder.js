@@ -134,6 +134,61 @@ class DynamicPromptBuilder {
       context = context + `\n   PowerConfidence Score: ${item.powerconfidence_score}`;
     }
 
+    // Add event details (speakers and sponsors) for events with details
+    if ((entityName === 'events' || entityName === 'eventsWithDetails') && (item.speakers || item.sponsor_details || item.registered_attendees)) {
+      // Add speakers
+      if (item.speakers && item.speakers.length > 0) {
+        context = context + '\n   **Speakers:**';
+        item.speakers.forEach(speaker => {
+          context = context + `\n   • ${speaker.name}${speaker.title ? ` - ${speaker.title}` : ''}${speaker.company ? ` at ${speaker.company}` : ''}`;
+          if (speaker.session_title) {
+            context = context + `\n     Session: "${speaker.session_title}"`;
+          }
+        });
+      }
+
+      // Add sponsors
+      if (item.sponsor_details && item.sponsor_details.length > 0) {
+        context = context + '\n   **Sponsors:**';
+        item.sponsor_details.forEach(sponsor => {
+          context = context + `\n   • ${sponsor.sponsor_name}${sponsor.sponsor_tier ? ` (${sponsor.sponsor_tier} sponsor)` : ''}`;
+          if (sponsor.booth_location) {
+            context = context + ` - Booth ${sponsor.booth_location}`;
+          }
+        });
+      }
+
+      // Add attendee information
+      if (item.registered_attendees > 0 || item.checked_in_attendees > 0) {
+        context = context + '\n   **Registration Status:**';
+        if (item.registered_attendees > 0) {
+          context = context + `\n   • Registered: ${item.registered_attendees} attendees`;
+        }
+        if (item.checked_in_attendees > 0) {
+          context = context + `\n   • Checked in: ${item.checked_in_attendees} attendees`;
+        }
+      }
+
+      // Add notable attendees
+      if (item.notable_attendees && item.notable_attendees.length > 0) {
+        context = context + '\n   **Notable Registered Attendees:**';
+        item.notable_attendees.forEach(attendee => {
+          context = context + `\n   • ${attendee.name}${attendee.company ? ` from ${attendee.company}` : ''}`;
+          if (attendee.checked_in) {
+            context = context + ' (checked in)';
+          }
+        });
+      }
+
+      // Add date and location for events
+      if (item.date) {
+        context = context + `\n   Date: ${new Date(item.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`;
+      }
+      if (item.location) {
+        context = context + `\n   Location: ${item.location}`;
+      }
+    }
+
     return context;
   }
 

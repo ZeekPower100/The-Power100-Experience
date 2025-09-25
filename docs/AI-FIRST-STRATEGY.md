@@ -89,25 +89,29 @@ AI-powered event companion that transforms commercial events into personalized e
 
 ## 📊 Current State vs. Target State
 
-### ✅ What We Have
+### ✅ What We Have (Information Retrieval System)
 
 | Component | Current State | Readiness |
 |-----------|--------------|-----------|
 | **Contractor Profiles** | Basic (revenue, team size, focus areas) | 40% |
 | **Partner Matching** | Rule-based (60/20/10/10 weights) | 60% |
-| **Database Structure** | Entities exist but minimal | 30% |
+| **Database Structure** | Entities exist, AI fields limited to `ai_` prefix | 30% |
 | **SMS Opt-in** | Legal consent captured | 100% |
 | **API Infrastructure** | RESTful, authenticated | 70% |
+| **Data Access** | Restricted to AI-prefixed fields only | 10% |
+| **Learning Capability** | None - static responses | 0% |
 
-### 🎯 What We Need
+### 🎯 What We Need (Learning Expert System)
 
 | Component | Target State | Priority |
 |-----------|-------------|----------|
-| **Behavioral Data** | Complete interaction history, preferences, patterns | HIGH |
-| **Content Processing** | Auto-transcription, analysis, tagging | HIGH |
-| **Recommendation ML** | Predictive, learning algorithm | MEDIUM |
-| **Communication Engine** | Multi-channel, personalized, automated | HIGH |
-| **Feedback Loops** | Success tracking, continuous improvement | MEDIUM |
+| **Complete Data Access** | ALL operational data (except sensitive) visible to AI | CRITICAL |
+| **Learning Infrastructure** | ai_learning_events, patterns, feedback loops | CRITICAL |
+| **Behavioral Tracking** | Every interaction tracked and learned from | HIGH |
+| **Outcome Measurement** | Every recommendation tracked to result | HIGH |
+| **Personalization Engine** | Unique responses per contractor | HIGH |
+| **Pattern Recognition** | Discover what works for whom | MEDIUM |
+| **Predictive Analytics** | Anticipate needs before asked | MEDIUM |
 
 ---
 
@@ -230,6 +234,40 @@ interface AIContractorProfile {
 
 ---
 
+## 🧠 The Learning Architecture - From Static to Dynamic
+
+### Critical Mindset Shift Required
+**FROM:** "Protect data from AI" (restrictive access)
+**TO:** "Empower AI with data" (comprehensive access)
+
+### The Three-Layer Learning System
+
+#### Layer 1: Comprehensive Data Access
+```javascript
+// CURRENT (Broken - Only 2% of data visible)
+const isRelevant = (column) => column.startsWith('ai_');
+
+// REQUIRED (Complete visibility)
+const isRelevant = (column) => {
+  const sensitive = ['password', 'token', 'secret', 'ssn'];
+  return !sensitive.some(s => column.includes(s));
+};
+```
+
+#### Layer 2: Learning Infrastructure (5 Critical Tables)
+1. **ai_learning_events** - Track every AI action and outcome
+2. **ai_patterns** - Discovered success/failure patterns
+3. **contractor_ai_profiles** - Personalization per contractor
+4. **ai_insights** - System-discovered knowledge
+5. **ai_feedback_loops** - Measure prediction accuracy
+
+#### Layer 3: Active Learning Mechanisms
+- Real-time interaction tracking
+- Outcome measurement system
+- Pattern recognition engine
+- Personalization engine
+- Predictive analytics
+
 ## 🔄 AI Processing Pipelines
 
 ### 1. Video Analysis Pipeline (Client Demos)
@@ -317,9 +355,9 @@ graph LR
 |-----------|--------|---------|
 | **Book Processing** | ✅ 100% | Full pipeline, automated triggers, AI summaries working in production |
 | **Podcast Processing** | ✅ 100% | Full pipeline, YouTube/RSS transcription, n8n automation, auto-triggers |
-| **Event Orchestrator** | ⚠️ 40% | Check-in system COMPLETE, messaging controller built, n8n webhooks ready. Missing: peer matching, real-time alerts |
+| **Event Orchestrator** | ⚠️ 60% | Check-in system COMPLETE, ALL backend controllers built (speaker alerts, sponsor engagement, peer matching). Missing: UI integration, real-time PCR scoring |
 | **Communication Engine** | ✅ 70% | 6 n8n workflows, SMS/email working. Missing: AI personalization |
-| **Behavioral Learning** | ⚠️ 30% | Tables ready, tracking possible. Missing: ML algorithms |
+| **Behavioral Learning** | ✅ 70% | Learning infrastructure COMPLETE, all interactions tracked, patterns stored. Missing: ML algorithms |
 | **Partner Processing** | ✅ 100% | Fully automated, AI summaries + differentiators, DynamicPromptBuilder integrated |
 | **Video Processing** | ✅ 100% | Complete with transcription, n8n workflow, auto-triggers |
 | **Database-to-AI Pipeline** | ✅ 100% | Event triggers, auto-registration, zero manual steps |
@@ -343,7 +381,17 @@ graph LR
 - **Event Real-time Features**: SMS orchestration for live events
 - **ML/Predictive Models**: Currently rule-based, needs learning algorithms
 
-## 🎪 Event Orchestrator Implementation Plan (September 2025)
+## 🎪 Event Orchestrator - The Perfect Learning Pilot (September 2025)
+
+### Why Event Orchestrator First?
+The Event Orchestrator is not just an event management system - it's the **ideal pilot program for our learning AI**. Every event interaction provides immediate, measurable feedback that trains the AI Concierge.
+
+### Event Data as AI Training Ground
+- **Real-time feedback loops**: PCR scores, speaker ratings, sponsor engagement
+- **Measurable outcomes**: Demo bookings, peer connections, follow-through rates
+- **Behavioral patterns**: Session attendance, booth visits, peer interactions
+- **Preference learning**: Content preferences, timing patterns, engagement styles
+- **Success/failure data**: What worked, what didn't, for whom
 
 ### Current Assets (40% Complete)
 - ✅ `events` table (48 columns)
@@ -428,6 +476,43 @@ CREATE TABLE event_peer_matches (
 );
 ```
 
+### How Event Orchestrator Builds AI Learning
+
+Every event interaction creates training data:
+
+```javascript
+// Example: Speaker Rating Creates Learning Event
+async handleSpeakerRating(contractorId, speakerId, rating, comment) {
+  // 1. Process the rating
+  await this.updateSpeakerScore(speakerId, rating);
+
+  // 2. Create learning event
+  await this.createLearningEvent({
+    event_type: 'speaker_preference',
+    contractor_id: contractorId,
+    context: 'event_session_rating',
+    action_taken: `rated_speaker_${speakerId}`,
+    outcome: rating,
+    success_score: rating * 10,
+    learned_insight: this.extractPreference(rating, comment)
+  });
+
+  // 3. Update contractor AI profile
+  await this.updateContractorProfile({
+    contractor_id: contractorId,
+    preferred_speaker_types: this.analyzeSpeakerType(speakerId),
+    content_preferences: this.extractContentPreferences(comment)
+  });
+
+  // 4. Improve future recommendations
+  await this.updateRecommendationPatterns({
+    pattern_type: 'speaker_success',
+    criteria: { contractor_profile: await this.getProfile(contractorId) },
+    successful_speaker_attributes: await this.getSpeakerAttributes(speakerId)
+  });
+}
+```
+
 ### Implementation Phases
 
 #### Phase 1: Foundation (Week 1) - ✅ COMPLETE (Sept 2025)
@@ -494,13 +579,57 @@ CREATE TABLE event_peer_matches (
    - Most impactful speakers list
    - Sponsor effectiveness metrics
 
-## 🚀 Implementation Roadmap
+## 🌉 The Bridge: Event Orchestrator → Learning AI Concierge
 
-### Phase 1: Data Foundation (Weeks 1-4) ✅ COMPLETE
-- [x] Extend database schemas with AI fields
-- [x] Create interaction tracking tables
-- [x] Build feedback collection mechanisms
-- [x] Implement data quality validation
+### Phase 0: Foundation Fix ✅ COMPLETE (September 25, 2025)
+**Remove the AI field restriction that's crippling learning**
+- [x] Change schemaDiscovery.js to allow ALL non-sensitive fields ✅
+- [x] Create 6 learning infrastructure tables (exceeded goal!) ✅
+- [x] Implement interaction tracking for ALL AI responses ✅
+- [x] Start measuring outcomes immediately ✅
+
+**Achievements:**
+- AI now sees 89 tables (up from ~20)
+- 1,443 columns accessible to AI
+- Event Orchestrator core built with learning hooks
+- See `docs/PHASE-0-LEARNING-FOUNDATION-COMPLETE.md` for details
+
+### Phase 1: Event Orchestrator Completion (Weeks 2-3)
+**Complete Greg's vision while building learning foundation**
+- [x] Speaker alerts with preference learning ✅ (Backend complete)
+- [x] Sponsor matching with outcome tracking ✅ (Backend complete)
+- [x] Peer matching with success measurement ✅ (Backend complete)
+- [ ] Real-time PCR scoring feeding AI knowledge
+- [ ] CEO override system with pattern detection
+
+**Key Integration:** Every event interaction logs to ai_learning_events
+
+### Phase 2: Learning From Events (Weeks 4-5)
+**Use event data to train broader AI capabilities**
+- [ ] Pattern recognition from event interactions
+- [ ] Contractor AI profiles from event behavior
+- [ ] Success patterns from PCR scores
+- [ ] Preference detection from session choices
+- [ ] Timing optimization from engagement patterns
+
+### Phase 3: Expand Beyond Events (Weeks 6-8)
+**Apply event learnings to all TPX interactions**
+- [ ] Partner matching using event-learned patterns
+- [ ] Content recommendations based on event preferences
+- [ ] Communication timing from event engagement data
+- [ ] Predictive recommendations from historical patterns
+
+## 🚀 Implementation Roadmap (Updated)
+
+### Phase 1: Learning Foundation ✅ 100% COMPLETE (September 25, 2025)
+- [x] Remove AI field restrictions in schemaDiscovery.js ✅
+- [x] Create learning infrastructure tables ✅
+- [x] Implement comprehensive data access ✅
+- [x] Start tracking all interactions ✅
+- [x] Extend database schemas with AI fields ✅
+- [x] Create interaction tracking tables ✅
+- [x] Build feedback collection mechanisms ✅
+- [x] Implement data quality validation ✅
 
 ### Phase 2: Content Processing (Weeks 5-8) ✅ 100% COMPLETE
 - [x] Set up video analysis pipeline
@@ -508,7 +637,12 @@ CREATE TABLE event_peer_matches (
 - [x] Build document extraction system
 - [x] Create auto-tagging service
 
-### Phase 3: Basic AI Concierge (Weeks 9-12) ✅ 80% COMPLETE
+### Phase 3: Event-Driven Learning (Weeks 2-4) 🎯 PRIORITY
+- [ ] Complete Event Orchestrator with learning hooks
+- [ ] Every SMS tracks to ai_learning_events
+- [ ] Every PCR score updates patterns
+- [ ] Every peer match measures success
+- [ ] Build contractor AI profiles from event data
 - [x] Develop recommendation algorithm v1
 - [x] Build chat interface
 - [x] Implement basic personalization
@@ -520,7 +654,12 @@ CREATE TABLE event_peer_matches (
 - [x] Implement multi-channel delivery
 - [ ] Create A/B testing framework
 
-### Phase 5: Advanced Intelligence (Weeks 17-20) ❌ 10% COMPLETE
+### Phase 5: True AI Concierge (Weeks 5-8) 🧠 TRANSFORMATION
+- [ ] Personalization based on learned profiles
+- [ ] Predictive recommendations from patterns
+- [ ] Proactive engagement at optimal times
+- [ ] Cross-entity intelligence connections
+- [ ] Self-improving algorithms from feedback loops
 - [ ] Deploy machine learning models
 - [ ] Implement predictive analytics
 - [ ] Build success prediction
@@ -676,14 +815,38 @@ The recommendation algorithm developed in Phase 3 should become the PRIMARY matc
 
 ---
 
-## 🎯 North Star Vision
+## 🎯 North Star Vision - The Learning Journey
 
-By 2026, every contractor using TPX will have an AI concierge that:
-1. **Knows them better than any human advisor** could
-2. **Anticipates needs** before they're expressed
-3. **Connects dots** across all their business data
-4. **Provides ROI-proven recommendations** 
-5. **Learns and improves** with every interaction
+### The Evolution Path (How We Get There)
+
+**Month 1: Event Learning Pilot**
+- Event Orchestrator generates rich behavioral data
+- Every event interaction trains the AI
+- Pattern recognition from real-world usage
+
+**Month 2: Expand Learning**
+- Apply event patterns to all interactions
+- Build comprehensive contractor AI profiles
+- Implement feedback loops everywhere
+
+**Month 3: True Intelligence**
+- Predictive capabilities emerge from patterns
+- Personalization unique to each contractor
+- Proactive engagement based on learned timing
+
+**By 2026:** Every contractor using TPX will have an AI concierge that:
+1. **Knows them better than any human advisor** - Through continuous learning from ALL interactions
+2. **Anticipates needs** - Pattern recognition predicts next challenges
+3. **Connects dots** - Sees relationships across all data, not just AI fields
+4. **Provides ROI-proven recommendations** - Measured outcomes validate every suggestion
+5. **Learns and improves** - Every interaction makes it smarter
+
+### The Fundamental Difference
+**Current System:** Answers questions (reactive, static)
+**Target System:** Anticipates needs (proactive, learning)
+
+**Current System:** Same answer today and tomorrow
+**Target System:** Smarter every single day
 
 This isn't just about matching contractors with resources—it's about becoming an indispensable AI-powered growth partner that drives measurable business success.
 

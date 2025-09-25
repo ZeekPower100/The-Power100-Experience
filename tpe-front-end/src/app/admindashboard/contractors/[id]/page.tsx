@@ -193,7 +193,7 @@ export default function ContractorViewPage() {
             {contractor.current_stage?.replace(/_/g, ' ')}
           </Badge>
         </div>
-        <Button onClick={handleEdit} className="bg-power100-green hover:bg-green-600">
+        <Button onClick={handleEdit} className="bg-power100-green hover:bg-green-600 text-white text-shadow-soft">
           <Edit className="w-4 h-4 mr-2" />
           Edit Contractor
         </Button>

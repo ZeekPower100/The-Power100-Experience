@@ -2,6 +2,174 @@ const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 
 const db = require('../config/database');
 
+// Helper function to sync speakers to event_speakers table
+async function syncEventSpeakers(eventId, speakerProfiles) {
+  try {
+    // Clear existing speakers for this event
+    await db.query('DELETE FROM event_speakers WHERE event_id = $1', [eventId]);
+
+    if (!speakerProfiles) return;
+
+    // Parse speaker profiles if it's a string
+    const speakers = typeof speakerProfiles === 'string'
+      ? safeJsonParse(speakerProfiles)
+      : speakerProfiles;
+
+    if (!Array.isArray(speakers)) return;
+
+    // Insert each speaker - using EXACT database column names
+    for (const speaker of speakers) {
+      if (typeof speaker === 'string') {
+        // Simple string format: "Speaker Name - Title - Company"
+        const parts = speaker.split(' - ').map(s => s.trim());
+        const name = parts[0] || speaker;
+        const title = parts[1] || '';
+        const company = parts[2] || '';
+
+        await db.query(
+          `INSERT INTO event_speakers (
+            event_id,
+            name,
+            title,
+            company,
+            bio,
+            session_title,
+            created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+          [eventId, name, title, company, '', '']
+        );
+      } else if (typeof speaker === 'object') {
+        // Object format with more details - map to exact database columns
+        await db.query(
+          `INSERT INTO event_speakers (
+            event_id,
+            name,
+            title,
+            company,
+            bio,
+            headshot_url,
+            session_title,
+            session_description,
+            session_time,
+            session_duration_minutes,
+            session_location,
+            created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())`,
+          [
+            eventId,
+            speaker.name || speaker.speaker_name || '',
+            speaker.title || speaker.speaker_title || '',
+            speaker.company || speaker.speaker_company || '',
+            speaker.bio || speaker.speaker_bio || '',
+            speaker.headshot_url || speaker.image_url || speaker.photo || '',
+            speaker.session_title || speaker.topic || '',
+            speaker.session_description || speaker.description || '',
+            speaker.session_time || null,
+            speaker.session_duration_minutes || speaker.duration || null,
+            speaker.session_location || speaker.room || ''
+          ]
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error syncing event speakers:', error);
+    // Don't throw - this is a secondary operation
+  }
+}
+
+// Helper function to sync sponsors to event_sponsors table
+async function syncEventSponsors(eventId, sponsors) {
+  try {
+    // Clear existing sponsors for this event
+    await db.query('DELETE FROM event_sponsors WHERE event_id = $1', [eventId]);
+
+    if (!sponsors) return;
+
+    // Parse sponsors if it's a string
+    const sponsorList = typeof sponsors === 'string'
+      ? safeJsonParse(sponsors)
+      : sponsors;
+
+    if (!Array.isArray(sponsorList)) return;
+
+    // Insert each sponsor - using EXACT database column names
+    for (const sponsor of sponsorList) {
+      if (typeof sponsor === 'string') {
+        // Simple string format: just the sponsor name
+        // Try to find matching partner
+        let partnerId = null;
+        const partnerResult = await db.query(
+          'SELECT id FROM strategic_partners WHERE LOWER(company_name) = LOWER($1) LIMIT 1',
+          [sponsor]
+        );
+        if (partnerResult.rows.length > 0) {
+          partnerId = partnerResult.rows[0].id;
+        }
+
+        await db.query(
+          `INSERT INTO event_sponsors (
+            event_id,
+            partner_id,
+            sponsor_name,
+            sponsor_tier,
+            booth_number,
+            booth_location,
+            created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, NOW())`,
+          [eventId, partnerId, sponsor, 'standard', '', '']
+        );
+      } else if (typeof sponsor === 'object') {
+        // Object format with more details
+        // Try to match sponsor to partner by name
+        let partnerId = null;
+        if (sponsor.name || sponsor.sponsor_name || sponsor.company) {
+          const searchName = sponsor.name || sponsor.sponsor_name || sponsor.company;
+          const partnerResult = await db.query(
+            'SELECT id FROM strategic_partners WHERE LOWER(company_name) = LOWER($1) LIMIT 1',
+            [searchName]
+          );
+          if (partnerResult.rows.length > 0) {
+            partnerId = partnerResult.rows[0].id;
+          }
+        }
+
+        const sponsorName = sponsor.name || sponsor.sponsor_name || sponsor.company || '';
+
+        await db.query(
+          `INSERT INTO event_sponsors (
+            event_id,
+            partner_id,
+            sponsor_name,
+            sponsor_tier,
+            booth_number,
+            booth_location,
+            special_offers,
+            demo_booking_url,
+            presentation_title,
+            presentation_time,
+            created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())`,
+          [
+            eventId,
+            partnerId || sponsor.partner_id || null,
+            sponsorName,
+            sponsor.tier || sponsor.sponsor_tier || 'standard',
+            sponsor.booth_number || sponsor.booth || '',
+            sponsor.booth_location || sponsor.location || '',
+            sponsor.special_offers || sponsor.offers || '',
+            sponsor.demo_booking_url || sponsor.booking_url || '',
+            sponsor.presentation_title || sponsor.presentation || '',
+            sponsor.presentation_time || null
+          ]
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error syncing event sponsors:', error);
+    // Don't throw - this is a secondary operation
+  }
+}
+
 // Get all events
 exports.getAllEvents = async (req, res) => {
   try {
@@ -230,7 +398,19 @@ exports.createEvent = async (req, res) => {
     `;
 
     const result = await db.query(insertQuery, values);
-    res.status(201).json(result.rows[0]);
+    const newEvent = result.rows[0];
+
+    // Sync speakers to event_speakers table
+    if (newEvent.speaker_profiles) {
+      await syncEventSpeakers(newEvent.id, newEvent.speaker_profiles);
+    }
+
+    // Sync sponsors to event_sponsors table
+    if (newEvent.sponsors) {
+      await syncEventSponsors(newEvent.id, newEvent.sponsors);
+    }
+
+    res.status(201).json(newEvent);
   } catch (error) {
     console.error('Error creating event:', error);
     res.status(500).json({ error: 'Failed to create event', details: error.message });
@@ -280,12 +460,24 @@ exports.updateEvent = async (req, res) => {
     `;
 
     const result = await db.query(updateQuery, values);
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Event not found' });
     }
-    
-    res.json(result.rows[0]);
+
+    const updatedEvent = result.rows[0];
+
+    // Sync speakers to event_speakers table if updated
+    if (updates.speaker_profiles !== undefined) {
+      await syncEventSpeakers(updatedEvent.id, updatedEvent.speaker_profiles);
+    }
+
+    // Sync sponsors to event_sponsors table if updated
+    if (updates.sponsors !== undefined) {
+      await syncEventSponsors(updatedEvent.id, updatedEvent.sponsors);
+    }
+
+    res.json(updatedEvent);
   } catch (error) {
     console.error('Error updating event:', error);
     res.status(500).json({ error: 'Failed to update event', details: error.message });
