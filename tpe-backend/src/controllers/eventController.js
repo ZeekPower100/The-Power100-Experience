@@ -488,17 +488,311 @@ exports.updateEvent = async (req, res) => {
 exports.deleteEvent = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const query = 'DELETE FROM events WHERE id = $1 RETURNING id';
     const result = await db.query(query, [id]);
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Event not found' });
     }
-    
+
     res.json({ message: 'Event deleted successfully', id: result.rows[0].id });
   } catch (error) {
     console.error('Error deleting event:', error);
     res.status(500).json({ error: 'Failed to delete event' });
+  }
+};
+
+// AI Recommendation Methods - ALL SNAKE_CASE TO MATCH DATABASE
+const eventAIRecommendationService = require('../services/eventAIRecommendationService');
+const eventAIOrchestrationService = require('../services/eventAIOrchestrationService');
+
+// Get AI speaker recommendations for a contractor
+exports.getAISpeakerRecommendations = async (req, res) => {
+  try {
+    const { id: event_id } = req.params;
+    const { contractor_id, limit = 3 } = req.query;  // snake_case parameters
+
+    if (!contractor_id) {
+      return res.status(400).json({ error: 'contractor_id is required' });
+    }
+
+    const recommendations = await eventAIRecommendationService.recommendSpeakers(
+      event_id,
+      contractor_id,
+      parseInt(limit)
+    );
+
+    res.json({
+      success: true,
+      event_id: event_id,  // snake_case
+      contractor_id: contractor_id,  // snake_case
+      ...recommendations
+    });
+  } catch (error) {
+    console.error('Error getting AI speaker recommendations:', error);
+    res.status(500).json({
+      error: 'Failed to generate speaker recommendations',
+      details: error.message
+    });
+  }
+};
+
+// Get AI sponsor recommendations with talking points
+exports.getAISponsorRecommendations = async (req, res) => {
+  try {
+    const { id: event_id } = req.params;
+    const { contractor_id, limit = 3 } = req.query;  // snake_case parameters
+
+    if (!contractor_id) {
+      return res.status(400).json({ error: 'contractor_id is required' });
+    }
+
+    const recommendations = await eventAIRecommendationService.recommendSponsors(
+      event_id,
+      contractor_id,
+      parseInt(limit)
+    );
+
+    res.json({
+      success: true,
+      event_id: event_id,  // snake_case
+      contractor_id: contractor_id,  // snake_case
+      ...recommendations
+    });
+  } catch (error) {
+    console.error('Error getting AI sponsor recommendations:', error);
+    res.status(500).json({
+      error: 'Failed to generate sponsor recommendations',
+      details: error.message
+    });
+  }
+};
+
+// Get personalized event agenda
+exports.getPersonalizedAgenda = async (req, res) => {
+  try {
+    const { id: event_id } = req.params;
+    const { contractor_id } = req.query;  // snake_case parameter
+
+    if (!contractor_id) {
+      return res.status(400).json({ error: 'contractor_id is required' });
+    }
+
+    const agenda = await eventAIRecommendationService.getPersonalizedAgenda(
+      event_id,
+      contractor_id
+    );
+
+    res.json({
+      success: true,
+      event_id: event_id,  // snake_case
+      contractor_id: contractor_id,  // snake_case
+      personalized_agenda: agenda
+    });
+  } catch (error) {
+    console.error('Error getting personalized agenda:', error);
+    res.status(500).json({
+      error: 'Failed to generate personalized agenda',
+      details: error.message
+    });
+  }
+};
+
+// Test AI recommendations (admin endpoint)
+exports.testAIRecommendations = async (req, res) => {
+  try {
+    const { id: event_id } = req.params;
+
+    // Get a test contractor (first one in database)
+    const test_contractor = await db.query(
+      'SELECT id, company_name FROM contractors LIMIT 1'
+    );
+
+    if (test_contractor.rows.length === 0) {
+      return res.status(404).json({ error: 'No contractors found for testing' });
+    }
+
+    const contractor_id = test_contractor.rows[0].id;
+    const company_name = test_contractor.rows[0].company_name;
+
+    // Generate all types of recommendations
+    const [speakers, sponsors, agenda] = await Promise.all([
+      eventAIRecommendationService.recommendSpeakers(event_id, contractor_id, 3),
+      eventAIRecommendationService.recommendSponsors(event_id, contractor_id, 3),
+      eventAIRecommendationService.getPersonalizedAgenda(event_id, contractor_id)
+    ]);
+
+    res.json({
+      success: true,
+      test_mode: true,
+      test_contractor: {
+        id: contractor_id,
+        company: company_name
+      },
+      recommendations: {
+        speakers: speakers.recommendations,
+        sponsors: sponsors.recommendations,
+        personalized_agenda: agenda
+      },
+      message: 'AI recommendations generated successfully for testing'
+    });
+  } catch (error) {
+    console.error('Error testing AI recommendations:', error);
+    res.status(500).json({
+      error: 'Failed to test AI recommendations',
+      details: error.message
+    });
+  }
+};
+
+// Send AI speaker recommendations via SMS
+exports.sendAISpeakerRecommendationsSMS = async (req, res) => {
+  try {
+    const { id: event_id } = req.params;
+    const { contractor_id, send_immediately = true } = req.body;  // snake_case
+
+    if (!contractor_id) {
+      return res.status(400).json({ error: 'contractor_id is required' });
+    }
+
+    const result = await eventAIOrchestrationService.sendSpeakerRecommendations(
+      event_id,
+      contractor_id,
+      { send_immediately }
+    );
+
+    if (!result.success) {
+      return res.status(400).json({
+        error: result.error || 'Failed to send speaker recommendations'
+      });
+    }
+
+    res.json({
+      success: true,
+      event_id: event_id,
+      contractor_id: contractor_id,
+      ...result
+    });
+  } catch (error) {
+    console.error('Error sending AI speaker recommendations via SMS:', error);
+    res.status(500).json({
+      error: 'Failed to send speaker recommendations via SMS',
+      details: error.message
+    });
+  }
+};
+
+// Send AI sponsor recommendations via SMS
+exports.sendAISponsorRecommendationsSMS = async (req, res) => {
+  try {
+    const { id: event_id } = req.params;
+    const { contractor_id, send_immediately = true } = req.body;  // snake_case
+
+    if (!contractor_id) {
+      return res.status(400).json({ error: 'contractor_id is required' });
+    }
+
+    const result = await eventAIOrchestrationService.sendSponsorRecommendations(
+      event_id,
+      contractor_id,
+      { send_immediately }
+    );
+
+    if (!result.success) {
+      return res.status(400).json({
+        error: result.error || 'Failed to send sponsor recommendations'
+      });
+    }
+
+    res.json({
+      success: true,
+      event_id: event_id,
+      contractor_id: contractor_id,
+      ...result
+    });
+  } catch (error) {
+    console.error('Error sending AI sponsor recommendations via SMS:', error);
+    res.status(500).json({
+      error: 'Failed to send sponsor recommendations via SMS',
+      details: error.message
+    });
+  }
+};
+
+// Send complete personalized agenda via SMS
+exports.sendPersonalizedAgendaSMS = async (req, res) => {
+  try {
+    const { id: event_id } = req.params;
+    const { contractor_id, send_immediately = true } = req.body;  // snake_case
+
+    if (!contractor_id) {
+      return res.status(400).json({ error: 'contractor_id is required' });
+    }
+
+    const result = await eventAIOrchestrationService.sendPersonalizedAgenda(
+      event_id,
+      contractor_id,
+      { send_immediately }
+    );
+
+    if (!result.success) {
+      return res.status(400).json({
+        error: result.error || 'Failed to send personalized agenda'
+      });
+    }
+
+    res.json({
+      success: true,
+      event_id: event_id,
+      contractor_id: contractor_id,
+      ...result
+    });
+  } catch (error) {
+    console.error('Error sending personalized agenda via SMS:', error);
+    res.status(500).json({
+      error: 'Failed to send personalized agenda via SMS',
+      details: error.message
+    });
+  }
+};
+
+// Schedule AI recommendations for later
+exports.scheduleAIRecommendations = async (req, res) => {
+  try {
+    const { id: event_id } = req.params;
+    const { contractor_id, scheduled_time, recommendation_types = ['speaker', 'sponsor'] } = req.body;
+
+    if (!contractor_id || !scheduled_time) {
+      return res.status(400).json({
+        error: 'contractor_id and scheduled_time are required'
+      });
+    }
+
+    const result = await eventAIOrchestrationService.scheduleRecommendations(
+      event_id,
+      contractor_id,
+      scheduled_time,
+      recommendation_types
+    );
+
+    if (!result.success) {
+      return res.status(400).json({
+        error: result.error || 'Failed to schedule recommendations'
+      });
+    }
+
+    res.json({
+      success: true,
+      event_id: event_id,
+      contractor_id: contractor_id,
+      ...result
+    });
+  } catch (error) {
+    console.error('Error scheduling AI recommendations:', error);
+    res.status(500).json({
+      error: 'Failed to schedule AI recommendations',
+      details: error.message
+    });
   }
 };

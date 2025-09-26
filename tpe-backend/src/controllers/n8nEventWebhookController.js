@@ -115,6 +115,167 @@ const triggerScheduledMessages = async (messages) => {
   }
 };
 
+// Trigger n8n for AI speaker recommendations
+const triggerSpeakerRecommendationSMS = async (eventId, contractorId, recommendations) => {
+  try {
+    // Get contractor details
+    const contractorResult = await query(`
+      SELECT c.*, ea.real_phone, ea.sms_opt_in
+      FROM contractors c
+      LEFT JOIN event_attendees ea ON c.id = ea.contractor_id AND ea.event_id = $1
+      WHERE c.id = $2
+    `, [eventId, contractorId]);
+
+    if (contractorResult.rows.length === 0) {
+      return false;
+    }
+
+    const contractor = contractorResult.rows[0];
+    const phone = contractor.real_phone || contractor.phone;
+
+    if (!phone || !contractor.sms_opt_in) {
+      console.log('Contractor not opted in or no phone number');
+      return false;
+    }
+
+    // Format speaker recommendations for SMS
+    const speakerList = recommendations.slice(0, 3).map((speaker, idx) =>
+      `${idx + 1}. ${speaker.name} (${speaker.company}): "${speaker.session.title || 'TBD'}" - ${speaker.why || speaker.quick_reasons[0] || 'Highly recommended'}`
+    ).join('\n');
+
+    const payload = {
+      event_type: 'speaker_recommendation',
+      event_id: eventId,
+      contractor_id: contractorId,
+      phone: phone,
+      message_template: `🎯 Your top 3 speakers for today:\n\n${speakerList}\n\nReply with speaker number for session details.`,
+      personalization_data: {
+        contractor_name: contractor.name,
+        company_name: contractor.company_name,
+        recommendations: recommendations
+      }
+    };
+
+    // Store in event_messages table
+    await query(`
+      INSERT INTO event_messages (
+        event_id,
+        contractor_id,
+        message_type,
+        message_category,
+        scheduled_time,
+        message_content,
+        personalization_data,
+        status,
+        created_at,
+        updated_at
+      ) VALUES ($1, $2, $3, $4, NOW(), $5, $6, 'pending', NOW(), NOW())
+    `, [
+      eventId,
+      contractorId,
+      'speaker_recommendation',
+      'recommendation',
+      payload.message_template,
+      safeJsonStringify(payload.personalization_data)
+    ]);
+
+    // Send to n8n webhook
+    const response = await fetch(`${N8N_WEBHOOK_BASE}/webhook/event-speaker-recommendations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Error triggering speaker recommendation SMS:', error);
+    return false;
+  }
+};
+
+// Trigger n8n for AI sponsor recommendations with talking points
+const triggerSponsorRecommendationSMS = async (eventId, contractorId, recommendations) => {
+  try {
+    // Get contractor details using EXACT column names
+    const contractorResult = await query(`
+      SELECT c.*, ea.real_phone, ea.sms_opt_in
+      FROM contractors c
+      LEFT JOIN event_attendees ea ON c.id = ea.contractor_id AND ea.event_id = $1
+      WHERE c.id = $2
+    `, [eventId, contractorId]);
+
+    if (contractorResult.rows.length === 0) {
+      return false;
+    }
+
+    const contractor = contractorResult.rows[0];
+    const phone = contractor.real_phone || contractor.phone;
+
+    if (!phone || !contractor.sms_opt_in) {
+      console.log('Contractor not opted in or no phone number');
+      return false;
+    }
+
+    // Format sponsor recommendations with booth info
+    const sponsorList = recommendations.slice(0, 3).map((sponsor, idx) => {
+      const boothInfo = sponsor.booth_number ? `Booth ${sponsor.booth_number}` : sponsor.booth_location || 'See map';
+      const contact = sponsor.booth_contact ? ` - ${sponsor.booth_contact.greeting}` : '';
+      return `${idx + 1}. ${sponsor.company_name} (${boothInfo})${contact}`;
+    }).join('\n');
+
+    // Get first talking point for teaser
+    const firstTalkingPoint = recommendations[0]?.talking_points?.[0] || 'Visit to learn about their solutions';
+
+    const payload = {
+      event_type: 'sponsor_recommendation',
+      event_id: eventId,
+      contractor_id: contractorId,
+      phone: phone,
+      message_template: `🤝 Top sponsors to visit:\n\n${sponsorList}\n\nConversation starter: "${firstTalkingPoint}"\n\nReply 1-3 for full talking points.`,
+      personalization_data: {
+        contractor_name: contractor.name,
+        company_name: contractor.company_name,
+        recommendations: recommendations
+      }
+    };
+
+    // Store in event_messages table with EXACT column names
+    await query(`
+      INSERT INTO event_messages (
+        event_id,
+        contractor_id,
+        message_type,
+        message_category,
+        scheduled_time,
+        message_content,
+        personalization_data,
+        status,
+        created_at,
+        updated_at
+      ) VALUES ($1, $2, $3, $4, NOW(), $5, $6, 'pending', NOW(), NOW())
+    `, [
+      eventId,
+      contractorId,
+      'sponsor_recommendation',
+      'recommendation',
+      payload.message_template,
+      safeJsonStringify(payload.personalization_data)
+    ]);
+
+    // Send to n8n webhook
+    const response = await fetch(`${N8N_WEBHOOK_BASE}/webhook/event-sponsor-recommendations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Error triggering sponsor recommendation SMS:', error);
+    return false;
+  }
+};
+
 // Receive webhook from n8n/GHL for inbound SMS
 const receiveInboundSMS = async (req, res, next) => {
   const { phone, message, contractor_id, event_id, timestamp } = req.body;
@@ -223,6 +384,8 @@ module.exports = {
   triggerCheckInSMS,
   triggerMassSMS,
   triggerScheduledMessages,
+  triggerSpeakerRecommendationSMS,
+  triggerSponsorRecommendationSMS,
   receiveInboundSMS,
   receiveDeliveryStatus
 };
