@@ -256,10 +256,14 @@ set PGPASSWORD=TPXP0stgres!!
             'barnes_noble_url',   // Not yet added to DB
             'author_website_purchase_url', // Not yet added to DB
             'onboarding_url',     // Computed field
-            'demo_booking_url'    // Computed field
+            'demo_booking_url',   // Computed field
+            // AI SMS API parameters (not database fields)
+            'send_immediately',   // API param for SMS sending
+            'scheduled_time',     // API param for scheduling
+            'recommendation_types' // API param for recommendation types
           ];
-          if (field && 
-              !field.startsWith('//') && 
+          if (field &&
+              !field.startsWith('//') &&
               !field.includes('\n') &&
               !excludedFields.includes(field)) {
             fields.add(field);

@@ -783,7 +783,8 @@ exports.scheduleAIRecommendations = async (req, res) => {
   try {
     const { id: event_id } = req.params;
     // API request parameters, not database fields
-    const { contractor_id, scheduled_time, recommendation_types = ['speaker', 'sponsor'] } = req.body;
+    const { contractor_id, scheduled_time, recommendation_types } = req.body;
+    const types = recommendation_types || ['speaker', 'sponsor'];
 
     if (!contractor_id || !scheduled_time) {
       return res.status(400).json({
@@ -795,7 +796,7 @@ exports.scheduleAIRecommendations = async (req, res) => {
       event_id,
       contractor_id,
       scheduled_time,
-      recommendation_types
+      types
     );
 
     if (!result.success) {
