@@ -156,6 +156,8 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/event-check-in', eventCheckInRoutes);
 // app.use('/api/event-messaging', eventMessagingRoutes);
 app.use('/api/event-orchestrator', require('../routes/eventOrchestratorRoutes'));
+app.use('/api/event-scheduler', require('../routes/eventMessageSchedulerRoutes'));
+app.use('/api/event-agenda', require('../routes/eventAgendaRoutes'));
 
 // Contractor Behavioral Tracking Routes
 app.use('/api/contractor-business-goals', require('./routes/contractorBusinessGoalsRoutes'));

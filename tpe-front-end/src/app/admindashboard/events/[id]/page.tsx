@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import EventForm from '@/components/admin/EventForm';
-import { Calendar, ArrowLeft, Edit, MapPin, Users, DollarSign, UserCheck } from 'lucide-react';
+import { Calendar, ArrowLeft, Edit, MapPin, Users, DollarSign, UserCheck, ClipboardList } from 'lucide-react';
 import { eventApi } from '@/lib/api';
 import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../../utils/jsonHelpers';
 
@@ -16,11 +16,15 @@ export default function EventDetailsPage() {
   const [event, setEvent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
+  const [canGoBack, setCanGoBack] = useState(false);
 
   useEffect(() => {
     if (params.id) {
       fetchEvent();
     }
+    // Check if we have browser history to go back to
+    // window.history.length > 1 indicates we navigated here from within the app
+    setCanGoBack(window.history.length > 1);
   }, [params.id]);
 
   const fetchEvent = async () => {
@@ -48,6 +52,16 @@ export default function EventDetailsPage() {
     setEditMode(false);
   };
 
+  const handleBack = () => {
+    // If we have history and it seems like we came from within the app, use browser back
+    if (canGoBack && document.referrer && document.referrer.includes(window.location.host)) {
+      router.back();
+    } else {
+      // Otherwise, go to the logical parent (events list)
+      router.push('/admindashboard/events');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-power100-bg-grey p-8">
@@ -63,9 +77,9 @@ export default function EventDetailsPage() {
       <div className="min-h-screen bg-power100-bg-grey p-8">
         <div className="max-w-7xl mx-auto">
           <p>Event not found</p>
-          <Button onClick={() => router.back()} className="mt-4">
+          <Button onClick={handleBack} className="mt-4">
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Go Back
+            Back
           </Button>
         </div>
       </div>
@@ -100,7 +114,7 @@ export default function EventDetailsPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex justify-between items-center">
-          <Button onClick={() => router.back()} variant="outline">
+          <Button onClick={handleBack} variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
@@ -111,6 +125,13 @@ export default function EventDetailsPage() {
             >
               <UserCheck className="mr-2 h-4 w-4" />
               Manage Attendees
+            </Button>
+            <Button
+              onClick={() => router.push(`/admindashboard/events/${params.id}/agenda`)}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <ClipboardList className="mr-2 h-4 w-4" />
+              Manage Agenda
             </Button>
             <Button onClick={() => setEditMode(true)} className="bg-power100-green hover:bg-green-700 text-white text-shadow-soft">
               <Edit className="mr-2 h-4 w-4" />

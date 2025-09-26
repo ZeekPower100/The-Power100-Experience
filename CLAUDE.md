@@ -184,6 +184,13 @@ the-power100-experience/          # Project root
 - `--power100-grey`: #6c757d (Secondary text)
 - `--power100-bg-grey`: #f8f9fa (Page backgrounds)
 
+### Button Color Rules
+**IMPORTANT**: All colored buttons must have white text for visibility and consistency
+- **Red Buttons**: ALWAYS use white text (`text-white`) with `bg-power100-red`
+  - Example: `className="bg-power100-red hover:bg-red-700 text-white"`
+- **Green Buttons**: ALWAYS use white text (`text-white`) with `bg-power100-green`
+  - Example: `className="bg-power100-green hover:bg-green-600 text-white"`
+
 ### Components
 - Using shadcn/ui components (Button, Card, Badge)
 - Framer Motion for animations

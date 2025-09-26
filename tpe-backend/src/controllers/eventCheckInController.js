@@ -2,6 +2,7 @@ const { query } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
 const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const crypto = require('crypto');
+const eventOrchestratorAutomation = require('../services/eventOrchestratorAutomation');
 // const { triggerCheckInSMS, triggerMassSMS } = require('./n8nEventWebhookController');
 
 /**
@@ -110,11 +111,34 @@ const checkInAttendee = async (req, res, next) => {
     const contractorData = contractor.rows[0];
     // await triggerCheckInSMS(attendeeData, contractorData);
 
+    // 🤖 TRIGGER AI ORCHESTRATION - This is where the magic happens!
+    try {
+      console.log(`🎯 Triggering AI Orchestration for contractor ${attendeeData.contractor_id} at event ${attendeeData.event_id}`);
+
+      // Run AI orchestration in background (don't block response)
+      eventOrchestratorAutomation.orchestrateEventExperience(
+        attendeeData.contractor_id,
+        attendeeData.event_id
+      ).then(recommendations => {
+        console.log(`✅ AI Orchestration completed for contractor ${attendeeData.contractor_id}:`, {
+          speakers: recommendations.speakers.length,
+          sponsors: recommendations.sponsors.length,
+          peers: recommendations.peers.length
+        });
+      }).catch(error => {
+        console.error(`❌ AI Orchestration failed for contractor ${attendeeData.contractor_id}:`, error);
+      });
+    } catch (orchError) {
+      console.error('Failed to trigger AI orchestration:', orchError);
+      // Don't fail the check-in if orchestration fails
+    }
+
     res.json({
       success: true,
       attendee: attendeeData,
       contractor: contractorData,
-      trigger_sms: true // Flag for SMS system
+      trigger_sms: true, // Flag for SMS system
+      ai_orchestration: 'triggered' // New flag to show AI is working
     });
   } catch (error) {
     next(error);
@@ -148,11 +172,29 @@ const massCheckIn = async (req, res, next) => {
     const messageTemplate = `Welcome to The Power100 Experience! 🎉 You're all checked in. Reply 'SAVE' to save our number for personalized event updates.`;
     // await triggerMassSMS(event_id, contractors.rows, messageTemplate, 'mass_check_in');
 
+    // 🤖 TRIGGER AI ORCHESTRATION FOR ALL CHECKED-IN ATTENDEES
+    console.log(`🎯 Mass AI Orchestration triggered for ${contractorIds.length} contractors at event ${event_id}`);
+
+    // Process each contractor through AI orchestration (in background)
+    contractorIds.forEach((contractor_id, index) => {
+      // Stagger the processing slightly to avoid overwhelming the system
+      setTimeout(() => {
+        eventOrchestratorAutomation.orchestrateEventExperience(contractor_id, event_id)
+          .then(recommendations => {
+            console.log(`✅ AI Orchestration ${index + 1}/${contractorIds.length} completed for contractor ${contractor_id}`);
+          })
+          .catch(error => {
+            console.error(`❌ AI Orchestration failed for contractor ${contractor_id}:`, error);
+          });
+      }, index * 100); // 100ms delay between each
+    });
+
     res.json({
       success: true,
       checked_in_count: result.rows.length,
       contractors: contractors.rows,
-      trigger_mass_sms: true
+      trigger_mass_sms: true,
+      ai_orchestration: 'triggered_for_all' // New flag showing AI is processing all attendees
     });
   } catch (error) {
     next(error);

@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { ArrowLeft, UserPlus, QrCode, Users, MessageSquare, Send, Clock, AlertCircle } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, UserPlus, QrCode, Users, MessageSquare, Send, Clock, AlertCircle, Megaphone, Handshake, UserCheck } from 'lucide-react';
 import { eventApi } from '@/lib/api';
 import { getFromStorage } from '../../../../../utils/jsonHelpers';
 
@@ -45,6 +47,15 @@ export default function EventCheckInPage() {
   const [qrCode, setQrCode] = useState('');
   const [checkInLoading, setCheckInLoading] = useState(false);
 
+  // Event Orchestrator state - aligned with database fields
+  const [speakers, setSpeakers] = useState<any[]>([]);
+  const [sponsors, setSponsors] = useState<any[]>([]);
+  const [selectedSpeakerId, setSelectedSpeakerId] = useState('');
+  const [selectedSponsorId, setSelectedSponsorId] = useState('');
+  const [message_template, setMessageTemplate] = useState('');
+  const [target_audience, setTargetAudience] = useState('all');
+  const [orchestratorLoading, setOrchestratorLoading] = useState(false);
+
   // Stats
   const [stats, setStats] = useState({
     total: 0,
@@ -56,6 +67,7 @@ export default function EventCheckInPage() {
   useEffect(() => {
     if (params.id) {
       fetchEventData();
+      fetchEventOrchestrationData();
     }
   }, [params.id]);
 
@@ -218,6 +230,155 @@ export default function EventCheckInPage() {
     }
   };
 
+  // Event Orchestrator Functions
+  const fetchEventOrchestrationData = async () => {
+    try {
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
+
+      // Fetch speakers
+      const speakersResponse = await fetch(`/api/events/${params.id}/speakers`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (speakersResponse.ok) {
+        const speakersData = await speakersResponse.json();
+        setSpeakers(speakersData);
+      }
+
+      // Fetch sponsors
+      const sponsorsResponse = await fetch(`/api/events/${params.id}/sponsors`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      if (sponsorsResponse.ok) {
+        const sponsorsData = await sponsorsResponse.json();
+        setSponsors(sponsorsData);
+      }
+    } catch (error) {
+      console.error('Error fetching orchestration data:', error);
+    }
+  };
+
+  const handleSendSpeakerAlert = async () => {
+    if (!selectedSpeakerId || !message_template) {
+      setError('Please select a speaker and enter a message');
+      return;
+    }
+
+    setOrchestratorLoading(true);
+    setError(null);
+
+    try {
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
+      const response = await fetch('/api/event-orchestrator/speaker-alert', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          event_id: parseInt(params.id as string),
+          speaker_id: parseInt(selectedSpeakerId),
+          message_template,
+          target_audience
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(`Speaker alert sent to ${data.recipients_count} attendees!`);
+        setMessageTemplate('');
+        setSelectedSpeakerId('');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to send speaker alert');
+      }
+    } catch (error) {
+      setError('Failed to send speaker alert');
+    } finally {
+      setOrchestratorLoading(false);
+    }
+  };
+
+  const handleSendSponsorEngagement = async () => {
+    if (!selectedSponsorId) {
+      setError('Please select a sponsor');
+      return;
+    }
+
+    setOrchestratorLoading(true);
+    setError(null);
+
+    try {
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
+      const response = await fetch('/api/event-orchestrator/sponsor-engagement', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          event_id: parseInt(params.id as string),
+          sponsor_id: parseInt(selectedSponsorId),
+          min_revenue: 500000,
+          max_matches: 10
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(`Sponsor engagement messages sent to ${data.matched_contractors.length} contractors!`);
+        setSelectedSponsorId('');
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to send sponsor engagement');
+      }
+    } catch (error) {
+      setError('Failed to send sponsor engagement');
+    } finally {
+      setOrchestratorLoading(false);
+    }
+  };
+
+  const handleAutoMatchPeers = async () => {
+    if (!confirm('This will analyze all attendees and create peer connections. Continue?')) {
+      return;
+    }
+
+    setOrchestratorLoading(true);
+    setError(null);
+
+    try {
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
+      const response = await fetch('/api/event-orchestrator/auto-match-peers', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          event_id: parseInt(params.id as string),
+          match_threshold: 70,
+          max_matches_per_person: 3
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        alert(`Created ${data.total_matches} peer connections!`);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to match peers');
+      }
+    } catch (error) {
+      setError('Failed to match peers');
+    } finally {
+      setOrchestratorLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-power100-bg-grey p-8">
@@ -299,6 +460,7 @@ export default function EventCheckInPage() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="register">Register</TabsTrigger>
             <TabsTrigger value="checkin">Check-In</TabsTrigger>
+            <TabsTrigger value="orchestrator">Orchestrator</TabsTrigger>
             <TabsTrigger value="messaging">Messaging</TabsTrigger>
           </TabsList>
 
@@ -426,6 +588,135 @@ export default function EventCheckInPage() {
                       Check In
                     </Button>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="orchestrator" className="space-y-4">
+            {/* AI Orchestration Status */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Megaphone className="h-5 w-5" />
+                  🤖 AI Orchestration Monitor
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Alert className="border-green-200 bg-green-50">
+                  <AlertCircle className="h-4 w-4 text-green-600" />
+                  <AlertDescription className="text-green-800">
+                    <strong>AI is running automatically!</strong> When attendees check in, the AI:
+                    <ul className="list-disc pl-5 mt-2">
+                      <li>Analyzes their profile and focus areas</li>
+                      <li>Matches them with relevant speakers, sponsors, and peers</li>
+                      <li>Schedules personalized SMS messages throughout the event</li>
+                      <li>Learns from responses to improve future recommendations</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+
+                {/* Real-time Metrics */}
+                <div className="grid grid-cols-3 gap-4 mt-6">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-blue-600">
+                      {attendees.filter(a => a.check_in_time).length}
+                    </div>
+                    <p className="text-sm text-gray-600">AI Activated</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-green-600">--</div>
+                    <p className="text-sm text-gray-600">Messages Scheduled</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-purple-600">--</div>
+                    <p className="text-sm text-gray-600">Messages Sent</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Message Queue Monitor */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Message Queue
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <p className="text-sm text-gray-600">
+                    AI-generated messages are automatically scheduled and sent via SMS:
+                  </p>
+                  <ul className="space-y-2 text-sm">
+                    <li className="flex items-center gap-2">
+                      <Badge className="bg-blue-100 text-blue-800">Immediate</Badge>
+                      Welcome message with personalized agenda
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Badge className="bg-yellow-100 text-yellow-800">15 min before</Badge>
+                      Speaker session alerts
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Badge className="bg-green-100 text-green-800">30 min after</Badge>
+                      Sponsor booth recommendations
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Badge className="bg-purple-100 text-purple-800">45 min after</Badge>
+                      Peer introductions
+                    </li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* CEO Override Control */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5" />
+                  Event Delay Override (CEO Only)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Use this if the event is running late. All scheduled messages will be delayed.
+                  </AlertDescription>
+                </Alert>
+
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    placeholder="Delay in minutes"
+                    className="w-40"
+                    id="delay-minutes"
+                  />
+                  <Button
+                    onClick={() => {
+                      const delayMinutes = (document.getElementById('delay-minutes') as HTMLInputElement)?.value;
+                      if (delayMinutes) {
+                        fetch(`/api/event-scheduler/delay`, {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${getFromStorage('authToken') || getFromStorage('adminToken')}`
+                          },
+                          body: JSON.stringify({
+                            event_id: params.id,
+                            delay_minutes: parseInt(delayMinutes)
+                          })
+                        }).then(() => {
+                          alert(`All messages delayed by ${delayMinutes} minutes`);
+                        });
+                      }
+                    }}
+                    className="bg-power100-red hover:bg-red-700 text-white"
+                  >
+                    Apply Delay
+                  </Button>
                 </div>
               </CardContent>
             </Card>
