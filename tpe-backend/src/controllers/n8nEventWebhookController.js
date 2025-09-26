@@ -42,7 +42,7 @@ const triggerCheckInSMS = async (attendeeData, contractorData) => {
     const response = await fetch(`${N8N_WEBHOOK_BASE}/webhook/event-check-in-sms`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: safeJsonStringify(payload)
     });
 
     if (!response.ok) {
@@ -75,7 +75,7 @@ const triggerMassSMS = async (eventId, contractors, messageTemplate, messageType
     const response = await fetch(`${N8N_WEBHOOK_BASE}/webhook/event-mass-sms`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: safeJsonStringify(payload)
     });
 
     return response.ok;
@@ -105,7 +105,7 @@ const triggerScheduledMessages = async (messages) => {
     const response = await fetch(`${N8N_WEBHOOK_BASE}/webhook/event-scheduled-sms`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: safeJsonStringify(payload)
     });
 
     return response.ok;
@@ -183,7 +183,7 @@ const triggerSpeakerRecommendationSMS = async (eventId, contractorId, recommenda
     const response = await fetch(`${N8N_WEBHOOK_BASE}/webhook/event-speaker-recommendations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: safeJsonStringify(payload)
     });
 
     return response.ok;
@@ -266,7 +266,7 @@ const triggerSponsorRecommendationSMS = async (eventId, contractorId, recommenda
     const response = await fetch(`${N8N_WEBHOOK_BASE}/webhook/event-sponsor-recommendations`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+      body: safeJsonStringify(payload)
     });
 
     return response.ok;

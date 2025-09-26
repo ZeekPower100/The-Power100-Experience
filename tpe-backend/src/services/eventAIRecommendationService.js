@@ -474,12 +474,10 @@ class EventAIRecommendationService {
       try {
         // Use existing talking points if available
         if (sponsor.talking_points) {
-          // Parse if it's JSON, otherwise use as-is
-          let existingPoints = sponsor.talking_points;
-          try {
-            existingPoints = JSON.parse(sponsor.talking_points);
-          } catch {
-            // It's already a string, split by newlines or periods
+          // Use safe JSON parse with fallback handling
+          let existingPoints = safeJsonParse(sponsor.talking_points, null);
+          if (!existingPoints) {
+            // It's not JSON, treat as string and split by newlines or periods
             existingPoints = sponsor.talking_points
               .split(/[.\n]/)
               .filter(p => p.trim())
@@ -545,10 +543,10 @@ class EventAIRecommendationService {
         });
 
         let talkingPoints;
-        try {
-          const parsed = JSON.parse(response);
+        const parsed = safeJsonParse(response, null);
+        if (parsed) {
           talkingPoints = parsed.talking_points || parsed.points || Object.values(parsed).flat();
-        } catch {
+        } else {
           // Fallback to generic talking points
           talkingPoints = [
             `I'm interested in how you help ${contractorProfile.revenue_tier} contractors`,
