@@ -647,10 +647,15 @@ exports.testAIRecommendations = async (req, res) => {
 };
 
 // Send AI speaker recommendations via SMS
+/**
+ * @api {post} /events/:id/ai/speakers/sms Send speaker recommendations via SMS
+ * @apiParam {Number} contractor_id Contractor ID (request body)
+ * @apiParam {Boolean} send_immediately Whether to send immediately (request body, not DB field)
+ */
 exports.sendAISpeakerRecommendationsSMS = async (req, res) => {
   try {
     const { id: event_id } = req.params;
-    const { contractor_id, send_immediately = true } = req.body;  // snake_case
+    const { contractor_id, send_immediately = true } = req.body;  // API params, not DB fields
 
     if (!contractor_id) {
       return res.status(400).json({ error: 'contractor_id is required' });
@@ -684,10 +689,15 @@ exports.sendAISpeakerRecommendationsSMS = async (req, res) => {
 };
 
 // Send AI sponsor recommendations via SMS
+/**
+ * @api {post} /events/:id/ai/sponsors/sms Send sponsor recommendations via SMS
+ * @apiParam {Number} contractor_id Contractor ID (request body)
+ * @apiParam {Boolean} send_immediately Whether to send immediately (request body, not DB field)
+ */
 exports.sendAISponsorRecommendationsSMS = async (req, res) => {
   try {
     const { id: event_id } = req.params;
-    const { contractor_id, send_immediately = true } = req.body;  // snake_case
+    const { contractor_id, send_immediately = true } = req.body;  // API params, not DB fields
 
     if (!contractor_id) {
       return res.status(400).json({ error: 'contractor_id is required' });
@@ -721,10 +731,15 @@ exports.sendAISponsorRecommendationsSMS = async (req, res) => {
 };
 
 // Send complete personalized agenda via SMS
+/**
+ * @api {post} /events/:id/ai/agenda/sms Send personalized agenda via SMS
+ * @apiParam {Number} contractor_id Contractor ID (request body)
+ * @apiParam {Boolean} send_immediately Whether to send immediately (request body, not DB field)
+ */
 exports.sendPersonalizedAgendaSMS = async (req, res) => {
   try {
     const { id: event_id } = req.params;
-    const { contractor_id, send_immediately = true } = req.body;  // snake_case
+    const { contractor_id, send_immediately = true } = req.body;  // API params, not DB fields
 
     if (!contractor_id) {
       return res.status(400).json({ error: 'contractor_id is required' });
@@ -758,9 +773,16 @@ exports.sendPersonalizedAgendaSMS = async (req, res) => {
 };
 
 // Schedule AI recommendations for later
+/**
+ * @api {post} /events/:id/ai/schedule Schedule AI recommendations
+ * @apiParam {Number} contractor_id Contractor ID (request body)
+ * @apiParam {String} scheduled_time When to send (request body, not DB field)
+ * @apiParam {Array} recommendation_types Types to send: ['speaker', 'sponsor'] (request body, not DB field)
+ */
 exports.scheduleAIRecommendations = async (req, res) => {
   try {
     const { id: event_id } = req.params;
+    // API request parameters, not database fields
     const { contractor_id, scheduled_time, recommendation_types = ['speaker', 'sponsor'] } = req.body;
 
     if (!contractor_id || !scheduled_time) {
