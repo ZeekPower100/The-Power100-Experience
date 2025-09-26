@@ -117,6 +117,7 @@ class DatabaseFieldValidator {
     this.entities = {
       events: {
         table: 'events',
+        relatedTables: ['event_pcr_scores', 'event_attendees'],
         controller: 'eventController.js',
         routes: 'eventRoutes.js',
         form: 'EventOnboardingForm.tsx',
@@ -349,13 +350,28 @@ set PGPASSWORD=TPXP0stgres!!
       console.log(`❌ Unknown entity: ${entityName}`);
       return false;
     }
-    
+
     console.log(`\n🔍 Validating ${entityName}...`);
-    
-    // Get database schema
+
+    // Get database schema (primary table + related tables)
     const dbFields = this.getDatabaseSchema(entity.table);
     console.log(`   📊 Database fields (${dbFields.length}):`, dbFields.slice(0, 5).join(', '), '...');
-    
+
+    // Get related table fields if any
+    const relatedFields = [];
+    if (entity.relatedTables) {
+      entity.relatedTables.forEach(tableName => {
+        const fields = this.getDatabaseSchema(tableName);
+        relatedFields.push(...fields);
+      });
+      if (relatedFields.length > 0) {
+        console.log(`   📊 Related tables fields (${relatedFields.length}):`, relatedFields.slice(0, 5).join(', '), '...');
+      }
+    }
+
+    // Combine all valid database fields
+    const allDbFields = [...dbFields, ...relatedFields];
+
     // Get controller fields
     const controllerPath = path.join(this.backendPath, 'src/controllers', entity.controller);
     const controllerFields = this.extractControllerFields(controllerPath);
@@ -379,22 +395,22 @@ set PGPASSWORD=TPXP0stgres!!
       const globalMapping = this.legitimateMappings.global[field];
       const entityMapping = this.legitimateMappings[entityName] && this.legitimateMappings[entityName][field];
       const mappedField = entityMapping || globalMapping;
-      
-      if (mappedField && mappedField !== field && dbFields.includes(mappedField)) {
+
+      if (mappedField && mappedField !== field && allDbFields.includes(mappedField)) {
         detectedMappings.push(`${field} → ${mappedField}`);
       }
     });
-    
+
     if (detectedMappings.length > 0) {
       console.log(`   🔄 Detected legitimate mappings: ${detectedMappings.join(', ')}`);
     }
-    
+
     // Find mismatches
     const issues = [];
-    
-    // Check controller fields against database
+
+    // Check controller fields against database (including related tables)
     controllerFields.forEach(field => {
-      if (!dbFields.includes(field) && !['is_active', 'status'].includes(field)) {
+      if (!allDbFields.includes(field) && !['is_active', 'status'].includes(field)) {
         issues.push({
           type: 'controller_no_db',
           field,
@@ -402,17 +418,17 @@ set PGPASSWORD=TPXP0stgres!!
         });
       }
     });
-    
+
     // Check form fields against database
     formFields.forEach(field => {
       // Check if this is a legitimate mapping
       const globalMapping = this.legitimateMappings.global[field];
       const entityMapping = this.legitimateMappings[entityName] && this.legitimateMappings[entityName][field];
       const mappedField = entityMapping || globalMapping;
-      
+
       if (mappedField) {
         // This is a legitimate mapping - check if the mapped field exists in DB
-        if (!dbFields.includes(mappedField)) {
+        if (!allDbFields.includes(mappedField)) {
           issues.push({
             type: 'mapped_field_missing',
             field,
@@ -421,7 +437,7 @@ set PGPASSWORD=TPXP0stgres!!
           });
         }
         // If mapped field exists, this is OK - no issue
-      } else if (!dbFields.includes(field)) {
+      } else if (!allDbFields.includes(field)) {
         // Not a legitimate mapping and field doesn't exist
         // Check for common mismatches that should be fixed
         const knownMismatches = {
