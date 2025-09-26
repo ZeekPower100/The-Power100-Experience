@@ -53,4 +53,11 @@ router.post('/:id/ai/agenda/sms', eventController.sendPersonalizedAgendaSMS);
 // Schedule AI recommendations for later
 router.post('/:id/ai/schedule', eventController.scheduleAIRecommendations);
 
+// Speaker Alert Routes - ALL SNAKE_CASE TO MATCH DATABASE
+// Test speaker alert system
+router.post('/:id/ai/speaker-alerts/test', eventController.testSpeakerAlerts);
+
+// Manually check for upcoming sessions and send alerts
+router.post('/:id/ai/speaker-alerts/check', eventController.checkSpeakerAlerts);
+
 module.exports = router;

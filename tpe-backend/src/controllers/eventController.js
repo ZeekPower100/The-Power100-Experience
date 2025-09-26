@@ -819,3 +819,57 @@ exports.scheduleAIRecommendations = async (req, res) => {
     });
   }
 };
+
+/**
+ * Test speaker alert system
+ * @api {post} /events/:id/ai/speaker-alerts/test Test speaker alerts
+ */
+exports.testSpeakerAlerts = async (req, res) => {
+  try {
+    const { id: event_id } = req.params;
+    const { contractor_id } = req.body;
+
+    if (!contractor_id) {
+      return res.status(400).json({
+        error: 'contractor_id is required'
+      });
+    }
+
+    const speakerAlertService = require('../services/speakerAlertService');
+    const result = await speakerAlertService.testAlertSystem(event_id, contractor_id);
+
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error testing speaker alerts:', error);
+    res.status(500).json({
+      error: 'Failed to test speaker alerts',
+      details: error.message
+    });
+  }
+};
+
+/**
+ * Manually trigger speaker alert check
+ * @api {post} /events/:id/ai/speaker-alerts/check Check for upcoming sessions
+ */
+exports.checkSpeakerAlerts = async (req, res) => {
+  try {
+    const speakerAlertService = require('../services/speakerAlertService');
+    const result = await speakerAlertService.checkAndSendAlerts();
+
+    res.json({
+      success: true,
+      ...result
+    });
+  } catch (error) {
+    console.error('Error checking speaker alerts:', error);
+    res.status(500).json({
+      error: 'Failed to check speaker alerts',
+      details: error.message
+    });
+  }
+};
