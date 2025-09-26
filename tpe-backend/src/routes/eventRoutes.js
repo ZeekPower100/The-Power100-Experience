@@ -60,4 +60,20 @@ router.post('/:id/ai/speaker-alerts/test', eventController.testSpeakerAlerts);
 // Manually check for upcoming sessions and send alerts
 router.post('/:id/ai/speaker-alerts/check', eventController.checkSpeakerAlerts);
 
+// PCR Scoring Routes - ALL SNAKE_CASE TO MATCH DATABASE
+// Request PCR score for a recommendation
+router.post('/:id/pcr/request', eventController.requestPCRScore);
+
+// Process PCR score from SMS response
+router.post('/:id/pcr/process', eventController.processPCRScore);
+
+// Get overall event PCR score
+router.get('/:id/pcr/overall', eventController.getEventPCR);
+
+// Get PCR breakdown by type
+router.get('/:id/pcr/breakdown', eventController.getPCRBreakdown);
+
+// Analyze sentiment from any response
+router.post('/pcr/analyze-sentiment', eventController.analyzeSentiment);
+
 module.exports = router;

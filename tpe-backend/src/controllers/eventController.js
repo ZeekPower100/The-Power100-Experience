@@ -873,3 +873,129 @@ exports.checkSpeakerAlerts = async (req, res) => {
     });
   }
 };
+
+// ============================================
+// PCR SCORING ENDPOINTS - ALL SNAKE_CASE TO MATCH DATABASE
+// ============================================
+
+// Request PCR score for a specific recommendation
+exports.requestPCRScore = async (req, res) => {
+  try {
+    const { id: event_id } = req.params;
+    const { contractor_id, pcr_type, entity_id, entity_name } = req.body;
+
+    if (!contractor_id || !pcr_type || !entity_id || !entity_name) {
+      return res.status(400).json({
+        error: 'Missing required fields: contractor_id, pcr_type, entity_id, entity_name'
+      });
+    }
+
+    const pcrScoringService = require('../services/pcrScoringService');
+    const result = await pcrScoringService.requestPCRScore(
+      parseInt(event_id),
+      parseInt(contractor_id),
+      pcr_type,
+      parseInt(entity_id),
+      entity_name
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error requesting PCR score:', error);
+    res.status(500).json({
+      error: 'Failed to request PCR score',
+      details: error.message
+    });
+  }
+};
+
+// Process explicit PCR score from SMS response
+exports.processPCRScore = async (req, res) => {
+  try {
+    const { id: event_id } = req.params;
+    const { contractor_id, pcr_type, entity_id, response_received } = req.body;
+
+    if (!contractor_id || !pcr_type || !entity_id || !response_received) {
+      return res.status(400).json({
+        error: 'Missing required fields: contractor_id, pcr_type, entity_id, response_received'
+      });
+    }
+
+    const pcrScoringService = require('../services/pcrScoringService');
+    const result = await pcrScoringService.processExplicitScore(
+      parseInt(event_id),
+      parseInt(contractor_id),
+      pcr_type,
+      parseInt(entity_id),
+      response_received
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error processing PCR score:', error);
+    res.status(500).json({
+      error: 'Failed to process PCR score',
+      details: error.message
+    });
+  }
+};
+
+// Get overall event PCR score
+exports.getEventPCR = async (req, res) => {
+  try {
+    const { id: event_id } = req.params;
+
+    const pcrScoringService = require('../services/pcrScoringService');
+    const result = await pcrScoringService.getEventPCR(parseInt(event_id));
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error getting event PCR:', error);
+    res.status(500).json({
+      error: 'Failed to get event PCR',
+      details: error.message
+    });
+  }
+};
+
+// Get PCR breakdown by type
+exports.getPCRBreakdown = async (req, res) => {
+  try {
+    const { id: event_id } = req.params;
+
+    const pcrScoringService = require('../services/pcrScoringService');
+    const result = await pcrScoringService.getPCRBreakdown(parseInt(event_id));
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error getting PCR breakdown:', error);
+    res.status(500).json({
+      error: 'Failed to get PCR breakdown',
+      details: error.message
+    });
+  }
+};
+
+// Analyze sentiment from any SMS response
+exports.analyzeSentiment = async (req, res) => {
+  try {
+    const { response_received } = req.body;
+
+    if (!response_received) {
+      return res.status(400).json({
+        error: 'Missing required field: response_received'
+      });
+    }
+
+    const pcrScoringService = require('../services/pcrScoringService');
+    const result = await pcrScoringService.analyzeSentiment(response_received);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error analyzing sentiment:', error);
+    res.status(500).json({
+      error: 'Failed to analyze sentiment',
+      details: error.message
+    });
+  }
+};
