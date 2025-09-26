@@ -1,4 +1,5 @@
 const { query } = require('../config/database');
+const { safeJsonStringify } = require('../utils/jsonHelpers');
 const fs = require('fs').promises;
 const path = require('path');
 
@@ -475,7 +476,7 @@ class SchemaDiscoveryService {
       await fs.mkdir(path.dirname(filePath), { recursive: true });
       await fs.writeFile(
         filePath,
-        JSON.stringify(schema, null, 2),
+        safeJsonStringify(schema, null, 2),
         'utf8'
       );
       console.log(`[SchemaDiscovery] Schema saved to ${filePath}`);

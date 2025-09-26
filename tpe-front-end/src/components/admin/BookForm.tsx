@@ -111,7 +111,7 @@ export default function BookForm({ book, onSuccess, onCancel }: BookFormProps) {
     try {
       // Parse JSON array if it's a string
       if (typeof book.focus_areas_covered === 'string') {
-        return JSON.parse(book.focus_areas_covered);
+        return safeJsonParse(book.focus_areas_covered, []);
       }
       // If it's already an array, use it directly
       return Array.isArray(book.focus_areas_covered) ? book.focus_areas_covered : [];

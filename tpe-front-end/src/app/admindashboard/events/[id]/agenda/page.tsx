@@ -14,7 +14,7 @@ import {
   ArrowLeft, Plus, Trash2, Edit, Save, Clock, MapPin,
   Users, Calendar, CheckCircle, AlertCircle, Copy
 } from 'lucide-react';
-import { getFromStorage } from '../../../../../utils/jsonHelpers';
+import { getFromStorage, handleApiResponse, safeJsonStringify } from '../../../../../utils/jsonHelpers';
 
 interface AgendaItem {
   id?: number;
@@ -112,7 +112,7 @@ export default function EventAgendaPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await handleApiResponse(response);
         setEvent(data.event);
         setAgendaItems(data.agenda_items || []);
 
@@ -148,7 +148,7 @@ export default function EventAgendaPage() {
         }
       });
       if (response.ok) {
-        const data = await response.json();
+        const data = await handleApiResponse(response);
         setSpeakers(data);
       }
     } catch (error) {
@@ -165,7 +165,7 @@ export default function EventAgendaPage() {
         }
       });
       if (response.ok) {
-        const data = await response.json();
+        const data = await handleApiResponse(response);
         setSponsors(data);
       }
     } catch (error) {
@@ -189,7 +189,7 @@ export default function EventAgendaPage() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify(formData)
+        body: safeJsonStringify(formData)
       });
 
       if (response.ok) {

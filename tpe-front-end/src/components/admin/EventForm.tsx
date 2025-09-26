@@ -164,7 +164,7 @@ export default function EventForm({ event, onSuccess, onCancel }: EventFormProps
     try {
       // Parse JSON array if it's a string
       if (typeof event.focus_areas_covered === 'string') {
-        return JSON.parse(event.focus_areas_covered);
+        return safeJsonParse(event.focus_areas_covered, []);
       }
       // If it's already an array, use it directly
       return Array.isArray(event.focus_areas_covered) ? event.focus_areas_covered : [];

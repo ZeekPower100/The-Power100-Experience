@@ -662,7 +662,12 @@ Return as JSON with these exact field names.`;
     // Remove markdown code blocks if present
     responseContent = responseContent.replace(/```json\n?/g, '').replace(/```\n?/g, '');
 
-    const aiData = JSON.parse(responseContent);
+    const aiData = safeJsonParse(responseContent, {
+      summary: 'Video content analysis',
+      insights: [],
+      tags: [],
+      sentiment: 'neutral'
+    });
 
     // Update video with AI-generated data
     await query(

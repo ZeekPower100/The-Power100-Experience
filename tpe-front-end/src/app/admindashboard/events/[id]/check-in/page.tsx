@@ -13,7 +13,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ArrowLeft, UserPlus, QrCode, Users, MessageSquare, Send, Clock, AlertCircle, Megaphone, Handshake, UserCheck } from 'lucide-react';
 import { eventApi } from '@/lib/api';
-import { getFromStorage } from '../../../../../utils/jsonHelpers';
+import { getFromStorage, handleApiResponse } from '../../../../../utils/jsonHelpers';
 
 interface Attendee {
   id: number;
@@ -101,7 +101,7 @@ export default function EventCheckInPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await handleApiResponse(response);
         setAttendees(data.attendees || []);
 
         // Calculate stats
@@ -151,7 +151,7 @@ export default function EventCheckInPage() {
         setContractorId('');
         setError(null);
       } else {
-        const errorData = await response.json();
+        const errorData = await handleApiResponse(response);
         setError(errorData.error || 'Failed to register attendee');
       }
     } catch (error) {
@@ -184,7 +184,7 @@ export default function EventCheckInPage() {
         setQrCode('');
         setError(null);
       } else {
-        const errorData = await response.json();
+        const errorData = await handleApiResponse(response);
         setError(errorData.error || 'Failed to check in attendee');
       }
     } catch (error) {
@@ -216,7 +216,7 @@ export default function EventCheckInPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await handleApiResponse(response);
         await fetchAttendees();
         setError(null);
         alert(`Successfully checked in ${data.checked_in_count} attendees`);
@@ -242,7 +242,7 @@ export default function EventCheckInPage() {
         }
       });
       if (speakersResponse.ok) {
-        const speakersData = await speakersResponse.json();
+        const speakersData = await handleApiResponse(speakersResponse);
         setSpeakers(speakersData);
       }
 
@@ -253,7 +253,7 @@ export default function EventCheckInPage() {
         }
       });
       if (sponsorsResponse.ok) {
-        const sponsorsData = await sponsorsResponse.json();
+        const sponsorsData = await handleApiResponse(sponsorsResponse);
         setSponsors(sponsorsData);
       }
     } catch (error) {
@@ -287,12 +287,12 @@ export default function EventCheckInPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await handleApiResponse(response);
         alert(`Speaker alert sent to ${data.recipients_count} attendees!`);
         setMessageTemplate('');
         setSelectedSpeakerId('');
       } else {
-        const errorData = await response.json();
+        const errorData = await handleApiResponse(response);
         setError(errorData.error || 'Failed to send speaker alert');
       }
     } catch (error) {
@@ -328,11 +328,11 @@ export default function EventCheckInPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await handleApiResponse(response);
         alert(`Sponsor engagement messages sent to ${data.matched_contractors.length} contractors!`);
         setSelectedSponsorId('');
       } else {
-        const errorData = await response.json();
+        const errorData = await handleApiResponse(response);
         setError(errorData.error || 'Failed to send sponsor engagement');
       }
     } catch (error) {
@@ -366,10 +366,10 @@ export default function EventCheckInPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        const data = await handleApiResponse(response);
         alert(`Created ${data.total_matches} peer connections!`);
       } else {
-        const errorData = await response.json();
+        const errorData = await handleApiResponse(response);
         setError(errorData.error || 'Failed to match peers');
       }
     } catch (error) {

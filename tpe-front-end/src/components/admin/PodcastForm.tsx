@@ -101,7 +101,7 @@ export default function PodcastForm({ podcast, onSuccess, onCancel }: PodcastFor
     try {
       // Parse JSON array if it's a string
       if (typeof podcast.focus_areas_covered === 'string') {
-        return JSON.parse(podcast.focus_areas_covered);
+        return safeJsonParse(podcast.focus_areas_covered, []);
       }
       // If it's already an array, use it directly
       return Array.isArray(podcast.focus_areas_covered) ? podcast.focus_areas_covered : [];

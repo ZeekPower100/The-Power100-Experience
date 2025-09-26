@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { aiConciergeApi, contractorApi } from '@/lib/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { handleApiResponse, getFromStorage } from '@/utils/jsonHelpers';
 import {
   MessageCircle,
   Send,
@@ -342,7 +343,7 @@ export default function AIConciergePage() {
       const isDevelopment = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       if (isDevelopment) {
         const response = await fetch('http://localhost:5000/api/ai-concierge/access-status');
-        const accessResponse = await response.json();
+        const accessResponse = await handleApiResponse(response);
 
         const profile: ContractorProfile = {
           name: accessResponse.contractor?.name || 'Test User',
@@ -411,7 +412,7 @@ export default function AIConciergePage() {
       const isDevelopment = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
       if (isDevelopment) {
         const response = await fetch('http://localhost:5000/api/ai-concierge/conversations');
-        const data = await response.json();
+        const data = await handleApiResponse(response);
 
         if (data.success) {
           setConversations(data.conversations || []);
@@ -673,7 +674,7 @@ export default function AIConciergePage() {
             session_id: currentConversationId || undefined
           })
         });
-        response = await res.json();
+        response = await handleApiResponse(res);
       } else {
         // Production - use normal API with auth
         response = await aiConciergeApi.sendMessage(content, currentConversationId || undefined);
@@ -835,7 +836,7 @@ export default function AIConciergePage() {
           method: 'POST',
           body: formData
         });
-        response = await res.json();
+        response = await handleApiResponse(res);
       } else {
         // For production, send FormData with auth
         const formData = new FormData();
@@ -849,11 +850,11 @@ export default function AIConciergePage() {
         const res = await fetch('/api/ai-concierge/message', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+            'Authorization': `Bearer ${getFromStorage('accessToken', '')}`
           },
           body: formData
         });
-        response = await res.json();
+        response = await handleApiResponse(res);
       }
 
       if (response.success) {
@@ -995,7 +996,7 @@ export default function AIConciergePage() {
                 method: 'POST',
                 body: formData
               });
-              response = await res.json();
+              response = await handleApiResponse(res);
             } else {
               // For production
               const formData = new FormData();
@@ -1009,11 +1010,11 @@ export default function AIConciergePage() {
               const res = await fetch('/api/ai-concierge/message', {
                 method: 'POST',
                 headers: {
-                  'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+                  'Authorization': `Bearer ${getFromStorage('accessToken', '')}`
                 },
                 body: formData
               });
-              response = await res.json();
+              response = await handleApiResponse(res);
             }
 
             if (response.success) {
