@@ -300,6 +300,299 @@ const getEventMessageAnalytics = async (req, res, next) => {
   }
 };
 
+// ==================== PEER MATCHING ENDPOINTS ====================
+
+const peerMatchingService = require('../services/peerMatchingService');
+
+// Find peer matches for a contractor at an event
+const findPeerMatches = async (req, res, next) => {
+  const { eventId, contractorId } = req.params;
+  const { maxMatches, minScore, excludeMatched } = req.query;
+
+  try {
+    const matches = await peerMatchingService.findPeerMatches(
+      parseInt(contractorId),
+      parseInt(eventId),
+      {
+        maxMatches: parseInt(maxMatches) || 3,
+        minScore: parseFloat(minScore) || 0.6,
+        excludeMatched: excludeMatched !== 'false' // Default true
+      }
+    );
+
+    res.json({
+      success: true,
+      count: matches.length,
+      matches
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Create a peer match
+const createPeerMatch = async (req, res, next) => {
+  const { eventId } = req.params;
+  const { contractorId, peerId, matchData } = req.body;
+
+  try {
+    const match = await peerMatchingService.createPeerMatch(
+      contractorId,
+      peerId,
+      parseInt(eventId),
+      matchData
+    );
+
+    res.status(201).json({
+      success: true,
+      match
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Send peer introduction via SMS
+const sendPeerIntroduction = async (req, res, next) => {
+  const { matchId } = req.params;
+  const { message } = req.body;
+
+  try {
+    // Record introduction in database
+    const match = await peerMatchingService.recordIntroduction(matchId, message);
+
+    // TODO: Send actual SMS via n8n/GHL webhook
+    // This would integrate with your SMS service
+
+    res.json({
+      success: true,
+      message: 'Introduction sent',
+      match
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Record contractor response to peer introduction
+const recordPeerResponse = async (req, res, next) => {
+  const { matchId } = req.params;
+  const { contractorId, response } = req.body;
+
+  try {
+    const match = await peerMatchingService.recordResponse(
+      parseInt(matchId),
+      contractorId,
+      response
+    );
+
+    res.json({
+      success: true,
+      match
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Record that connection was made (meeting scheduled)
+const recordPeerConnection = async (req, res, next) => {
+  const { matchId } = req.params;
+  const { meetingDetails } = req.body;
+
+  try {
+    const match = await peerMatchingService.recordConnection(
+      parseInt(matchId),
+      meetingDetails
+    );
+
+    res.json({
+      success: true,
+      match
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get all matches for a contractor at an event
+const getContractorMatches = async (req, res, next) => {
+  const { eventId, contractorId } = req.params;
+
+  try {
+    const matches = await peerMatchingService.getContractorMatches(
+      parseInt(contractorId),
+      parseInt(eventId)
+    );
+
+    res.json({
+      success: true,
+      count: matches.length,
+      matches
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Webhook response from n8n - Log SMS delivery data
+const webhookResponse = async (req, res, next) => {
+  // Validate n8n API key
+  const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+
+  if (!apiKey || apiKey !== process.env.N8N_API_KEY) {
+    return res.status(401).json({
+      success: false,
+      error: 'Unauthorized - Invalid API key'
+    });
+  }
+
+  const {
+    type,
+    direction,
+    contractor_id,
+    event_id,
+    message_type,
+    contactId,
+    phone,
+    messageId,
+    status,
+    success,
+    timestamp
+  } = req.body;
+
+  try {
+    // Log to event_messages table for comprehensive tracking
+    await query(`
+      INSERT INTO event_messages (
+        event_id,
+        contractor_id,
+        message_type,
+        phone,
+        ghl_contact_id,
+        ghl_message_id,
+        status,
+        direction,
+        actual_send_time,
+        message_content,
+        created_at,
+        updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `, [
+      event_id,
+      contractor_id,
+      message_type,
+      phone,
+      contactId,
+      messageId,
+      status,
+      direction || 'outbound',
+      timestamp,
+      'SMS delivery log from n8n workflow'
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: 'SMS delivery logged successfully'
+    });
+  } catch (error) {
+    console.error('Error logging SMS delivery:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// Get pending messages for SMS routing context
+const getPendingContext = async (req, res) => {
+  const { contractor_id } = req.query;
+
+  if (!contractor_id) {
+    return res.status(400).json({
+      success: false,
+      error: 'contractor_id is required'
+    });
+  }
+
+  try {
+    // Get messages sent in last 48 hours that are still expecting responses
+    const result = await query(`
+      SELECT
+        id,
+        event_id,
+        message_type,
+        message_category,
+        personalization_data,
+        actual_send_time as sent_at,
+        status,
+        EXTRACT(EPOCH FROM (NOW() - actual_send_time))/3600 as hours_since_sent
+      FROM event_messages
+      WHERE contractor_id = $1
+        AND status = 'sent'
+        AND actual_send_time IS NOT NULL
+        AND actual_send_time >= NOW() - INTERVAL '48 hours'
+      ORDER BY actual_send_time DESC
+    `, [contractor_id]);
+
+    res.json({
+      success: true,
+      contractor_id: parseInt(contractor_id),
+      pending_messages: result.rows
+    });
+  } catch (error) {
+    console.error('Error getting pending context:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// Log routing decision for analytics
+const logRoutingDecision = async (req, res) => {
+  const {
+    contractor_id,
+    phone,
+    message_text,
+    route_to,
+    confidence,
+    routing_method,
+    timestamp
+  } = req.body;
+
+  try {
+    // Log to database for analytics (optional - can add table later)
+    console.log('SMS Routing Decision:', {
+      contractor_id,
+      phone,
+      route_to,
+      confidence,
+      routing_method,
+      message_preview: message_text?.substring(0, 50)
+    });
+
+    // Future: Insert into sms_routing_decisions table when created
+    // await query(`
+    //   INSERT INTO sms_routing_decisions (
+    //     contractor_id, phone, message_text, route_to, confidence,
+    //     routing_method, timestamp
+    //   ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+    // `, [contractor_id, phone, message_text, route_to, confidence, routing_method, timestamp]);
+
+    res.json({
+      success: true,
+      message: 'Routing decision logged'
+    });
+  } catch (error) {
+    console.error('Error logging routing decision:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   scheduleMessage,
   massScheduleMessages,
@@ -307,5 +600,17 @@ module.exports = {
   getPendingMessages,
   markMessageSent,
   recordResponse,
-  getEventMessageAnalytics
+  getEventMessageAnalytics,
+  // Peer Matching
+  findPeerMatches,
+  createPeerMatch,
+  sendPeerIntroduction,
+  recordPeerResponse,
+  recordPeerConnection,
+  getContractorMatches,
+  // n8n Webhook
+  webhookResponse,
+  // SMS Router
+  getPendingContext,
+  logRoutingDecision
 };

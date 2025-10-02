@@ -66,7 +66,11 @@ class PCRScoringService {
       // Send via n8n webhook
       const N8N_WEBHOOK_BASE = process.env.NODE_ENV === 'production'
         ? (process.env.N8N_WEBHOOK_URL || 'https://n8n.srv918843.hstgr.cloud')
-        : (process.env.N8N_DEV_WEBHOOK_URL || 'http://localhost:5678');
+        : (process.env.N8N_DEV_WEBHOOK_URL || 'https://n8n.srv918843.hstgr.cloud');
+
+      const webhookPath = process.env.NODE_ENV === 'production'
+        ? '/webhook/event-pcr-request'
+        : '/webhook/event-pcr-request-dev';
 
       const payload = {
         event_type: 'pcr_request',
@@ -81,7 +85,7 @@ class PCRScoringService {
         }
       };
 
-      const response = await fetch(`${N8N_WEBHOOK_BASE}/webhook/event-pcr-request`, {
+      const response = await fetch(`${N8N_WEBHOOK_BASE}${webhookPath}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: safeJsonStringify(payload)
@@ -122,13 +126,14 @@ class PCRScoringService {
   async processExplicitScore(event_id, contractor_id, pcr_type, entity_id, response_received) {
     try {
       // Extract numeric score from response (1-5)
-      const scoreMatch = response_received.match(/[1-5]/);
+      // Use word boundary to avoid extracting numbers from unrelated text
+      const scoreMatch = response_received.match(/\b([1-5])\b/);
       if (!scoreMatch) {
         console.log('[PCRScoring] No explicit score found in response');
         return null;
       }
 
-      const explicit_score = parseInt(scoreMatch[0]);
+      const explicit_score = parseInt(scoreMatch[1]);
 
       // Also run sentiment analysis on the full response
       const sentimentResult = await this.analyzeSentiment(response_received);
