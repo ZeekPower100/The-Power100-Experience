@@ -909,15 +909,77 @@ exports.requestPCRScore = async (req, res) => {
   }
 };
 
+// Get pending PCR request for a contractor (for n8n webhook)
+exports.getPendingPCR = async (req, res) => {
+  try {
+    const { contractor_id } = req.query;
+
+    if (!contractor_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'contractor_id is required'
+      });
+    }
+
+    // Find the most recent pending PCR request for this contractor
+    const result = await db.query(`
+      SELECT
+        em.id as message_id,
+        em.event_id,
+        em.contractor_id,
+        em.message_type,
+        em.personalization_data,
+        em.created_at
+      FROM event_messages em
+      WHERE em.contractor_id = $1
+        AND em.message_type LIKE '%pcr%'
+        AND em.status = 'sent'
+        AND em.response_received IS NULL
+        AND em.pcr_score IS NULL
+      ORDER BY em.created_at DESC
+      LIMIT 1
+    `, [parseInt(contractor_id)]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'No pending PCR request found for this contractor'
+      });
+    }
+
+    const pcrRequest = result.rows[0];
+    const personalization = pcrRequest.personalization_data || {};
+
+    res.json({
+      success: true,
+      message_id: pcrRequest.message_id,
+      event_id: pcrRequest.event_id,
+      contractor_id: pcrRequest.contractor_id,
+      pcr_type: personalization.pcr_type || 'unknown',
+      entity_id: personalization.entity_id || null,
+      entity_name: personalization.entity_name || null,
+      created_at: pcrRequest.created_at
+    });
+  } catch (error) {
+    console.error('Error getting pending PCR:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get pending PCR request',
+      details: error.message
+    });
+  }
+};
+
 // Process explicit PCR score from SMS response
 exports.processPCRScore = async (req, res) => {
   try {
     const { id: event_id } = req.params;
     const { contractor_id, pcr_type, entity_id, response_received } = req.body;
 
-    if (!contractor_id || !pcr_type || !entity_id || !response_received) {
+    // entity_id can be null for some PCR types, but other fields are required
+    if (!contractor_id || !pcr_type || !response_received) {
       return res.status(400).json({
-        error: 'Missing required fields: contractor_id, pcr_type, entity_id, response_received'
+        error: 'Missing required fields: contractor_id, pcr_type, response_received'
       });
     }
 
@@ -926,7 +988,7 @@ exports.processPCRScore = async (req, res) => {
       parseInt(event_id),
       parseInt(contractor_id),
       pcr_type,
-      parseInt(entity_id),
+      entity_id ? parseInt(entity_id) : null,
       response_received
     );
 

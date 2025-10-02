@@ -13,7 +13,7 @@ const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 // Local Dev: Local n8n instance or ngrok tunnel
 const N8N_WEBHOOK_BASE = process.env.NODE_ENV === 'production'
   ? (process.env.N8N_WEBHOOK_URL || 'https://n8n.srv918843.hstgr.cloud')
-  : (process.env.N8N_DEV_WEBHOOK_URL || 'http://localhost:5678');
+  : (process.env.N8N_DEV_WEBHOOK_URL || 'https://n8n.srv918843.hstgr.cloud');
 
 // Trigger n8n for check-in SMS
 const triggerCheckInSMS = async (attendeeData, contractorData) => {
@@ -39,7 +39,10 @@ const triggerCheckInSMS = async (attendeeData, contractorData) => {
     };
 
     // Send to n8n webhook
-    const response = await fetch(`${N8N_WEBHOOK_BASE}/webhook/event-check-in-sms`, {
+    const webhookPath = process.env.NODE_ENV === 'production'
+      ? '/webhook/event-checkin'
+      : '/webhook/event-checkin-dev';
+    const response = await fetch(`${N8N_WEBHOOK_BASE}${webhookPath}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: safeJsonStringify(payload)
@@ -180,7 +183,10 @@ const triggerSpeakerRecommendationSMS = async (eventId, contractorId, recommenda
     ]);
 
     // Send to n8n webhook
-    const response = await fetch(`${N8N_WEBHOOK_BASE}/webhook/event-speaker-recommendations`, {
+    const webhookPath = process.env.NODE_ENV === 'production'
+      ? '/webhook/speaker-alerts'
+      : '/webhook/speaker-alerts-dev';
+    const response = await fetch(`${N8N_WEBHOOK_BASE}${webhookPath}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: safeJsonStringify(payload)
@@ -263,7 +269,10 @@ const triggerSponsorRecommendationSMS = async (eventId, contractorId, recommenda
     ]);
 
     // Send to n8n webhook
-    const response = await fetch(`${N8N_WEBHOOK_BASE}/webhook/event-sponsor-recommendations`, {
+    const webhookPath = process.env.NODE_ENV === 'production'
+      ? '/webhook/event-sponsor-recommendations'
+      : '/webhook/event-sponsor-recommendations-dev';
+    const response = await fetch(`${N8N_WEBHOOK_BASE}${webhookPath}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: safeJsonStringify(payload)

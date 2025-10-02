@@ -80,13 +80,16 @@ class EventAIOrchestrationService {
               status = 'sent',
               actual_send_time = NOW(),
               updated_at = NOW()
-            WHERE
-              event_id = $1
-              AND contractor_id = $2
-              AND message_type = 'speaker_recommendation'
-              AND status = 'pending'
-            ORDER BY created_at DESC
-            LIMIT 1
+            WHERE id = (
+              SELECT id
+              FROM event_messages
+              WHERE event_id = $1
+                AND contractor_id = $2
+                AND message_type = 'speaker_recommendation'
+                AND status = 'pending'
+              ORDER BY created_at DESC
+              LIMIT 1
+            )
           `, [event_id, contractor_id]);
         }
 
@@ -179,13 +182,16 @@ class EventAIOrchestrationService {
               status = 'sent',
               actual_send_time = NOW(),
               updated_at = NOW()
-            WHERE
-              event_id = $1
-              AND contractor_id = $2
-              AND message_type = 'sponsor_recommendation'
-              AND status = 'pending'
-            ORDER BY created_at DESC
-            LIMIT 1
+            WHERE id = (
+              SELECT id
+              FROM event_messages
+              WHERE event_id = $1
+                AND contractor_id = $2
+                AND message_type = 'sponsor_recommendation'
+                AND status = 'pending'
+              ORDER BY created_at DESC
+              LIMIT 1
+            )
           `, [event_id, contractor_id]);
         }
 

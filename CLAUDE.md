@@ -1,3 +1,20 @@
+╔════════════════════════════════════════════════════════════════════════════════╗
+║  🔴 CRITICAL: ALWAYS CHECK DATABASE FIRST - THIS IS NON-NEGOTIABLE            ║
+╚════════════════════════════════════════════════════════════════════════════════╝
+
+BEFORE editing ANY controller, service, model, route, or form file:
+
+1️⃣  IMMEDIATELY run: powershell -Command ".\quick-db.bat \"SELECT column_name FROM information_schema.columns WHERE table_name = 'TABLE_NAME';\""
+2️⃣  Use EXACT field names from database - NEVER guess or assume
+3️⃣  Database is THE SINGLE SOURCE OF TRUTH - always
+
+If you forget this, you WILL create bugs. Check FIRST, code SECOND.
+
+To bypass hook blocking, add this comment to the file:
+// DATABASE-CHECKED: [table_name] columns verified on [date]
+
+════════════════════════════════════════════════════════════════════════════════
+
 # The Power100 Experience (TPE) - Full-Stack Project Context
 
 ## 🔴 AUTOMATIC TRIGGERS FOR CLAUDE - DATABASE CONNECTIONS
