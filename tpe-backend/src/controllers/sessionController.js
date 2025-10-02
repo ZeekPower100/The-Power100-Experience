@@ -30,7 +30,7 @@ const createSession = async (req, res, next) => {
 
     // Verify contractor exists
     const contractorResult = await query(
-      'SELECT id, name, email, current_stage FROM contractors WHERE id = $1',
+      'SELECT id, CONCAT(first_name, \' \', last_name) as name, email, current_stage FROM contractors WHERE id = $1',
       [contractorId]
     );
 

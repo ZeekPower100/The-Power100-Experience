@@ -37,7 +37,7 @@ const sendVerificationCode = async (req, res) => {
 
     // Get contractor details
     const contractorResult = await query(
-      'SELECT name, email, phone FROM contractors WHERE id = $1',
+      'SELECT CONCAT(first_name, \' \', last_name) as name, email, phone FROM contractors WHERE id = $1',
       [contractorId]
     );
 

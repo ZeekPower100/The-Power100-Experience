@@ -37,7 +37,7 @@ const aiConciergeController = {
 
       // Check contractor's access status
       const contractorResult = await query(
-        'SELECT id, name, company_name, feedback_completion_status, current_stage, completed_at FROM contractors WHERE id = $1',
+        'SELECT id, CONCAT(first_name, \' \', last_name) as name, company_name, feedback_completion_status, current_stage, completed_at FROM contractors WHERE id = $1',
         [contractorId]
       );
 

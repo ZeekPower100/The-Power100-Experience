@@ -39,9 +39,10 @@ const matchPodcast = async (contractor) => {
     let focusAreasCovered = [];
     try {
       if (typeof podcast.focus_areas_covered === 'string') {
-        focusAreasCovered = safeJsonParse(podcast.focus_areas_covered || '[]');
+        const parsed = safeJsonParse(podcast.focus_areas_covered || '[]');
+        focusAreasCovered = Array.isArray(parsed) ? parsed : [];
       } else {
-        focusAreasCovered = podcast.focus_areas_covered || [];
+        focusAreasCovered = Array.isArray(podcast.focus_areas_covered) ? podcast.focus_areas_covered : [];
       }
     } catch (e) {
       console.error('Error parsing focus_areas_covered:', e);
