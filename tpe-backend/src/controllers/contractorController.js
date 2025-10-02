@@ -46,14 +46,14 @@ const startVerification = async (req, res, next) => {
     `, [name, email, phone, company_name, company_website, verificationCode, expiresAt]);
     
     // Get the inserted contractor
-    const selectResult = await query(`SELECT id, name, email, phone, company_name FROM contractors WHERE email = $1`, [email]);
+    const selectResult = await query(`SELECT id, CONCAT(first_name, ' ', last_name) as name, email, phone, company_name FROM contractors WHERE email = $1`, [email]);
     contractor = selectResult.rows[0];
-    
+
     // Auto-tag new contractor
     await contactTaggingService.tagContractorOnboarding(contractor.id, email, ['new_signup']);
   } else {
     // Get the updated contractor
-    const selectResult = await query(`SELECT id, name, email, phone, company_name FROM contractors WHERE email = $1`, [email]);
+    const selectResult = await query(`SELECT id, CONCAT(first_name, ' ', last_name) as name, email, phone, company_name FROM contractors WHERE email = $1`, [email]);
     contractor = selectResult.rows[0];
     
     // Auto-tag returning contractor
@@ -345,7 +345,7 @@ const getContractor = async (req, res, next) => {
     
     // Use the absolute simplest query that works
     const contractorResult = await query(`
-      SELECT id, name FROM contractors WHERE id = $1
+      SELECT id, CONCAT(first_name, ' ', last_name) as name FROM contractors WHERE id = $1
     `, [id]);
     
     console.log('🔍 Simple query result:', contractorResult.rows.length, contractorResult.rows[0]);
@@ -649,6 +649,52 @@ const searchContractors = async (req, res, next) => {
   }
 };
 
+// Lookup contractor by phone (n8n webhook helper)
+const lookupByPhone = async (req, res, next) => {
+  const { phone } = req.query;
+
+  if (!phone) {
+    return res.status(400).json({
+      success: false,
+      error: 'Phone number is required'
+    });
+  }
+
+  try {
+    // Clean phone number for matching
+    const cleanPhone = phone.replace(/[^0-9+]/g, '');
+
+    // Look up contractor by phone
+    const result = await query(`
+      SELECT id, first_name, last_name, CONCAT(first_name, ' ', last_name) as name, email, phone, company_name
+      FROM contractors
+      WHERE REPLACE(REPLACE(REPLACE(phone, '-', ''), ' ', ''), '(', '') LIKE $1
+      LIMIT 1
+    `, [`%${cleanPhone.slice(-10)}%`]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Contractor not found'
+      });
+    }
+
+    const contractor = result.rows[0];
+
+    res.status(200).json({
+      success: true,
+      contractor_id: contractor.id,
+      name: contractor.name,
+      email: contractor.email,
+      phone: contractor.phone,
+      company_name: contractor.company_name
+    });
+  } catch (error) {
+    console.error('Lookup by phone error:', error);
+    return next(error);
+  }
+};
+
 module.exports = {
   startVerification,
   verifyCode,
@@ -659,5 +705,6 @@ module.exports = {
   getContractor,
   deleteContractor,
   getStats,
-  searchContractors
+  searchContractors,
+  lookupByPhone
 };

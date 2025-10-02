@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const { protect, optionalAuth } = require('../middleware/auth');
+const { flexibleProtect } = require('../middleware/flexibleAuth');
 const contractorController = require('../controllers/contractorController');
 const { asyncHandler } = require('../middleware/errorHandler');
 
@@ -26,6 +27,9 @@ router.post('/verify-code', asyncHandler(contractorController.verifyCode));
 router.get('/:id/matches', asyncHandler(contractorController.getMatches));
 router.post('/:id/complete', asyncHandler(contractorController.completeFlow));
 router.put('/:id/profile', asyncHandler(contractorController.updateProfile));
+
+// n8n webhook helper (accepts API key)
+router.get('/lookup-by-phone', flexibleProtect, asyncHandler(contractorController.lookupByPhone));
 
 // Protected routes (admin only)
 router.use(protect);
