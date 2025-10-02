@@ -676,14 +676,16 @@ class EventAIRecommendationService {
           INSERT INTO ai_learning_events (
             event_type,
             contractor_id,
+            event_id,
             context,
             action_taken,
-            metadata,
-            timestamp
-          ) VALUES ($1, $2, $3, $4, $5, NOW())
+            related_entities,
+            created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, NOW())
         `, [
           'event_recommendation',
           contractorId,
+          eventId,
           `event_${eventId}_${type}`,
           `recommended_${type}_${rec.speaker_id || rec.sponsor_id}`,
           safeJsonStringify({

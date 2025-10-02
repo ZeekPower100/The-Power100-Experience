@@ -3,7 +3,7 @@ const { AppError } = require('../middleware/errorHandler');
 const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const crypto = require('crypto');
 const eventOrchestratorAutomation = require('../services/eventOrchestratorAutomation');
-// const { triggerCheckInSMS, triggerMassSMS } = require('./n8nEventWebhookController');
+const { triggerCheckInSMS, triggerMassSMS } = require('./n8nEventWebhookController');
 
 /**
  * Event Check-In Controller
@@ -102,14 +102,14 @@ const checkInAttendee = async (req, res, next) => {
 
     // Get contractor details for SMS trigger
     const contractor = await query(
-      'SELECT name, phone, email, company_name FROM contractors WHERE id = $1',
+      'SELECT CONCAT(first_name, \' \', last_name) as name, phone, email, company_name FROM contractors WHERE id = $1',
       [result.rows[0].contractor_id]
     );
 
     // Trigger n8n webhook for check-in SMS
     const attendeeData = result.rows[0];
     const contractorData = contractor.rows[0];
-    // await triggerCheckInSMS(attendeeData, contractorData);
+    await triggerCheckInSMS(attendeeData, contractorData);
 
     // 🤖 TRIGGER AI ORCHESTRATION - This is where the magic happens!
     try {
@@ -164,7 +164,7 @@ const massCheckIn = async (req, res, next) => {
     // Get all contractor phone numbers for mass SMS
     const contractorIds = result.rows.map(r => r.contractor_id);
     const contractors = await query(
-      'SELECT id, name, phone, company_name FROM contractors WHERE id = ANY($1::int[])',
+      'SELECT id, CONCAT(first_name, \' \', last_name) as name, phone, company_name FROM contractors WHERE id = ANY($1::int[])',
       [contractorIds]
     );
 
