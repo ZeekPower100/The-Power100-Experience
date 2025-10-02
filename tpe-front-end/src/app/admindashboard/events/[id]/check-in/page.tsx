@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, UserPlus, QrCode, Users, MessageSquare, Send, Clock, AlertCircle, Megaphone, Handshake, UserCheck } from 'lucide-react';
 import { eventApi } from '@/lib/api';
 import { getFromStorage, handleApiResponse } from '../../../../../utils/jsonHelpers';
+import { toast } from 'sonner';
 
 interface Attendee {
   id: number;
@@ -64,10 +65,14 @@ export default function EventCheckInPage() {
     profilesComplete: 0
   });
 
+  // Message Queue state
+  const [messageQueue, setMessageQueue] = useState<any[]>([]);
+
   useEffect(() => {
     if (params.id) {
       fetchEventData();
       fetchEventOrchestrationData();
+      fetchMessageQueue();
     }
   }, [params.id]);
 
@@ -227,6 +232,25 @@ export default function EventCheckInPage() {
       setError('Failed to perform mass check-in');
     } finally {
       setCheckInLoading(false);
+    }
+  };
+
+  // Fetch message queue for this event
+  const fetchMessageQueue = async () => {
+    try {
+      const token = getFromStorage('authToken') || getFromStorage('adminToken');
+      const response = await fetch(`/api/event-messaging/event/${params.id}/queue`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.ok) {
+        const data = await handleApiResponse(response);
+        setMessageQueue(data.messages || []);
+      }
+    } catch (error) {
+      console.error('Error fetching message queue:', error);
     }
   };
 
@@ -641,32 +665,53 @@ export default function EventCheckInPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Clock className="h-5 w-5" />
-                  Message Queue
+                  Message Queue ({messageQueue.length} messages)
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <p className="text-sm text-gray-600">
-                    AI-generated messages are automatically scheduled and sent via SMS:
-                  </p>
-                  <ul className="space-y-2 text-sm">
-                    <li className="flex items-center gap-2">
-                      <Badge className="bg-blue-100 text-blue-800">Immediate</Badge>
-                      Welcome message with personalized agenda
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Badge className="bg-yellow-100 text-yellow-800">15 min before</Badge>
-                      Speaker session alerts
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Badge className="bg-green-100 text-green-800">30 min after</Badge>
-                      Sponsor booth recommendations
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <Badge className="bg-purple-100 text-purple-800">45 min after</Badge>
-                      Peer introductions
-                    </li>
-                  </ul>
+                <div className="space-y-3">
+                  {messageQueue.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      No messages scheduled for this event
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {messageQueue.map((msg: any) => (
+                        <div key={msg.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <Badge className={
+                                msg.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                msg.status === 'sent' ? 'bg-green-100 text-green-800' :
+                                'bg-gray-100 text-gray-800'
+                              }>
+                                {msg.status}
+                              </Badge>
+                              <Badge className="bg-blue-100 text-blue-800">
+                                {msg.message_type}
+                              </Badge>
+                              {msg.delay_minutes > 0 && (
+                                <Badge className="bg-orange-100 text-orange-800">
+                                  Delayed +{msg.delay_minutes}m
+                                </Badge>
+                              )}
+                            </div>
+                            <p className="text-sm font-medium text-gray-900">
+                              {msg.contractor_name} ({msg.company_name})
+                            </p>
+                            <p className="text-xs text-gray-600 mt-1">
+                              {msg.message_content?.substring(0, 100)}
+                              {msg.message_content?.length > 100 ? '...' : ''}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              {msg.status === 'pending' ? 'Scheduled: ' : 'Sent: '}
+                              {new Date(msg.scheduled_time || msg.actual_send_time).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -687,18 +732,34 @@ export default function EventCheckInPage() {
                   </AlertDescription>
                 </Alert>
 
-                <div className="flex gap-2">
-                  <Input
-                    type="number"
-                    placeholder="Delay in minutes"
-                    className="w-40"
-                    id="delay-minutes"
-                  />
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Delay in minutes"
+                      className="w-40"
+                      id="delay-minutes"
+                      min="1"
+                    />
+                    <Input
+                      type="text"
+                      placeholder="Reason (optional)"
+                      className="flex-1"
+                      id="delay-reason"
+                    />
+                  </div>
                   <Button
-                    onClick={() => {
+                    onClick={async () => {
                       const delayMinutes = (document.getElementById('delay-minutes') as HTMLInputElement)?.value;
-                      if (delayMinutes) {
-                        fetch(`/api/event-scheduler/delay`, {
+                      const delayReason = (document.getElementById('delay-reason') as HTMLInputElement)?.value;
+
+                      if (!delayMinutes) {
+                        toast.error('Please enter delay minutes');
+                        return;
+                      }
+
+                      try {
+                        const response = await fetch(`/api/event-messaging/delay-override`, {
                           method: 'POST',
                           headers: {
                             'Content-Type': 'application/json',
@@ -706,14 +767,30 @@ export default function EventCheckInPage() {
                           },
                           body: JSON.stringify({
                             event_id: params.id,
-                            delay_minutes: parseInt(delayMinutes)
+                            delay_minutes: parseInt(delayMinutes),
+                            reason: delayReason || `Manual delay override - ${delayMinutes} minutes`
                           })
-                        }).then(() => {
-                          alert(`All messages delayed by ${delayMinutes} minutes`);
                         });
+
+                        const data = await response.json();
+
+                        if (!response.ok) {
+                          throw new Error(data.error || 'Failed to apply delay');
+                        }
+
+                        toast.success(`✅ ${data.messages_delayed || 0} messages delayed by ${delayMinutes} minutes`);
+
+                        // Clear inputs
+                        (document.getElementById('delay-minutes') as HTMLInputElement).value = '';
+                        (document.getElementById('delay-reason') as HTMLInputElement).value = '';
+
+                        // Refresh message queue
+                        fetchMessageQueue();
+                      } catch (error: any) {
+                        toast.error(`Failed to apply delay: ${error.message}`);
                       }
                     }}
-                    className="bg-power100-red hover:bg-red-700 text-white"
+                    className="bg-power100-red hover:bg-red-700 text-white w-full"
                   >
                     Apply Delay
                   </Button>

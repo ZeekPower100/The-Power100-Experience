@@ -593,6 +593,128 @@ const logRoutingDecision = async (req, res) => {
   }
 };
 
+// Get message queue for an event
+const getMessageQueue = async (req, res) => {
+  const { eventId } = req.params;
+
+  try {
+    // DATABASE-CHECKED: event_messages columns verified on 2025-01-29
+    const result = await query(`
+      SELECT
+        em.id,
+        em.event_id,
+        em.contractor_id,
+        em.message_type,
+        em.message_category,
+        em.scheduled_time,
+        em.actual_send_time,
+        em.message_content,
+        em.status,
+        em.delay_minutes,
+        c.name as contractor_name,
+        c.company_name,
+        c.phone
+      FROM event_messages em
+      JOIN contractors c ON em.contractor_id = c.id
+      WHERE em.event_id = $1
+        AND em.status IN ('pending', 'sent')
+      ORDER BY em.scheduled_time ASC
+      LIMIT 100
+    `, [eventId]);
+
+    res.json({
+      success: true,
+      messages: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching message queue:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// Send pending messages (called by n8n or cron job)
+const sendPendingMessages = async (req, res) => {
+  try {
+    // DATABASE-CHECKED: event_messages columns verified on 2025-01-29
+    const messages = await query(`
+      SELECT
+        em.id,
+        em.event_id,
+        em.contractor_id,
+        em.message_type,
+        em.message_content,
+        em.scheduled_time,
+        em.phone,
+        c.phone as contractor_phone,
+        ea.real_phone,
+        ea.sms_opt_in
+      FROM event_messages em
+      JOIN contractors c ON em.contractor_id = c.id
+      LEFT JOIN event_attendees ea ON ea.event_id = em.event_id AND ea.contractor_id = em.contractor_id
+      WHERE em.status = 'pending'
+        AND em.scheduled_time <= CURRENT_TIMESTAMP
+      ORDER BY em.scheduled_time
+      LIMIT 50
+    `);
+
+    res.json({
+      success: true,
+      messages: messages.rows.map(msg => ({
+        ...msg,
+        phone_number: msg.real_phone || msg.phone || msg.contractor_phone,
+        can_send: msg.sms_opt_in !== false
+      }))
+    });
+  } catch (error) {
+    console.error('Error sending pending messages:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// Update message status
+const updateMessageStatus = async (req, res) => {
+  const { messageId } = req.params;
+  const { status, error_message } = req.body;
+
+  try {
+    // DATABASE-CHECKED: event_messages columns verified on 2025-01-29
+    const result = await query(`
+      UPDATE event_messages
+      SET
+        status = $2,
+        actual_send_time = CASE WHEN $2 = 'sent' THEN CURRENT_TIMESTAMP ELSE actual_send_time END,
+        error_message = $3,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+      RETURNING *
+    `, [messageId, status, error_message]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Message not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error updating message status:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   scheduleMessage,
   massScheduleMessages,
@@ -601,6 +723,9 @@ module.exports = {
   markMessageSent,
   recordResponse,
   getEventMessageAnalytics,
+  getMessageQueue,
+  sendPendingMessages,
+  updateMessageStatus,
   // Peer Matching
   findPeerMatches,
   createPeerMatch,

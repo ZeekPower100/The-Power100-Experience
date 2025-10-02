@@ -4,9 +4,10 @@ import React from 'react';
 import './globals.css';
 // import { createPageUrl } from '@/lib/utils'; // <-- Bypassed for now
 import { Users, Calendar, BarChart3, Shield } from "lucide-react";
-import { usePathname } from 'next/navigation'; 
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image'; 
+import Image from 'next/image';
+import { Toaster } from 'sonner'; 
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -24,6 +25,7 @@ export default function Layout({ children, currentPageName }: LayoutProps) {
         <link rel="apple-touch-icon" href="/power100-logo.png" />
       </head>
       <body className="min-h-screen bg-power100-bg-grey" suppressHydrationWarning>
+      <Toaster position="top-right" richColors />
       <nav className="bg-black shadow-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between">
