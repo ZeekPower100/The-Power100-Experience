@@ -24,7 +24,7 @@ const identifyAndValidateToken = async (token) => {
     // CONTRACTOR TOKEN - has contractorId field
     if (decoded.contractorId) {
       const result = await query(
-        'SELECT id, name, email, phone, company_name, stage FROM contractors WHERE id = $1',
+        'SELECT id, CONCAT(first_name, \' \', last_name) as name, email, phone, company_name, stage FROM contractors WHERE id = $1',
         [decoded.contractorId]
       );
 
@@ -120,7 +120,7 @@ const identifyAndValidateToken = async (token) => {
   }
 };
 
-// Flexible protect middleware - works with any token type
+// Flexible protect middleware - works with any token type OR API key
 const flexibleProtect = async (req, res, next) => {
   // Development mode bypass for AI Concierge
   console.log('🔍 Request path in middleware:', req.path, 'Original URL:', req.originalUrl);
@@ -128,6 +128,23 @@ const flexibleProtect = async (req, res, next) => {
     console.log('🔧 Dev mode: Bypassing auth for AI Concierge');
     req.contractor = { id: '1', name: 'Test User', company_name: 'Test Company' };
     return next();
+  }
+
+  // CHECK FOR API KEY FIRST (for n8n webhooks)
+  const apiKey = req.headers['x-api-key'];
+  if (apiKey) {
+    console.log('🔑 API Key detected, validating...');
+    console.log('🔍 Received key:', apiKey);
+    console.log('🔍 Expected key:', process.env.N8N_API_KEY);
+    console.log('🔍 Keys match:', apiKey === process.env.N8N_API_KEY);
+    if (apiKey === process.env.N8N_API_KEY) {
+      console.log('✅ API Key valid - granting access');
+      req.apiKeyAuth = true;
+      return next();
+    } else {
+      console.log('❌ Invalid API Key');
+      return next(new AppError('Invalid API key', 401));
+    }
   }
 
   let token;

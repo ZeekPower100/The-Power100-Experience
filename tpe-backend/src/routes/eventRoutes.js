@@ -2,9 +2,13 @@ const express = require('express');
 const router = express.Router();
 const eventController = require('../controllers/eventController');
 const { protect } = require('../middleware/auth');
+const { flexibleProtect } = require('../middleware/flexibleAuth');
 
 // Public routes (for submissions)
 router.post('/submit', eventController.createEvent);
+
+// n8n webhook helper (accepts API key)
+router.get('/pcr/pending', flexibleProtect, eventController.getPendingPCR);
 
 // Protected routes
 router.use(protect);
