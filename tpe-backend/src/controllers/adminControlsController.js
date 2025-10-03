@@ -574,6 +574,182 @@ const getRecentSMSCommands = async (req, res, next) => {
   }
 };
 
+// Get comprehensive event details for Event Detail page
+// DATABASE-CHECKED: events, event_messages, admin_sms_commands columns verified on 2025-10-03
+const getEventDetails = async (req, res, next) => {
+  const { eventId } = req.params;
+
+  try {
+    // Get event info
+    const eventResult = await query(`
+      SELECT
+        id,
+        name,
+        sms_event_code,
+        date,
+        event_type,
+        is_active,
+        expected_attendance,
+        location,
+        status,
+        description,
+        created_at
+      FROM events
+      WHERE id = $1
+    `, [eventId]);
+
+    if (eventResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Event not found'
+      });
+    }
+
+    const event = eventResult.rows[0];
+
+    // Get message stats
+    const statsResult = await query(`
+      SELECT
+        COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
+        COUNT(*) FILTER (WHERE status = 'sent') as sent_count,
+        COUNT(*) FILTER (WHERE status = 'delivered') as delivered_count,
+        COUNT(*) FILTER (WHERE status = 'failed') as failed_count,
+        MIN(scheduled_time) FILTER (WHERE status = 'pending') as next_scheduled,
+        MAX(actual_send_time) as last_activity
+      FROM event_messages
+      WHERE event_id = $1
+    `, [eventId]);
+
+    const stats = statsResult.rows[0];
+
+    // Get recent command history for this event
+    const commandsResult = await query(`
+      SELECT
+        id,
+        admin_phone,
+        command_type,
+        command_text,
+        executed,
+        success,
+        response_message,
+        created_at
+      FROM admin_sms_commands
+      WHERE event_code = $1
+      ORDER BY created_at DESC
+      LIMIT 10
+    `, [event.sms_event_code]);
+
+    res.json({
+      success: true,
+      event,
+      stats,
+      recent_commands: commandsResult.rows,
+      last_activity: stats.last_activity
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get message history/timeline for specific event
+// DATABASE-CHECKED: event_messages columns verified on 2025-10-03
+const getEventMessageHistory = async (req, res, next) => {
+  const { eventId } = req.params;
+  const limit = parseInt(req.query.limit) || 50;
+
+  try {
+    const messages = await query(`
+      SELECT
+        id,
+        message_type,
+        message_category,
+        message_content,
+        scheduled_time,
+        actual_send_time,
+        status,
+        error_message,
+        created_at
+      FROM event_messages
+      WHERE event_id = $1
+      ORDER BY
+        CASE
+          WHEN actual_send_time IS NOT NULL THEN actual_send_time
+          ELSE scheduled_time
+        END DESC
+      LIMIT $2
+    `, [eventId, limit]);
+
+    res.json({
+      success: true,
+      messages: messages.rows
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get upcoming scheduled messages for event
+// DATABASE-CHECKED: event_messages columns verified on 2025-10-03
+const getUpcomingMessages = async (req, res, next) => {
+  const { eventId } = req.params;
+  const limit = parseInt(req.query.limit) || 10;
+
+  try {
+    const messages = await query(`
+      SELECT
+        id,
+        message_type,
+        message_category,
+        message_content,
+        scheduled_time,
+        status
+      FROM event_messages
+      WHERE event_id = $1
+        AND status = 'pending'
+        AND scheduled_time > NOW()
+      ORDER BY scheduled_time ASC
+      LIMIT $2
+    `, [eventId, limit]);
+
+    res.json({
+      success: true,
+      upcoming: messages.rows
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get failed messages for event (for troubleshooting)
+// DATABASE-CHECKED: event_messages columns verified on 2025-10-03
+const getFailedMessages = async (req, res, next) => {
+  const { eventId } = req.params;
+
+  try {
+    const messages = await query(`
+      SELECT
+        id,
+        message_content,
+        phone,
+        error_message,
+        actual_send_time,
+        created_at
+      FROM event_messages
+      WHERE event_id = $1
+        AND status = 'failed'
+      ORDER BY actual_send_time DESC
+      LIMIT 100
+    `, [eventId]);
+
+    res.json({
+      success: true,
+      failed: messages.rows
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   sendCustomMessage,
   getEventStatus,
@@ -584,5 +760,9 @@ module.exports = {
   logSMSCommand,
   getActiveEvents,
   getEventMessageStats,
-  getRecentSMSCommands
+  getRecentSMSCommands,
+  getEventDetails,
+  getEventMessageHistory,
+  getUpcomingMessages,
+  getFailedMessages
 };

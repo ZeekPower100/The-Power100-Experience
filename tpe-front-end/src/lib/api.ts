@@ -626,5 +626,22 @@ export const adminControlsApi = {
 
   // Get recent SMS commands
   getRecentSMSCommands: (limit: number = 20) =>
-    apiRequest(`/admin-controls/recent-commands?limit=${limit}`)
+    apiRequest(`/admin-controls/recent-commands?limit=${limit}`),
+
+  // Event Detail Page APIs
+  // Get comprehensive event details
+  getEventDetails: (eventId: number) =>
+    apiRequest(`/admin-controls/event/${eventId}`),
+
+  // Get message history/timeline
+  getEventMessageHistory: (eventId: number, limit: number = 50) =>
+    apiRequest(`/admin-controls/event/${eventId}/messages?limit=${limit}`),
+
+  // Get upcoming scheduled messages
+  getUpcomingMessages: (eventId: number, limit: number = 10) =>
+    apiRequest(`/admin-controls/event/${eventId}/upcoming?limit=${limit}`),
+
+  // Get failed messages
+  getFailedMessages: (eventId: number) =>
+    apiRequest(`/admin-controls/event/${eventId}/failed`)
 };

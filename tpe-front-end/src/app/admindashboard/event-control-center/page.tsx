@@ -183,7 +183,8 @@ export default function EventControlCenter() {
               return (
                 <div
                   key={event.id}
-                  className="border border-gray-200 rounded-xl p-4 hover:shadow-md transition-shadow"
+                  onClick={() => router.push(`/admindashboard/event-control-center/${event.id}`)}
+                  className="border border-gray-200 rounded-xl p-4 hover:shadow-lg hover:border-power100-red transition-all cursor-pointer"
                 >
                   {/* Event Header */}
                   <div className="flex items-start justify-between mb-3">
@@ -235,7 +236,7 @@ export default function EventControlCenter() {
                   {/* Quick Actions */}
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <p className="text-xs text-power100-grey">
-                      Text commands to: <span className="font-semibold">+1 (810) 893-4075</span>
+                      Click for details • Text: <span className="font-semibold">+1 (810) 893-4075</span>
                     </p>
                   </div>
                 </div>

@@ -34,4 +34,10 @@ router.get('/active-events', asyncHandler(adminControlsController.getActiveEvent
 router.get('/event-message-stats', asyncHandler(adminControlsController.getEventMessageStats));
 router.get('/recent-commands', asyncHandler(adminControlsController.getRecentSMSCommands));
 
+// Event Detail Page Endpoints
+router.get('/event/:eventId', asyncHandler(adminControlsController.getEventDetails));
+router.get('/event/:eventId/messages', asyncHandler(adminControlsController.getEventMessageHistory));
+router.get('/event/:eventId/upcoming', asyncHandler(adminControlsController.getUpcomingMessages));
+router.get('/event/:eventId/failed', asyncHandler(adminControlsController.getFailedMessages));
+
 module.exports = router;
