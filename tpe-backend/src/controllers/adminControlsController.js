@@ -490,6 +490,90 @@ const logSMSCommand = async (req, res, next) => {
   }
 };
 
+// Get active events for Event Control Center
+// DATABASE-CHECKED: events columns verified on 2025-10-03
+const getActiveEvents = async (req, res, next) => {
+  try {
+    const events = await query(`
+      SELECT
+        id,
+        name,
+        sms_event_code,
+        date,
+        event_type,
+        is_active,
+        expected_attendance,
+        location,
+        status
+      FROM events
+      WHERE is_active = true
+      ORDER BY date DESC
+    `);
+
+    res.json({
+      success: true,
+      events: events.rows
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get event message stats for Event Control Center
+// DATABASE-CHECKED: event_messages columns verified on 2025-10-03
+const getEventMessageStats = async (req, res, next) => {
+  try {
+    const stats = await query(`
+      SELECT
+        event_id,
+        COUNT(*) FILTER (WHERE status = 'pending') as pending_count,
+        COUNT(*) FILTER (WHERE status = 'sent') as sent_count,
+        COUNT(*) FILTER (WHERE status = 'delivered') as delivered_count,
+        COUNT(*) FILTER (WHERE status = 'failed') as failed_count
+      FROM event_messages
+      GROUP BY event_id
+    `);
+
+    res.json({
+      success: true,
+      stats: stats.rows
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get recent SMS commands for Event Control Center
+// DATABASE-CHECKED: admin_sms_commands columns verified on 2025-10-03
+const getRecentSMSCommands = async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+
+    const commands = await query(`
+      SELECT
+        id,
+        admin_phone,
+        event_code,
+        command_type,
+        command_text,
+        executed,
+        success,
+        response_message,
+        created_at
+      FROM admin_sms_commands
+      ORDER BY created_at DESC
+      LIMIT $1
+    `, [limit]);
+
+    res.json({
+      success: true,
+      commands: commands.rows
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   sendCustomMessage,
   getEventStatus,
@@ -497,5 +581,8 @@ module.exports = {
   manualCheckIn,
   cancelMessages,
   verifyAdmin,
-  logSMSCommand
+  logSMSCommand,
+  getActiveEvents,
+  getEventMessageStats,
+  getRecentSMSCommands
 };

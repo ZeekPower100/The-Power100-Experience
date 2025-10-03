@@ -12,8 +12,13 @@ async function apiRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  // Defensive check: ensure endpoint is valid
+  if (!endpoint || typeof endpoint !== 'string') {
+    throw new Error('Invalid endpoint provided to apiRequest');
+  }
+
   const url = `${API_BASE_URL}${endpoint}`;
-  
+
   const config: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
@@ -27,15 +32,15 @@ async function apiRequest<T>(
   let token = null;
 
   // Check what page we're on to determine which token to use
-  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-  const isAdminPage = currentPath.includes('/admindashboard') ||
-                      currentPath.includes('/admin');
-  const isPartnerPage = currentPath.includes('/partner');
-  const isContractorFlow = currentPath.includes('/contractorflow') ||
+  const currentPath = typeof window !== 'undefined' ? (window.location?.pathname || '') : '';
+  const isAdminPage = currentPath && (currentPath.includes('/admindashboard') ||
+                      currentPath.includes('/admin'));
+  const isPartnerPage = currentPath && currentPath.includes('/partner');
+  const isContractorFlow = currentPath && (currentPath.includes('/contractorflow') ||
                            currentPath.includes('/focus') ||
                            currentPath.includes('/profile') ||
                            currentPath.includes('/matching') ||
-                           currentPath.includes('/ai-concierge');
+                           currentPath.includes('/ai-concierge'));
 
   // Priority order for token selection based on context:
   if (isAdminPage) {
@@ -67,7 +72,7 @@ async function apiRequest<T>(
   } else {
     // For other pages or API calls without clear context,
     // check endpoint patterns to determine which token to use
-    const isAdminEndpoint = endpoint.includes('/contractors') ||
+    const isAdminEndpoint = endpoint && (endpoint.includes('/contractors') ||
                             endpoint.includes('/partners') ||
                             endpoint.includes('/bookings') ||
                             endpoint.includes('/events') ||
@@ -76,14 +81,14 @@ async function apiRequest<T>(
                             endpoint.includes('/admin') ||
                             endpoint.includes('/auth') ||
                             endpoint.includes('/partners-enhanced') ||
-                            endpoint.includes('/contractors-enhanced');
+                            endpoint.includes('/contractors-enhanced'));
 
     if (isAdminEndpoint) {
       // Admin API endpoints need admin token
       token = getFromStorage('authToken') || getFromStorage('adminToken');
     } else {
       // Check for contractor endpoints (ai-concierge, etc.)
-      const isContractorEndpoint = endpoint.includes('/ai-concierge');
+      const isContractorEndpoint = endpoint && endpoint.includes('/ai-concierge');
 
       if (isContractorEndpoint) {
         // For contractor endpoints, try contractor token first
@@ -128,7 +133,7 @@ async function apiRequest<T>(
     if (!response.ok) {
       let errorData: any = {};
       const contentType = response.headers.get('content-type');
-      
+
       // Only try to parse JSON if the response is actually JSON
       if (contentType && contentType.includes('application/json')) {
         try {
@@ -606,4 +611,20 @@ export const aiConciergeApi = {
 
   // Check AI Concierge access
   checkAccess: () => apiRequest('/ai-concierge/access-status')
+};
+
+// Admin Controls API - Event Control Center
+// DATABASE-CHECKED: events, admin_sms_commands, event_messages columns verified on 2025-10-03
+export const adminControlsApi = {
+  // Get active events
+  getActiveEvents: () =>
+    apiRequest('/admin-controls/active-events'),
+
+  // Get event message statistics
+  getEventMessageStats: () =>
+    apiRequest('/admin-controls/event-message-stats'),
+
+  // Get recent SMS commands
+  getRecentSMSCommands: (limit: number = 20) =>
+    apiRequest(`/admin-controls/recent-commands?limit=${limit}`)
 };

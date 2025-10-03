@@ -29,4 +29,9 @@ router.post('/manual-checkin', asyncHandler(adminControlsController.manualCheckI
 // Cancel Messages
 router.post('/cancel-messages', asyncHandler(adminControlsController.cancelMessages));
 
+// Event Control Center Endpoints
+router.get('/active-events', asyncHandler(adminControlsController.getActiveEvents));
+router.get('/event-message-stats', asyncHandler(adminControlsController.getEventMessageStats));
+router.get('/recent-commands', asyncHandler(adminControlsController.getRecentSMSCommands));
+
 module.exports = router;

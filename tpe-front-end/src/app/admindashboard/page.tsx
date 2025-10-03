@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { contractorApi, partnerApi, bookingApi, authApi } from "@/lib/api";
-import { 
-  Users, 
-  Handshake, 
-  Calendar, 
+import {
+  Users,
+  Handshake,
+  Calendar,
   Calendar as CalendarIcon,
   Star,
   ArrowRight,
@@ -22,7 +22,8 @@ import {
   Shield,
   BookOpen as BookOpenIcon,
   Mic as MicIcon,
-  Brain
+  Brain,
+  Radio
 } from "lucide-react";
 import { motion } from "framer-motion";
 import PendingResourcesTabs from "@/components/admin/PendingResourcesTabs";
@@ -532,6 +533,16 @@ export default function AdminDashboard() {
                   <MessageSquare className="w-8 h-8 text-power100-red mx-auto mb-3" />
                   <h3 className="font-semibold text-power100-black">PowerConfidence</h3>
                   <p className="text-sm text-power100-grey mt-1">Manage feedback & SMS campaigns</p>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/admindashboard/event-control-center">
+              <Card className="bg-white hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-power100-red">
+                <CardContent className="p-6 text-center">
+                  <Radio className="w-8 h-8 text-power100-red mx-auto mb-3" />
+                  <h3 className="font-semibold text-power100-black">Event Control</h3>
+                  <p className="text-sm text-power100-grey mt-1">Manage events via SMS commands</p>
                 </CardContent>
               </Card>
             </Link>
