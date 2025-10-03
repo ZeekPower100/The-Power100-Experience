@@ -175,7 +175,10 @@ export default function EventDetailPage() {
 
     try {
       setActionLoading(true);
-      const response: any = await fetch('http://localhost:5000/api/admin-controls/sms-command', {
+      const baseUrl = process.env.NODE_ENV === 'production'
+        ? 'https://tpx.power100.io'
+        : 'http://localhost:5000';
+      const response: any = await fetch(`${baseUrl}/api/admin-controls/sms-command`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -218,7 +221,10 @@ export default function EventDetailPage() {
 
     try {
       setActionLoading(true);
-      const response: any = await fetch('http://localhost:5000/api/admin-controls/sms-command', {
+      const baseUrl = process.env.NODE_ENV === 'production'
+        ? 'https://tpx.power100.io'
+        : 'http://localhost:5000';
+      const response: any = await fetch(`${baseUrl}/api/admin-controls/sms-command`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
