@@ -28,11 +28,40 @@ function registerAllHandlers() {
   // TODO: Register check-in handlers
   // aiRouter.registerHandler('event_checkin', checkInHandlers.handleCheckIn);
 
+  // Register general question handler (AI Concierge)
+  aiRouter.registerHandler('general_question', handleGeneralQuestion);
+
   // Register fallback handlers
   aiRouter.registerHandler('clarification_needed', handleClarificationRequest);
   aiRouter.registerHandler('error_handler', handleError);
 
   console.log('[HandlerRegistry] All handlers registered successfully');
+}
+
+/**
+ * General question handler
+ * Routes general questions to AI Concierge for intelligent responses
+ */
+async function handleGeneralQuestion(smsData, classification) {
+  console.log('[Handler] General question:', smsData.messageText);
+
+  // Route to clarification for now - general AI responses need AI Concierge integration
+  // This prevents the loop of repeating the same response
+  const message = `I understand you have a question, but I need you to be more specific. Are you asking about:
+- Speaker details (reply "speakers")
+- Event schedule (reply "schedule")
+- Sponsor information (reply "sponsors")
+- Or something else?`;
+
+  return {
+    success: true,
+    action: 'send_message',
+    message,
+    phone: smsData.phone,
+    contractor_id: smsData.contractor.id,
+    message_type: 'clarification_request',
+    response_sent: true
+  };
 }
 
 /**
