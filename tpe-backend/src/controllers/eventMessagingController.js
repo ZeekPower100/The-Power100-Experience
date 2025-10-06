@@ -440,7 +440,7 @@ const webhookResponse = async (req, res, next) => {
   // Validate n8n API key
   const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
 
-  if (!apiKey || apiKey !== process.env.N8N_API_KEY) {
+  if (!apiKey || apiKey !== process.env.TPX_N8N_API_KEY) {
     return res.status(401).json({
       success: false,
       error: 'Unauthorized - Invalid API key'
@@ -497,6 +497,100 @@ const webhookResponse = async (req, res, next) => {
     });
   } catch (error) {
     console.error('Error logging SMS delivery:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+// Log speaker feedback from n8n workflow
+// DATABASE-CHECKED: event_speakers, event_messages columns verified on 2025-10-03
+const logSpeakerFeedback = async (req, res) => {
+  // Validate n8n API key
+  const apiKey = req.headers['x-api-key'] || req.headers['authorization']?.replace('Bearer ', '');
+
+  if (!apiKey || apiKey !== process.env.TPX_N8N_API_KEY) {
+    return res.status(401).json({
+      success: false,
+      error: 'Unauthorized - Invalid API key'
+    });
+  }
+
+  const {
+    contractor_id,
+    event_id,
+    speaker_id,
+    rating,
+    feedback_text,
+    sentiment_score,
+    sentiment_analysis,
+    phone,
+    contactId,
+    messageId,
+    timestamp
+  } = req.body;
+
+  try {
+    // Update speaker's average rating and total ratings
+    await query(`
+      UPDATE event_speakers
+      SET
+        total_ratings = total_ratings + 1,
+        average_rating = (
+          COALESCE(average_rating * total_ratings, 0) + $2
+        ) / (total_ratings + 1),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+    `, [speaker_id, rating]);
+
+    // Log the feedback to event_messages table
+    await query(`
+      INSERT INTO event_messages (
+        event_id,
+        contractor_id,
+        message_type,
+        message_category,
+        phone,
+        ghl_contact_id,
+        ghl_message_id,
+        status,
+        direction,
+        actual_send_time,
+        response_received,
+        response_time,
+        sentiment_score,
+        pcr_score,
+        message_content,
+        created_at,
+        updated_at
+      ) VALUES ($1, $2, 'speaker_feedback', 'feedback', $3, $4, $5, 'delivered', 'outbound', $6, $7, CURRENT_TIMESTAMP, $8, $9, $10, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+    `, [
+      event_id,
+      contractor_id,
+      phone,
+      contactId,
+      messageId,
+      timestamp,
+      feedback_text,
+      sentiment_score,
+      rating * 10, // Convert 1-10 rating to 0-100 PCR score
+      safeJsonStringify({
+        speaker_id,
+        rating,
+        feedback_text,
+        sentiment_analysis
+      })
+    ]);
+
+    res.status(200).json({
+      success: true,
+      message: 'Speaker feedback logged successfully',
+      speaker_id,
+      rating
+    });
+  } catch (error) {
+    console.error('Error logging speaker feedback:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -735,6 +829,7 @@ module.exports = {
   getContractorMatches,
   // n8n Webhook
   webhookResponse,
+  logSpeakerFeedback,
   // SMS Router
   getPendingContext,
   logRoutingDecision

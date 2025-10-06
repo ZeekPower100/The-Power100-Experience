@@ -1,16 +1,23 @@
-// SMS Campaign Routes (Placeholder for PowerConfidence Dashboard)
+// SMS Campaign Routes & Event Orchestration
 const express = require('express');
 const router = express.Router();
 const {
   getSmsCampaigns,
   createSmsCampaign,
   launchSmsCampaign,
-  getSmsAnalytics
-} = require('../controllers/feedbackController.simple');
+  getSmsAnalytics,
+  handleInbound,
+  sendOutbound
+} = require('../controllers/smsController');
 
 const { protect } = require('../middleware/auth');
+const { flexibleProtect } = require('../middleware/flexibleAuth');
 
-// All SMS routes require authentication
+// Event orchestration routes (n8n webhook access with API key)
+router.post('/inbound', flexibleProtect, handleInbound);
+router.post('/outbound', flexibleProtect, sendOutbound);
+
+// SMS Campaign routes require authentication
 router.use(protect);
 
 // SMS Campaigns
@@ -18,7 +25,7 @@ router.get('/campaigns', getSmsCampaigns);
 router.post('/campaigns', createSmsCampaign);
 router.post('/campaigns/:id/launch', launchSmsCampaign);
 
-// SMS Analytics  
+// SMS Analytics
 router.get('/analytics', getSmsAnalytics);
 
 module.exports = router;

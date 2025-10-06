@@ -143,12 +143,17 @@ class DevManager {
   // Start a server
   async startServer(config) {
     console.log(`🚀 Starting ${config.name}...`);
-    
+
+    // Clear N8N_API_KEY from environment to force .env file to load
+    const env = { ...process.env };
+    delete env.N8N_API_KEY;
+
     const child = spawn(config.startCmd, config.startArgs, {
       cwd: config.dir,
       stdio: 'pipe',
       shell: true,
-      detached: true
+      detached: true,
+      env: env
     });
 
     // Save PID

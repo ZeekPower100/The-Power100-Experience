@@ -11,9 +11,13 @@ const path = require('path');
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
 require('dotenv').config({ path: path.join(__dirname, '..', envFile) });
 
+// DEBUG: Verify TPX_N8N_API_KEY is loaded
+console.log('[STARTUP] TPX_N8N_API_KEY loaded:', process.env.TPX_N8N_API_KEY ? 'YES' : 'NO');
+
 const { connectDB } = require('./config/database');
 const { errorHandler } = require('./middleware/errorHandler');
 const dataCollectionService = require('./services/dataCollectionService');
+const { registerAllHandlers } = require('./services/eventOrchestrator/messageHandlerRegistry');
 
 // Import routes
 const contractorRoutes = require('./routes/contractorRoutes');
@@ -207,6 +211,9 @@ app.use((req, res) => {
 
 // Global error handler
 app.use(errorHandler);
+
+// Initialize event orchestration handlers
+registerAllHandlers();
 
 // Start server
 const PORT = process.env.PORT || 5000;

@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-10-03T18:12:43.057Z",
+  "mode": "check",
+  "stats": {
+    "tablesChecked": 7,
+    "recordsChecked": 133,
+    "issuesFound": 0,
+    "issuesFixed": 0,
+    "errors": [
+      {
+        "table": "partners",
+        "error": "relation \"partners\" does not exist"
+      }
+    ]
+  },
+  "errors": [
+    {
+      "table": "partners",
+      "error": "relation \"partners\" does not exist"
+    }
+  ]
+}

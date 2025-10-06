@@ -11,6 +11,9 @@ const { asyncHandler } = require('../middleware/errorHandler');
 // n8n webhook callback - NO authentication required
 router.post('/webhook-response', asyncHandler(eventMessagingController.webhookResponse));
 
+// Speaker feedback from n8n - NO authentication required
+router.post('/speaker-feedback', asyncHandler(eventMessagingController.logSpeakerFeedback));
+
 // SMS Router endpoints - NO authentication required (used by n8n)
 router.get('/pending-context', asyncHandler(eventMessagingController.getPendingContext));
 router.post('/routing-log', asyncHandler(eventMessagingController.logRoutingDecision));

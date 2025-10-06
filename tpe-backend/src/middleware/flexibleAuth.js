@@ -135,9 +135,9 @@ const flexibleProtect = async (req, res, next) => {
   if (apiKey) {
     console.log('🔑 API Key detected, validating...');
     console.log('🔍 Received key:', apiKey);
-    console.log('🔍 Expected key:', process.env.N8N_API_KEY);
-    console.log('🔍 Keys match:', apiKey === process.env.N8N_API_KEY);
-    if (apiKey === process.env.N8N_API_KEY) {
+    console.log('🔍 Expected key:', process.env.TPX_N8N_API_KEY);
+    console.log('🔍 Keys match:', apiKey === process.env.TPX_N8N_API_KEY);
+    if (apiKey === process.env.TPX_N8N_API_KEY) {
       console.log('✅ API Key valid - granting access');
       req.apiKeyAuth = true;
       return next();

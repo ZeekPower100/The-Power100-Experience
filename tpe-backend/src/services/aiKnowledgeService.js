@@ -10,15 +10,23 @@ const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 class AIKnowledgeService {
   constructor() {
     this.knowledgeCache = {};
-    this.cacheExpiry = 3600000; // 1 hour in milliseconds
+    this.eventKnowledgeCache = {}; // Separate cache for event data
     this.lastCacheTime = {};
+    this.lastEventCacheTime = {};
+
+    // Cache durations
+    this.DEFAULT_CACHE_EXPIRY = 3600000; // 1 hour for general knowledge
+    this.ACTIVE_EVENT_CACHE_EXPIRY = 30000; // 30 seconds during events
+    this.PAST_EVENT_CACHE_EXPIRY = 86400000; // 24 hours for past events
   }
 
   /**
    * Get comprehensive knowledge base for AI Concierge
    * Automatically includes all AI-relevant tables and fields
+   * @param {number} contractorId - Optional contractor ID for personalization
+   * @param {number} eventId - Optional event ID for event-specific context
    */
-  async getComprehensiveKnowledge(contractorId = null) {
+  async getComprehensiveKnowledge(contractorId = null, eventId = null) {
     try {
       console.log('[AIKnowledge] Building comprehensive knowledge base...');
 
@@ -123,6 +131,19 @@ class AIKnowledgeService {
       // Get aggregated statistics (privacy-safe)
       if (contractorId) {
         knowledge.industryStats = await this.getIndustryStatistics(contractorId);
+      }
+
+      // CRITICAL: Add event-specific context if contractor is at an event
+      if (eventId) {
+        knowledge.currentEvent = await this.getCurrentEventContext(eventId, contractorId);
+        console.log('[AIKnowledge] Added live event context for event', eventId);
+      } else if (contractorId) {
+        // Auto-detect if contractor is currently at an event
+        const activeEvent = await this.detectActiveEvent(contractorId);
+        if (activeEvent) {
+          knowledge.currentEvent = await this.getCurrentEventContext(activeEvent.event_id, contractorId);
+          console.log('[AIKnowledge] Auto-detected active event', activeEvent.event_id);
+        }
       }
 
       // Add metadata about the knowledge base
@@ -530,7 +551,222 @@ class AIKnowledgeService {
    */
   isCacheValid(tableName) {
     if (!this.lastCacheTime[tableName]) return false;
-    return (Date.now() - this.lastCacheTime[tableName]) < this.cacheExpiry;
+    return (Date.now() - this.lastCacheTime[tableName]) < this.DEFAULT_CACHE_EXPIRY;
+  }
+
+  /**
+   * Check if event cache is still valid (intelligent caching based on event status)
+   */
+  isEventCacheValid(eventId) {
+    if (!this.lastEventCacheTime[eventId]) return false;
+
+    const cacheAge = Date.now() - this.lastEventCacheTime[eventId];
+    const cachedEvent = this.eventKnowledgeCache[eventId];
+
+    if (!cachedEvent) return false;
+
+    // Determine appropriate cache duration based on event status
+    const now = new Date();
+    const eventDate = new Date(cachedEvent.event.date);
+    const eventEndDate = cachedEvent.event.end_date
+      ? new Date(cachedEvent.event.end_date)
+      : new Date(eventDate.getTime() + 24 * 60 * 60 * 1000); // Default 1 day duration
+
+    // DURING EVENT: 30 second cache (real-time updates critical)
+    if (now >= eventDate && now <= eventEndDate) {
+      return cacheAge < this.ACTIVE_EVENT_CACHE_EXPIRY;
+    }
+
+    // PAST EVENT: 24 hour cache (static historical data)
+    if (now > eventEndDate) {
+      return cacheAge < this.PAST_EVENT_CACHE_EXPIRY;
+    }
+
+    // FUTURE EVENT: 1 hour cache (schedule may change but not frequently)
+    return cacheAge < this.DEFAULT_CACHE_EXPIRY;
+  }
+
+  /**
+   * Detect if contractor is currently at an active event
+   * Checks if they've checked in to any event today
+   */
+  async detectActiveEvent(contractorId) {
+    try {
+      const result = await query(`
+        SELECT
+          ea.event_id,
+          ea.check_in_time,
+          e.date,
+          e.end_date
+        FROM event_attendees ea
+        JOIN events e ON ea.event_id = e.id
+        WHERE ea.contractor_id = $1
+          AND ea.check_in_time IS NOT NULL
+          AND e.date <= CURRENT_DATE
+          AND (e.end_date >= CURRENT_DATE OR e.end_date IS NULL)
+        ORDER BY ea.check_in_time DESC
+        LIMIT 1
+      `, [contractorId]);
+
+      return result.rows.length > 0 ? result.rows[0] : null;
+    } catch (error) {
+      console.error('[AIKnowledge] Error detecting active event:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get complete event context including schedule, agenda, and personalization
+   * Uses intelligent caching: 30sec during event, 24hrs after
+   */
+  async getCurrentEventContext(eventId, contractorId) {
+    try {
+      // Check cache first
+      if (this.isEventCacheValid(eventId)) {
+        console.log('[AIKnowledge] Using cached event context for event', eventId);
+        return this.eventKnowledgeCache[eventId];
+      }
+
+      console.log('[AIKnowledge] Loading fresh event context for event', eventId);
+
+      // Get event details
+      const eventResult = await query(`
+        SELECT * FROM events WHERE id = $1
+      `, [eventId]);
+
+      if (eventResult.rows.length === 0) {
+        return null;
+      }
+
+      const event = eventResult.rows[0];
+
+      // Get full schedule (all speakers with sessions)
+      const speakersResult = await query(`
+        SELECT
+          id,
+          name,
+          title,
+          company,
+          bio,
+          session_title,
+          session_description,
+          session_time,
+          session_location,
+          focus_areas,
+          pcr_score,
+          average_rating,
+          total_ratings
+        FROM event_speakers
+        WHERE event_id = $1
+        ORDER BY session_time
+      `, [eventId]);
+
+      // Get all sponsors with booth info
+      const sponsorsResult = await query(`
+        SELECT
+          es.id,
+          es.sponsor_name,
+          es.booth_number,
+          es.booth_location,
+          es.booth_representatives,
+          es.focus_areas_served,
+          es.special_offers,
+          es.pcr_score,
+          sp.company_name,
+          sp.value_proposition,
+          sp.ai_summary
+        FROM event_sponsors es
+        LEFT JOIN strategic_partners sp ON es.partner_id = sp.id
+        WHERE es.event_id = $1
+        ORDER BY es.booth_number
+      `, [eventId]);
+
+      // Get contractor's personalized agenda (their recommended speakers/sponsors)
+      let personalizedAgenda = null;
+      if (contractorId) {
+        const agendaResult = await query(`
+          SELECT
+            message_type,
+            personalization_data,
+            scheduled_time
+          FROM event_messages
+          WHERE event_id = $1
+            AND contractor_id = $2
+            AND message_type IN ('speaker_recommendation', 'sponsor_recommendation', 'peer_introduction')
+            AND status != 'failed'
+          ORDER BY scheduled_time
+        `, [eventId, contractorId]);
+
+        personalizedAgenda = agendaResult.rows;
+      }
+
+      // Get upcoming scheduled messages (so AI knows what's coming)
+      let upcomingMessages = [];
+      if (contractorId) {
+        const messagesResult = await query(`
+          SELECT
+            message_type,
+            scheduled_time,
+            message_content,
+            delay_minutes
+          FROM event_messages
+          WHERE event_id = $1
+            AND contractor_id = $2
+            AND status = 'scheduled'
+            AND scheduled_time > NOW()
+          ORDER BY scheduled_time
+          LIMIT 10
+        `, [eventId, contractorId]);
+
+        upcomingMessages = messagesResult.rows;
+      }
+
+      // Build complete context
+      const eventContext = {
+        event,
+        fullSchedule: speakersResult.rows,
+        allSponsors: sponsorsResult.rows,
+        myPersonalizedAgenda: personalizedAgenda,
+        upcomingMessages,
+        eventStatus: this.getEventStatus(event),
+        cacheExpiry: this.getEventCacheExpiry(event)
+      };
+
+      // Cache it
+      this.eventKnowledgeCache[eventId] = eventContext;
+      this.lastEventCacheTime[eventId] = Date.now();
+
+      return eventContext;
+    } catch (error) {
+      console.error('[AIKnowledge] Error loading event context:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Determine event status (upcoming, active, past)
+   */
+  getEventStatus(event) {
+    const now = new Date();
+    const eventDate = new Date(event.date);
+    const eventEndDate = event.end_date
+      ? new Date(event.end_date)
+      : new Date(eventDate.getTime() + 24 * 60 * 60 * 1000);
+
+    if (now < eventDate) return 'upcoming';
+    if (now >= eventDate && now <= eventEndDate) return 'active';
+    return 'past';
+  }
+
+  /**
+   * Get appropriate cache expiry based on event status
+   */
+  getEventCacheExpiry(event) {
+    const status = this.getEventStatus(event);
+
+    if (status === 'active') return this.ACTIVE_EVENT_CACHE_EXPIRY;
+    if (status === 'past') return this.PAST_EVENT_CACHE_EXPIRY;
+    return this.DEFAULT_CACHE_EXPIRY;
   }
 
   /**
@@ -538,8 +774,10 @@ class AIKnowledgeService {
    */
   clearCache() {
     this.knowledgeCache = {};
+    this.eventKnowledgeCache = {};
     this.lastCacheTime = {};
-    console.log('[AIKnowledge] Cache cleared');
+    this.lastEventCacheTime = {};
+    console.log('[AIKnowledge] All caches cleared');
   }
 
   /**

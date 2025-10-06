@@ -2,7 +2,7 @@
 ║  🔴 CRITICAL: ALWAYS CHECK DATABASE FIRST - THIS IS NON-NEGOTIABLE            ║
 ╚════════════════════════════════════════════════════════════════════════════════╝
 
-BEFORE editing ANY controller, service, model, route, or form file:
+BEFORE creating or editing ANY controller, service, model, route, or form file:
 
 1️⃣  IMMEDIATELY run: powershell -Command ".\quick-db.bat \"SELECT column_name FROM information_schema.columns WHERE table_name = 'TABLE_NAME';\""
 2️⃣  Use EXACT field names from database - NEVER guess or assume

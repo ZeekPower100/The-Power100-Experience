@@ -253,12 +253,11 @@ class SafeDevManager {
     statuses.forEach(status => console.log(status));
     console.log(colors.gray('─'.repeat(60)));
   }
-}
 
   // Restart all with safety
   async restartAllWithSafety() {
     console.log(colors.yellow.bold('\n♻️  Restarting Development Environment with Error Prevention\n'));
-    
+
     // Stop all processes
     for (const [name, child] of Object.entries(this.processes)) {
       if (child && !child.killed) {
@@ -266,16 +265,17 @@ class SafeDevManager {
         console.log(colors.gray(`✅ Stopped ${name}`));
       }
     }
-    
+
     // Wait for processes to stop
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     // Clear processes
     this.processes = {};
-    
+
     // Start everything again with safety
     await this.startAllWithSafety();
   }
+}
 
 // Main execution
 async function main() {

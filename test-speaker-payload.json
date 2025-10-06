@@ -1,0 +1,35 @@
+{
+  "send_via_ghl": {
+    "contractor_id": 56,
+    "phone": "+18108934075",
+    "message": "Hey Zeek! 🎤 Here are 3 speakers I think you'll love:\n\n1️⃣ Sarah Johnson - Building Scalable Teams\n2️⃣ Mike Davis - Revenue Growth Strategies\n3️⃣ Greg Salafia - Leadership Excellence\n\nReply 1, 2, or 3 to get session details!",
+    "ghl_contact_id": "tM5OabD8WqIUYIhRePz6",
+    "ghl_location_id": "Jlq8gw3IEjAQu39n4c0s",
+    "message_type": "speaker_recommendation",
+    "event_id": 1,
+    "event_name": "Power100 Summit 2025",
+    "contractor_name": "Zeek Test",
+    "email": "zeek@power100.io",
+    "personalization_data": {
+      "contractor_name": "Zeek Test",
+      "event_name": "Power100 Summit 2025",
+      "recommended_speakers": [
+        {
+          "speaker_id": 1,
+          "name": "Sarah Johnson",
+          "session_title": "Building Scalable Teams"
+        },
+        {
+          "speaker_id": 2,
+          "name": "Mike Davis",
+          "session_title": "Revenue Growth Strategies"
+        },
+        {
+          "speaker_id": 3,
+          "name": "Greg Salafia",
+          "session_title": "Leadership Excellence"
+        }
+      ]
+    }
+  }
+}

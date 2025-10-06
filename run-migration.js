@@ -1,51 +1,77 @@
-// Run migration on local PostgreSQL database
 const { Pool } = require('pg');
 const fs = require('fs');
 const path = require('path');
-require('dotenv').config({ path: './tpe-backend/.env' });
 
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  ssl: { rejectUnauthorized: false }
-});
+async function runMigration(isProduction = false) {
+  const pool = new Pool(isProduction ? {
+    host: 'tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com',
+    database: 'tpedb',
+    user: 'tpeadmin',
+    password: 'dBP0wer100!!',
+    port: 5432,
+    ssl: { rejectUnauthorized: false }
+  } : {
+    host: 'localhost',
+    database: 'tpedb',
+    user: 'postgres',
+    password: 'TPXP0stgres!!',
+    port: 5432
+  });
 
-async function runMigration() {
   try {
+    console.log(`\n${isProduction ? 'PRODUCTION' : 'LOCAL DEV'} Database Migration:`);
+    console.log('='.repeat(50));
+
     // Read migration file
-    const migrationPath = path.join(__dirname, 'tpe-database', 'migrations', '003_add_missing_partner_columns.sql');
-    const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
-    
-    console.log('🚀 Running migration: 003_add_missing_partner_columns.sql');
-    console.log('📍 Database:', process.env.DB_HOST);
-    
-    // Run migration
-    await pool.query(migrationSQL);
-    
-    console.log('✅ Migration completed successfully!');
-    
-    // Verify columns exist
+    const migrationPath = path.join(__dirname, 'tpe-database', 'migrations', 'create_routing_logs.sql');
+    const sql = fs.readFileSync(migrationPath, 'utf8');
+
+    // Remove comments and execute
+    const statements = sql
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && !s.startsWith('--'));
+
+    for (const statement of statements) {
+      if (statement.trim()) {
+        console.log(`Executing: ${statement.substring(0, 60)}...`);
+        await pool.query(statement);
+      }
+    }
+
+    // Verify table was created
     const result = await pool.query(`
-      SELECT column_name 
-      FROM information_schema.columns 
-      WHERE table_name = 'strategic_partners' 
-      AND column_name IN ('description', 'website', 'company_description', 'power100_subdomain')
-      ORDER BY column_name
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_name = 'routing_logs'
+      ORDER BY ordinal_position
     `);
-    
-    console.log('\n📋 Verified columns:');
+
+    console.log('\n✅ Table created successfully!');
+    console.log('\nColumns:');
     result.rows.forEach(row => {
-      console.log(`  ✅ ${row.column_name}`);
+      console.log(`  - ${row.column_name}: ${row.data_type}`);
     });
-    
+
   } catch (error) {
-    console.error('❌ Migration failed:', error.message);
+    console.error('❌ Error:', error.message);
   } finally {
     await pool.end();
   }
 }
 
-runMigration();
+// Run for both local dev and production
+async function main() {
+  console.log('🔄 Running routing_logs Table Migration');
+  console.log('='.repeat(50));
+
+  // Local dev first
+  await runMigration(false);
+
+  // Then production
+  await runMigration(true);
+
+  console.log('\n✅ Migration complete for both databases!');
+}
+
+main();

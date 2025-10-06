@@ -38,6 +38,13 @@
         "check-db-compatibility": "node database-compatibility-check.js",
         "check-all": "npm run check-compatibility && npm run check-full-stack && npm run check-db-compatibility -- --quick",
         "check-full-stack": "node full-stack-compatibility-check.js",
+        "check-integrity": "node database-integrity-checker.js",
+        "check-integrity:fix": "node database-integrity-checker.js --fix",
+        "check-integrity:table": "node database-integrity-checker.js --table",
+        "test:e2e": "playwright test",
+        "test:e2e:ui": "playwright test --ui",
+        "test:e2e:headed": "playwright test --headed",
+        "test:e2e:debug": "playwright test --debug",
         "install-compatibility-hook": "node install-git-hooks.js",
         "uninstall-compatibility-hook": "rm .git/hooks/pre-push"
     },
@@ -50,6 +57,7 @@
         "node-fetch": "^3.3.2"
     },
     "devDependencies": {
+        "@playwright/test": "^1.55.1",
         "@types/node": "^20.0.0",
         "eslint": "^8.57.0",
         "prettier": "^3.3.3"
