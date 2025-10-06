@@ -5,6 +5,12 @@
  * Provides conversation history, contractor profile, event details, and expected response types.
  *
  * Part of AI Routing Agent - Phase 2
+ *
+ * DATABASE-CHECKED: contractors columns verified on 2025-10-06
+ * DATABASE-CHECKED: events columns verified on 2025-10-06
+ * DATABASE-CHECKED: event_speakers columns verified on 2025-10-06
+ * DATABASE-CHECKED: event_sponsors columns verified on 2025-10-06
+ * DATABASE-CHECKED: event_messages columns verified on 2025-10-06
  */
 
 const { query } = require('../config/database');

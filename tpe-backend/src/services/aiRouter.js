@@ -4,6 +4,8 @@ const { query } = require('../config/database');
 const openAIService = require('./openAIService');
 const aiKnowledgeService = require('./aiKnowledgeService');
 const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+const { buildConversationContext } = require('./conversationContext');
+const { classifyWithContext } = require('./aiRoutingClassifier');
 
 /**
  * AI Router Service
@@ -251,57 +253,27 @@ class AIRouter {
   }
 
   /**
-   * Classify intent using AI (OpenAI GPT-4)
-   * Uses AI Concierge brain for intelligent classification
+   * Classify intent using AI with full conversation context
+   * Uses new context-aware AI classifier (Phase 3)
    */
   async classifyWithAI(inboundMessage, contractorContext, eventContext) {
     try {
-      // Build context prompt
-      const systemPrompt = `You are an intelligent SMS routing system for event orchestration.
-Your job is to classify the intent of contractor SMS replies and determine the appropriate handler.
+      // Build full conversation context
+      const conversationContext = await buildConversationContext(
+        contractorContext.id,
+        eventContext?.event_id || null
+      );
 
-Available routes:
-- speaker_details: Contractor wants details about a specific speaker/session
-- speaker_feedback: Contractor providing rating/feedback on a speaker
-- sponsor_details: Contractor wants details about a sponsor booth
-- pcr_response: Personal Connection Rating (1-5 scale)
-- peer_match_response: Response to peer matching introduction
-- event_checkin: Event check-in related
-- general_question: General question about the event
-
-Respond with JSON only:
-{
-  "intent": "intent_name",
-  "route": "route_name",
-  "confidence": 0.0-1.0,
-  "reasoning": "brief explanation"
-}`;
-
-      const userPrompt = `Message: "${inboundMessage}"
-
-Contractor Context:
-- Name: ${contractorContext.name || 'Unknown'}
-- Company: ${contractorContext.company_name || 'Unknown'}
-- Current Event: ${eventContext?.event_name || 'None'}
-
-Classify the intent and provide routing decision.`;
-
-      const response = await openAIService.generateChatCompletion([
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ], {
-        temperature: 0.3,
-        max_tokens: 200
-      });
-
-      const classification = safeJsonParse(response);
+      // Use new context-aware AI classifier
+      const classification = await classifyWithContext(inboundMessage, conversationContext);
 
       return {
         intent: classification.intent || 'unclear',
         route: classification.route || null,
         confidence: classification.confidence || 0.5,
         reasoning: classification.reasoning || 'AI classification',
-        model: 'gpt-4'
+        model: 'gpt-4-turbo',
+        classification_time_ms: classification.classification_time_ms
       };
 
     } catch (error) {
