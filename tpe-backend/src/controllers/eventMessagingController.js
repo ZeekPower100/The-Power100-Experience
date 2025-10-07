@@ -809,6 +809,102 @@ const updateMessageStatus = async (req, res) => {
   }
 };
 
+/**
+ * Outbound Trigger: Send Speaker Alert
+ * Trigger speaker recommendation SMS for specific contractor
+ */
+const triggerSpeakerAlert = async (req, res, next) => {
+  try {
+    const { event_id, contractor_id, speaker_recommendations } = req.body;
+
+    if (!event_id || !contractor_id || !speaker_recommendations) {
+      return res.status(400).json({
+        success: false,
+        error: 'event_id, contractor_id, and speaker_recommendations are required'
+      });
+    }
+
+    const outboundScheduler = require('../services/eventOrchestrator/outboundScheduler');
+    const result = await outboundScheduler.sendSpeakerAlert(event_id, contractor_id, speaker_recommendations);
+
+    res.json({
+      success: true,
+      message: 'Speaker alert sent successfully',
+      ...result
+    });
+  } catch (error) {
+    console.error('Error triggering speaker alert:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Outbound Trigger: Send Sponsor Recommendation
+ * Trigger sponsor recommendation SMS for specific contractor
+ */
+const triggerSponsorRecommendation = async (req, res, next) => {
+  try {
+    const { event_id, contractor_id, sponsor_recommendations } = req.body;
+
+    if (!event_id || !contractor_id || !sponsor_recommendations) {
+      return res.status(400).json({
+        success: false,
+        error: 'event_id, contractor_id, and sponsor_recommendations are required'
+      });
+    }
+
+    const outboundScheduler = require('../services/eventOrchestrator/outboundScheduler');
+    const result = await outboundScheduler.sendSponsorRecommendation(event_id, contractor_id, sponsor_recommendations);
+
+    res.json({
+      success: true,
+      message: 'Sponsor recommendation sent successfully',
+      ...result
+    });
+  } catch (error) {
+    console.error('Error triggering sponsor recommendation:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Outbound Trigger: Send PCR Request
+ * Trigger PCR request SMS for specific contractor after session
+ */
+const triggerPCRRequest = async (req, res, next) => {
+  try {
+    const { event_id, contractor_id, session_info } = req.body;
+
+    if (!event_id || !contractor_id || !session_info) {
+      return res.status(400).json({
+        success: false,
+        error: 'event_id, contractor_id, and session_info are required'
+      });
+    }
+
+    const outboundScheduler = require('../services/eventOrchestrator/outboundScheduler');
+    const result = await outboundScheduler.sendPCRRequest(event_id, contractor_id, session_info);
+
+    res.json({
+      success: true,
+      message: 'PCR request sent successfully',
+      ...result
+    });
+  } catch (error) {
+    console.error('Error triggering PCR request:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   scheduleMessage,
   massScheduleMessages,
@@ -832,5 +928,9 @@ module.exports = {
   logSpeakerFeedback,
   // SMS Router
   getPendingContext,
-  logRoutingDecision
+  logRoutingDecision,
+  // Outbound Triggers
+  triggerSpeakerAlert,
+  triggerSponsorRecommendation,
+  triggerPCRRequest
 };

@@ -2,6 +2,9 @@
 // Registers all SMS route handlers with the AI Router
 
 const aiRouter = require('../aiRouter');
+const aiConciergeController = require('../../controllers/aiConciergeController');
+const { query } = require('../../config/database');
+const { safeJsonParse } = require('../../utils/jsonHelpers');
 
 /**
  * Register all event orchestration handlers
@@ -11,22 +14,34 @@ function registerAllHandlers() {
 
   // Import handlers
   const speakerHandlers = require('./speakerHandlers');
+  const sponsorHandlers = require('./sponsorHandlers');
+  const pcrHandlers = require('./pcrHandlers');
+  const attendanceHandlers = require('./attendanceHandlers');
+  const peerMatchingHandlers = require('./peerMatchingHandlers');
+  const checkInHandlers = require('./checkInHandlers');
+  const adminCommandHandlers = require('./adminCommandHandlers');
 
   // Register speaker handlers
   aiRouter.registerHandler('speaker_details', speakerHandlers.handleSpeakerDetails);
   aiRouter.registerHandler('speaker_feedback', speakerHandlers.handleSpeakerFeedback);
 
-  // TODO: Register sponsor handlers
-  // aiRouter.registerHandler('sponsor_details', sponsorHandlers.handleSponsorDetails);
+  // Register sponsor handlers
+  aiRouter.registerHandler('sponsor_details', sponsorHandlers.handleSponsorDetails);
 
-  // TODO: Register PCR handlers
-  // aiRouter.registerHandler('pcr_response', pcrHandlers.handlePCRResponse);
+  // Register PCR handlers
+  aiRouter.registerHandler('pcr_response', pcrHandlers.handlePCRResponse);
 
-  // TODO: Register peer matching handlers
-  // aiRouter.registerHandler('peer_match_response', peerMatchingHandlers.handleResponse);
+  // Register attendance confirmation handler
+  aiRouter.registerHandler('attendance_confirmation', attendanceHandlers.handleAttendanceConfirmation);
 
-  // TODO: Register check-in handlers
-  // aiRouter.registerHandler('event_checkin', checkInHandlers.handleCheckIn);
+  // Register peer matching handlers
+  aiRouter.registerHandler('peer_match_response', peerMatchingHandlers.handlePeerMatchResponse);
+
+  // Register check-in handlers
+  aiRouter.registerHandler('event_checkin', checkInHandlers.handleEventCheckIn);
+
+  // Register admin command handler
+  aiRouter.registerHandler('admin_command', adminCommandHandlers.handleAdminCommand);
 
   // Register general question handler (AI Concierge)
   aiRouter.registerHandler('general_question', handleGeneralQuestion);
@@ -40,28 +55,89 @@ function registerAllHandlers() {
 
 /**
  * General question handler
- * Routes general questions to AI Concierge for intelligent responses
+ * Routes general questions to AI Concierge for intelligent, context-aware responses
+ * DATABASE-CHECKED: contractors columns verified on 2025-10-06
  */
 async function handleGeneralQuestion(smsData, classification) {
   console.log('[Handler] General question:', smsData.messageText);
 
-  // Route to clarification for now - general AI responses need AI Concierge integration
-  // This prevents the loop of repeating the same response
-  const message = `I understand you have a question, but I need you to be more specific. Are you asking about:
-- Speaker details (reply "speakers")
-- Event schedule (reply "schedule")
-- Sponsor information (reply "sponsors")
-- Or something else?`;
+  try {
+    // Get full contractor context from database
+    const contractorResult = await query(
+      `SELECT id, name, company_name, focus_areas, revenue_tier, team_size,
+              business_goals, email, phone
+       FROM contractors WHERE id = $1`,
+      [smsData.contractor.id]
+    );
 
-  return {
-    success: true,
-    action: 'send_message',
-    message,
-    phone: smsData.phone,
-    contractor_id: smsData.contractor.id,
-    message_type: 'clarification_request',
-    response_sent: true
-  };
+    if (contractorResult.rows.length === 0) {
+      throw new Error('Contractor not found');
+    }
+
+    const contractor = contractorResult.rows[0];
+
+    // Prepare contractor data for AI Concierge
+    const contractorData = {
+      name: contractor.name,
+      company_name: contractor.company_name,
+      focus_areas: safeJsonParse(contractor.focus_areas, []),
+      revenue_tier: contractor.revenue_tier,
+      team_size: contractor.team_size,
+      business_goals: safeJsonParse(contractor.business_goals, [])
+    };
+
+    console.log('[Handler] Calling AI Concierge for contractor:', contractor.name);
+
+    // Generate AI response using AI Concierge
+    const aiResponse = await aiConciergeController.generateAIResponse(
+      smsData.messageText,
+      contractorData,
+      smsData.contractor.id
+    );
+
+    // Extract response content (handles both string and object responses)
+    const responseContent = typeof aiResponse === 'object' && aiResponse.content
+      ? aiResponse.content
+      : aiResponse;
+
+    console.log('[Handler] AI Concierge response generated:', responseContent.substring(0, 100) + '...');
+
+    return {
+      success: true,
+      action: 'send_message',
+      message: responseContent,
+      phone: smsData.phone,
+      contractor_id: smsData.contractor.id,
+      message_type: 'ai_concierge_response',
+      response_sent: true,
+      personalization_data: {
+        ai_model: 'gpt-4',
+        original_question: smsData.messageText,
+        confidence: classification.confidence
+      }
+    };
+
+  } catch (error) {
+    console.error('[Handler] Error in AI Concierge integration:', error);
+
+    // Fallback to clarification request if AI fails
+    const message = `Hi ${smsData.contractor.name.split(' ')[0]}! I'm having trouble processing your question right now. Could you try asking about:
+- Speaker details
+- Event schedule
+- Sponsor information
+Or contact support if this persists.`;
+
+    return {
+      success: false,
+      action: 'send_message',
+      message,
+      phone: smsData.phone,
+      contractor_id: smsData.contractor.id,
+      message_type: 'error_fallback',
+      response_sent: true,
+      error: error.message
+    };
+  }
 }
 
 /**

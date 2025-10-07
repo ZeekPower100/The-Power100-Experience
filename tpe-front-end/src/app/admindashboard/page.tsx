@@ -546,6 +546,16 @@ export default function AdminDashboard() {
                 </CardContent>
               </Card>
             </Link>
+
+            <Link href="/admindashboard/routing-metrics">
+              <Card className="bg-white hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-power100-red">
+                <CardContent className="p-6 text-center">
+                  <BarChart3 className="w-8 h-8 text-power100-red mx-auto mb-3" />
+                  <h3 className="font-semibold text-power100-black">Routing Metrics</h3>
+                  <p className="text-sm text-power100-grey mt-1">AI routing performance analytics</p>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </div>
 

@@ -721,6 +721,62 @@ class AIKnowledgeService {
         upcomingMessages = messagesResult.rows;
       }
 
+      // Get peer match progress (so AI knows about networking connections)
+      let peerMatches = [];
+      if (contractorId) {
+        const peerMatchesResult = await query(`
+          SELECT
+            pm.id,
+            pm.match_type,
+            pm.match_criteria,
+            pm.match_score,
+            pm.match_reason,
+            pm.introduction_sent_time,
+            pm.contractor1_response,
+            pm.contractor2_response,
+            pm.connection_made,
+            pm.meeting_scheduled,
+            pm.meeting_time,
+            pm.meeting_location,
+            pm.pcr_score,
+            -- Get the OTHER contractor's info (not the current one)
+            CASE
+              WHEN pm.contractor1_id = $2 THEN c2.id
+              ELSE c1.id
+            END as peer_id,
+            CASE
+              WHEN pm.contractor1_id = $2 THEN CONCAT(c2.first_name, ' ', c2.last_name)
+              ELSE CONCAT(c1.first_name, ' ', c1.last_name)
+            END as peer_name,
+            CASE
+              WHEN pm.contractor1_id = $2 THEN c2.company_name
+              ELSE c1.company_name
+            END as peer_company,
+            CASE
+              WHEN pm.contractor1_id = $2 THEN c2.focus_areas
+              ELSE c1.focus_areas
+            END as peer_focus_areas,
+            -- Get my response status
+            CASE
+              WHEN pm.contractor1_id = $2 THEN pm.contractor1_response
+              ELSE pm.contractor2_response
+            END as my_response,
+            -- Get their response status
+            CASE
+              WHEN pm.contractor1_id = $2 THEN pm.contractor2_response
+              ELSE pm.contractor1_response
+            END as their_response
+          FROM event_peer_matches pm
+          JOIN contractors c1 ON pm.contractor1_id = c1.id
+          JOIN contractors c2 ON pm.contractor2_id = c2.id
+          WHERE pm.event_id = $1
+            AND (pm.contractor1_id = $2 OR pm.contractor2_id = $2)
+          ORDER BY pm.introduction_sent_time DESC
+        `, [eventId, contractorId]);
+
+        peerMatches = peerMatchesResult.rows;
+      }
+
       // Build complete context
       const eventContext = {
         event,
@@ -728,6 +784,7 @@ class AIKnowledgeService {
         allSponsors: sponsorsResult.rows,
         myPersonalizedAgenda: personalizedAgenda,
         upcomingMessages,
+        myPeerMatches: peerMatches,
         eventStatus: this.getEventStatus(event),
         cacheExpiry: this.getEventCacheExpiry(event)
       };

@@ -112,4 +112,16 @@ router.post('/peer-match/:matchId/connection', asyncHandler(eventMessagingContro
 // Get all matches for a contractor at an event
 router.get('/event/:eventId/contractor/:contractorId/matches', asyncHandler(eventMessagingController.getContractorMatches));
 
+// ==================== OUTBOUND TRIGGERS ====================
+// These require authentication (n8n will call with API key via flexibleProtect in smsRoutes)
+
+// Trigger speaker alert for contractor
+router.post('/trigger-speaker-alert', asyncHandler(eventMessagingController.triggerSpeakerAlert));
+
+// Trigger sponsor recommendation for contractor
+router.post('/trigger-sponsor-recommendation', asyncHandler(eventMessagingController.triggerSponsorRecommendation));
+
+// Trigger PCR request for contractor after session
+router.post('/trigger-pcr-request', asyncHandler(eventMessagingController.triggerPCRRequest));
+
 module.exports = router;

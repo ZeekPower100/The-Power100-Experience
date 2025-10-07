@@ -355,6 +355,16 @@ export const adminApi = {
   // Get dashboard stats
   getDashboard: () => apiRequest('/admin/dashboard'),
 
+  // Routing metrics endpoints
+  getRoutingMetricsRealtime: () => apiRequest('/admin/routing-metrics/realtime'),
+
+  getRoutingMetricsHistorical: (hours: number = 24) =>
+    apiRequest(`/admin/routing-metrics/historical?hours=${hours}`),
+
+  resetRoutingMetrics: () => apiRequest('/admin/routing-metrics/reset', {
+    method: 'POST'
+  }),
+
   // Export data
   exportContractors: (params?: Record<string, string>) => {
     const searchParams = new URLSearchParams(params || {});

@@ -6,6 +6,7 @@ const aiKnowledgeService = require('./aiKnowledgeService');
 const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const { buildConversationContext } = require('./conversationContext');
 const { classifyWithContext } = require('./aiRoutingClassifier');
+const { logRoutingDecision } = require('./routingMetrics');
 
 /**
  * AI Router Service
@@ -338,40 +339,27 @@ class AIRouter {
   }
 
   /**
-   * Log routing decision to database
+   * Log routing decision to database with performance metrics
    */
   async logRoutingDecision(classification, contractorId, eventId, phone, ghlContactId, ghlLocationId, inboundMessage) {
-    try {
-      await query(`
-        INSERT INTO routing_logs (
-          contractor_id, event_id, inbound_message, phone,
-          ghl_contact_id, ghl_location_id, classified_intent,
-          confidence, routing_method, route_to, context_data,
-          pending_messages, ai_reasoning, ai_model_used,
-          processing_time_ms
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-      `, [
-        contractorId,
-        eventId,
-        inboundMessage,
-        phone,
-        ghlContactId,
-        ghlLocationId,
-        classification.classified_intent,
-        classification.confidence,
-        classification.routing_method,
-        classification.route_to,
-        safeJsonStringify(classification.context_data || {}),
-        safeJsonStringify(classification.context_data?.pending_messages || []),
-        classification.ai_reasoning,
-        classification.ai_model_used || null,
-        classification.processing_time_ms
-      ]);
-
-      console.log('[AIRouter] Routing decision logged to database');
-    } catch (error) {
-      console.error('[AIRouter] Error logging routing decision:', error);
-    }
+    // Use routingMetrics service for comprehensive logging and metrics tracking
+    await logRoutingDecision({
+      contractor_id: contractorId,
+      event_id: eventId,
+      inbound_message: inboundMessage,
+      phone,
+      ghl_contact_id: ghlContactId,
+      ghl_location_id: ghlLocationId,
+      classified_intent: classification.classified_intent,
+      confidence: classification.confidence,
+      routing_method: classification.routing_method,
+      route_to: classification.route_to,
+      context_data: classification.context_data,
+      pending_messages: classification.context_data?.pending_messages || [],
+      ai_reasoning: classification.ai_reasoning,
+      ai_model_used: classification.ai_model_used || null,
+      processing_time_ms: classification.processing_time_ms
+    });
   }
 
   /**
