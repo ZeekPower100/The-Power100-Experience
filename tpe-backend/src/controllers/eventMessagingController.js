@@ -905,6 +905,58 @@ const triggerPCRRequest = async (req, res, next) => {
   }
 };
 
+/**
+ * Register contractor(s) for event - triggers profile completion or agenda
+ */
+const registerForEvent = async (req, res, next) => {
+  try {
+    const { eventId } = req.params;
+    const registrationData = req.body;
+
+    // registrationData can be single object or array for bulk
+    // Required fields: email, phone (optional: first_name, last_name, company_name)
+
+    const eventRegistrationService = require('../services/eventOrchestrator/eventRegistrationService');
+    const result = await eventRegistrationService.registerContractors(eventId, registrationData);
+
+    res.json({
+      success: true,
+      message: `Processed ${result.success.length + result.failed.length} registrations`,
+      ...result
+    });
+  } catch (error) {
+    console.error('Error registering for event:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Resend personalized agenda to contractor
+ */
+const resendAgenda = async (req, res, next) => {
+  try {
+    const { eventId, contractorId } = req.params;
+
+    const eventRegistrationService = require('../services/eventOrchestrator/eventRegistrationService');
+    const messageId = await eventRegistrationService.sendPersonalizedAgenda(eventId, contractorId);
+
+    res.json({
+      success: true,
+      message: 'Personalized agenda sent',
+      message_id: messageId
+    });
+  } catch (error) {
+    console.error('Error resending agenda:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   scheduleMessage,
   massScheduleMessages,
@@ -932,5 +984,8 @@ module.exports = {
   // Outbound Triggers
   triggerSpeakerAlert,
   triggerSponsorRecommendation,
-  triggerPCRRequest
+  triggerPCRRequest,
+  // Event Registration
+  registerForEvent,
+  resendAgenda
 };

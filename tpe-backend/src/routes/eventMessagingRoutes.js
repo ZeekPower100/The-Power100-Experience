@@ -124,4 +124,13 @@ router.post('/trigger-sponsor-recommendation', asyncHandler(eventMessagingContro
 // Trigger PCR request for contractor after session
 router.post('/trigger-pcr-request', asyncHandler(eventMessagingController.triggerPCRRequest));
 
+// ==================== EVENT REGISTRATION ====================
+// Registration & onboarding - alternative entry point to TPX system
+
+// Register contractor(s) for event (single or bulk)
+router.post('/event/:eventId/register', asyncHandler(eventMessagingController.registerForEvent));
+
+// Resend personalized agenda to contractor
+router.post('/event/:eventId/contractor/:contractorId/resend-agenda', asyncHandler(eventMessagingController.resendAgenda));
+
 module.exports = router;
