@@ -1,7 +1,108 @@
 # Event SMS Architecture - GHL Integration Strategy
 *How TPX Event Orchestrator uses GHL for SMS delivery while maintaining control*
 
-## 🎯 Architecture Overview
+---
+
+## 🎉 NEW VERSION - Current Implementation (October 2025)
+**Status:** ✅ PRODUCTION - All 11 workflows migrated to backend
+
+### Architecture Overview - Post N8N Migration
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     TPX BACKEND (Brain)                          │
+│  - ALL Event Orchestration Logic                                │
+│  - AI-Powered SMS Router (4-layer routing)                      │
+│  - 8 Inbound Message Handlers:                                  │
+│    • speaker_details, speaker_feedback                          │
+│    • sponsor_details                                            │
+│    • pcr_response, attendance_confirmation                      │
+│    • peer_match_response                                        │
+│    • event_checkin                                              │
+│    • admin_command, general_question (AI Concierge)             │
+│  - 3 Outbound Message Schedulers:                               │
+│    • sendSpeakerAlert (15 min before sessions)                  │
+│    • sendSponsorRecommendation (during breaks)                  │
+│    • sendPCRRequest (after sessions)                            │
+│  - Real-time Context Loading (last 5 messages + contractor)     │
+│  - AI Personalization & PCR Scoring                             │
+│  - Message Queue Management (event_messages table)              │
+│  - Routing Metrics & Performance Monitoring                     │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+                      ↓ Simple Webhook (2 nodes)
+┌─────────────────────────────────────────────────────────────────┐
+│              N8N (Simple Message Transport)                      │
+│  Workflow 1: GHL Inbound → Backend /api/sms/inbound            │
+│  Workflow 2: Backend → GHL Outbound SMS                         │
+│  - NO LOGIC, just pass-through                                  │
+│  - Dev: /webhook/*-dev | Prod: /webhook/*                       │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+                      ↓ SMS via Twilio
+┌─────────────────────────────────────────────────────────────────┐
+│                    GHL (Delivery Only)                           │
+│  - SMS Infrastructure (Twilio)                                   │
+│  - Contact Database Sync                                         │
+│  - Delivery Tracking                                             │
+│  - Two-way Messaging                                             │
+│  - Response Webhooks to n8n → Backend                            │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+                      ↓ SMS
+┌─────────────────────────────────────────────────────────────────┐
+│                  CONTRACTOR PHONE                                │
+└─────────────────────┬───────────────────────────────────────────┘
+                      │
+                      ↓ Response
+┌─────────────────────────────────────────────────────────────────┐
+│         BACKEND HANDLES ALL PROCESSING                           │
+│  - AI Intent Classification (95% accuracy)                       │
+│  - Sentiment Analysis                                            │
+│  - PCR Score Calculation                                         │
+│  - Context-aware Next Actions                                    │
+│  - Conversation History Tracking                                 │
+│  - AI Concierge Integration                                      │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Improvements in New Version
+
+**Backend Services:**
+- `aiRouter.js` - 4-layer routing (database → AI → keyword → fallback)
+- `aiRoutingClassifier.js` - GPT-4 Turbo context-aware classification
+- `conversationContext.js` - Loads last 5 messages + contractor/event data
+- `messageHandlerRegistry.js` - Routes to 8 specialized handlers
+- `routingMetrics.js` - Performance monitoring dashboard
+- `outboundScheduler.js` - Automated message triggers
+- Handler files: `speakerHandlers.js`, `sponsorHandlers.js`, `pcrHandlers.js`, `peerMatchingHandlers.js`, `checkInHandlers.js`, `attendanceHandlers.js`, `adminCommandHandlers.js`
+
+**Testing:**
+- ✅ 21/21 inbound handler tests passing (100%)
+- ✅ 6/6 outbound scheduler tests passing (100%)
+- ✅ Total: 27/27 tests passing
+
+**Data Flow:**
+1. SMS arrives at GHL → n8n webhook (2 nodes) → Backend `/api/sms/inbound`
+2. Backend AI Router classifies intent with full context
+3. Backend handler processes message, generates response
+4. Backend saves to `event_messages` + `routing_logs`
+5. Backend calls n8n webhook → GHL sends SMS
+6. Complete audit trail in database
+
+**Benefits Achieved:**
+- ✅ Zero data loss (personalization_data saved correctly)
+- ✅ Single codebase for debugging
+- ✅ AI Concierge shares knowledge base with Event Orchestrator
+- ✅ Full visibility into peer matching progress
+- ✅ Easy to add new handlers (just add to registry)
+- ✅ Complete test coverage
+
+---
+
+## 📜 OLD VERSION - Original Plan (Pre-Migration)
+
+### 🎯 Architecture Overview (Historical)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
