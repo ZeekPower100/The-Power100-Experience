@@ -133,4 +133,13 @@ router.post('/event/:eventId/register', asyncHandler(eventMessagingController.re
 // Resend personalized agenda to contractor
 router.post('/event/:eventId/contractor/:contractorId/resend-agenda', asyncHandler(eventMessagingController.resendAgenda));
 
+// ==================== POST-EVENT WRAP-UP ====================
+// Post-event engagement and follow-up workflows
+
+// Trigger post-event wrap-up (all attendees or specific contractor via body.contractorId)
+router.post('/event/:eventId/post-event-wrap-up', asyncHandler(eventMessagingController.triggerPostEventWrapUp));
+
+// Resend post-event wrap-up to specific contractor
+router.post('/event/:eventId/contractor/:contractorId/resend-wrap-up', asyncHandler(eventMessagingController.resendPostEventWrapUp));
+
 module.exports = router;

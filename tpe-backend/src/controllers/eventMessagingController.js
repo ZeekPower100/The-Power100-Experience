@@ -957,6 +957,88 @@ const resendAgenda = async (req, res, next) => {
   }
 };
 
+/**
+ * Trigger post-event wrap-up for all attendees or specific contractor
+ */
+const triggerPostEventWrapUp = async (req, res, next) => {
+  try {
+    const { eventId } = req.params;
+    const { contractorId } = req.body; // Optional - if null, sends to all
+
+    const postEventWrapUpService = require('../services/eventOrchestrator/postEventWrapUpService');
+    const result = await postEventWrapUpService.sendPostEventWrapUp(eventId, contractorId);
+
+    res.json({
+      success: true,
+      message: contractorId
+        ? 'Post-event wrap-up sent to contractor'
+        : `Post-event wrap-up sent to ${result.success.length} attendees`,
+      ...result
+    });
+  } catch (error) {
+    console.error('Error triggering post-event wrap-up:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Resend post-event wrap-up to specific contractor
+ */
+const resendPostEventWrapUp = async (req, res, next) => {
+  try {
+    const { eventId, contractorId } = req.params;
+
+    const postEventWrapUpService = require('../services/eventOrchestrator/postEventWrapUpService');
+
+    // Get event and contractor details
+    const eventResult = await query(`
+      SELECT id, name, date, end_date, location, sms_event_code
+      FROM events WHERE id = $1
+    `, [eventId]);
+
+    if (eventResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Event not found'
+      });
+    }
+
+    const contractorResult = await query(`
+      SELECT id, first_name, last_name, phone, email, focus_areas
+      FROM contractors WHERE id = $1
+    `, [contractorId]);
+
+    if (contractorResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Contractor not found'
+      });
+    }
+
+    const messageId = await postEventWrapUpService.sendIndividualWrapUp(
+      eventId,
+      contractorId,
+      eventResult.rows[0],
+      contractorResult.rows[0]
+    );
+
+    res.json({
+      success: true,
+      message: 'Post-event wrap-up resent successfully',
+      message_id: messageId
+    });
+  } catch (error) {
+    console.error('Error resending post-event wrap-up:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   scheduleMessage,
   massScheduleMessages,
@@ -987,5 +1069,8 @@ module.exports = {
   triggerPCRRequest,
   // Event Registration
   registerForEvent,
-  resendAgenda
+  resendAgenda,
+  // Post-Event Wrap-Up
+  triggerPostEventWrapUp,
+  resendPostEventWrapUp
 };
