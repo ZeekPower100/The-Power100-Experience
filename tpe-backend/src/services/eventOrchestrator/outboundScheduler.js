@@ -257,20 +257,23 @@ async function sendPCRRequest(eventId, contractorId, sessionInfo) {
 
 /**
  * Send SMS via n8n webhook (outbound endpoint)
+ * Uses environment-aware webhook path: backend-to-ghl (prod) or backend-to-ghl-dev (dev)
  */
 async function sendViaWebhook(phone, messages) {
   try {
-    const webhookUrl = process.env.N8N_OUTBOUND_WEBHOOK_URL || 'http://localhost:5678/webhook/sms-outbound';
+    const n8nWebhookUrl = process.env.NODE_ENV === 'production'
+      ? 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl'
+      : 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl-dev';
 
     for (const message of messages) {
-      await axios.post(webhookUrl, {
+      await axios.post(n8nWebhookUrl, {
         phone,
         message,
         timestamp: new Date().toISOString()
       });
     }
 
-    console.log('[OutboundScheduler] SMS sent via webhook:', { phone, count: messages.length });
+    console.log('[OutboundScheduler] SMS sent via webhook:', { phone, count: messages.length, webhook: n8nWebhookUrl });
   } catch (error) {
     console.error('[OutboundScheduler] Error sending via webhook:', error.message);
     // Don't throw - we've already saved to database, can retry later
