@@ -6,6 +6,7 @@
 
 const { query } = require('../config/database');
 const { safeJsonStringify } = require('../utils/jsonHelpers');
+const { scheduleFollowUp: enqueueBullJob, cancelFollowUp: cancelBullJob } = require('../queues/followUpQueue');
 
 /**
  * Follow-Up Service
@@ -53,8 +54,19 @@ async function scheduleFollowUp({
       skip_if_completed, is_recurring, recurrence_interval_days
     ]);
 
-    console.log('[FollowUpService] ✅ Follow-up scheduled:', result.rows[0].id);
-    return result.rows[0];
+    const followUp = result.rows[0];
+    console.log('[FollowUpService] ✅ Follow-up scheduled in DB:', followUp.id);
+
+    // Add to Bull queue for precise execution
+    try {
+      await enqueueBullJob(followUp);
+      console.log('[FollowUpService] ✅ Follow-up queued in Bull:', followUp.id);
+    } catch (queueError) {
+      console.error('[FollowUpService] ⚠️ Failed to queue in Bull (DB record exists):', queueError);
+      // Don't throw - DB record is created, queue can be added manually if needed
+    }
+
+    return followUp;
 
   } catch (error) {
     console.error('[FollowUpService] ❌ Error scheduling follow-up:', error);
@@ -227,7 +239,17 @@ async function cancelFollowUp(followup_id) {
       RETURNING *
     `, [followup_id]);
 
-    console.log('[FollowUpService] ✅ Follow-up cancelled:', followup_id);
+    console.log('[FollowUpService] ✅ Follow-up cancelled in DB:', followup_id);
+
+    // Cancel Bull job
+    try {
+      await cancelBullJob(followup_id);
+      console.log('[FollowUpService] ✅ Follow-up removed from Bull queue:', followup_id);
+    } catch (queueError) {
+      console.error('[FollowUpService] ⚠️ Failed to cancel Bull job:', queueError);
+      // Don't throw - DB update succeeded
+    }
+
     return result.rows[0];
 
   } catch (error) {
