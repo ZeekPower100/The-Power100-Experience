@@ -472,7 +472,7 @@ Provide a JSON response with exactly 5 actionable insights:
               },
               note_type: {
                 type: "string",
-                enum: ["speaker_note", "sponsor_note", "peer_connection", "insight", "general"],
+                enum: ["general", "contact", "insight", "action_item", "speaker_note", "sponsor_note", "peer_connection"],
                 description: "Category of the note"
               },
               extracted_entities: {
@@ -581,7 +581,7 @@ Provide a JSON response with exactly 5 actionable insights:
                 description: "Context hints for AI to personalize the follow-up"
               }
             },
-            required: ["scheduled_time", "followup_type", "message_template"]
+            required: ["scheduled_time", "message_template"]
           }
         }
       },
@@ -665,7 +665,7 @@ Provide a JSON response with exactly 5 actionable insights:
             action_item_id: functionArgs.action_item_id || null,
             event_id: activeEvent?.event_id || null,
             scheduled_time: functionArgs.scheduled_time,
-            followup_type: functionArgs.followup_type,
+            followup_type: functionArgs.followup_type || 'reminder',
             message_template: functionArgs.message_template,
             message_tone: functionArgs.message_tone || 'friendly',
             ai_context_hints: functionArgs.ai_context_hints || {},
