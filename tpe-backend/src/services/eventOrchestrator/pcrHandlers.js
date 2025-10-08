@@ -98,15 +98,25 @@ SMS RESPONSE GUIDELINES:
 
     console.log('[PCRHandler] Message types:', pendingMessages.map(m => m.message_type).join(', '));
 
-    const pcrRequest = pendingMessages.find(m => m.message_type === 'pcr_request');
+    // Find ANY PCR request type (speaker, sponsor, peer match, or generic)
+    const pcrRequest = pendingMessages.find(m =>
+      m.message_type === 'pcr_request' ||
+      m.message_type === 'speaker_pcr_request' ||
+      m.message_type === 'sponsor_pcr_request' ||
+      m.message_type === 'peer_match_pcr_request' ||
+      m.message_type === 'overall_event_pcr_request'
+    );
 
     if (!pcrRequest) {
-      console.log('[PCRHandler] ERROR: No pcr_request found');
+      console.log('[PCRHandler] ERROR: No PCR request found');
       return {
         success: false,
         error: 'No PCR request found in context'
       };
     }
+
+    const pcrType = pcrRequest.message_type;
+    console.log('[PCRHandler] PCR Type:', pcrType);
 
     // Parse personalization_data to get connection details
     const personalizationData = safeJsonParse(pcrRequest.personalization_data);
@@ -126,8 +136,11 @@ SMS RESPONSE GUIDELINES:
 
     console.log('[PCRHandler] Updated PCR request message with rating:', pcrRating);
 
-    // Generate AI Concierge thank you response based on rating
-    const prompt = buildPCRThankYouPrompt(pcrRating, connectionPerson, connectionContext, smsData.contractor);
+    // ALSO update the appropriate entity table based on PCR type
+    await savePCRToEntityTable(pcrType, pcrRating, personalizationData, smsData);
+
+    // Generate AI Concierge thank you response based on rating AND type
+    const prompt = buildPCRThankYouPrompt(pcrRating, pcrType, connectionPerson, connectionContext, smsData.contractor);
     const aiResponse = await aiConciergeController.generateAIResponse(
       prompt,
       smsData.contractor,
@@ -194,34 +207,58 @@ SMS RESPONSE GUIDELINES:
 
 /**
  * Build prompt for AI Concierge to generate PCR thank you response
+ * Now type-aware for speakers, sponsors, peer matches, and overall event
  */
-function buildPCRThankYouPrompt(pcrRating, connectionPerson, connectionContext, contractor) {
+function buildPCRThankYouPrompt(pcrRating, pcrType, connectionPerson, connectionContext, contractor) {
   const ratingDescriptions = {
-    5: 'excellent connection',
-    4: 'great connection',
-    3: 'good connection',
-    2: 'okay connection',
+    5: 'excellent',
+    4: 'great',
+    3: 'good',
+    2: 'okay',
     1: 'not a strong fit'
   };
 
   const description = ratingDescriptions[pcrRating] || 'connection';
 
-  let prompt = `I just rated my connection with ${connectionPerson.name || 'someone'} at the Power100 Summit 2025 as a ${pcrRating}/5 (${description}).
+  // Type-specific context
+  let typeContext = '';
+  let entityName = connectionPerson.name || 'someone';
+
+  switch(pcrType) {
+    case 'speaker_pcr_request':
+      typeContext = `I just rated speaker ${entityName}'s session at the Power100 Summit 2025 as ${pcrRating}/5 (${description}).`;
+      break;
+    case 'sponsor_pcr_request':
+      typeContext = `I just rated my interaction with sponsor ${connectionPerson.company || entityName} at the Power100 Summit 2025 as ${pcrRating}/5 (${description}).`;
+      break;
+    case 'peer_match_pcr_request':
+      typeContext = `I just rated my peer connection with ${entityName} at the Power100 Summit 2025 as ${pcrRating}/5 (${description}).`;
+      break;
+    case 'overall_event_pcr_request':
+      typeContext = `I just rated my overall Power100 Summit 2025 experience as ${pcrRating}/5 (${description}).`;
+      break;
+    default:
+      typeContext = `I just rated my connection with ${entityName} at the Power100 Summit 2025 as ${pcrRating}/5 (${description}).`;
+  }
+
+  let prompt = `${typeContext}
 
 CONTEXT:
-${connectionPerson.company ? `Their Company: ${connectionPerson.company}` : ''}
-${connectionContext.meeting_context ? `How we met: ${connectionContext.meeting_context}` : ''}
+${connectionPerson.company ? `Company: ${connectionPerson.company}` : ''}
+${connectionPerson.session_title ? `Session: ${connectionPerson.session_title}` : ''}
+${connectionContext.meeting_context ? `Context: ${connectionContext.meeting_context}` : ''}
 
 Please send me a brief thank you message that:
 - Thanks me for providing the rating
-- ${pcrRating >= 4 ? 'Acknowledges this was a valuable connection and encourages follow-up' : ''}
-- ${pcrRating <= 2 ? 'Acknowledges not every connection is a fit, and encourages me to keep networking' : ''}
-- Keeps me engaged with the event experience
+- ${pcrRating >= 4 ? 'Acknowledges this was valuable and encourages follow-up action' : ''}
+- ${pcrRating <= 2 ? 'Acknowledges the feedback and encourages continued engagement' : ''}
+- ${pcrType === 'speaker_pcr_request' && pcrRating >= 4 ? 'Suggests implementing insights from the session' : ''}
+- ${pcrType === 'sponsor_pcr_request' && pcrRating >= 4 ? 'Encourages booking a demo or follow-up call' : ''}
+- ${pcrType === 'peer_match_pcr_request' && pcrRating >= 4 ? 'Suggests exchanging contact info for future collaboration' : ''}
 
 CRITICAL SMS CONSTRAINTS:
 - Maximum 320 characters (SMS limit enforced by GHL)
 - Be warm and conversational
-- ${pcrRating >= 4 ? 'Suggest a next step for following up' : 'Keep tone positive and encouraging'}
 - NO fluff or filler words
 - Sign off naturally`;
 
@@ -303,6 +340,74 @@ async function trackPCRSubmission(submission) {
     console.log('[PCRHandler] Tracked PCR submission for AI learning');
   } catch (error) {
     console.error('[PCRHandler] Error tracking PCR submission:', error);
+  }
+}
+
+/**
+ * Save PCR rating to the appropriate entity table based on type
+ * DATABASE-CHECKED: event_speakers.pcr_score, event_sponsors.pcr_score, event_peer_matches.pcr_score verified
+ */
+async function savePCRToEntityTable(pcrType, pcrRating, personalizationData, smsData) {
+  try {
+    switch(pcrType) {
+      case 'speaker_pcr_request':
+        // Update speaker's PCR score and increment total ratings
+        const speakerId = personalizationData.speaker_id;
+        if (speakerId) {
+          await query(`
+            UPDATE event_speakers
+            SET pcr_score = COALESCE(
+              (pcr_score * total_ratings + $1) / (total_ratings + 1),
+              $1
+            ),
+            total_ratings = COALESCE(total_ratings, 0) + 1,
+            updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+          `, [pcrRating, speakerId]);
+          console.log(`[PCRHandler] Updated speaker ${speakerId} PCR score`);
+        }
+        break;
+
+      case 'sponsor_pcr_request':
+        // Update sponsor's PCR score
+        const sponsorId = personalizationData.sponsor_id;
+        if (sponsorId) {
+          await query(`
+            UPDATE event_sponsors
+            SET pcr_score = $1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+          `, [pcrRating, sponsorId]);
+          console.log(`[PCRHandler] Updated sponsor ${sponsorId} PCR score`);
+        }
+        break;
+
+      case 'peer_match_pcr_request':
+        // Update peer match PCR score
+        const peerMatchId = personalizationData.peer_match_id;
+        if (peerMatchId) {
+          await query(`
+            UPDATE event_peer_matches
+            SET pcr_score = $1,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = $2
+          `, [pcrRating, peerMatchId]);
+          console.log(`[PCRHandler] Updated peer match ${peerMatchId} PCR score`);
+        }
+        break;
+
+      case 'overall_event_pcr_request':
+        // Create entry in event_pcr_ratings table (or update events table if we add that column)
+        console.log('[PCRHandler] Overall event PCR - storing in event_messages only (no dedicated column yet)');
+        break;
+
+      default:
+        // Generic PCR - already saved to event_messages
+        console.log('[PCRHandler] Generic PCR type - stored in event_messages only');
+    }
+  } catch (error) {
+    console.error('[PCRHandler] Error saving PCR to entity table:', error);
+    // Don't throw - already saved to event_messages which is primary source
   }
 }
 
