@@ -26,6 +26,15 @@ const CONFIG = {
     startArgs: ['start'],
     name: 'Backend Server',
     pidFile: '.backend.pid'
+  },
+  worker: {
+    port: null, // Worker doesn't listen on a port
+    dir: 'tpe-backend',
+    startCmd: 'npm',
+    startArgs: ['run', 'worker:dev'],
+    name: 'Bull Worker',
+    pidFile: '.worker.pid',
+    noPortCheck: true // Skip port checking for worker
   }
 };
 
@@ -186,13 +195,21 @@ class DevManager {
     });
 
     // Wait for server to be ready
-    await this.waitForServer(config.port, config.name);
+    await this.waitForServer(config.port, config.name, 30, config.noPortCheck);
   }
 
   // Wait for server to be ready
-  async waitForServer(port, name, maxAttempts = 30) {
+  async waitForServer(port, name, maxAttempts = 30, noPortCheck = false) {
+    // If no port check needed (like for worker), just wait a bit and assume ready
+    if (noPortCheck) {
+      console.log(`⏳ Waiting for ${name} to start...`);
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log(`✅ ${name} is ready!`);
+      return true;
+    }
+
     console.log(`⏳ Waiting for ${name} to be ready on port ${port}...`);
-    
+
     for (let i = 0; i < maxAttempts; i++) {
       const pid = await this.findProcessByPort(port);
       if (pid) {
@@ -201,7 +218,7 @@ class DevManager {
       }
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
-    
+
     console.log(`⚠️ ${name} did not start within expected time`);
     return false;
   }
@@ -241,19 +258,26 @@ class DevManager {
   // Start all servers
   async startAll() {
     console.log('🚀 Starting all servers...\n');
-    
+
     // Start backend first
     await this.startServer(CONFIG.backend);
-    
+
+    // Small delay before starting worker
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Start Bull worker
+    await this.startServer(CONFIG.worker);
+
     // Small delay before starting frontend
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     // Start frontend
     await this.startServer(CONFIG.frontend);
-    
+
     console.log('\n✅ All servers started successfully!');
     console.log('📍 Frontend: http://localhost:3002');
     console.log('📍 Backend: http://localhost:5000');
+    console.log('📍 Bull Worker: Running in background');
     console.log('\nPress Ctrl+C to stop all servers\n');
   }
 
@@ -336,13 +360,23 @@ class DevManager {
   // Check status of servers
   async checkStatus() {
     console.log('\n📊 Server Status:\n');
-    
+
     for (const [name, config] of Object.entries(CONFIG)) {
-      const pid = await this.findProcessByPort(config.port);
-      if (pid) {
-        console.log(`✅ ${config.name}: Running (PID: ${pid}, Port: ${config.port})`);
+      if (config.noPortCheck) {
+        // For worker, check PID file
+        if (fs.existsSync(config.pidFile)) {
+          const pid = fs.readFileSync(config.pidFile, 'utf8').trim();
+          console.log(`✅ ${config.name}: Running (PID: ${pid})`);
+        } else {
+          console.log(`❌ ${config.name}: Not running`);
+        }
       } else {
-        console.log(`❌ ${config.name}: Not running (Port: ${config.port})`);
+        const pid = await this.findProcessByPort(config.port);
+        if (pid) {
+          console.log(`✅ ${config.name}: Running (PID: ${pid}, Port: ${config.port})`);
+        } else {
+          console.log(`❌ ${config.name}: Not running (Port: ${config.port})`);
+        }
       }
     }
   }
