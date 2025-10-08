@@ -8,6 +8,11 @@ const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const OpenAI = require('openai');
 const pool = require('../config/database');
 
+// Import event orchestration services for function calling
+const eventNoteService = require('./eventNoteService');
+const actionItemService = require('./actionItemService');
+const followUpService = require('./followUpService');
+
 class OpenAIService {
   constructor() {
     this.client = null;
@@ -426,6 +431,267 @@ Provide a JSON response with exactly 5 actionable insights:
     // Initialize on check
     this.initializeClient();
     return this.isConfigured;
+  }
+
+  /**
+   * Helper: Get active event for contractor
+   */
+  async getActiveEventForContractor(contractor_id) {
+    try {
+      const result = await pool.query(`
+        SELECT * FROM contractor_event_registrations
+        WHERE contractor_id = $1
+          AND (event_status = 'during_event' OR event_status = 'pre_event')
+        ORDER BY event_date DESC
+        LIMIT 1
+      `, [contractor_id]);
+
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error('[OpenAI] Error getting active event:', error);
+      return null;
+    }
+  }
+
+  /**
+   * GPT-4 Function Definitions for Event Orchestration
+   */
+  getEventOrchestrationFunctions() {
+    return [
+      {
+        type: "function",
+        function: {
+          name: "capture_event_note",
+          description: "Capture a note from the contractor during an event. Use this when they share information about speakers, sponsors, peers, insights, or anything worth remembering.",
+          parameters: {
+            type: "object",
+            properties: {
+              note_text: {
+                type: "string",
+                description: "The full text of what the contractor said that should be captured"
+              },
+              note_type: {
+                type: "string",
+                enum: ["speaker_note", "sponsor_note", "peer_connection", "insight", "general"],
+                description: "Category of the note"
+              },
+              extracted_entities: {
+                type: "object",
+                properties: {
+                  names: { type: "array", items: { type: "string" } },
+                  companies: { type: "array", items: { type: "string" } },
+                  phone_numbers: { type: "array", items: { type: "string" } },
+                  email_addresses: { type: "array", items: { type: "string" } }
+                },
+                description: "Entities extracted from the note (names, companies, contact info)"
+              },
+              session_context: {
+                type: "string",
+                description: "What session or context this note is from (e.g., 'John Smith keynote', 'networking lunch')"
+              },
+              requires_followup: {
+                type: "boolean",
+                description: "Whether this note requires a follow-up action"
+              }
+            },
+            required: ["note_text", "note_type"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "create_action_item",
+          description: "Create an action item for the contractor. Use this when they express something they need to do or when extracting post-event priorities.",
+          parameters: {
+            type: "object",
+            properties: {
+              title: {
+                type: "string",
+                description: "Short title of the action item (e.g., 'Follow up with John Smith')"
+              },
+              description: {
+                type: "string",
+                description: "Detailed description of what needs to be done"
+              },
+              action_type: {
+                type: "string",
+                enum: ["follow_up", "demo_booking", "partner_intro", "implementation", "research", "general"],
+                description: "Type of action item"
+              },
+              contractor_priority: {
+                type: "integer",
+                minimum: 1,
+                maximum: 10,
+                description: "Priority level set by contractor (1 = highest, 10 = lowest)"
+              },
+              ai_suggested_priority: {
+                type: "integer",
+                minimum: 1,
+                maximum: 10,
+                description: "AI's suggested priority based on context"
+              },
+              due_date: {
+                type: "string",
+                format: "date",
+                description: "Due date in YYYY-MM-DD format"
+              },
+              ai_reasoning: {
+                type: "string",
+                description: "Why this action item was created or prioritized this way"
+              }
+            },
+            required: ["title", "action_type"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "schedule_followup",
+          description: "Schedule an automated follow-up message for the contractor. Use this when they want to be reminded or checked in on later.",
+          parameters: {
+            type: "object",
+            properties: {
+              scheduled_time: {
+                type: "string",
+                format: "date-time",
+                description: "When to send the follow-up (ISO 8601 format)"
+              },
+              followup_type: {
+                type: "string",
+                enum: ["reminder", "check_in", "priority_review", "action_item_status", "general"],
+                description: "Type of follow-up"
+              },
+              message_template: {
+                type: "string",
+                description: "Template message to send (AI will personalize it)"
+              },
+              message_tone: {
+                type: "string",
+                enum: ["friendly", "professional", "urgent", "casual"],
+                description: "Tone of the follow-up message"
+              },
+              action_item_id: {
+                type: "integer",
+                description: "Related action item ID if this follow-up is about a specific task"
+              },
+              ai_context_hints: {
+                type: "object",
+                description: "Context hints for AI to personalize the follow-up"
+              }
+            },
+            required: ["scheduled_time", "followup_type", "message_template"]
+          }
+        }
+      },
+      {
+        type: "function",
+        function: {
+          name: "update_action_item_status",
+          description: "Update the status of an action item when the contractor mentions completing or cancelling a task.",
+          parameters: {
+            type: "object",
+            properties: {
+              action_item_id: {
+                type: "integer",
+                description: "ID of the action item to update"
+              },
+              new_status: {
+                type: "string",
+                enum: ["pending", "in_progress", "completed", "cancelled", "deferred"],
+                description: "New status for the action item"
+              },
+              update_note: {
+                type: "string",
+                description: "Note about why the status changed"
+              }
+            },
+            required: ["action_item_id", "new_status"]
+          }
+        }
+      }
+    ];
+  }
+
+  /**
+   * Handle function calls from GPT-4
+   */
+  async handleFunctionCall(functionName, functionArgs, contractor) {
+    console.log(`[OpenAI] 🔧 Function called: ${functionName}`, functionArgs);
+
+    try {
+      // Get active event if needed
+      const activeEvent = await this.getActiveEventForContractor(contractor.id);
+
+      switch (functionName) {
+        case 'capture_event_note':
+          if (!activeEvent) {
+            return { success: false, error: 'No active event found for contractor' };
+          }
+
+          const note = await eventNoteService.captureEventNote({
+            event_id: activeEvent.event_id,
+            contractor_id: contractor.id,
+            note_text: functionArgs.note_text,
+            note_type: functionArgs.note_type || 'general',
+            extracted_entities: functionArgs.extracted_entities || {},
+            session_context: functionArgs.session_context || null,
+            requires_followup: functionArgs.requires_followup || false,
+            conversation_context: { source: 'ai_concierge', timestamp: new Date().toISOString() }
+          });
+
+          return { success: true, note_id: note.id, message: 'Note captured successfully' };
+
+        case 'create_action_item':
+          const actionItem = await actionItemService.createActionItem({
+            contractor_id: contractor.id,
+            event_id: activeEvent?.event_id || null,
+            title: functionArgs.title,
+            description: functionArgs.description || null,
+            action_type: functionArgs.action_type,
+            contractor_priority: functionArgs.contractor_priority || null,
+            ai_suggested_priority: functionArgs.ai_suggested_priority || null,
+            due_date: functionArgs.due_date || null,
+            ai_reasoning: functionArgs.ai_reasoning || null,
+            conversation_context: { source: 'ai_concierge', timestamp: new Date().toISOString() }
+          });
+
+          return { success: true, action_item_id: actionItem.id, message: 'Action item created successfully' };
+
+        case 'schedule_followup':
+          const followUp = await followUpService.scheduleFollowUp({
+            contractor_id: contractor.id,
+            action_item_id: functionArgs.action_item_id || null,
+            event_id: activeEvent?.event_id || null,
+            scheduled_time: functionArgs.scheduled_time,
+            followup_type: functionArgs.followup_type,
+            message_template: functionArgs.message_template,
+            message_tone: functionArgs.message_tone || 'friendly',
+            ai_context_hints: functionArgs.ai_context_hints || {},
+            ai_should_personalize: true
+          });
+
+          return { success: true, followup_id: followUp.id, message: 'Follow-up scheduled successfully' };
+
+        case 'update_action_item_status':
+          const updated = await actionItemService.updateActionItemStatus(
+            functionArgs.action_item_id,
+            contractor.id,
+            functionArgs.new_status,
+            functionArgs.update_note || null
+          );
+
+          return { success: true, action_item_id: updated.id, new_status: updated.status, message: 'Action item updated successfully' };
+
+        default:
+          return { success: false, error: `Unknown function: ${functionName}` };
+      }
+
+    } catch (error) {
+      console.error(`[OpenAI] ❌ Function call failed: ${functionName}`, error);
+      return { success: false, error: error.message };
+    }
   }
 
   /**
@@ -888,18 +1154,69 @@ Contractor Information:
 
       const startTime = Date.now();
 
-      const completion = await this.client.chat.completions.create({
+      // Add function calling tools
+      const tools = this.getEventOrchestrationFunctions();
+
+      let completion = await this.client.chat.completions.create({
         model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
         messages: messages,
         temperature: 0.7,
         max_tokens: 1000,
         top_p: 1,
         frequency_penalty: 0,
-        presence_penalty: 0
+        presence_penalty: 0,
+        tools: tools,
+        tool_choice: 'auto' // Let GPT-4 decide when to use functions
       });
 
+      // Handle function calls if GPT-4 wants to use them
+      let finalResponse = completion.choices[0].message;
+
+      // Check if GPT-4 wants to call functions
+      if (finalResponse.tool_calls && finalResponse.tool_calls.length > 0) {
+        console.log(`[OpenAI] 🔧 GPT-4 requested ${finalResponse.tool_calls.length} function call(s)`);
+
+        // Execute each function call
+        for (const toolCall of finalResponse.tool_calls) {
+          const functionName = toolCall.function.name;
+          const functionArgs = JSON.parse(toolCall.function.arguments);
+
+          console.log(`[OpenAI] Executing function: ${functionName}`);
+
+          // Execute the function
+          const functionResult = await this.handleFunctionCall(functionName, functionArgs, contractor);
+
+          // Add function response to messages
+          messages.push({
+            role: 'assistant',
+            content: null,
+            tool_calls: [toolCall]
+          });
+
+          messages.push({
+            role: 'tool',
+            tool_call_id: toolCall.id,
+            content: JSON.stringify(functionResult)
+          });
+        }
+
+        // Get final response from GPT-4 after function execution
+        completion = await this.client.chat.completions.create({
+          model: process.env.OPENAI_MODEL || 'gpt-4-turbo-preview',
+          messages: messages,
+          temperature: 0.7,
+          max_tokens: 1000,
+          top_p: 1,
+          frequency_penalty: 0,
+          presence_penalty: 0
+        });
+
+        finalResponse = completion.choices[0].message;
+        console.log('[OpenAI] ✅ Final response after function execution:', finalResponse.content.substring(0, 100));
+      }
+
       const processingTime = Date.now() - startTime;
-      const response = completion.choices[0].message.content;
+      const response = finalResponse.content;
 
       // Log the interaction
       console.log(`✅ AI Concierge response generated in ${processingTime}ms`);
