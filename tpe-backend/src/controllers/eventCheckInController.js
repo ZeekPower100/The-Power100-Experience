@@ -203,13 +203,13 @@ const massCheckIn = async (req, res, next) => {
 
 // Complete event profile with real contact info
 const completeProfile = async (req, res, next) => {
-  const { event_id, contractor_id, real_email, real_phone, custom_responses, sms_opt_in } = req.body;
+  const { eventId, contractorId, real_email, real_phone, custom_responses, sms_opt_in } = req.body;
 
   try {
     const result = await query(`
       UPDATE event_attendees
       SET
-        profile_completion_status = 'complete',
+        profile_completion_status = 'completed',
         profile_completion_time = CURRENT_TIMESTAMP,
         real_email = $3,
         real_phone = $4,
@@ -219,10 +219,10 @@ const completeProfile = async (req, res, next) => {
       WHERE event_id = $1 AND contractor_id = $2
       RETURNING *
     `, [
-      event_id,
-      contractor_id,
-      real_email,
-      real_phone,
+      eventId,
+      contractorId,
+      real_email || null,
+      real_phone || null,
       safeJsonStringify(custom_responses || {}),
       sms_opt_in || false
     ]);
@@ -235,6 +235,36 @@ const completeProfile = async (req, res, next) => {
       success: true,
       profile: result.rows[0],
       unlock_features: true // Enable personalized experience
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get specific attendee info
+const getAttendeeInfo = async (req, res, next) => {
+  const { eventId, contractorId } = req.query;
+
+  try {
+    if (!eventId || !contractorId) {
+      throw new AppError('eventId and contractorId are required', 400);
+    }
+
+    const result = await query(`
+      SELECT * FROM event_attendees
+      WHERE event_id = $1 AND contractor_id = $2
+    `, [eventId, contractorId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Attendee not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      attendee: result.rows[0]
     });
   } catch (error) {
     next(error);
@@ -281,5 +311,6 @@ module.exports = {
   checkInAttendee,
   massCheckIn,
   completeProfile,
-  getEventAttendees
+  getEventAttendees,
+  getAttendeeInfo
 };

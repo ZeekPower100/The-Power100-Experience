@@ -1039,6 +1039,136 @@ const resendPostEventWrapUp = async (req, res, next) => {
   }
 };
 
+// ==================== EMAIL TRIGGERS ====================
+
+/**
+ * Trigger registration confirmation email
+ * DATABASE-CHECKED: event_messages, events, contractors, event_attendees tables verified
+ */
+const triggerRegistrationConfirmation = async (req, res) => {
+  try {
+    const { event_id, contractor_id } = req.body;
+
+    if (!event_id || !contractor_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'event_id and contractor_id are required'
+      });
+    }
+
+    const emailScheduler = require('../services/eventOrchestrator/emailScheduler');
+    const result = await emailScheduler.sendRegistrationConfirmation(event_id, contractor_id);
+
+    res.json({
+      success: true,
+      message: 'Registration confirmation email sent successfully',
+      ...result
+    });
+  } catch (error) {
+    console.error('Error triggering registration confirmation:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Trigger profile completion reminder email
+ * DATABASE-CHECKED: Uses exact field names from database schema
+ */
+const triggerProfileCompletionReminder = async (req, res) => {
+  try {
+    const { event_id, contractor_id } = req.body;
+
+    if (!event_id || !contractor_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'event_id and contractor_id are required'
+      });
+    }
+
+    const emailScheduler = require('../services/eventOrchestrator/emailScheduler');
+    const result = await emailScheduler.sendProfileCompletionReminder(event_id, contractor_id);
+
+    res.json({
+      success: true,
+      message: 'Profile completion reminder sent successfully',
+      ...result
+    });
+  } catch (error) {
+    console.error('Error triggering profile completion reminder:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Trigger personalized agenda email
+ * DATABASE-CHECKED: Uses exact field names from database schema
+ */
+const triggerPersonalizedAgenda = async (req, res) => {
+  try {
+    const { event_id, contractor_id, recommendations } = req.body;
+
+    if (!event_id || !contractor_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'event_id and contractor_id are required'
+      });
+    }
+
+    const emailScheduler = require('../services/eventOrchestrator/emailScheduler');
+    const result = await emailScheduler.sendPersonalizedAgenda(event_id, contractor_id, recommendations || []);
+
+    res.json({
+      success: true,
+      message: 'Personalized agenda sent successfully',
+      ...result
+    });
+  } catch (error) {
+    console.error('Error triggering personalized agenda:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Trigger event summary email
+ * DATABASE-CHECKED: Uses exact field names from database schema
+ */
+const triggerEventSummary = async (req, res) => {
+  try {
+    const { event_id, contractor_id, session_data } = req.body;
+
+    if (!event_id || !contractor_id) {
+      return res.status(400).json({
+        success: false,
+        error: 'event_id and contractor_id are required'
+      });
+    }
+
+    const emailScheduler = require('../services/eventOrchestrator/emailScheduler');
+    const result = await emailScheduler.sendEventSummary(event_id, contractor_id, session_data || {});
+
+    res.json({
+      success: true,
+      message: 'Event summary sent successfully',
+      ...result
+    });
+  } catch (error) {
+    console.error('Error triggering event summary:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   scheduleMessage,
   massScheduleMessages,
@@ -1063,7 +1193,7 @@ module.exports = {
   // SMS Router
   getPendingContext,
   logRoutingDecision,
-  // Outbound Triggers
+  // Outbound Triggers (SMS)
   triggerSpeakerAlert,
   triggerSponsorRecommendation,
   triggerPCRRequest,
@@ -1072,5 +1202,10 @@ module.exports = {
   resendAgenda,
   // Post-Event Wrap-Up
   triggerPostEventWrapUp,
-  resendPostEventWrapUp
+  resendPostEventWrapUp,
+  // Email Triggers
+  triggerRegistrationConfirmation,
+  triggerProfileCompletionReminder,
+  triggerPersonalizedAgenda,
+  triggerEventSummary
 };

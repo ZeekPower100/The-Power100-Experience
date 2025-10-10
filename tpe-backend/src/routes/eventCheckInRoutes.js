@@ -9,8 +9,10 @@ const { asyncHandler } = require('../middleware/errorHandler');
  * All routes require authentication
  */
 
-// Public endpoints (for QR code scanning)
+// Public endpoints (for QR code scanning and event profile pages)
 router.post('/check-in', asyncHandler(eventCheckInController.checkInAttendee));
+router.post('/complete-profile', asyncHandler(eventCheckInController.completeProfile)); // Needed for profile page
+router.get('/attendee', asyncHandler(eventCheckInController.getAttendeeInfo)); // Needed for profile page
 
 // Protected endpoints
 router.use(protect);
@@ -20,9 +22,6 @@ router.post('/register', asyncHandler(eventCheckInController.registerAttendee));
 
 // Mass check-in (admin only - for stage coordination)
 router.post('/mass-check-in', asyncHandler(eventCheckInController.massCheckIn));
-
-// Profile completion
-router.post('/complete-profile', asyncHandler(eventCheckInController.completeProfile));
 
 // Get attendees
 router.get('/event/:eventId/attendees', asyncHandler(eventCheckInController.getEventAttendees));

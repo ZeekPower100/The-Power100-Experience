@@ -152,7 +152,7 @@ app.use('/api/contact-tagging', contactTaggingRoutes);
 app.use('/api/communications', require('./routes/communicationRoutes'));
 app.use('/api/ghl-sync', require('./routes/ghlSyncRoutes'));
 app.use('/api/verification', require('./routes/verificationRoutes'));
-app.use('/api/emails', require('./routes/emailRoutes'));
+app.use('/api/email', require('./routes/emailRoutes'));
 app.use('/api/matching', require('./routes/matchingRoutes'));
 app.use('/api/upload', uploadRoutes);
 app.use('/api/books', bookRoutes);

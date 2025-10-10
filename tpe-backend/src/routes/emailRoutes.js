@@ -2,6 +2,8 @@
 const express = require('express');
 const axios = require('axios');
 const router = express.Router();
+const emailController = require('../controllers/emailController');
+const { flexibleProtect } = require('../middleware/auth');
 
 // Configuration
 const N8N_WEBHOOK_BASE = process.env.N8N_WEBHOOK_BASE || 'https://n8n.srv918843.hstgr.cloud';
@@ -220,5 +222,9 @@ const sendPartnerDelegationEmail = async (req, res) => {
 router.post('/welcome', sendWelcomeEmail);
 router.post('/stage-notification', sendStageNotification);
 router.post('/partner-delegation', sendPartnerDelegationEmail);
+
+// NEW: Event Email Orchestration Routes (n8n inbound/outbound)
+router.post('/inbound', flexibleProtect, emailController.handleInboundEmail);
+router.post('/outbound', flexibleProtect, emailController.sendOutboundEmail);
 
 module.exports = router;
