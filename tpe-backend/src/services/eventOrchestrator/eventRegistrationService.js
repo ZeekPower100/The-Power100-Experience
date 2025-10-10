@@ -11,6 +11,16 @@ const axios = require('axios');
  */
 
 /**
+ * Urgency Levels for Time-Based Registration Intelligence
+ */
+const URGENCY_LEVELS = {
+  IMMEDIATE: 'immediate',      // < 1 hour - Event starting NOW
+  VERY_URGENT: 'very_urgent',  // < 2 hours - Skip night-before, urgent reminder
+  URGENT: 'urgent',            // < 24 hours - Same-day messaging
+  NORMAL: 'normal'             // > 24 hours - Normal reminder schedule
+};
+
+/**
  * Register contractor(s) for event - handles both new and existing contractors
  * @param {number} eventId - Event ID
  * @param {object|array} registrationData - Single registration or array for bulk
@@ -52,21 +62,57 @@ async function registerContractors(eventId, registrationData) {
 }
 
 /**
+ * Calculate urgency level based on hours until event
+ * @param {Date} eventDate - Event start date/time
+ * @returns {string} - Urgency level constant
+ */
+function calculateUrgencyLevel(eventDate) {
+  const now = new Date();
+  const hoursUntilEvent = (eventDate - now) / (1000 * 60 * 60);
+
+  if (hoursUntilEvent < 1) {
+    return URGENCY_LEVELS.IMMEDIATE;
+  } else if (hoursUntilEvent < 2) {
+    return URGENCY_LEVELS.VERY_URGENT;
+  } else if (hoursUntilEvent < 24) {
+    return URGENCY_LEVELS.URGENT;
+  } else {
+    return URGENCY_LEVELS.NORMAL;
+  }
+}
+
+/**
  * Register single contractor for event
  * Decision tree: existing complete → existing incomplete → new contractor
+ * INTELLIGENT: Adjusts messaging urgency based on time until event
  */
 async function registerSingleContractor(eventId, data) {
   const { email, phone, first_name, last_name, company_name } = data;
 
-  // Step 1: Check if contractor exists
+  // Step 1: Get event date to calculate urgency
+  const eventResult = await query(`
+    SELECT date FROM events WHERE id = $1
+  `, [eventId]);
+
+  if (eventResult.rows.length === 0) {
+    throw new Error('Event not found');
+  }
+
+  const eventDate = new Date(eventResult.rows[0].date);
+  const urgencyLevel = calculateUrgencyLevel(eventDate);
+  const hoursUntilEvent = Math.floor((eventDate - new Date()) / (1000 * 60 * 60));
+
+  console.log(`[EventRegistration] Urgency level: ${urgencyLevel} (${hoursUntilEvent} hours until event)`);
+
+  // Step 2: Check if contractor exists
   const existingContractor = await findContractorByEmailOrPhone(email, phone);
 
   if (existingContractor) {
     // Existing contractor - check profile completeness
-    return await handleExistingContractor(eventId, existingContractor);
+    return await handleExistingContractor(eventId, existingContractor, urgencyLevel, hoursUntilEvent);
   } else {
     // New contractor - create record and trigger profile completion
-    return await handleNewContractor(eventId, data);
+    return await handleNewContractor(eventId, data, urgencyLevel, hoursUntilEvent);
   }
 }
 
@@ -95,8 +141,9 @@ async function findContractorByEmailOrPhone(email, phone) {
 /**
  * Handle existing contractor registration
  * Checks if profile is complete, sends appropriate message
+ * INTELLIGENT: Uses urgency level for time-sensitive messaging
  */
-async function handleExistingContractor(eventId, contractor) {
+async function handleExistingContractor(eventId, contractor, urgencyLevel, hoursUntilEvent) {
   console.log('[EventRegistration] Existing contractor:', contractor.id, contractor.email);
 
   // Check if already registered for this event
@@ -129,15 +176,15 @@ async function handleExistingContractor(eventId, contractor) {
 
   const attendeeId = attendeeResult.rows[0].id;
 
-  // Send appropriate message
+  // Send appropriate message with urgency awareness
   let messageSent = false;
   if (isComplete) {
     // Profile complete - send personalized agenda immediately
-    await sendPersonalizedAgenda(eventId, contractor.id);
+    await sendPersonalizedAgenda(eventId, contractor.id, urgencyLevel, hoursUntilEvent);
     messageSent = true;
   } else {
-    // Profile incomplete - send profile completion request
-    await sendProfileCompletionRequest(eventId, contractor.id, contractor);
+    // Profile incomplete - send profile completion request with urgency
+    await sendProfileCompletionRequest(eventId, contractor.id, contractor, urgencyLevel, hoursUntilEvent);
     messageSent = true;
   }
 
@@ -146,15 +193,17 @@ async function handleExistingContractor(eventId, contractor) {
     attendee_id: attendeeId,
     event_id: eventId,
     status: isComplete ? 'complete_sent_agenda' : 'incomplete_sent_request',
-    message_sent: messageSent
+    message_sent: messageSent,
+    urgency_level: urgencyLevel
   };
 }
 
 /**
  * Handle new contractor registration
  * Creates contractor record and triggers full profile completion
+ * INTELLIGENT: Uses urgency level for time-sensitive messaging
  */
-async function handleNewContractor(eventId, data) {
+async function handleNewContractor(eventId, data, urgencyLevel, hoursUntilEvent) {
   console.log('[EventRegistration] New contractor:', data.email);
 
   // Create contractor record with minimal data
@@ -187,20 +236,21 @@ async function handleNewContractor(eventId, data) {
 
   const attendeeId = attendeeResult.rows[0].id;
 
-  // Send profile completion request (collect ALL contractor flow data)
+  // Send profile completion request with urgency awareness (collect ALL contractor flow data)
   await sendProfileCompletionRequest(eventId, contractorId, {
     id: contractorId,
     first_name: data.first_name,
     email: data.email,
     phone: data.phone
-  });
+  }, urgencyLevel, hoursUntilEvent);
 
   return {
     contractor_id: contractorId,
     attendee_id: attendeeId,
     event_id: eventId,
     status: 'new_contractor_created',
-    message_sent: true
+    message_sent: true,
+    urgency_level: urgencyLevel
   };
 }
 
@@ -224,8 +274,9 @@ function checkProfileCompleteness(contractor) {
 /**
  * Send profile completion request via SMS
  * Collects missing data needed for AI Concierge
+ * INTELLIGENT: Adjusts message urgency based on time until event
  */
-async function sendProfileCompletionRequest(eventId, contractorId, contractor) {
+async function sendProfileCompletionRequest(eventId, contractorId, contractor, urgencyLevel = 'normal', hoursUntilEvent = null) {
   try {
     // Get event details
     const eventResult = await query(`
@@ -240,15 +291,59 @@ async function sendProfileCompletionRequest(eventId, contractorId, contractor) {
     const event = eventResult.rows[0];
     const firstName = contractor.first_name || 'there';
 
-    // Build profile completion message
-    const message = `Hi ${firstName}! 🎉 You're registered for ${event.name}!\n\n` +
-      `To unlock your personalized agenda with AI-powered speaker & sponsor recommendations, complete your profile:\n\n` +
-      `Reply with:\n` +
-      `1️⃣ Your top 3 business focus areas\n` +
-      `2️⃣ Annual revenue range\n` +
-      `3️⃣ Team size\n\n` +
-      `Example: "Sales, Operations, Marketing | $1-2M | 10-20 employees"\n\n` +
-      `This helps us match you with the perfect sessions & sponsors!`;
+    // Build urgency-aware message
+    let message;
+
+    switch (urgencyLevel) {
+      case URGENCY_LEVELS.IMMEDIATE:
+        // Event starting NOW - ultra urgent
+        message = `⚡ ${firstName}! ${event.name} is STARTING NOW!\n\n` +
+          `URGENT: Complete your profile in the next few minutes to get your personalized agenda:\n\n` +
+          `Reply with:\n` +
+          `1️⃣ Top 3 business focus areas\n` +
+          `2️⃣ Revenue range\n` +
+          `3️⃣ Team size\n\n` +
+          `Example: "Sales, Operations, Marketing | $1-2M | 10-20"\n\n` +
+          `Do this NOW to get matched with speakers & sponsors! ⚡`;
+        break;
+
+      case URGENCY_LEVELS.VERY_URGENT:
+        // Less than 2 hours - very urgent
+        message = `🚨 ${firstName}! ${event.name} starts in ${hoursUntilEvent} hour${hoursUntilEvent === 1 ? '' : 's'}!\n\n` +
+          `Complete your profile NOW to get your personalized agenda before the event:\n\n` +
+          `Reply with:\n` +
+          `1️⃣ Top 3 business focus areas\n` +
+          `2️⃣ Revenue range\n` +
+          `3️⃣ Team size\n\n` +
+          `Example: "Sales, Operations, Marketing | $1-2M | 10-20"\n\n` +
+          `Quick! Get matched with the right speakers & sponsors! 🚨`;
+        break;
+
+      case URGENCY_LEVELS.URGENT:
+        // Less than 24 hours - same day urgent
+        message = `Hi ${firstName}! 🎉 You're registered for ${event.name} - EVENT TODAY!\n\n` +
+          `Complete your profile to unlock your personalized agenda with AI-powered recommendations:\n\n` +
+          `Reply with:\n` +
+          `1️⃣ Top 3 business focus areas\n` +
+          `2️⃣ Annual revenue range\n` +
+          `3️⃣ Team size\n\n` +
+          `Example: "Sales, Operations, Marketing | $1-2M | 10-20 employees"\n\n` +
+          `Do this today to get matched with perfect sessions & sponsors!`;
+        break;
+
+      case URGENCY_LEVELS.NORMAL:
+      default:
+        // More than 24 hours - normal message
+        message = `Hi ${firstName}! 🎉 You're registered for ${event.name}!\n\n` +
+          `To unlock your personalized agenda with AI-powered speaker & sponsor recommendations, complete your profile:\n\n` +
+          `Reply with:\n` +
+          `1️⃣ Your top 3 business focus areas\n` +
+          `2️⃣ Annual revenue range\n` +
+          `3️⃣ Team size\n\n` +
+          `Example: "Sales, Operations, Marketing | $1-2M | 10-20 employees"\n\n` +
+          `This helps us match you with the perfect sessions & sponsors!`;
+        break;
+    }
 
     // Save to event_messages
     const messageResult = await query(`
@@ -266,11 +361,13 @@ async function sendProfileCompletionRequest(eventId, contractorId, contractor) {
       message,
       safeJsonStringify({
         sms_event_code: event.sms_event_code,
-        registration_trigger: true
+        registration_trigger: true,
+        urgency_level: urgencyLevel,
+        hours_until_event: hoursUntilEvent
       })
     ]);
 
-    console.log('[EventRegistration] Profile completion request sent:', messageResult.rows[0].id);
+    console.log(`[EventRegistration] Profile completion request sent (${urgencyLevel}):`, messageResult.rows[0].id);
 
     // Send via n8n webhook
     await sendViaWebhook(contractor.phone, [message]);
@@ -286,8 +383,9 @@ async function sendProfileCompletionRequest(eventId, contractorId, contractor) {
 /**
  * Send personalized agenda via SMS
  * Generated from AI-matched speakers and sponsors
+ * INTELLIGENT: Adjusts message urgency based on time until event
  */
-async function sendPersonalizedAgenda(eventId, contractorId) {
+async function sendPersonalizedAgenda(eventId, contractorId, urgencyLevel = 'normal', hoursUntilEvent = null) {
   try {
     // Get contractor profile
     const contractorResult = await query(`
@@ -342,8 +440,27 @@ async function sendPersonalizedAgenda(eventId, contractorId) {
       LIMIT 3
     `, [eventId, focusAreas.map(fa => `%${fa}%`)]);
 
-    // Build personalized agenda message
-    let agendaMessage = `🎉 ${firstName}, your personalized ${event.name} agenda is ready!\n\n`;
+    // Build urgency-aware personalized agenda message
+    let agendaMessage;
+
+    switch (urgencyLevel) {
+      case URGENCY_LEVELS.IMMEDIATE:
+        agendaMessage = `⚡ ${firstName}, ${event.name} is STARTING NOW! Here's your personalized agenda:\n\n`;
+        break;
+
+      case URGENCY_LEVELS.VERY_URGENT:
+        agendaMessage = `🚨 ${firstName}, ${event.name} starts in ${hoursUntilEvent} hour${hoursUntilEvent === 1 ? '' : 's'}! Your agenda:\n\n`;
+        break;
+
+      case URGENCY_LEVELS.URGENT:
+        agendaMessage = `🎉 ${firstName}, ${event.name} is TODAY! Your personalized agenda:\n\n`;
+        break;
+
+      case URGENCY_LEVELS.NORMAL:
+      default:
+        agendaMessage = `🎉 ${firstName}, your personalized ${event.name} agenda is ready!\n\n`;
+        break;
+    }
 
     // Add speakers
     if (speakersResult.rows.length > 0) {
@@ -366,7 +483,25 @@ async function sendPersonalizedAgenda(eventId, contractorId) {
       });
     }
 
-    agendaMessage += `We'll send reminders before each session. See you there! 🚀`;
+    // Urgency-aware closing message
+    switch (urgencyLevel) {
+      case URGENCY_LEVELS.IMMEDIATE:
+        agendaMessage += `Check in NOW and start networking! ⚡`;
+        break;
+
+      case URGENCY_LEVELS.VERY_URGENT:
+        agendaMessage += `Check in when you arrive - see you soon! 🚨`;
+        break;
+
+      case URGENCY_LEVELS.URGENT:
+        agendaMessage += `Check in when you arrive today. Enjoy the event! 🚀`;
+        break;
+
+      case URGENCY_LEVELS.NORMAL:
+      default:
+        agendaMessage += `We'll send reminders before each session. See you there! 🚀`;
+        break;
+    }
 
     // Split into multiple SMS if needed (320 chars per message)
     const messages = splitIntoSMS(agendaMessage);
@@ -387,12 +522,14 @@ async function sendPersonalizedAgenda(eventId, contractorId) {
       messages.join(' '),
       safeJsonStringify({
         sms_event_code: event.sms_event_code,
+        urgency_level: urgencyLevel,
+        hours_until_event: hoursUntilEvent,
         speakers: speakersResult.rows.map(s => ({ id: s.id, name: s.name, session_title: s.session_title })),
         sponsors: sponsorsResult.rows.map(s => ({ id: s.id, name: s.sponsor_name, booth_number: s.booth_number }))
       })
     ]);
 
-    console.log('[EventRegistration] Personalized agenda sent:', messageResult.rows[0].id, `(${messages.length} SMS)`);
+    console.log(`[EventRegistration] Personalized agenda sent (${urgencyLevel}):`, messageResult.rows[0].id, `(${messages.length} SMS)`);
 
     // Send via n8n webhook
     await sendViaWebhook(contractor.phone, messages);
