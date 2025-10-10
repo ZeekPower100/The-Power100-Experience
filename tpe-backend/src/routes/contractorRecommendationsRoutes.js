@@ -3,7 +3,14 @@ const router = express.Router();
 const contractorRecommendationsController = require('../controllers/contractorRecommendationsController');
 const { flexibleProtect: authenticateToken } = require('../middleware/flexibleAuth');
 
-// All routes require authentication
+// Public routes (for event agenda pages)
+// GET /contractor/:contractorId - get all recommendations (needed for event agenda)
+router.get('/contractor/:contractorId', contractorRecommendationsController.getByContractorId);
+
+// GET /contractor/:contractorId/type/:entityType - get by type (needed for event agenda)
+router.get('/contractor/:contractorId/type/:entityType', contractorRecommendationsController.getByEntityType);
+
+// All other routes require authentication
 router.use(authenticateToken);
 
 // POST / - create recommendation

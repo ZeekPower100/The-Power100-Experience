@@ -21,12 +21,14 @@ const validateContractor = [
   }
 ];
 
-// Public routes
+// Public routes (for contractor flow and event profile pages)
 router.post('/verify-start', validateContractor, asyncHandler(contractorController.startVerification));
 router.post('/verify-code', asyncHandler(contractorController.verifyCode));
 router.get('/:id/matches', asyncHandler(contractorController.getMatches));
 router.post('/:id/complete', asyncHandler(contractorController.completeFlow));
+router.get('/:id', asyncHandler(contractorController.getContractor)); // Needed for profile page
 router.put('/:id/profile', asyncHandler(contractorController.updateProfile));
+router.put('/:id', asyncHandler(contractorController.updateProfile)); // Needed for profile page
 
 // n8n webhook helper (accepts API key)
 router.get('/lookup-by-phone', flexibleProtect, asyncHandler(contractorController.lookupByPhone));
@@ -36,8 +38,6 @@ router.use(protect);
 router.get('/', asyncHandler(contractorController.getAllContractors));
 router.post('/search', asyncHandler(contractorController.searchContractors));
 router.get('/stats/overview', asyncHandler(contractorController.getStats));
-router.get('/:id', asyncHandler(contractorController.getContractor));
-router.put('/:id', asyncHandler(contractorController.updateProfile));
 router.delete('/:id', asyncHandler(contractorController.deleteContractor));
 
 module.exports = router;

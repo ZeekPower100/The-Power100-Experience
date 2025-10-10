@@ -4,8 +4,11 @@ const eventController = require('../controllers/eventController');
 const { protect } = require('../middleware/auth');
 const { flexibleProtect } = require('../middleware/flexibleAuth');
 
-// Public routes (for submissions)
+// Public routes (for submissions and event pages)
 router.post('/submit', eventController.createEvent);
+
+// Public route - Get single event (needed for profile completion page)
+router.get('/:id', eventController.getEvent);
 
 // n8n webhook helper (accepts API key)
 router.get('/pcr/pending', flexibleProtect, eventController.getPendingPCR);
@@ -21,9 +24,6 @@ router.get('/', eventController.getAllEvents);
 
 // Approve event
 router.put('/:id/approve', eventController.approveEvent);
-
-// Get single event
-router.get('/:id', eventController.getEvent);
 
 // Update event
 router.put('/:id', eventController.updateEvent);
