@@ -1,6 +1,7 @@
 const { query } = require('../config/database');
 const schemaDiscovery = require('./schemaDiscoveryService');
 const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
+const hybridSearch = require('./hybridSearchService');
 
 /**
  * AI Knowledge Service
@@ -780,6 +781,9 @@ class AIKnowledgeService {
       // Build complete context
       const eventContext = {
         event,
+        name: event.name,  // Add name at top level for easy access
+        speakers: speakersResult.rows,  // Also expose as 'speakers' for AI prompt compatibility
+        sponsors: sponsorsResult.rows,   // Also expose as 'sponsors' for AI prompt compatibility
         fullSchedule: speakersResult.rows,
         allSponsors: sponsorsResult.rows,
         myPersonalizedAgenda: personalizedAgenda,
@@ -789,13 +793,14 @@ class AIKnowledgeService {
         cacheExpiry: this.getEventCacheExpiry(event)
       };
 
-      // Cache it
+      // Cache it (ONLY if valid)
       this.eventKnowledgeCache[eventId] = eventContext;
       this.lastEventCacheTime[eventId] = Date.now();
 
       return eventContext;
     } catch (error) {
       console.error('[AIKnowledge] Error loading event context:', error);
+      // DO NOT CACHE null/errors - let it retry next time
       return null;
     }
   }
@@ -852,6 +857,145 @@ class AIKnowledgeService {
         expiresIn: Math.max(0, this.cacheExpiry - (Date.now() - this.lastCacheTime[table])) / 1000 + ' seconds'
       }))
     };
+  }
+
+  /**
+   * Search knowledge base using hybrid search (BM25 + Vector)
+   * This is the RECOMMENDED method for AI Concierge queries
+   * Replaces manual filtering with intelligent semantic search
+   *
+   * @param {string} query - Natural language query
+   * @param {object} options - Search options
+   * @param {number} options.contractorId - Contractor ID for personalization
+   * @param {number} options.limit - Max results (default: 12)
+   * @param {string[]} options.entityTypes - Filter by types (default: all)
+   * @returns {Promise<object>} - Search results with entities
+   */
+  async searchKnowledge(query, options = {}) {
+    try {
+      console.log('[AIKnowledge] Hybrid search query:', query);
+
+      // Perform hybrid search
+      const results = await hybridSearch.search(query, options);
+
+      // Group results by entity type for easy AI consumption
+      const groupedResults = {
+        strategic_partners: [],
+        books: [],
+        podcasts: [],
+        events: [],
+        other: []
+      };
+
+      results.forEach(result => {
+        const entityType = result.entityType;
+        if (groupedResults[entityType]) {
+          groupedResults[entityType].push({
+            id: result.entityId,
+            content: result.content,
+            metadata: result.metadata,
+            scores: result.scores,
+            relevanceScore: result.scores.hybrid
+          });
+        } else {
+          groupedResults.other.push(result);
+        }
+      });
+
+      // Add search metadata
+      const response = {
+        query,
+        results: groupedResults,
+        totalResults: results.length,
+        searchMethod: 'hybrid_search',
+        searchWeights: {
+          bm25: hybridSearch.DEFAULT_BM25_WEIGHT,
+          vector: hybridSearch.DEFAULT_VECTOR_WEIGHT
+        },
+        timestamp: new Date().toISOString()
+      };
+
+      // Add top recommendation (highest score)
+      if (results.length > 0) {
+        response.topRecommendation = {
+          entityType: results[0].entityType,
+          entityId: results[0].entityId,
+          name: results[0].metadata?.entity_name,
+          score: results[0].scores.hybrid
+        };
+      }
+
+      console.log(`[AIKnowledge] Found ${results.length} results via hybrid search`);
+
+      return response;
+    } catch (error) {
+      console.error('[AIKnowledge] Hybrid search error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Search for strategic partners using hybrid search
+   * @param {string} query - Search query
+   * @param {object} options - Search options
+   * @returns {Promise<Array>}
+   */
+  async searchPartners(query, options = {}) {
+    const results = await hybridSearch.searchPartners(query, options);
+    return results.map(r => ({
+      partnerId: r.entityId,
+      name: r.metadata?.entity_name,
+      content: r.content,
+      relevanceScore: r.scores.hybrid,
+      focusAreas: r.metadata?.focus_areas || [],
+      ...r
+    }));
+  }
+
+  /**
+   * Search for books using hybrid search
+   * @param {string} query - Search query
+   * @param {object} options - Search options
+   * @returns {Promise<Array>}
+   */
+  async searchBooks(query, options = {}) {
+    const results = await hybridSearch.searchBooks(query, options);
+    return results.map(r => ({
+      bookId: r.entityId,
+      title: r.metadata?.entity_name,
+      author: r.metadata?.author,
+      content: r.content,
+      relevanceScore: r.scores.hybrid,
+      focusAreas: r.metadata?.focus_areas || [],
+      ...r
+    }));
+  }
+
+  /**
+   * Search for podcasts using hybrid search
+   * @param {string} query - Search query
+   * @param {object} options - Search options
+   * @returns {Promise<Array>}
+   */
+  async searchPodcasts(query, options = {}) {
+    const results = await hybridSearch.searchPodcasts(query, options);
+    return results.map(r => ({
+      podcastId: r.entityId,
+      title: r.metadata?.entity_name,
+      host: r.metadata?.host,
+      content: r.content,
+      relevanceScore: r.scores.hybrid,
+      focusAreas: r.metadata?.focus_areas || [],
+      ...r
+    }));
+  }
+
+  /**
+   * Get hybrid search statistics
+   * @returns {Promise<object>}
+   */
+  async getHybridSearchStats() {
+    return await hybridSearch.getIndexStats();
   }
 }
 
