@@ -58,6 +58,12 @@ app.set("trust proxy", true);
 // Connect to database
 connectDB();
 
+// Initialize Event View Refresher for Phase 1 (Event Truth Management)
+const eventViewRefresher = require('./services/eventViewRefresher');
+eventViewRefresher.initialize()
+  .then(() => console.log('✅ Event View Refresher initialized and listening'))
+  .catch(err => console.error('❌ Event View Refresher initialization failed:', err));
+
 // Security middleware
 app.use(helmet());
 
@@ -224,8 +230,12 @@ const server = app.listen(PORT, () => {
 });
 
 // Graceful shutdown
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('SIGTERM signal received: closing HTTP server');
+
+  // Shutdown Event View Refresher first
+  await eventViewRefresher.shutdown();
+
   server.close(() => {
     console.log('HTTP server closed');
     process.exit(0);
