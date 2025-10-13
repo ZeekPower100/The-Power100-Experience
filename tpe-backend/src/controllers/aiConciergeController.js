@@ -620,7 +620,7 @@ const aiConciergeController = {
     }
   },
 
-  async generateAIResponse(userInput, contractor, contractorId) {
+  async generateAIResponse(userInput, contractor, contractorId, eventContext = null) {
     try {
       // Get recent conversation history
       const conversationHistory = await AIConcierge.getConversations(
@@ -647,8 +647,14 @@ const aiConciergeController = {
       const enhancedKnowledge = {
         ...knowledgeBase,
         crossEntityInsights,
-        conversationHistory
+        conversationHistory,
+        ...(eventContext && { currentEvent: eventContext })  // Add event context if provided
       };
+
+      // Debug log if event context provided
+      if (eventContext) {
+        console.log('[AIConcierg] ✅ Event context passed to AI:', eventContext.name, 'with', eventContext.speakers?.length || 0, 'speakers');
+      }
 
       // Debug logging
       console.log('📚 Knowledge base loaded:', {
@@ -988,6 +994,17 @@ const aiConciergeController = {
       console.log('[AIConcierg] Passing partners to OpenAI:', partnersToPass?.length || 0, 'partners');
       if (partnersToPass && partnersToPass.length > 0) {
         console.log('[AIConcierg] First partner:', JSON.stringify(partnersToPass[0]));
+      }
+
+      // CRITICAL: Verify event context is in finalKnowledge before passing to OpenAI
+      if (finalKnowledge.currentEvent) {
+        console.log('[AIConcierg] ✅ currentEvent CONFIRMED in finalKnowledge:', finalKnowledge.currentEvent.name);
+        console.log('[AIConcierg] ✅ currentEvent speakers field:', !!finalKnowledge.currentEvent.speakers);
+        console.log('[AIConcierg] ✅ currentEvent fullSchedule field:', !!finalKnowledge.currentEvent.fullSchedule);
+        console.log('[AIConcierg] ✅ currentEvent speakers count:', finalKnowledge.currentEvent.speakers?.length || 0);
+        console.log('[AIConcierg] ✅ currentEvent fullSchedule count:', finalKnowledge.currentEvent.fullSchedule?.length || 0);
+      } else {
+        console.log('[AIConcierg] ⚠️ NO currentEvent in finalKnowledge!');
       }
 
       const response = await openAIService.generateConciergeResponse(
