@@ -629,6 +629,27 @@ const aiConciergeController = {
         0
       );
 
+      // PHASE 1: Get real-time event context from materialized views
+      const contextAssembler = require('../services/contextAssembler');
+      let eventContextFromViews = null;
+
+      try {
+        const assembledContext = await contextAssembler.getEventContext(contractorId || 1);
+
+        if (assembledContext.total_active_sessions > 0 || assembledContext.total_upcoming_sessions > 0) {
+          // Format for AI consumption
+          eventContextFromViews = contextAssembler.formatForAI(assembledContext);
+          console.log('[AIConcierg] ✅ Event context from materialized views loaded');
+          console.log('[AIConcierg] Active sessions:', assembledContext.total_active_sessions);
+          console.log('[AIConcierg] Upcoming sessions:', assembledContext.total_upcoming_sessions);
+        } else {
+          console.log('[AIConcierg] No active or upcoming sessions for contractor');
+        }
+      } catch (error) {
+        console.error('[AIConcierg] Error loading event context from views:', error);
+        // Continue without event context - not critical
+      }
+
       // Use the new AI Knowledge Service for dynamic data retrieval
       const aiKnowledgeService = require('../services/aiKnowledgeService');
 
@@ -648,12 +669,19 @@ const aiConciergeController = {
         ...knowledgeBase,
         crossEntityInsights,
         conversationHistory,
-        ...(eventContext && { currentEvent: eventContext })  // Add event context if provided
+        ...(eventContext && { currentEvent: eventContext }),  // Add legacy event context if provided
+        ...(eventContextFromViews && { eventContextFromViews })  // Add Phase 1 event context from materialized views
       };
 
       // Debug log if event context provided
       if (eventContext) {
-        console.log('[AIConcierg] ✅ Event context passed to AI:', eventContext.name, 'with', eventContext.speakers?.length || 0, 'speakers');
+        console.log('[AIConcierg] ✅ Legacy event context passed to AI:', eventContext.name, 'with', eventContext.speakers?.length || 0, 'speakers');
+      }
+
+      // Debug log for Phase 1 event context from materialized views
+      if (eventContextFromViews) {
+        console.log('[AIConcierg] ✅ Phase 1 event context from materialized views loaded');
+        console.log('[AIConcierg] Event context length:', eventContextFromViews.length, 'characters');
       }
 
       // Debug logging
@@ -998,13 +1026,21 @@ const aiConciergeController = {
 
       // CRITICAL: Verify event context is in finalKnowledge before passing to OpenAI
       if (finalKnowledge.currentEvent) {
-        console.log('[AIConcierg] ✅ currentEvent CONFIRMED in finalKnowledge:', finalKnowledge.currentEvent.name);
+        console.log('[AIConcierg] ✅ Legacy currentEvent CONFIRMED in finalKnowledge:', finalKnowledge.currentEvent.name);
         console.log('[AIConcierg] ✅ currentEvent speakers field:', !!finalKnowledge.currentEvent.speakers);
         console.log('[AIConcierg] ✅ currentEvent fullSchedule field:', !!finalKnowledge.currentEvent.fullSchedule);
         console.log('[AIConcierg] ✅ currentEvent speakers count:', finalKnowledge.currentEvent.speakers?.length || 0);
         console.log('[AIConcierg] ✅ currentEvent fullSchedule count:', finalKnowledge.currentEvent.fullSchedule?.length || 0);
       } else {
-        console.log('[AIConcierg] ⚠️ NO currentEvent in finalKnowledge!');
+        console.log('[AIConcierg] ℹ️ No legacy currentEvent in finalKnowledge');
+      }
+
+      // Verify Phase 1 event context from materialized views
+      if (finalKnowledge.eventContextFromViews) {
+        console.log('[AIConcierg] ✅ Phase 1 eventContextFromViews CONFIRMED in finalKnowledge');
+        console.log('[AIConcierg] ✅ Event context length:', finalKnowledge.eventContextFromViews.length, 'characters');
+      } else {
+        console.log('[AIConcierg] ℹ️ No Phase 1 event context from views');
       }
 
       const response = await openAIService.generateConciergeResponse(
