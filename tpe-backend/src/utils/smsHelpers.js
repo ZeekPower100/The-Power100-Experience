@@ -1,9 +1,19 @@
 /**
  * SMS Helper Utilities
  * Handles intelligent SMS message splitting and formatting
+ *
+ * CRITICAL LIMITS:
+ * - GHL has 1600 character HARD LIMIT PER MESSAGE
+ * - We use 960 chars per message (640 char safety buffer per message)
+ * - Preferred: 3 messages ("burst" mode)
+ * - Each message: 960 chars max
+ * - Total max: 3 × 960 = 2880 chars for a full burst
  */
 
-const MAX_SMS_LENGTH = 320; // Safe limit under GHL's 1600 char limit
+const GHL_HARD_LIMIT = 1600;        // GHL's hard limit per message
+const MAX_SMS_LENGTH = 960;         // Our per-message limit (safely under 1600)
+const MAX_MESSAGES = 3;             // Preferred burst size
+const MAX_TOTAL_LENGTH = MAX_SMS_LENGTH * MAX_MESSAGES; // 2880 chars max total
 const MULTI_SMS_INDICATOR = '[...continues]';
 const MULTI_SMS_CONTINUATION = '[continued]';
 
@@ -52,9 +62,9 @@ function splitIntoSMS(message, maxLength = MAX_SMS_LENGTH) {
 
     messages.push(chunk);
 
-    // Safety: prevent infinite loops
-    if (messages.length > 5) {
-      console.warn('[SMS] Hit safety limit of 5 messages, truncating');
+    // Safety: prevent infinite loops AND enforce max messages
+    if (messages.length >= MAX_MESSAGES) {
+      console.warn(`[SMS] Hit safety limit of ${MAX_MESSAGES} messages, stopping split`);
       break;
     }
   }
@@ -101,9 +111,15 @@ function shouldAllowMultiSMS(message, context = {}) {
 function processMessageForSMS(message, options = {}) {
   const {
     allowMultiSMS = true,
-    maxMessages = 3,
+    maxMessages = MAX_MESSAGES, // Default to 3 (burst mode)
     context = {}
   } = options;
+
+  // 🚨 CRITICAL: ENFORCE TOTAL LENGTH LIMIT BEFORE ANYTHING ELSE
+  if (message.length > MAX_TOTAL_LENGTH) {
+    console.error(`[SMS] ⚠️ AI generated ${message.length} chars (over ${MAX_TOTAL_LENGTH} limit)! TRUNCATING.`);
+    message = message.substring(0, MAX_TOTAL_LENGTH);
+  }
 
   // Single message fits - perfect!
   if (message.length <= MAX_SMS_LENGTH) {
@@ -156,6 +172,9 @@ function processMessageForSMS(message, options = {}) {
 
 module.exports = {
   MAX_SMS_LENGTH,
+  MAX_MESSAGES,
+  MAX_TOTAL_LENGTH,
+  GHL_HARD_LIMIT,
   splitIntoSMS,
   shouldAllowMultiSMS,
   processMessageForSMS

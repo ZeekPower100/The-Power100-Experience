@@ -3,6 +3,11 @@
  * Provides professional, well-formatted HTML emails with proper styling
  */
 
+// Get environment-specific base URL
+const getBaseUrl = () => {
+  return process.env.FRONTEND_URL || 'http://localhost:3002';
+};
+
 /**
  * Base email template wrapper with Power100 branding
  */
@@ -95,7 +100,7 @@ function buildRegistrationConfirmationEmail(data) {
     </ol>
 
     <div style="text-align: center; margin: 40px 0 0 0;">
-      <a href="${registrationUrl || 'https://tpx.power100.io/events'}"
+      <a href="${registrationUrl || `${getBaseUrl()}/events`}"
          style="display: inline-block; background-color: #28a745; color: #ffffff;
                 padding: 15px 40px; text-decoration: none; border-radius: 6px;
                 font-weight: bold; font-size: 16px;">
@@ -144,7 +149,7 @@ function buildProfileCompletionReminderEmail(data) {
     </p>
 
     <div style="text-align: center; margin: 40px 0 0 0;">
-      <a href="https://tpx.power100.io/events/${eventId}/profile"
+      <a href="${getBaseUrl()}/events/${eventId}/profile"
          style="display: inline-block; background-color: #28a745; color: #ffffff;
                 padding: 15px 40px; text-decoration: none; border-radius: 6px;
                 font-weight: bold; font-size: 16px;">
@@ -231,7 +236,7 @@ function buildPersonalizedAgendaEmail(data) {
     ${recommendationsHtml}
 
     <div style="text-align: center; margin: 40px 0 0 0;">
-      <a href="https://tpx.power100.io/events/${eventId}/agenda"
+      <a href="${getBaseUrl()}/events/${eventId}/agenda"
          style="display: inline-block; background-color: #28a745; color: #ffffff;
                 padding: 15px 40px; text-decoration: none; border-radius: 6px;
                 font-weight: bold; font-size: 16px;">
@@ -298,7 +303,7 @@ function buildEventSummaryEmail(data) {
     </div>
 
     <div style="text-align: center; margin: 40px 0 0 0;">
-      <a href="https://tpx.power100.io/events/${eventId}/resources"
+      <a href="${getBaseUrl()}/events/${eventId}/resources"
          style="display: inline-block; background-color: #28a745; color: #ffffff;
                 padding: 15px 40px; text-decoration: none; border-radius: 6px;
                 font-weight: bold; font-size: 16px;">
@@ -359,7 +364,7 @@ function buildAgendaReadyEmail(data) {
     </div>
 
     <div style="text-align: center; margin: 40px 0 0 0;">
-      <a href="https://tpx.power100.io/events/${eventId}/agenda?contractor=${contractorId}"
+      <a href="${getBaseUrl()}/events/${eventId}/agenda?contractor=${contractorId}"
          style="display: inline-block; background-color: #28a745; color: #ffffff;
                 padding: 15px 40px; text-decoration: none; border-radius: 6px;
                 font-weight: bold; font-size: 16px;">
@@ -430,7 +435,7 @@ function buildCheckInReminderNightBefore(data) {
     </div>
 
     <div style="text-align: center; margin: 40px 0 0 0;">
-      <a href="https://tpx.power100.io/events/${eventId}/check-in?contractor=${contractorId}"
+      <a href="${getBaseUrl()}/events/${eventId}/check-in?contractor=${contractorId}"
          style="display: inline-block; background-color: #28a745; color: #ffffff;
                 padding: 15px 40px; text-decoration: none; border-radius: 6px;
                 font-weight: bold; font-size: 16px;">
@@ -474,7 +479,7 @@ function buildCheckInReminder1HourBefore(data) {
     </div>
 
     <div style="text-align: center; margin: 40px 0 0 0;">
-      <a href="https://tpx.power100.io/events/${eventId}/check-in?contractor=${contractorId}"
+      <a href="${getBaseUrl()}/events/${eventId}/check-in?contractor=${contractorId}"
          style="display: inline-block; background-color: #28a745; color: #ffffff;
                 padding: 15px 40px; text-decoration: none; border-radius: 6px;
                 font-weight: bold; font-size: 16px;">
@@ -512,7 +517,7 @@ function buildCheckInReminderEventStart(data) {
     </p>
 
     <div style="text-align: center; margin: 40px 0 0 0;">
-      <a href="https://tpx.power100.io/events/${eventId}/check-in?contractor=${contractorId}"
+      <a href="${getBaseUrl()}/events/${eventId}/check-in?contractor=${contractorId}"
          style="display: inline-block; background-color: #28a745; color: #ffffff;
                 padding: 15px 40px; text-decoration: none; border-radius: 6px;
                 font-weight: bold; font-size: 16px;">

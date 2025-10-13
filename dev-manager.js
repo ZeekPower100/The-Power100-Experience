@@ -157,6 +157,11 @@ class DevManager {
     const env = { ...process.env };
     delete env.N8N_API_KEY;
 
+    // Create log file streams
+    const logDir = config.dir;
+    const logFile = path.join(logDir, `${config.name.toLowerCase().replace(/\s+/g, '-')}.log`);
+    const logStream = fs.createWriteStream(logFile, { flags: 'a' }); // Append mode
+
     const child = spawn(config.startCmd, config.startArgs, {
       cwd: config.dir,
       stdio: 'pipe',
@@ -168,25 +173,31 @@ class DevManager {
     // Save PID
     fs.writeFileSync(config.pidFile, child.pid.toString());
     this.processes[config.name] = child;
-    
+
     // Allow the child to continue running independently
     child.unref();
 
-    // Handle output
+    // Handle output - log to both console AND file
     child.stdout.on('data', (data) => {
-      console.log(`[${config.name}] ${data.toString().trim()}`);
+      const msg = data.toString();
+      console.log(`[${config.name}] ${msg.trim()}`);
+      logStream.write(`[${new Date().toISOString()}] ${msg}`);
     });
 
     child.stderr.on('data', (data) => {
-      const msg = data.toString().trim();
-      // Filter out non-critical warnings
+      const msg = data.toString();
+      logStream.write(`[${new Date().toISOString()}] [ERROR] ${msg}`);
+      // Filter out non-critical warnings from console
       if (!msg.includes('ExperimentalWarning') && !msg.includes('npm WARN')) {
-        console.error(`[${config.name} Error] ${msg}`);
+        console.error(`[${config.name} Error] ${msg.trim()}`);
       }
     });
 
     child.on('close', (code) => {
-      console.log(`[${config.name}] Process exited with code ${code}`);
+      const msg = `Process exited with code ${code}`;
+      console.log(`[${config.name}] ${msg}`);
+      logStream.write(`[${new Date().toISOString()}] ${msg}\n`);
+      logStream.end();
       delete this.processes[config.name];
       // Clean up PID file
       if (fs.existsSync(config.pidFile)) {

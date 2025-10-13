@@ -3,8 +3,10 @@
 
 const aiRouter = require('../aiRouter');
 const aiConciergeController = require('../../controllers/aiConciergeController');
+const aiKnowledgeService = require('../aiKnowledgeService');
 const { query } = require('../../config/database');
 const { safeJsonParse } = require('../../utils/jsonHelpers');
+const { processMessageForSMS } = require('../../utils/smsHelpers');
 
 /**
  * Register all event orchestration handlers
@@ -87,12 +89,27 @@ async function handleGeneralQuestion(smsData, classification) {
     };
 
     console.log('[Handler] Calling AI Concierge for contractor:', contractor.name);
+    console.log('[Handler] smsData keys:', Object.keys(smsData));
+    console.log('[Handler] smsData.eventContext:', smsData.eventContext);
 
-    // Generate AI response using AI Concierge
+    // Get event context if contractor is at an event
+    let eventContext = null;
+    if (smsData.eventContext?.id) {
+      console.log('[Handler] Loading event context for event:', smsData.eventContext.id);
+      eventContext = await aiKnowledgeService.getCurrentEventContext(
+        smsData.eventContext.id,
+        smsData.contractor.id
+      );
+    } else {
+      console.log('[Handler] ⚠️ No eventContext in smsData - AI will not have event details!');
+    }
+
+    // Generate AI response using AI Concierge with full event context
     const aiResponse = await aiConciergeController.generateAIResponse(
       smsData.messageText,
       contractorData,
-      smsData.contractor.id
+      smsData.contractor.id,
+      eventContext  // Pass event context so AI knows actual speakers/sponsors/schedule
     );
 
     // Extract response content (handles both string and object responses)
@@ -102,14 +119,28 @@ async function handleGeneralQuestion(smsData, classification) {
 
     console.log('[Handler] AI Concierge response generated:', responseContent.substring(0, 100) + '...');
 
+    // Process for SMS with multi-message support (CRITICAL: enforces GHL limits)
+    const smsResult = processMessageForSMS(responseContent, {
+      allowMultiSMS: true,
+      maxMessages: 3,
+      context: {
+        messageType: 'ai_concierge_response',
+        contractorId: smsData.contractor.id
+      }
+    });
+
+    console.log(`[Handler] Processed AI response: ${smsResult.messages.length} message(s), split: ${smsResult.wasSplit}, truncated: ${smsResult.wasTruncated}`);
+
     return {
       success: true,
       action: 'send_message',
-      message: responseContent,
+      messages: smsResult.messages,  // Array of messages (not single message)
       phone: smsData.phone,
       contractor_id: smsData.contractor.id,
       message_type: 'ai_concierge_response',
       response_sent: true,
+      multi_sms: smsResult.wasSplit,
+      sms_count: smsResult.messages.length,
       personalization_data: {
         ai_model: 'gpt-4',
         original_question: smsData.messageText,

@@ -19,30 +19,45 @@ async function handleEventCheckIn(smsData, classification) {
   try {
     console.log('[CheckInHandler] Processing event check-in question:', smsData.messageText);
 
-    // Get contractor's event attendance record
-    // DATABASE-CHECKED: event_attendees columns verified
-    const attendanceResult = await query(`
-      SELECT
-        ea.id,
-        ea.event_id,
-        ea.contractor_id,
-        ea.check_in_time,
-        ea.check_in_method,
-        ea.profile_completion_status,
-        ea.sms_opt_in,
-        ea.real_phone,
-        e.event_name,
-        e.event_date,
-        e.venue_name,
-        e.venue_address
-      FROM event_attendees ea
-      LEFT JOIN events e ON ea.event_id = e.id
-      WHERE ea.contractor_id = $1
-        AND ea.event_id = $2
-      LIMIT 1
-    `, [smsData.contractor.id, smsData.eventContext?.id]);
+    // 🛡️ CRITICAL: Try table lookup first, but ALWAYS fallback to AI Concierge if it fails
+    let attendance = null;
 
-    const attendance = attendanceResult.rows.length > 0 ? attendanceResult.rows[0] : null;
+    try {
+      // Get contractor's event attendance record
+      // DATABASE-CHECKED: event_attendees columns verified, using events.name (NOT event_name)
+      const attendanceResult = await query(`
+        SELECT
+          ea.id,
+          ea.event_id,
+          ea.contractor_id,
+          ea.check_in_time,
+          ea.check_in_method,
+          ea.profile_completion_status,
+          ea.sms_opt_in,
+          ea.real_phone,
+          e.name as event_name,
+          e.date as event_date,
+          e.location as venue_name,
+          e.location as venue_address
+        FROM event_attendees ea
+        LEFT JOIN events e ON ea.event_id = e.id
+        WHERE ea.contractor_id = $1
+          AND ea.event_id = $2
+        LIMIT 1
+      `, [smsData.contractor.id, smsData.eventContext?.id]);
+
+      attendance = attendanceResult.rows.length > 0 ? attendanceResult.rows[0] : null;
+
+    } catch (queryError) {
+      console.error('[CheckInHandler] Database query failed:', queryError.message);
+      console.log('[CheckInHandler] ✅ ROUTING TO AI CONCIERGE (database error)');
+
+      // Fallback to AI Concierge for ANY database error
+      return await routeToAIConcierge(smsData, 'database_error', {
+        error: queryError.message,
+        original_question: smsData.messageText
+      });
+    }
 
     // Use AI to analyze what they're asking about
     const analysisPrompt = `Analyze this contractor's question about event check-in/status:
@@ -433,6 +448,160 @@ async function saveOutboundMessage({ contractor_id, event_id, message_type, pers
     console.log('[CheckInHandler] Outbound message saved to database');
   } catch (error) {
     console.error('[CheckInHandler] Error saving outbound message:', error);
+  }
+}
+
+/**
+ * 🤖 FALLBACK ROUTE TO AI CONCIERGE
+ *
+ * This is the CRITICAL safety net that ensures users ALWAYS get an answer.
+ * If immediate table lookup fails OR question needs broader context,
+ * this routes the question directly to the AI Concierge which has access
+ * to ALL database tables and can answer ANY question.
+ *
+ * This is the "whole point of the AI Concierge" - comprehensive, reliable answers.
+ */
+async function routeToAIConcierge(smsData, reason, context = {}) {
+  console.log(`[CheckInHandler] 🤖 Routing to AI Concierge - Reason: ${reason}`);
+
+  try {
+    // Build enhanced prompt with event context if available
+    const enhancedPrompt = `I'm a contractor who just asked: "${smsData.messageText}"
+
+Context:
+- I'm ${smsData.contractor.name} from ${smsData.contractor.company_name || 'my company'}
+- I'm asking about an event-related question
+${smsData.eventContext ? `- Event ID: ${smsData.eventContext.id}` : '- No specific event context'}
+${context.error ? `- System note: Table lookup failed (${context.error})` : ''}
+
+Please answer my question using ALL available data from the database:
+- Event information (name, date, location, schedule)
+- My registration and check-in status
+- Any other relevant context
+
+CRITICAL SMS CONSTRAINTS:
+- Maximum 320 characters (can use 2 messages if needed)
+- Be direct and helpful
+- NO technical error messages to the user
+- Answer the question completely`;
+
+    // 🎯 CRITICAL: Pass event context to AI Concierge so it knows about the ACTUAL event
+    // Get event details with speakers and sponsors
+    let eventDetails = null;
+    if (smsData.eventContext?.id) {
+      try {
+        const eventResult = await query(`
+          SELECT
+            e.id,
+            e.name,
+            e.date,
+            e.location,
+            e.description,
+            e.topics
+          FROM events e
+          WHERE e.id = $1
+        `, [smsData.eventContext.id]);
+
+        if (eventResult.rows.length > 0) {
+          eventDetails = eventResult.rows[0];
+
+          // Get speakers for this event
+          const speakersResult = await query(`
+            SELECT name, session_title, session_time, company
+            FROM event_speakers
+            WHERE event_id = $1
+            ORDER BY session_time
+          `, [smsData.eventContext.id]);
+
+          // Get sponsors for this event
+          const sponsorsResult = await query(`
+            SELECT sponsor_name, booth_number
+            FROM event_sponsors
+            WHERE event_id = $1
+          `, [smsData.eventContext.id]);
+
+          eventDetails.speakers = speakersResult.rows;
+          eventDetails.sponsors = sponsorsResult.rows;
+          eventDetails.eventStatus = 'during_event'; // Mark as active event
+
+          console.log('[CheckInHandler] ✅ Event context loaded:', eventDetails.name, 'with', eventDetails.speakers.length, 'speakers and', eventDetails.sponsors.length, 'sponsors');
+        }
+      } catch (eventErr) {
+        console.error('[CheckInHandler] Error fetching event details:', eventErr);
+      }
+    }
+
+    // Call AI Concierge with event context as 4th parameter
+    // generateAIResponse signature: (userInput, contractor, contractorId, eventContext)
+    // Event context will be merged into knowledge base as currentEvent
+    const aiResponse = await aiConciergeController.generateAIResponse(
+      enhancedPrompt,
+      smsData.contractor,
+      smsData.contractor.id,
+      eventDetails  // Pass event details as 4th parameter - will be added to knowledgeBase.currentEvent
+    );
+
+    // Extract response content
+    const responseContent = typeof aiResponse === 'object' && aiResponse.content
+      ? aiResponse.content
+      : aiResponse;
+
+    // Process for SMS (may split into multiple messages)
+    const smsResult = processMessageForSMS(responseContent, {
+      allowMultiSMS: true,
+      maxMessages: 2
+    });
+
+    console.log('[CheckInHandler] ✅ AI Concierge response generated:', smsResult.messages.length, 'message(s)');
+
+    // Save outbound message if possible (don't fail if this fails)
+    try {
+      await saveOutboundMessage({
+        contractor_id: smsData.contractor.id,
+        event_id: smsData.eventContext?.id || null,
+        message_type: 'ai_concierge_fallback',
+        personalization_data: {
+          fallback_reason: reason,
+          original_question: smsData.messageText,
+          context
+        },
+        ghl_contact_id: smsData.ghl_contact_id,
+        ghl_location_id: smsData.ghl_location_id,
+        message_content: smsResult.messages.join(' ')
+      });
+    } catch (saveError) {
+      console.error('[CheckInHandler] Error saving AI Concierge response (non-fatal):', saveError);
+    }
+
+    return {
+      success: true,
+      action: 'send_message',
+      messages: smsResult.messages,
+      phone: smsData.phone,
+      contractor_id: smsData.contractor.id,
+      message_type: 'ai_concierge_fallback',
+      response_sent: true,
+      multi_sms: smsResult.wasSplit,
+      fallback_reason: reason
+    };
+
+  } catch (aiError) {
+    console.error('[CheckInHandler] AI Concierge fallback also failed:', aiError);
+
+    // Last resort: Send helpful error message
+    const firstName = smsData.contractor.name.split(' ')[0];
+    const fallbackMessage = `Hi ${firstName}! I'm having trouble accessing event information right now. Please try again in a moment, or contact support@power100.io if this persists. We're here to help!`;
+
+    return {
+      success: false,
+      action: 'send_message',
+      messages: [fallbackMessage],
+      phone: smsData.phone,
+      contractor_id: smsData.contractor.id,
+      message_type: 'error_fallback',
+      response_sent: true,
+      error: aiError.message
+    };
   }
 }
 

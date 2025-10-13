@@ -904,6 +904,12 @@ Provide a JSON response with exactly 5 actionable insights:
 
     // Build event context section if contractor is at an event
     let eventContext = '';
+    console.log('[OpenAI] Checking for currentEvent in knowledgeBase:', !!knowledgeBase.currentEvent);
+    if (knowledgeBase.currentEvent) {
+      console.log('[OpenAI] ✅ currentEvent found:', knowledgeBase.currentEvent.name);
+      console.log('[OpenAI] Event speakers:', knowledgeBase.currentEvent.speakers?.length || 0);
+      console.log('[OpenAI] Event fullSchedule:', knowledgeBase.currentEvent.fullSchedule?.length || 0);
+    }
     if (knowledgeBase && knowledgeBase.currentEvent) {
       const event = knowledgeBase.currentEvent;
       const eventStatus = event.eventStatus || 'unknown';
@@ -952,10 +958,12 @@ RESPOND NATURALLY like this:
 ❌ DON'T say technical things like "I will store this in the database" or "Saving to event_notes table"
 
 2️⃣ SESSION AWARENESS:
-${event && event.speakers && event.speakers.length > 0 ? `
+${event && (event.speakers || event.fullSchedule) && (event.speakers?.length > 0 || event.fullSchedule?.length > 0) ? `
 CURRENT EVENT SCHEDULE:
-${event.speakers.slice(0, 5).map((s, i) => `• ${s.session_time || 'TBD'} - "${s.session_title}" by ${s.name}${s.company ? ` (${s.company})` : ''}`).join('\n')}
-${event.speakers.length > 5 ? `... and ${event.speakers.length - 5} more sessions` : ''}
+${((event.speakers || event.fullSchedule) || []).map((s, i) => `• ${s.session_time || 'TBD'} - "${s.session_title}" by ${s.name}${s.company ? ` (${s.company})` : ''}`).join('\n')}
+
+CRITICAL: These are the ONLY speakers at this event. DO NOT mention any other speakers like Mike Davis, Sarah Johnson, or Greg Salafia.
+If asked about speakers, ONLY reference the speakers listed above.
 
 Use this schedule to:
 • Reference current/upcoming sessions: "Based on the AI automation session you're in..."

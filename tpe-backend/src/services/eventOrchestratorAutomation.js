@@ -14,6 +14,8 @@
 const { query } = require('../config/database');
 const aiKnowledgeService = require('./aiKnowledgeService');
 const { safeJsonStringify, safeJsonParse } = require('../utils/jsonHelpers');
+const { sendAgendaReadyNotification } = require('./eventOrchestrator/emailScheduler');
+const { sendSMSNotification } = require('./smsService');
 
 class EventOrchestratorAutomation {
   /**
@@ -35,6 +37,53 @@ class EventOrchestratorAutomation {
 
       // 4. Create learning event
       await this.createLearningEvent(contractor_id, event_id, 'check_in_orchestration', recommendations);
+
+      // 5. Send "Agenda Ready" email and SMS notifications
+      try {
+        await sendAgendaReadyNotification(event_id, contractor_id, {
+          speakers: recommendations.speakers.length,
+          sponsors: recommendations.sponsors.length,
+          peers: recommendations.peers.length
+        });
+        console.log(`📧 Agenda ready email sent to contractor ${contractor_id}`);
+      } catch (emailError) {
+        console.error(`❌ Failed to send agenda ready email:`, emailError);
+        // Don't fail the orchestration if email fails
+      }
+
+      // 6. Send SMS notification with agenda link via n8n
+      try {
+        const contractor = await this.getContractorProfile(contractor_id);
+        const event = await this.getEventDetails(event_id);
+
+        if (contractor.phone) {
+          // Use environment-specific URL
+          const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3002';
+          const smsMessage = `${contractor.first_name || 'Hi'}! Your personalized agenda for ${event.name} is ready! 🎉 ${recommendations.speakers.length} speakers, ${recommendations.sponsors.length} sponsors, ${recommendations.peers.length} networking matches. View now: ${baseUrl}/events/${event_id}/agenda?contractor=${contractor_id}`;
+
+          // Send via n8n webhook (works in both dev and production)
+          const axios = require('axios');
+          const n8nWebhook = process.env.NODE_ENV === 'production'
+            ? 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl'
+            : 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl-dev';
+
+          await axios.post(n8nWebhook, {
+            send_via_ghl: {
+              phone: contractor.phone,
+              message: smsMessage,
+              contractor_id: contractor_id,
+              event_id: event_id,
+              event_name: event.name,
+              message_type: 'agenda_ready'
+            }
+          });
+
+          console.log(`📱 Agenda ready SMS sent to contractor ${contractor_id}`);
+        }
+      } catch (smsError) {
+        console.error(`❌ Failed to send agenda ready SMS:`, smsError);
+        // Don't fail the orchestration if SMS fails
+      }
 
       console.log(`✅ AI Orchestration complete for contractor ${contractor_id}`);
       return recommendations;
@@ -99,20 +148,21 @@ class EventOrchestratorAutomation {
       // Calculate relevance score
       const score = this.calculateSpeakerRelevance(contractor, speaker);
 
-      if (score > 70) {
+      // Lower threshold for testing - if no high-scoring matches, include all speakers
+      if (score > 20 || speakers.length <= 5) {
         matches.push({
           speaker_id: speaker.id,
           speaker_name: speaker.name,
           session_title: speaker.session_title,
           session_time: speaker.session_time,
           relevance_score: score,
-          why: this.explainSpeakerMatch(contractor, speaker),
+          why: this.explainSpeakerMatch(contractor, speaker) || 'Industry expert speaker',
           alert_time: this.calculateAlertTime(speaker.session_time)
         });
       }
     }
 
-    // Return top 3 speakers
+    // Return top 3 speakers (or all if less than 3)
     return matches.sort((a, b) => b.relevance_score - a.relevance_score).slice(0, 3);
   }
 
@@ -197,13 +247,14 @@ class EventOrchestratorAutomation {
     for (const sponsor of sponsors) {
       const score = this.calculateSponsorRelevance(contractor, sponsor);
 
-      if (score > 60) {
+      // Lower threshold for testing - if no high-scoring matches, include all sponsors
+      if (score > 20 || sponsors.length <= 5) {
         matches.push({
           sponsor_id: sponsor.id,
           sponsor_name: sponsor.sponsor_name,
           booth_number: sponsor.booth_number,
           relevance_score: score,
-          why: this.explainSponsorMatch(contractor, sponsor),
+          why: this.explainSponsorMatch(contractor, sponsor) || 'Event sponsor offering solutions',
           talking_points: this.generateTalkingPoints(contractor, sponsor)
         });
       }
@@ -606,7 +657,7 @@ class EventOrchestratorAutomation {
     const result = await query(`
       SELECT c.*, cap.*
       FROM contractors c
-      LEFT JOIN contractor_ai_profiles cap ON c.contractor_id = cap.contractor_id
+      LEFT JOIN contractor_ai_profiles cap ON c.id = cap.contractor_id
       WHERE c.id = $1
     `, [contractor_id]);
     return result.rows[0];

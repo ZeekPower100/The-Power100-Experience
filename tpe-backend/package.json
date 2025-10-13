@@ -4,7 +4,7 @@
   "description": "Backend API for The Power100 Experience",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js",
+    "start": "node src/server.js 2>&1 | tee -a backend-live.log",
     "dev": "nodemon src/server.js",
     "worker": "node src/workers/followUpWorker.js",
     "worker:dev": "nodemon src/workers/followUpWorker.js",

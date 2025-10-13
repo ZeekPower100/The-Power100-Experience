@@ -47,10 +47,20 @@ SMS RESPONSE GUIDELINES:
 - Be conversational and engaging
 - End with clear call-to-action`;
 
+      // Get event context to pass to AI Concierge
+      let eventContext = null;
+      if (smsData.eventContext?.id) {
+        eventContext = await aiKnowledgeService.getCurrentEventContext(
+          smsData.eventContext.id,
+          smsData.contractor.id
+        );
+      }
+
       const aiResponse = await aiConciergeController.generateAIResponse(
         prompt,
         smsData.contractor,
-        smsData.contractor.id
+        smsData.contractor.id,
+        eventContext  // Pass event context so AI knows actual speakers/sponsors
       );
 
       // Process for SMS with intelligent multi-message support
@@ -168,7 +178,7 @@ SMS RESPONSE GUIDELINES:
         };
 
     // Build comprehensive context for AI Concierge
-    const eventContext = {
+    const localEventContext = {
       event_id: smsData.eventContext?.id,
       speaker_requested: {
         number: speakerNum,
@@ -183,12 +193,22 @@ SMS RESPONSE GUIDELINES:
       previous_speaker_requests: await getRecentConversationHistory(smsData.contractor.id, classification.context_data?.pending_messages)
     };
 
+    // Get FULL event context to pass to AI Concierge
+    let fullEventContext = null;
+    if (smsData.eventContext?.id) {
+      fullEventContext = await aiKnowledgeService.getCurrentEventContext(
+        smsData.eventContext.id,
+        smsData.contractor.id
+      );
+    }
+
     // Generate AI Concierge response with full contractor context and event knowledge
-    const prompt = buildSpeakerDetailsPrompt(speaker, speakerNum, recommendedSpeakers, eventContext);
+    const prompt = buildSpeakerDetailsPrompt(speaker, speakerNum, recommendedSpeakers, localEventContext);
     const aiResponse = await aiConciergeController.generateAIResponse(
       prompt,
       smsData.contractor,
-      smsData.contractor.id
+      smsData.contractor.id,
+      fullEventContext  // Pass full event context so AI knows actual speakers/sponsors
     );
 
     // Process for SMS with intelligent multi-message support
