@@ -1,8 +1,110 @@
+// DATABASE-CHECKED: ai_concierge_sessions, contractors, contractor_event_registrations verified October 13, 2025
+// ================================================================
+// VERIFIED DATABASE FIELDS:
+// - ai_concierge_sessions.contractor_id (NOT contractorId)
+// - ai_concierge_sessions.session_id (character varying)
+// - ai_concierge_sessions.session_type (NO CHECK constraint - can use 'standard' or 'event')
+// - ai_concierge_sessions.session_status (NO CHECK constraint)
+// - contractor_event_registrations.contractor_id, event_id, event_status
+// - contractors.focus_areas (TEXT type - JSON string), business_goals (JSONB type)
+// ================================================================
+
 const AIConcierge = require('../models/aiConcierge');
 const openAIService = require('../services/openAIService');
 const { query } = require('../config/database');
 const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const { v4: uuidv4 } = require('uuid');
+
+// PHASE 2: Import LangGraph agents
+const { createStandardAgent, getContractorContext: getStandardContext } = require('../services/agents/aiConciergeStandardAgent');
+const { createEventAgent, getContractorContext: getEventContext } = require('../services/agents/aiConciergeEventAgent');
+
+// Initialize agents (reusable across requests)
+let standardAgent = null;
+let eventAgent = null;
+
+function getOrCreateStandardAgent() {
+  if (!standardAgent) {
+    standardAgent = createStandardAgent();
+    console.log('[AI Concierge Controller] Standard Agent initialized');
+  }
+  return standardAgent;
+}
+
+function getOrCreateEventAgent() {
+  if (!eventAgent) {
+    eventAgent = createEventAgent();
+    console.log('[AI Concierge Controller] Event Agent initialized');
+  }
+  return eventAgent;
+}
+
+/**
+ * PHASE 2: Agent Routing Logic
+ * Determines which agent to use based on contractor's event status
+ * Uses DATABASE VERIFIED field names
+ */
+async function routeToAgent(contractorId) {
+  try {
+    // Check if contractor is currently registered for an active event
+    const eventCheckQuery = `
+      SELECT
+        cer.event_id,           -- DATABASE VERIFIED
+        cer.event_status,       -- DATABASE VERIFIED (NO CHECK constraint)
+        e.name as event_name,
+        e.date as event_date
+      FROM contractor_event_registrations cer
+      JOIN events e ON e.id = cer.event_id
+      WHERE cer.contractor_id = $1       -- DATABASE VERIFIED
+        AND cer.event_status IN ('registered', 'checked_in', 'attending')
+        AND e.date >= CURRENT_DATE - INTERVAL '1 day'
+        AND e.date <= CURRENT_DATE + INTERVAL '1 day'
+      ORDER BY e.date DESC
+      LIMIT 1
+    `;
+
+    const result = await query(eventCheckQuery, [contractorId]);
+
+    if (result.rows.length > 0) {
+      // Contractor is at an event - use Event Agent
+      const eventInfo = result.rows[0];
+      console.log(`[AI Concierge Controller] 🎪 Routing to EVENT AGENT - Contractor at: ${eventInfo.event_name}`);
+
+      return {
+        agentType: 'event',
+        agent: getOrCreateEventAgent(),
+        eventId: eventInfo.event_id,
+        sessionType: 'event',
+        context: {
+          eventName: eventInfo.event_name,
+          eventDate: eventInfo.event_date,
+          eventStatus: eventInfo.event_status
+        }
+      };
+    } else {
+      // Contractor not at event - use Standard Agent
+      console.log('[AI Concierge Controller] 💼 Routing to STANDARD AGENT');
+
+      return {
+        agentType: 'standard',
+        agent: getOrCreateStandardAgent(),
+        eventId: null,
+        sessionType: 'standard',
+        context: null
+      };
+    }
+  } catch (error) {
+    console.error('[AI Concierge Controller] Error routing to agent:', error);
+    // Fallback to Standard Agent on error
+    return {
+      agentType: 'standard',
+      agent: getOrCreateStandardAgent(),
+      eventId: null,
+      sessionType: 'standard',
+      context: null
+    };
+  }
+}
 
 const aiConciergeController = {
   /**
@@ -213,14 +315,20 @@ const aiConciergeController = {
           }
         }
 
-        // Create or get session
+        // PHASE 2: Route to appropriate agent
+        const routing = await routeToAgent(devContractorId);
+        console.log(`[Dev Mode] Using ${routing.agentType} agent`);
+        console.log(`[Dev Mode] Session Type will be: ${routing.sessionType}`);
+
+        // Create or get session with proper session_type
         let sessionId = session_id;
         if (!sessionId) {
           sessionId = 'dev-' + uuidv4();
+          console.log(`[Dev Mode] Creating new session with type: ${routing.sessionType}`);
           await AIConcierge.createSession({
             contractor_id: devContractorId,
             session_id: sessionId,
-            session_type: 'chat',
+            session_type: routing.sessionType,  // PHASE 2: Use 'standard' or 'event' based on routing
             session_status: 'active',
             started_at: new Date()
           });
@@ -236,21 +344,40 @@ const aiConciergeController = {
           created_at: new Date()
         });
 
-        // Use test contractor data for context
-        const testContractor = {
-          name: 'Test User',
-          company_name: 'Test Home Improvement Co',
-          focus_areas: ['customer_retention', 'greenfield_growth', 'operational_efficiency'],
-          revenue_tier: '$1M-$5M',
-          team_size: '10-25'
-        };
+        // Get contractor context for agent
+        const contractorContext = routing.agentType === 'event'
+          ? await getEventContext(devContractorId, routing.eventId)
+          : await getStandardContext(devContractorId);
 
-        // Generate REAL AI response
+        // Prepare message for agent
         const fullContext = processedFileContent
           ? `User message: ${message || ''}\n\nFile content: ${processedFileContent}`
           : message;
 
-        const aiResponse = await aiConciergeController.generateAIResponse(fullContext, testContractor, devContractorId);
+        // Invoke agent with LangGraph
+        const agentResponse = await routing.agent.invoke(
+          {
+            messages: [
+              {
+                role: 'system',
+                content: JSON.stringify({
+                  contractor: contractorContext,
+                  eventContext: routing.context
+                })
+              },
+              {
+                role: 'user',
+                content: fullContext
+              }
+            ]
+          },
+          {
+            configurable: { thread_id: sessionId }
+          }
+        );
+
+        // Extract AI response from agent messages
+        const aiResponse = agentResponse.messages[agentResponse.messages.length - 1].content;
 
         // Save AI response - extract just the content field if it's an object
         const aiContent = typeof aiResponse === 'object' && aiResponse.content
@@ -334,14 +461,18 @@ const aiConciergeController = {
         }
       }
 
-      // Create or get session
+      // PHASE 2: Route to appropriate agent
+      const routing = await routeToAgent(contractorId);
+      console.log(`[Production Mode] Using ${routing.agentType} agent for contractor ${contractorId}`);
+
+      // Create or get session with proper session_type
       let sessionId = session_id;
       if (!sessionId) {
         sessionId = uuidv4();
         await AIConcierge.createSession({
           contractor_id: contractorId,
           session_id: sessionId,
-          session_type: 'chat',
+          session_type: routing.sessionType,  // PHASE 2: Use 'standard' or 'event' based on routing
           session_status: 'active',
           started_at: new Date()
         });
@@ -357,27 +488,40 @@ const aiConciergeController = {
         created_at: new Date()
       });
 
-      // Get contractor context for AI
-      const contractorResult = await query(
-        `SELECT
-          name,
-          company_name,
-          focus_areas,
-          revenue_tier,
-          team_size
-        FROM contractors
-        WHERE id = $1`,
-        [contractorId]
-      );
+      // Get contractor context for agent
+      const contractorContext = routing.agentType === 'event'
+        ? await getEventContext(contractorId, routing.eventId)
+        : await getStandardContext(contractorId);
 
-      const contractor = contractorResult.rows[0];
-
-      // Generate AI response
+      // Prepare message for agent
       const fullContext = processedFileContent
         ? `User message: ${message || ''}\n\nFile content: ${processedFileContent}`
         : message;
 
-      const aiResponse = await aiConciergeController.generateAIResponse(fullContext, contractor, contractorId);
+      // Invoke agent with LangGraph
+      const agentResponse = await routing.agent.invoke(
+        {
+          messages: [
+            {
+              role: 'system',
+              content: JSON.stringify({
+                contractor: contractorContext,
+                eventContext: routing.context
+              })
+            },
+            {
+              role: 'user',
+              content: fullContext
+            }
+          ]
+        },
+        {
+          configurable: { thread_id: sessionId }
+        }
+      );
+
+      // Extract AI response from agent messages
+      const aiResponse = agentResponse.messages[agentResponse.messages.length - 1].content;
 
       // Save AI response - extract just the content field if it's an object
       const aiContent = typeof aiResponse === 'object' && aiResponse.content
@@ -441,7 +585,8 @@ const aiConciergeController = {
   },
 
   /**
-   * Get or create a session
+   * Get a session (read-only)
+   * PHASE 2: Sessions are ONLY created in sendMessage with proper agent routing
    */
   async getSession(req, res, next) {
     try {
@@ -467,15 +612,12 @@ const aiConciergeController = {
           : null;
       }
 
+      // PHASE 2: Do NOT create sessions here - only in sendMessage with routing
       if (!session) {
-        // Create new session
-        const newSessionId = uuidv4();
-        session = await AIConcierge.createSession({
-          contractor_id: contractorId,
-          session_id: newSessionId,
-          session_type: 'chat',
-          session_status: 'active',
-          started_at: new Date()
+        return res.json({
+          success: true,
+          session: null,
+          message: 'No active session found. Send a message to create a new session.'
         });
       }
 
@@ -484,7 +626,7 @@ const aiConciergeController = {
         session
       });
     } catch (error) {
-      console.error('Error managing session:', error);
+      console.error('Error retrieving session:', error);
       next(error);
     }
   },
