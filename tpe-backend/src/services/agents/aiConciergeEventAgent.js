@@ -94,11 +94,12 @@ function createEventAgent() {
     openAIApiKey: process.env.OPENAI_API_KEY
   };
 
-  // Add LangSmith callbacks if available
-  if (process.env.LANGSMITH_TRACING === 'true' && langsmithClient) {
-    console.log('[AI Concierge Event] LangSmith tracing enabled');
-    // LangSmith tracing is automatically enabled via environment variables
-    // No need to manually add callbacks - LangChain handles this
+  // LangSmith tracing check
+  if (process.env.LANGCHAIN_TRACING_V2 === 'true') {
+    console.log('[AI Concierge Event] ✅ LangSmith tracing enabled');
+    console.log(`[AI Concierge Event] 📊 Project: ${process.env.LANGCHAIN_PROJECT}`);
+  } else {
+    console.log('[AI Concierge Event] ⚠️  LangSmith tracing disabled');
   }
 
   const model = new ChatOpenAI(modelConfig);
