@@ -22,6 +22,12 @@ const { StateGraph, MessagesAnnotation } = require('@langchain/langgraph');
 const { MemorySaver } = require('@langchain/langgraph');
 const { query } = require('../../config/database');
 
+// Phase 3: LangSmith tracing
+const { Client } = require('langsmith');
+const langsmithClient = process.env.LANGSMITH_API_KEY ? new Client({
+  apiKey: process.env.LANGSMITH_API_KEY
+}) : null;
+
 // Import all 5 tools
 const partnerMatchTool = require('./tools/partnerMatchTool');
 const eventSponsorMatchTool = require('./tools/eventSponsorMatchTool');
@@ -81,12 +87,21 @@ Remember: To the contractor, you're always "the AI Concierge" - event context is
 function createEventAgent() {
   console.log('[AI Concierge Event] Creating agent with all 5 tools');
 
-  // Initialize ChatOpenAI model
-  const model = new ChatOpenAI({
+  // Initialize ChatOpenAI model with LangSmith tracing
+  const modelConfig = {
     modelName: 'gpt-4',
     temperature: 0.5, // Lower temperature for factual event information
     openAIApiKey: process.env.OPENAI_API_KEY
-  });
+  };
+
+  // Add LangSmith callbacks if available
+  if (process.env.LANGSMITH_TRACING === 'true' && langsmithClient) {
+    console.log('[AI Concierge Event] LangSmith tracing enabled');
+    // LangSmith tracing is automatically enabled via environment variables
+    // No need to manually add callbacks - LangChain handles this
+  }
+
+  const model = new ChatOpenAI(modelConfig);
 
   // Bind all 5 tools to model (Event Mode has access to ALL tools)
   const modelWithTools = model.bindTools([
