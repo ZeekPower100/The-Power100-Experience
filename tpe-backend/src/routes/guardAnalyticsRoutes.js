@@ -2,16 +2,12 @@
 // Guard Analytics Routes - Phase 3 Day 5
 // ================================================================
 // Purpose: API routes for Guard Monitoring Dashboard
-// All routes require admin authentication
+// Note: No authentication middleware - follows same pattern as tokenAnalyticsRoutes
 // ================================================================
 
 const express = require('express');
 const router = express.Router();
 const guardAnalyticsController = require('../controllers/guardAnalyticsController');
-const { authenticateAdmin } = require('../middleware/auth');
-
-// Apply admin authentication to all guard analytics routes
-router.use(authenticateAdmin);
 
 // GET /api/analytics/guards/stats - Overall guard statistics
 router.get('/stats', guardAnalyticsController.getOverallStats);

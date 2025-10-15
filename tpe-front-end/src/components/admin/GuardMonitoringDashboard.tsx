@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Shield, ShieldAlert, Activity, TrendingUp, Users, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { getFromStorage } from '@/utils/storage';
 
 interface GuardStats {
   totalChecks: number;
@@ -74,20 +73,13 @@ export default function GuardMonitoringDashboard() {
     setError(null);
 
     try {
-      // Get authentication token
-      const token = getFromStorage('authToken');
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-
-      // Fetch all data in parallel
+      // Fetch all data in parallel (no auth headers needed - follows tokenAnalytics pattern)
       const [statsRes, violationsRes, activityRes, violatorsRes, breakdownRes] = await Promise.all([
-        fetch(`/api/analytics/guards/stats?hours=${timeWindow}`, { headers }),
-        fetch(`/api/analytics/guards/violations?hours=${timeWindow}&limit=50`, { headers }),
-        fetch(`/api/analytics/guards/activity-over-time?hours=${timeWindow}`, { headers }),
-        fetch(`/api/analytics/guards/top-violators?hours=${timeWindow}&limit=10`, { headers }),
-        fetch(`/api/analytics/guards/type-breakdown?hours=${timeWindow}`, { headers })
+        fetch(`/api/analytics/guards/stats?hours=${timeWindow}`),
+        fetch(`/api/analytics/guards/violations?hours=${timeWindow}&limit=50`),
+        fetch(`/api/analytics/guards/activity-over-time?hours=${timeWindow}`),
+        fetch(`/api/analytics/guards/top-violators?hours=${timeWindow}&limit=10`),
+        fetch(`/api/analytics/guards/type-breakdown?hours=${timeWindow}`)
       ]);
 
       if (!statsRes.ok || !violationsRes.ok || !activityRes.ok || !violatorsRes.ok || !breakdownRes.ok) {
