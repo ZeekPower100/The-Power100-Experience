@@ -55,22 +55,31 @@ const conciergeStateMachine = createMachine({
   id: 'aiConcierge',
   initial: 'idle',
 
-  context: {
-    contractorId: null,
-    eventContext: null,
-    currentAgent: null,
-    sessionId: null,
-    lastTransition: null
-  },
+  // XState v5: Use context function to accept input
+  context: ({ input }) => ({
+    contractorId: input?.contractorId || null,
+    eventContext: input?.eventContext || null,
+    currentAgent: input?.currentAgent || null,
+    sessionId: input?.sessionId || null,
+    lastTransition: input?.lastTransition || null
+  }),
 
   states: {
     idle: {
       on: {
-        MESSAGE_RECEIVED: 'routing'
+        MESSAGE_RECEIVED: 'routing',
+        UPDATE_EVENT_CONTEXT: {
+          actions: 'updateEventContext'
+        }
       }
     },
 
     routing: {
+      on: {
+        UPDATE_EVENT_CONTEXT: {
+          actions: 'updateEventContext'
+        }
+      },
       always: [
         {
           target: 'event_agent',
@@ -88,7 +97,10 @@ const conciergeStateMachine = createMachine({
       on: {
         MESSAGE_RECEIVED: 'routing',
         EVENT_REGISTERED: 'routing',
-        SESSION_END: 'idle'
+        SESSION_END: 'idle',
+        UPDATE_EVENT_CONTEXT: {
+          actions: 'updateEventContext'
+        }
       },
 
       entry: 'logStandardAgentEntry',
@@ -103,7 +115,10 @@ const conciergeStateMachine = createMachine({
       on: {
         MESSAGE_RECEIVED: 'routing',
         EVENT_ENDED: 'routing',
-        SESSION_END: 'idle'
+        SESSION_END: 'idle',
+        UPDATE_EVENT_CONTEXT: {
+          actions: 'updateEventContext'
+        }
       },
 
       entry: 'logEventAgentEntry',
@@ -123,7 +138,7 @@ const conciergeStateMachine = createMachine({
      * - contractor_event_registrations.event_date (DATE)
      * - events.date (DATE)
      */
-    hasActiveEvent: (context) => {
+    hasActiveEvent: ({ context }) => {
       if (!context.eventContext) {
         return false;
       }
@@ -140,17 +155,27 @@ const conciergeStateMachine = createMachine({
       }
 
       // Check if event is today
+      // IMPORTANT: Parse date in local timezone to avoid UTC offset issues
       const now = new Date();
-      const eventDay = new Date(eventDate);
+      const todayString = now.toISOString().split('T')[0]; // YYYY-MM-DD format
 
-      // Compare dates (ignore time component)
-      const isToday = eventDay.toDateString() === now.toDateString();
+      // Extract YYYY-MM-DD from eventDate (handles both ISO strings and date strings)
+      const eventDateString = typeof eventDate === 'string' ? eventDate.split('T')[0] : eventDate;
+
+      const isToday = eventDateString === todayString;
 
       return isToday;
     }
   },
 
   actions: {
+    /**
+     * Update event context
+     */
+    updateEventContext: assign({
+      eventContext: ({ event }) => event.eventContext
+    }),
+
     /**
      * Set Standard Agent as current agent
      */
@@ -170,14 +195,14 @@ const conciergeStateMachine = createMachine({
     /**
      * Log entry into Standard Agent state
      */
-    logStandardAgentEntry: (context) => {
+    logStandardAgentEntry: ({ context }) => {
       console.log(`[State Machine] → STANDARD AGENT for contractor ${context.contractorId}`);
     },
 
     /**
      * Log entry into Event Agent state
      */
-    logEventAgentEntry: (context) => {
+    logEventAgentEntry: ({ context }) => {
       console.log(`[State Machine] → EVENT AGENT for contractor ${context.contractorId} at ${context.eventContext?.eventName || 'unknown event'}`);
     }
   }

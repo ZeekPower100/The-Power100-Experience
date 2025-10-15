@@ -22,6 +22,9 @@ const { createEventAgent, getContractorContext: getEventContext } = require('../
 // PHASE 3: Import OpenAI Tracer for token usage tracking
 const OpenAITracer = require('../services/openai/openaiTracer');
 
+// PHASE 4: Import State Machine Manager
+const stateMachineManager = require('../services/conciergeStateMachineManager');
+
 // Initialize agents (reusable across requests)
 let standardAgent = null;
 let eventAgent = null;
@@ -43,19 +46,22 @@ function getOrCreateEventAgent() {
 }
 
 /**
- * PHASE 2: Agent Routing Logic
- * Determines which agent to use based on contractor's event status
+ * PHASE 4: Agent Routing Logic with State Machine
+ * Uses XState state machine to determine which agent to use
  * Uses DATABASE VERIFIED field names
  */
-async function routeToAgent(contractorId) {
+async function routeToAgent(contractorId, sessionId) {
   try {
+    // DATABASE VERIFIED FIELD NAMES: contractor_event_registrations.event_id, event_status, contractor_id
+    // DATABASE VERIFIED FIELD NAMES: events.name, date
     // Check if contractor is currently registered for an active event
     const eventCheckQuery = `
       SELECT
         cer.event_id,           -- DATABASE VERIFIED
         cer.event_status,       -- DATABASE VERIFIED (NO CHECK constraint)
-        e.name as event_name,
-        e.date as event_date
+        cer.event_name,         -- DATABASE VERIFIED (exists at table level)
+        cer.event_date,         -- DATABASE VERIFIED (exists at table level)
+        e.name as event_name_from_events
       FROM contractor_event_registrations cer
       JOIN events e ON e.id = cer.event_id
       WHERE cer.contractor_id = $1       -- DATABASE VERIFIED
@@ -68,36 +74,38 @@ async function routeToAgent(contractorId) {
 
     const result = await query(eventCheckQuery, [contractorId]);
 
-    if (result.rows.length > 0) {
-      // Contractor is at an event - use Event Agent
-      const eventInfo = result.rows[0];
-      console.log(`[AI Concierge Controller] 🎪 Routing to EVENT AGENT - Contractor at: ${eventInfo.event_name}`);
+    // Prepare event context for state machine
+    const eventContext = result.rows.length > 0 ? {
+      eventId: result.rows[0].event_id,
+      eventName: result.rows[0].event_name || result.rows[0].event_name_from_events,
+      eventDate: result.rows[0].event_date,
+      eventStatus: result.rows[0].event_status
+    } : null;
 
-      return {
-        agentType: 'event',
-        agent: getOrCreateEventAgent(),
-        eventId: eventInfo.event_id,
-        sessionType: 'event',
-        context: {
-          eventName: eventInfo.event_name,
-          eventDate: eventInfo.event_date,
-          eventStatus: eventInfo.event_status
-        }
-      };
-    } else {
-      // Contractor not at event - use Standard Agent
-      console.log('[AI Concierge Controller] 💼 Routing to STANDARD AGENT');
+    // Update state machine context
+    await stateMachineManager.updateEventContext(contractorId, sessionId, eventContext);
 
-      return {
-        agentType: 'standard',
-        agent: getOrCreateStandardAgent(),
-        eventId: null,
-        sessionType: 'standard',
-        context: null
-      };
-    }
+    // Send MESSAGE_RECEIVED event to state machine
+    await stateMachineManager.sendEvent(contractorId, sessionId, 'MESSAGE_RECEIVED', { eventContext });
+
+    // Get current agent from state machine
+    const agentType = await stateMachineManager.getCurrentAgent(contractorId, sessionId);
+
+    // Get current state for logging
+    const currentState = await stateMachineManager.getCurrentState(contractorId, sessionId);
+
+    console.log(`[AI Concierge Controller] 🤖 State Machine in state: ${currentState}`);
+    console.log(`[AI Concierge Controller] 🎯 Routed to: ${agentType} agent`);
+
+    return {
+      agentType: agentType || 'standard',
+      agent: agentType === 'event' ? getOrCreateEventAgent() : getOrCreateStandardAgent(),
+      eventId: eventContext?.eventId || null,
+      sessionType: agentType || 'standard',
+      context: eventContext
+    };
   } catch (error) {
-    console.error('[AI Concierge Controller] Error routing to agent:', error);
+    console.error('[AI Concierge Controller] Error in state machine routing:', error);
     // Fallback to Standard Agent on error
     return {
       agentType: 'standard',
@@ -318,24 +326,24 @@ const aiConciergeController = {
           }
         }
 
-        // PHASE 2: Route to appropriate agent
-        const routing = await routeToAgent(devContractorId);
-        console.log(`[Dev Mode] Using ${routing.agentType} agent`);
-        console.log(`[Dev Mode] Session Type will be: ${routing.sessionType}`);
-
-        // Create or get session with proper session_type
+        // PHASE 4: Create or get session FIRST (needed for state machine)
         let sessionId = session_id;
         if (!sessionId) {
           sessionId = 'dev-' + uuidv4();
-          console.log(`[Dev Mode] Creating new session with type: ${routing.sessionType}`);
+          console.log(`[Dev Mode] Creating new session for state machine`);
           await AIConcierge.createSession({
             contractor_id: devContractorId,
             session_id: sessionId,
-            session_type: routing.sessionType,  // PHASE 2: Use 'standard' or 'event' based on routing
+            session_type: 'standard',  // Will be updated by state machine
             session_status: 'active',
             started_at: new Date()
           });
         }
+
+        // PHASE 4: Route to appropriate agent using State Machine
+        const routing = await routeToAgent(devContractorId, sessionId);
+        console.log(`[Dev Mode] State Machine routed to: ${routing.agentType} agent`);
+        console.log(`[Dev Mode] Session Type: ${routing.sessionType}`);
 
         // Save user message
         const userMessage = await AIConcierge.createConversationMessage({
@@ -469,22 +477,22 @@ const aiConciergeController = {
         }
       }
 
-      // PHASE 2: Route to appropriate agent
-      const routing = await routeToAgent(contractorId);
-      console.log(`[Production Mode] Using ${routing.agentType} agent for contractor ${contractorId}`);
-
-      // Create or get session with proper session_type
+      // PHASE 4: Create or get session FIRST (needed for state machine)
       let sessionId = session_id;
       if (!sessionId) {
         sessionId = uuidv4();
         await AIConcierge.createSession({
           contractor_id: contractorId,
           session_id: sessionId,
-          session_type: routing.sessionType,  // PHASE 2: Use 'standard' or 'event' based on routing
+          session_type: 'standard',  // Will be updated by state machine
           session_status: 'active',
           started_at: new Date()
         });
       }
+
+      // PHASE 4: Route to appropriate agent using State Machine
+      const routing = await routeToAgent(contractorId, sessionId);
+      console.log(`[Production Mode] State Machine routed to: ${routing.agentType} agent for contractor ${contractorId}`);
 
       // Save user message using exact database column names
       const userMessage = await AIConcierge.createConversationMessage({
