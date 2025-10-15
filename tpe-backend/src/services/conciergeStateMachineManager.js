@@ -69,11 +69,23 @@ class ConciergeStateMachineManager {
     // Start the actor
     actor.start();
 
-    // If we have saved state, restore it
-    if (savedState?.state) {
-      // Note: XState v5 state restoration
-      // For now, we'll just use the context restoration above
-      console.log(`[State Machine Manager] Restored context for contractor ${contractorId}`);
+    // If we have saved state, restore it by triggering routing
+    if (savedState?.state && savedState.state !== 'idle') {
+      console.log(`[State Machine Manager] Restoring state: ${savedState.state} for contractor ${contractorId}`);
+
+      // First, update the event context in the machine
+      if (savedState.context?.eventContext) {
+        actor.send({
+          type: 'UPDATE_EVENT_CONTEXT',
+          eventContext: savedState.context.eventContext
+        });
+      }
+
+      // Then trigger MESSAGE_RECEIVED to force re-routing based on restored context
+      // This will evaluate guards and transition to correct agent state
+      actor.send({ type: 'MESSAGE_RECEIVED' });
+
+      console.log(`[State Machine Manager] State restored to: ${actor.getSnapshot().value}`);
     }
 
     this.machines.set(key, actor);
