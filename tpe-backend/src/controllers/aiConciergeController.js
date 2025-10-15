@@ -19,6 +19,9 @@ const { v4: uuidv4 } = require('uuid');
 const { createStandardAgent, getContractorContext: getStandardContext } = require('../services/agents/aiConciergeStandardAgent');
 const { createEventAgent, getContractorContext: getEventContext } = require('../services/agents/aiConciergeEventAgent');
 
+// PHASE 3: Import OpenAI Tracer for token usage tracking
+const OpenAITracer = require('../services/openai/openaiTracer');
+
 // Initialize agents (reusable across requests)
 let standardAgent = null;
 let eventAgent = null;
@@ -354,26 +357,31 @@ const aiConciergeController = {
           ? `User message: ${message || ''}\n\nFile content: ${processedFileContent}`
           : message;
 
-        // Invoke agent with LangGraph
-        const agentResponse = await routing.agent.invoke(
-          {
-            messages: [
-              {
-                role: 'system',
-                content: JSON.stringify({
-                  contractor: contractorContext,
-                  eventContext: routing.context
-                })
-              },
-              {
-                role: 'user',
-                content: fullContext
-              }
-            ]
-          },
-          {
-            configurable: { thread_id: sessionId }
-          }
+        // PHASE 3 DAY 2: Wrap agent invocation with OpenAI Tracer
+        const agentResponse = await OpenAITracer.traceCall(
+          devContractorId,
+          `ai_concierge_${routing.agentType}`,
+          message || '[media file]',
+          async () => routing.agent.invoke(
+            {
+              messages: [
+                {
+                  role: 'system',
+                  content: JSON.stringify({
+                    contractor: contractorContext,
+                    eventContext: routing.context
+                  })
+                },
+                {
+                  role: 'user',
+                  content: fullContext
+                }
+              ]
+            },
+            {
+              configurable: { thread_id: sessionId }
+            }
+          )
         );
 
         // Extract AI response from agent messages
@@ -498,26 +506,31 @@ const aiConciergeController = {
         ? `User message: ${message || ''}\n\nFile content: ${processedFileContent}`
         : message;
 
-      // Invoke agent with LangGraph
-      const agentResponse = await routing.agent.invoke(
-        {
-          messages: [
-            {
-              role: 'system',
-              content: JSON.stringify({
-                contractor: contractorContext,
-                eventContext: routing.context
-              })
-            },
-            {
-              role: 'user',
-              content: fullContext
-            }
-          ]
-        },
-        {
-          configurable: { thread_id: sessionId }
-        }
+      // PHASE 3 DAY 2: Wrap agent invocation with OpenAI Tracer
+      const agentResponse = await OpenAITracer.traceCall(
+        contractorId,
+        `ai_concierge_${routing.agentType}`,
+        message || '[media file]',
+        async () => routing.agent.invoke(
+          {
+            messages: [
+              {
+                role: 'system',
+                content: JSON.stringify({
+                  contractor: contractorContext,
+                  eventContext: routing.context
+                })
+              },
+              {
+                role: 'user',
+                content: fullContext
+              }
+            ]
+          },
+          {
+            configurable: { thread_id: sessionId }
+          }
+        )
       );
 
       // Extract AI response from agent messages

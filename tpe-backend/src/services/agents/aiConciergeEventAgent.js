@@ -87,11 +87,13 @@ Remember: To the contractor, you're always "the AI Concierge" - event context is
 function createEventAgent() {
   console.log('[AI Concierge Event] Creating agent with all 5 tools');
 
-  // Initialize ChatOpenAI model with LangSmith tracing
+  // Initialize ChatOpenAI model with LangSmith tracing and token usage tracking
   const modelConfig = {
     modelName: 'gpt-4',
     temperature: 0.5, // Lower temperature for factual event information
-    openAIApiKey: process.env.OPENAI_API_KEY
+    openAIApiKey: process.env.OPENAI_API_KEY,
+    streamUsage: true, // Enable token usage tracking
+    streaming: false    // We don't need streaming, just token counts
   };
 
   // LangSmith tracing check

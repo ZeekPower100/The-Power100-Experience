@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { aiConciergeApi, contractorApi } from '@/lib/api';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { handleApiResponse, getFromStorage } from '@/utils/jsonHelpers';
+import { handleApiResponse, getFromStorage, safeJsonStringify } from '@/utils/jsonHelpers';
 import {
   MessageCircle,
   Send,
@@ -669,7 +669,7 @@ export default function AIConciergePage() {
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({
+          body: safeJsonStringify({
             message: content,  // Changed from 'content' to 'message' to match backend
             session_id: currentConversationId || undefined
           })
@@ -1381,7 +1381,7 @@ export default function AIConciergePage() {
                         /* User Message */
                         <div className="flex justify-end mb-6 user-message-container">
                           <div className="max-w-2xl bg-gradient-to-r from-red-600 to-red-700 text-white rounded-2xl px-6 py-4 shadow-md">
-                            <p className="text-base leading-relaxed">{message.content}</p>
+                            <p className="text-base leading-relaxed">{typeof message.content === 'string' ? message.content : safeJsonStringify(message.content)}</p>
                             {/* Media attachments for user messages */}
                             {message.mediaUrl && (
                               <div className="mt-3">
@@ -1441,7 +1441,7 @@ export default function AIConciergePage() {
                               {/* Main AI Response */}
                               <div className="space-y-4">
                                 {/* Research Cards (if applicable) */}
-                                {message.content.includes('Based on') && (
+                                {typeof message.content === 'string' && message.content.includes('Based on') && (
                                   <div className="mb-4">
                                     <div className="flex items-center gap-2 text-sm text-gray-600 mb-3">
                                       <div className="w-5 h-5 bg-red-100 rounded-full flex items-center justify-center">
@@ -1510,14 +1510,14 @@ export default function AIConciergePage() {
                                         )
                                     }}
                                   >
-                                    {message.content}
+                                    {typeof message.content === 'string' ? message.content : safeJsonStringify(message.content)}
                                   </ReactMarkdown>
                                 </div>
 
                                 {/* Removed confusing action cards */}
 
                                 {/* Comparison Table (if applicable) */}
-                                {message.content.toLowerCase().includes('compar') && (
+                                {typeof message.content === 'string' && message.content.toLowerCase().includes('compar') && (
                                   <div className="overflow-x-auto mt-4">
                                     <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden">
                                       <thead className="bg-gray-50">

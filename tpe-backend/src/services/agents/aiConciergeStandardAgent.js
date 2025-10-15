@@ -79,11 +79,13 @@ Remember: To the contractor, you're always "the AI Concierge" - not limited by m
 function createStandardAgent() {
   console.log('[AI Concierge Standard] Creating agent with all 5 tools');
 
-  // Initialize ChatOpenAI model with LangSmith tracing
+  // Initialize ChatOpenAI model with LangSmith tracing and token usage tracking
   const modelConfig = {
     modelName: 'gpt-4',
     temperature: 0.7, // Warmer for strategic conversations
-    openAIApiKey: process.env.OPENAI_API_KEY
+    openAIApiKey: process.env.OPENAI_API_KEY,
+    streamUsage: true, // Enable token usage tracking
+    streaming: false    // We don't need streaming, just token counts
   };
 
   // LangSmith tracing check
