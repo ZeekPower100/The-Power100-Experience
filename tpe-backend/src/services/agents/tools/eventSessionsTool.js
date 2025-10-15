@@ -6,10 +6,14 @@
 // Uses: Phase 1 materialized view (mv_sessions_now) - 0% hallucination rate
 // Context: ONLY for contractors at active events
 // ================================================================
+// PHASE 3 DAY 4: AI Action Guards integrated for rate limiting
+// ================================================================
 
 const { z } = require('zod');
 const { tool } = require('@langchain/core/tools');
 const { query } = require('../../../config/database');
+const AIActionGuards = require('../../guards/aiActionGuards');
+const GuardLogger = require('../../guards/guardLogger');
 
 // Zod schema for input validation
 const EventSessionsSchema = z.object({
@@ -26,6 +30,28 @@ const eventSessionsFunction = async ({ contractorId, eventId, timeWindow = 'now'
   console.log(`[Event Sessions Tool] Getting ${timeWindow} sessions for contractor ${contractorId} at event ${eventId}`);
 
   try {
+    // PHASE 3 DAY 4: GUARD CHECK - Rate Limit Check
+    // Using 'partner_lookup' rate limit (100 per hour) for session queries (read-only, high frequency allowed)
+    const rateLimitCheck = await AIActionGuards.checkRateLimit(contractorId, 'partner_lookup');
+    await GuardLogger.logGuardCheck(contractorId, 'event_sessions_rate_limit', rateLimitCheck);
+
+    if (!rateLimitCheck.allowed) {
+      console.log(`[Event Sessions Tool] ❌ Rate limit exceeded: ${rateLimitCheck.reason}`);
+      return JSON.stringify({
+        success: false,
+        error: 'Rate limit exceeded',
+        message: `Too many session queries recently. Try again in ${Math.ceil(rateLimitCheck.retryAfter / 60)} minutes.`,
+        guardBlocked: true,
+        retryAfter: rateLimitCheck.retryAfter,
+        timeWindow,
+        eventId,
+        contractorId
+      });
+    }
+
+    console.log(`[Event Sessions Tool] ✅ Rate limit check passed - proceeding with session query`);
+
+    // ALL GUARDS PASSED - Proceed with session query
     // Determine which materialized view to query
     const viewName = timeWindow === 'now' ? 'mv_sessions_now' : 'mv_sessions_next_60';
 

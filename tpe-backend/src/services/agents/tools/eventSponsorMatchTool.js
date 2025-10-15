@@ -6,10 +6,14 @@
 // Uses: Existing eventAIRecommendationService logic wrapped as LangGraph tool
 // Context: ONLY for event-based sponsor recommendations with booth locations and talking points
 // ================================================================
+// PHASE 3 DAY 4: AI Action Guards integrated for rate limiting
+// ================================================================
 
 const { z } = require('zod');
 const { tool } = require('@langchain/core/tools');
 const eventAIRecommendationService = require('../../eventAIRecommendationService');
+const AIActionGuards = require('../../guards/aiActionGuards');
+const GuardLogger = require('../../guards/guardLogger');
 
 // Zod schema for input validation
 const EventSponsorMatchSchema = z.object({
@@ -26,6 +30,27 @@ const eventSponsorMatchFunction = async ({ eventId, contractorId, limit = 3 }) =
   console.log(`[Event Sponsor Match Tool] Finding sponsor recommendations for contractor ${contractorId} at event ${eventId}`);
 
   try {
+    // PHASE 3 DAY 4: GUARD CHECK - Rate Limit Check
+    // Using 'partner_lookup' rate limit (100 per hour) for sponsor matching (similar to partner matching)
+    const rateLimitCheck = await AIActionGuards.checkRateLimit(contractorId, 'partner_lookup');
+    await GuardLogger.logGuardCheck(contractorId, 'event_sponsor_match_rate_limit', rateLimitCheck);
+
+    if (!rateLimitCheck.allowed) {
+      console.log(`[Event Sponsor Match Tool] ❌ Rate limit exceeded: ${rateLimitCheck.reason}`);
+      return JSON.stringify({
+        success: false,
+        error: 'Rate limit exceeded',
+        message: `Too many sponsor lookups recently. Try again in ${Math.ceil(rateLimitCheck.retryAfter / 60)} minutes.`,
+        guardBlocked: true,
+        retryAfter: rateLimitCheck.retryAfter,
+        eventId,
+        contractorId
+      });
+    }
+
+    console.log(`[Event Sponsor Match Tool] ✅ Rate limit check passed - proceeding with sponsor matching`);
+
+    // ALL GUARDS PASSED - Proceed with sponsor matching
     // Call existing eventAIRecommendationService
     const result = await eventAIRecommendationService.recommendSponsors(
       eventId,

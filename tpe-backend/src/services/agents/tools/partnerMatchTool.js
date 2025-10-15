@@ -6,11 +6,15 @@
 // Uses: Phase 0 hybrid search + partner database + learning events
 // AI Model: Autonomous decision-making via LangGraph agent
 // ================================================================
+// PHASE 3 DAY 4: AI Action Guards integrated for rate limiting
+// ================================================================
 
 const { z } = require('zod');
 const { tool } = require('@langchain/core/tools');
 const hybridSearchService = require('../../hybridSearchService');
 const { query } = require('../../../config/database');
+const AIActionGuards = require('../../guards/aiActionGuards');
+const GuardLogger = require('../../guards/guardLogger');
 
 // Zod schema for input validation
 const PartnerMatchSchema = z.object({
@@ -30,6 +34,26 @@ const partnerMatchFunction = async ({ contractorId, focusAreas, revenueTier, lim
   console.log(`[Partner Match Tool] Revenue tier: ${revenueTier || 'Not specified'}`);
 
   try {
+    // PHASE 3 DAY 4: GUARD CHECK - Rate Limit Check
+    // Using 'partner_lookup' rate limit (100 per hour) for partner matching
+    const rateLimitCheck = await AIActionGuards.checkRateLimit(contractorId, 'partner_lookup');
+    await GuardLogger.logGuardCheck(contractorId, 'partner_match_rate_limit', rateLimitCheck);
+
+    if (!rateLimitCheck.allowed) {
+      console.log(`[Partner Match Tool] ❌ Rate limit exceeded: ${rateLimitCheck.reason}`);
+      return JSON.stringify({
+        success: false,
+        error: 'Rate limit exceeded',
+        message: `Too many partner lookups recently. Try again in ${Math.ceil(rateLimitCheck.retryAfter / 60)} minutes.`,
+        guardBlocked: true,
+        retryAfter: rateLimitCheck.retryAfter,
+        contractorId
+      });
+    }
+
+    console.log(`[Partner Match Tool] ✅ Rate limit check passed - proceeding with partner matching`);
+
+    // ALL GUARDS PASSED - Proceed with partner matching
     // Step 1: Get contractor details from database
     const contractorQuery = `
       SELECT

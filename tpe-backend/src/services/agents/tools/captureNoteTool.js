@@ -6,10 +6,14 @@
 // Uses: event_notes table with AI categorization and follow-up tracking
 // Context: ONLY during events when contractor shares information
 // ================================================================
+// PHASE 3 DAY 4: AI Action Guards integrated for permission and rate limiting
+// ================================================================
 
 const { z } = require('zod');
 const { tool } = require('@langchain/core/tools');
 const { query } = require('../../../config/database');
+const AIActionGuards = require('../../guards/aiActionGuards');
+const GuardLogger = require('../../guards/guardLogger');
 
 // Zod schema for input validation
 // DATABASE VERIFIED: note_type values from CHECK constraint in database
@@ -47,6 +51,43 @@ const captureNoteFunction = async ({
   console.log(`[Capture Note Tool] Capturing ${noteType} note for contractor ${contractorId} at event ${eventId}`);
 
   try {
+    // PHASE 3 DAY 4: GUARD CHECK 1 - Permission Check
+    const permissionCheck = await AIActionGuards.canCreateActionItem(contractorId);
+    await GuardLogger.logGuardCheck(contractorId, 'capture_note_permission', permissionCheck);
+
+    if (!permissionCheck.allowed) {
+      console.log(`[Capture Note Tool] ❌ Permission denied: ${permissionCheck.reason}`);
+      return JSON.stringify({
+        success: false,
+        error: 'Permission denied',
+        message: `Cannot capture note: ${permissionCheck.reason}`,
+        guardBlocked: true,
+        contractorId,
+        eventId
+      });
+    }
+
+    // PHASE 3 DAY 4: GUARD CHECK 2 - Rate Limit Check
+    // Using 'message_send' rate limit (50 per hour) for note captures
+    const rateLimitCheck = await AIActionGuards.checkRateLimit(contractorId, 'message_send');
+    await GuardLogger.logGuardCheck(contractorId, 'capture_note_rate_limit', rateLimitCheck);
+
+    if (!rateLimitCheck.allowed) {
+      console.log(`[Capture Note Tool] ❌ Rate limit exceeded: ${rateLimitCheck.reason}`);
+      return JSON.stringify({
+        success: false,
+        error: 'Rate limit exceeded',
+        message: `Too many notes captured recently. Try again in ${Math.ceil(rateLimitCheck.retryAfter / 60)} minutes.`,
+        guardBlocked: true,
+        retryAfter: rateLimitCheck.retryAfter,
+        contractorId,
+        eventId
+      });
+    }
+
+    console.log(`[Capture Note Tool] ✅ All guards passed - proceeding with note capture`);
+
+    // ALL GUARDS PASSED - Proceed with database operation
     // Insert note using DATABASE VERIFIED field names
     const insertQuery = `
       INSERT INTO event_notes (

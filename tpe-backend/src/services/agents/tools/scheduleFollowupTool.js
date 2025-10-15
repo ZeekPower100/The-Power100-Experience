@@ -6,10 +6,14 @@
 // Uses: contractor_followup_schedules table with AI personalization
 // Context: Any time - proactive scheduling for contractor success
 // ================================================================
+// PHASE 3 DAY 4: AI Action Guards integrated for permission and rate limiting
+// ================================================================
 
 const { z } = require('zod');
 const { tool } = require('@langchain/core/tools');
 const { query } = require('../../../config/database');
+const AIActionGuards = require('../../guards/aiActionGuards');
+const GuardLogger = require('../../guards/guardLogger');
 
 // Zod schema for input validation
 // DATABASE VERIFIED: followup_type values from expanded CHECK constraint (October 13, 2025)
@@ -54,6 +58,41 @@ const scheduleFollowupFunction = async ({
   console.log(`[Schedule Follow-up Tool] Scheduling ${followupType} for contractor ${contractorId} at ${scheduledTime}`);
 
   try {
+    // PHASE 3 DAY 4: GUARD CHECK 1 - Permission Check
+    const permissionCheck = await AIActionGuards.canCreateActionItem(contractorId);
+    await GuardLogger.logGuardCheck(contractorId, 'schedule_followup_permission', permissionCheck);
+
+    if (!permissionCheck.allowed) {
+      console.log(`[Schedule Follow-up Tool] ❌ Permission denied: ${permissionCheck.reason}`);
+      return JSON.stringify({
+        success: false,
+        error: 'Permission denied',
+        message: `Cannot schedule follow-up: ${permissionCheck.reason}`,
+        guardBlocked: true,
+        contractorId
+      });
+    }
+
+    // PHASE 3 DAY 4: GUARD CHECK 2 - Rate Limit Check
+    // Using 'action_item_create' rate limit (10 per hour) for follow-up schedules
+    const rateLimitCheck = await AIActionGuards.checkRateLimit(contractorId, 'action_item_create');
+    await GuardLogger.logGuardCheck(contractorId, 'schedule_followup_rate_limit', rateLimitCheck);
+
+    if (!rateLimitCheck.allowed) {
+      console.log(`[Schedule Follow-up Tool] ❌ Rate limit exceeded: ${rateLimitCheck.reason}`);
+      return JSON.stringify({
+        success: false,
+        error: 'Rate limit exceeded',
+        message: `Too many follow-ups scheduled recently. Try again in ${Math.ceil(rateLimitCheck.retryAfter / 60)} minutes.`,
+        guardBlocked: true,
+        retryAfter: rateLimitCheck.retryAfter,
+        contractorId
+      });
+    }
+
+    console.log(`[Schedule Follow-up Tool] ✅ All guards passed - proceeding with follow-up scheduling`);
+
+    // ALL GUARDS PASSED - Proceed with validation and database operation
     // Validate scheduled time is in the future
     const scheduledDate = new Date(scheduledTime);
     const now = new Date();
