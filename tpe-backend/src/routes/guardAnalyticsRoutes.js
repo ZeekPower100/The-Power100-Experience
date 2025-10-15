@@ -8,7 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const guardAnalyticsController = require('../controllers/guardAnalyticsController');
-const { authenticateAdmin } = require('../middleware/adminAuth');
+const { authenticateAdmin } = require('../middleware/auth');
 
 // Apply admin authentication to all guard analytics routes
 router.use(authenticateAdmin);
