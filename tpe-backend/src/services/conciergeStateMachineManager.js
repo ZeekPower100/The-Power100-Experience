@@ -161,6 +161,7 @@ class ConciergeStateMachineManager {
    * Persist machine state to database
    * DATABASE VERIFIED: session_data is TEXT (needs JSON.stringify)
    * DATABASE VERIFIED: session_type is VARCHAR (plain text)
+   * OPTIMIZED: Uses UPSERT for better performance (Phase 5 Day 2)
    * @param {number} contractorId
    * @param {string} sessionId
    * @param {object} service - Machine service
@@ -174,17 +175,23 @@ class ConciergeStateMachineManager {
       timestamp: new Date().toISOString()
     };
 
-    // DATABASE VERIFIED FIELD NAMES: session_data, session_type, session_id
+    // DATABASE VERIFIED FIELD NAMES: session_data, session_type, session_id, contractor_id
+    // Phase 5 Optimization: Use UPSERT (INSERT ON CONFLICT) for better performance
+    // This allows for both insert and update in a single query, reducing database round-trips
     await query(`
-      UPDATE ai_concierge_sessions
-      SET
-        session_data = $1,
-        session_type = $2
-      WHERE session_id = $3
+      INSERT INTO ai_concierge_sessions
+        (session_id, contractor_id, session_data, session_type, started_at, updated_at)
+      VALUES ($1, $2, $3, $4, NOW(), NOW())
+      ON CONFLICT (session_id)
+      DO UPDATE SET
+        session_data = EXCLUDED.session_data,
+        session_type = EXCLUDED.session_type,
+        updated_at = NOW()
     `, [
+      sessionId,
+      contractorId,
       JSON.stringify(stateData),  // TEXT field - JSON.stringify required
-      snapshot.context.currentAgent || 'standard',  // VARCHAR field - plain text
-      sessionId
+      snapshot.context.currentAgent || 'standard'  // VARCHAR field - plain text
     ]);
 
     console.log(`[State Machine Manager] Persisted state for contractor ${contractorId}, agent: ${snapshot.context.currentAgent}`);
