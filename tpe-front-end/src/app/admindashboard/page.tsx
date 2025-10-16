@@ -226,29 +226,12 @@ export default function AdminDashboard() {
       
       // Parse JSON fields for partners and select top performers with safe parsing
       const parsedPartners = (partnersResponse.partners || []).map((partner: any) => {
-        const safeJsonParse = (jsonString: any, fallback: any = []) => {
-          if (!jsonString || typeof jsonString !== 'string') {
-            return Array.isArray(jsonString) ? jsonString : fallback;
-          }
-          
-          if (jsonString === '[object Object]') {
-            return fallback;
-          }
-          
-          try {
-            return safeJsonParse(jsonString);
-          } catch (error) {
-            console.warn('Failed to parse JSON:', jsonString, error);
-            return fallback;
-          }
-        };
-
         return {
           ...partner,
-          focus_areas_served: safeJsonParse(partner.focus_areas_served, []),
-          target_revenue_range: safeJsonParse(partner.target_revenue_range, []),
-          geographic_regions: safeJsonParse(partner.geographic_regions, []),
-          service_categories: safeJsonParse(partner.service_categories, [])
+          focus_areas_served: safeJsonParse(partner.focus_areas_served) || [],
+          target_revenue_range: safeJsonParse(partner.target_revenue_range) || [],
+          geographic_regions: safeJsonParse(partner.geographic_regions) || [],
+          service_categories: safeJsonParse(partner.service_categories) || []
         };
       });
       
