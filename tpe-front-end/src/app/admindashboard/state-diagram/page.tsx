@@ -169,25 +169,33 @@ export default function StateDiagramPage() {
     checkAuth();
   }, [checkAuth]);
 
-  // Initialize mermaid and fetch diagram when authenticated
+  // Initialize mermaid and fetch diagram when authenticated (only once)
   useEffect(() => {
-    if (isAuthenticated) {
-      mermaid.initialize({
-        startOnLoad: true,
-        theme: 'default',
-        securityLevel: 'loose',
-        fontFamily: 'Inter, system-ui, sans-serif'
-      });
+    if (!isAuthenticated) return;
 
-      fetchDiagram();
-    }
-  }, [isAuthenticated]);
+    // Initialize mermaid only once
+    mermaid.initialize({
+      startOnLoad: false, // Changed to false to prevent auto-render
+      theme: 'default',
+      securityLevel: 'loose',
+      fontFamily: 'Inter, system-ui, sans-serif'
+    });
 
-  // Render diagram when diagramCode changes
+    fetchDiagram();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]); // Only re-run if auth status changes
+
+  // Render diagram when diagramCode changes (with debounce to prevent re-renders)
   useEffect(() => {
-    if (diagramCode && diagramRef.current) {
-      diagramRef.current.innerHTML = '';
-      mermaid.render('stateDiagram', diagramCode)
+    if (!diagramCode || !diagramRef.current) return;
+
+    // Clear any existing content
+    diagramRef.current.innerHTML = '';
+
+    // Use requestAnimationFrame to batch DOM updates
+    const renderDiagram = () => {
+      const uniqueId = `stateDiagram-${Date.now()}`;
+      mermaid.render(uniqueId, diagramCode)
         .then((result) => {
           if (diagramRef.current) {
             diagramRef.current.innerHTML = result.svg;
@@ -199,7 +207,12 @@ export default function StateDiagramPage() {
           setError('Failed to render diagram');
           setIsLoading(false);
         });
-    }
+    };
+
+    // Use requestAnimationFrame for smoother rendering
+    const rafId = requestAnimationFrame(renderDiagram);
+
+    return () => cancelAnimationFrame(rafId);
   }, [diagramCode]);
 
   const handleRefresh = () => {
