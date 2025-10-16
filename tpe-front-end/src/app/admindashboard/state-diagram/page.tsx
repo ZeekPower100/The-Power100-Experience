@@ -31,10 +31,10 @@ export default function StateDiagramPage() {
 
         if (response && response.success && response.user && response.user.email) {
           setIsAuthenticated(true);
-          setIsLoading(false);
+          // Don't set isLoading to false here - let fetchDiagram control it
         } else if (response && response.user && response.user.email) {
           setIsAuthenticated(true);
-          setIsLoading(false);
+          // Don't set isLoading to false here - let fetchDiagram control it
         } else {
           const timestamp = getFromStorage('authTokenTimestamp');
           if (!timestamp || response?.error || response?.message?.includes('not found')) {
