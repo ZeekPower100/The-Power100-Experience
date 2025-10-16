@@ -81,10 +81,10 @@ export default function StateDiagramPage() {
 
   // Fetch diagram from backend
   const fetchDiagram = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+    setIsLoading(true);
+    setError(null);
 
+    try {
       // Use environment-appropriate base URL
       const baseUrl = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
         ? '' // Use relative URL in production (same domain)
@@ -96,6 +96,7 @@ export default function StateDiagramPage() {
       if (data.success && data.diagram) {
         setDiagramCode(data.diagram);
         setLastUpdated(new Date().toLocaleString());
+        setIsLoading(false); // Turn off loading once diagram data is set
       } else {
         throw new Error('Failed to fetch diagram');
       }
@@ -161,6 +162,7 @@ export default function StateDiagramPage() {
         Context: Active event today
     end note
 `);
+      setIsLoading(false); // Turn off loading for fallback diagram too
     }
   };
 
