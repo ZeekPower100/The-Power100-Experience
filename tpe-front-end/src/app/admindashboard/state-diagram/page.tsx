@@ -23,19 +23,25 @@ export default function StateDiagramPage() {
 
   // Check authentication
   const checkAuth = useCallback(async () => {
+    console.log('[StateDiagram] checkAuth() called');
     const token = getFromStorage('authToken');
 
     if (token) {
+      console.log('[StateDiagram] Token found, checking with API');
       try {
         const response = await authApi.getMe();
+        console.log('[StateDiagram] Auth API response:', response?.success ? 'SUCCESS' : 'FAILED');
 
         if (response && response.success && response.user && response.user.email) {
+          console.log('[StateDiagram] Auth successful, setting authenticated=true');
           setIsAuthenticated(true);
           // Don't set isLoading to false here - let fetchDiagram control it
         } else if (response && response.user && response.user.email) {
+          console.log('[StateDiagram] Auth successful (alt path), setting authenticated=true');
           setIsAuthenticated(true);
           // Don't set isLoading to false here - let fetchDiagram control it
         } else {
+          console.log('[StateDiagram] Auth failed, no valid user');
           const timestamp = getFromStorage('authTokenTimestamp');
           if (!timestamp || response?.error || response?.message?.includes('not found')) {
             localStorage.removeItem('authToken');
@@ -45,13 +51,14 @@ export default function StateDiagramPage() {
           setIsLoading(false);
         }
       } catch (error) {
-        console.error('Auth check failed:', error);
+        console.error('[StateDiagram] Auth check failed with error:', error);
         localStorage.removeItem('authToken');
         localStorage.removeItem('authTokenTimestamp');
         setIsAuthenticated(false);
         setIsLoading(false);
       }
     } else {
+      console.log('[StateDiagram] No token found, setting authenticated=false');
       setIsAuthenticated(false);
       setIsLoading(false);
     }
@@ -81,6 +88,7 @@ export default function StateDiagramPage() {
 
   // Fetch diagram from backend
   const fetchDiagram = async () => {
+    console.log('[StateDiagram] fetchDiagram() called');
     setIsLoading(true);
     setError(null);
 
@@ -90,18 +98,24 @@ export default function StateDiagramPage() {
         ? '' // Use relative URL in production (same domain)
         : 'http://localhost:5000'; // Use explicit localhost in development
 
+      console.log('[StateDiagram] Fetching from:', `${baseUrl}/api/state-machine/diagram`);
       const response = await fetch(`${baseUrl}/api/state-machine/diagram`);
+      console.log('[StateDiagram] Response status:', response.status);
+
       const data = await response.json();
+      console.log('[StateDiagram] Response data received:', data.success ? 'SUCCESS' : 'FAILED');
 
       if (data.success && data.diagram) {
+        console.log('[StateDiagram] Setting diagram code, length:', data.diagram.length);
         setDiagramCode(data.diagram);
         setLastUpdated(new Date().toLocaleString());
         setIsLoading(false); // Turn off loading once diagram data is set
+        console.log('[StateDiagram] Loading state set to FALSE (success path)');
       } else {
         throw new Error('Failed to fetch diagram');
       }
     } catch (err) {
-      console.error('Error fetching diagram:', err);
+      console.error('[StateDiagram] Error fetching diagram:', err);
       setError('Failed to load diagram from backend. Using fallback.');
 
       // Fallback diagram
@@ -163,6 +177,7 @@ export default function StateDiagramPage() {
     end note
 `);
       setIsLoading(false); // Turn off loading for fallback diagram too
+      console.log('[StateDiagram] Loading state set to FALSE (fallback path)');
     }
   };
 
@@ -189,23 +204,28 @@ export default function StateDiagramPage() {
 
   // Render diagram when diagramCode changes (with debounce to prevent re-renders)
   useEffect(() => {
+    console.log('[StateDiagram] Render useEffect triggered, diagramCode length:', diagramCode?.length, 'diagramRef exists:', !!diagramRef.current);
     if (!diagramCode || !diagramRef.current) return;
 
     // Clear any existing content
     diagramRef.current.innerHTML = '';
+    console.log('[StateDiagram] Cleared existing content, starting render');
 
     // Use requestAnimationFrame to batch DOM updates
     const renderDiagram = () => {
       const uniqueId = `stateDiagram-${Date.now()}`;
+      console.log('[StateDiagram] Calling mermaid.render() with ID:', uniqueId);
       mermaid.render(uniqueId, diagramCode)
         .then((result) => {
+          console.log('[StateDiagram] Mermaid render SUCCESS, SVG length:', result.svg.length);
           if (diagramRef.current) {
             diagramRef.current.innerHTML = result.svg;
             setIsLoading(false);
+            console.log('[StateDiagram] SVG inserted into DOM, loading=false');
           }
         })
         .catch((err) => {
-          console.error('Mermaid render error:', err);
+          console.error('[StateDiagram] Mermaid render ERROR:', err);
           setError('Failed to render diagram');
           setIsLoading(false);
         });
@@ -213,8 +233,12 @@ export default function StateDiagramPage() {
 
     // Use requestAnimationFrame for smoother rendering
     const rafId = requestAnimationFrame(renderDiagram);
+    console.log('[StateDiagram] requestAnimationFrame scheduled, ID:', rafId);
 
-    return () => cancelAnimationFrame(rafId);
+    return () => {
+      console.log('[StateDiagram] Cleanup: cancelling animation frame');
+      cancelAnimationFrame(rafId);
+    };
   }, [diagramCode]);
 
   const handleRefresh = () => {
