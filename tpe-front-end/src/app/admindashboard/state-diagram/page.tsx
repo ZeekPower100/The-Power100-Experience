@@ -1,11 +1,14 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import mermaid from 'mermaid';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Home, RefreshCw, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Download, Home, RefreshCw, AlertCircle, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import { authApi } from '@/lib/api';
+import { getFromStorage, setToStorage } from '@/utils/jsonHelpers';
 
 export default function StateDiagramPage() {
   const diagramRef = useRef<HTMLDivElement>(null);
@@ -13,6 +16,68 @@ export default function StateDiagramPage() {
   const [diagramCode, setDiagramCode] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string>('');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginForm, setLoginForm] = useState({ email: '', password: '' });
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+
+  // Check authentication
+  const checkAuth = useCallback(async () => {
+    const token = getFromStorage('authToken');
+
+    if (token) {
+      try {
+        const response = await authApi.getMe();
+
+        if (response && response.success && response.user && response.user.email) {
+          setIsAuthenticated(true);
+          setIsLoading(false);
+        } else if (response && response.user && response.user.email) {
+          setIsAuthenticated(true);
+          setIsLoading(false);
+        } else {
+          const timestamp = getFromStorage('authTokenTimestamp');
+          if (!timestamp || response?.error || response?.message?.includes('not found')) {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('authTokenTimestamp');
+          }
+          setIsAuthenticated(false);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('authTokenTimestamp');
+        setIsAuthenticated(false);
+        setIsLoading(false);
+      }
+    } else {
+      setIsAuthenticated(false);
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Login handler
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginLoading(true);
+    setAuthError(null);
+
+    try {
+      localStorage.removeItem('adminToken');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('authTokenTimestamp');
+
+      const response = await authApi.login(loginForm.email, loginForm.password);
+      setToStorage('authToken', response.token);
+      setToStorage('authTokenTimestamp', Date.now().toString());
+      setIsAuthenticated(true);
+    } catch (err: unknown) {
+      setAuthError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setLoginLoading(false);
+    }
+  };
 
   // Fetch diagram from backend
   const fetchDiagram = async () => {
@@ -99,17 +164,24 @@ export default function StateDiagramPage() {
     }
   };
 
-  // Initialize and fetch diagram on mount
+  // Initialize and check auth on mount
   useEffect(() => {
-    mermaid.initialize({
-      startOnLoad: true,
-      theme: 'default',
-      securityLevel: 'loose',
-      fontFamily: 'Inter, system-ui, sans-serif'
-    });
+    checkAuth();
+  }, [checkAuth]);
 
-    fetchDiagram();
-  }, []);
+  // Initialize mermaid and fetch diagram when authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: 'default',
+        securityLevel: 'loose',
+        fontFamily: 'Inter, system-ui, sans-serif'
+      });
+
+      fetchDiagram();
+    }
+  }, [isAuthenticated]);
 
   // Render diagram when diagramCode changes
   useEffect(() => {
@@ -147,6 +219,84 @@ export default function StateDiagramPage() {
     link.click();
     URL.revokeObjectURL(url);
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-power100-bg-grey p-8">
+        <div className="flex justify-center items-center py-20">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-power100-red"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Login screen
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-power100-bg-grey flex items-center justify-center p-6">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold text-power100-black">Admin Login Required</CardTitle>
+            <p className="text-power100-grey">Access the AI Concierge State Diagram</p>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  id="email"
+                  type="email"
+                  value={loginForm.email}
+                  onChange={(e) => setLoginForm(prev => ({ ...prev, email: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-power100-red"
+                  placeholder="admin@power100.io"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input
+                  id="password"
+                  type="password"
+                  value={loginForm.password}
+                  onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-power100-red"
+                  placeholder="Enter your password"
+                  required
+                />
+              </div>
+              {authError && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertDescription>{authError}</AlertDescription>
+                </Alert>
+              )}
+              <Button
+                type="submit"
+                disabled={loginLoading}
+                className="w-full bg-power100-red hover:bg-red-700 text-white"
+              >
+                {loginLoading ? 'Logging in...' : 'Login'}
+              </Button>
+              <div className="text-center text-sm text-gray-500 mt-4">
+                <p>Development credentials:</p>
+                <p className="font-mono text-xs">admin@power100.io / admin123</p>
+              </div>
+              <div className="text-center mt-4">
+                <Link href="/admindashboard">
+                  <Button variant="outline" className="w-full">
+                    <Home className="h-4 w-4 mr-2" />
+                    Back to Dashboard
+                  </Button>
+                </Link>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-power100-bg-grey p-8">
