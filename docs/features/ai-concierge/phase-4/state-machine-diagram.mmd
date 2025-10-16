@@ -1,0 +1,56 @@
+stateDiagram-v2
+    [*] --> idle
+
+    idle --> routing : MESSAGE_RECEIVED
+    idle --> idle : UPDATE_EVENT_CONTEXT
+
+    routing --> standard_agent : No Active Event (hasActiveEvent = false)
+    routing --> event_agent : Has Active Event (hasActiveEvent = true)
+    routing --> routing : UPDATE_EVENT_CONTEXT
+
+    standard_agent --> routing : MESSAGE_RECEIVED
+    standard_agent --> routing : EVENT_REGISTERED
+    standard_agent --> idle : SESSION_END
+    standard_agent --> standard_agent : UPDATE_EVENT_CONTEXT
+
+    event_agent --> routing : MESSAGE_RECEIVED
+    event_agent --> routing : EVENT_ENDED
+    event_agent --> idle : SESSION_END
+    event_agent --> event_agent : UPDATE_EVENT_CONTEXT
+
+    idle --> [*]
+
+    note right of idle
+        Waiting State
+        - Machine starts here
+        - No agent active
+        - Awaits first message
+    end note
+
+    note right of routing
+        Decision State
+        - Evaluates guards
+        - Checks event context
+        - Routes to appropriate agent
+        - Always transitions immediately
+    end note
+
+    note right of standard_agent
+        Standard Agent Mode
+        - Business growth focus
+        - Partner matching
+        - Resource recommendations
+        - General business advice
+
+        Context: No active event today
+    end note
+
+    note right of event_agent
+        Event Agent Mode
+        - Event-specific support
+        - Real-time session info
+        - Event context awareness
+        - Still answers any question
+
+        Context: Active event today
+    end note

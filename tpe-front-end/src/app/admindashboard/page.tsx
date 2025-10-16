@@ -23,7 +23,8 @@ import {
   BookOpen as BookOpenIcon,
   Mic as MicIcon,
   Brain,
-  Radio
+  Radio,
+  GitBranch
 } from "lucide-react";
 import { motion } from "framer-motion";
 import PendingResourcesTabs from "@/components/admin/PendingResourcesTabs";
@@ -553,6 +554,16 @@ export default function AdminDashboard() {
                   <BarChart3 className="w-8 h-8 text-power100-red mx-auto mb-3" />
                   <h3 className="font-semibold text-power100-black">Routing Metrics</h3>
                   <p className="text-sm text-power100-grey mt-1">AI routing performance analytics</p>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/admindashboard/state-diagram">
+              <Card className="bg-white hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-power100-red">
+                <CardContent className="p-6 text-center">
+                  <GitBranch className="w-8 h-8 text-power100-red mx-auto mb-3" />
+                  <h3 className="font-semibold text-power100-black">State Diagram</h3>
+                  <p className="text-sm text-power100-grey mt-1">AI Concierge state machine visualization</p>
                 </CardContent>
               </Card>
             </Link>

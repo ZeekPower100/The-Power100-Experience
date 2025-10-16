@@ -205,32 +205,40 @@ class DevManager {
       }
     });
 
-    // Wait for server to be ready
-    await this.waitForServer(config.port, config.name, 30, config.noPortCheck);
+    // Wait for server to be ready (default 120 seconds)
+    await this.waitForServer(config.port, config.name, 120, config.noPortCheck);
   }
 
   // Wait for server to be ready
-  async waitForServer(port, name, maxAttempts = 30, noPortCheck = false) {
+  async waitForServer(port, name, maxAttempts = 120, noPortCheck = false) {
     // If no port check needed (like for worker), just wait a bit and assume ready
     if (noPortCheck) {
       console.log(`⏳ Waiting for ${name} to start...`);
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await new Promise(resolve => setTimeout(resolve, 5000));
       console.log(`✅ ${name} is ready!`);
       return true;
     }
 
     console.log(`⏳ Waiting for ${name} to be ready on port ${port}...`);
+    console.log(`   (Timeout: ${maxAttempts} seconds - Next.js compilation can take time)`);
 
     for (let i = 0; i < maxAttempts; i++) {
       const pid = await this.findProcessByPort(port);
       if (pid) {
-        console.log(`✅ ${name} is ready!`);
+        console.log(`✅ ${name} is ready! (Started in ${i} seconds)`);
         return true;
       }
+
+      // Show progress every 15 seconds
+      if (i > 0 && i % 15 === 0) {
+        console.log(`   ⏳ Still waiting... (${i}/${maxAttempts} seconds)`);
+      }
+
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
 
-    console.log(`⚠️ ${name} did not start within expected time`);
+    console.log(`⚠️ ${name} did not start within ${maxAttempts} seconds`);
+    console.log(`   This may indicate an error - check the logs in ${name.toLowerCase().replace(/\s+/g, '-')}.log`);
     return false;
   }
 

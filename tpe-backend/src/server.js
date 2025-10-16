@@ -51,6 +51,7 @@ const eventRoutes = require('./routes/eventRoutes');
 const podcastRoutes = require('./routes/podcastRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const schedulerRoutes = require('./routes/schedulerRoutes');
+const stateMachineRoutes = require('./routes/stateMachineRoutes');
 
 const app = express();
 
@@ -173,6 +174,7 @@ app.use('/api/event-check-in', eventCheckInRoutes);
 app.use('/api/event-messaging', eventMessagingRoutes);
 app.use('/api/admin-controls', adminControlsRoutes);
 app.use('/api/scheduler', schedulerRoutes);
+app.use('/api/state-machine', stateMachineRoutes);
 app.use('/api/event-orchestrator', require('../routes/eventOrchestratorRoutes'));
 app.use('/api/event-scheduler', require('../routes/eventMessageSchedulerRoutes'));
 app.use('/api/event-agenda', require('../routes/eventAgendaRoutes'));
