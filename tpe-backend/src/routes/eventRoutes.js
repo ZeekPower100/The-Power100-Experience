@@ -7,17 +7,18 @@ const { flexibleProtect } = require('../middleware/flexibleAuth');
 // Public routes (for submissions and event pages)
 router.post('/submit', eventController.createEvent);
 
-// Public route - Get single event (needed for profile completion page)
-router.get('/:id', eventController.getEvent);
-
 // n8n webhook helper (accepts API key)
 router.get('/pcr/pending', flexibleProtect, eventController.getPendingPCR);
 
 // Protected routes
 router.use(protect);
 
-// Get pending events (must come before /:id)
+// Get pending events (MUST come before /:id to avoid route conflict)
 router.get('/pending', eventController.getPendingEvents);
+
+// Public route - Get single event (needed for profile completion page)
+// NOTE: This is after /pending to avoid /:id matching "/pending"
+router.get('/:id', eventController.getEvent);
 
 // Get all events
 router.get('/', eventController.getAllEvents);
