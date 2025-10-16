@@ -14,9 +14,15 @@
  *
  * Phase 1: Event Truth Management
  * Date: October 13, 2025
+ *
+ * Phase 5 Day 3: Caching Integration
+ * Date: October 16, 2025
+ * - Added Redis caching for event context (60 second TTL)
+ * - Cache reduces database load for frequent event context queries
  */
 
 const db = require('../config/database.postgresql');
+const cacheService = require('./cacheService');
 
 /**
  * @typedef {Object} SessionContext
@@ -149,23 +155,38 @@ class ContextAssembler {
 
   /**
    * Get complete event context for a contractor
+   * Phase 5 Day 3: Added caching with 60 second TTL
    * @param {number} contractorId - Contractor ID
    * @returns {Promise<EventContext>}
    */
   async getEventContext(contractorId) {
     try {
+      // Try cache first (Phase 5 Day 3: Caching integration)
+      const cached = await cacheService.getEventContext(contractorId);
+      if (cached) {
+        console.log(`[Context Assembler] Using cached event context for contractor ${contractorId}`);
+        return cached;
+      }
+
+      // Cache miss - query database
+      console.log(`[Context Assembler] Cache miss - querying database for contractor ${contractorId}`);
       const [sessionsNow, sessionsNext60] = await Promise.all([
         this.getSessionsNow(contractorId),
         this.getSessionsNext60(contractorId)
       ]);
 
-      return {
+      const context = {
         sessions_now: sessionsNow,
         sessions_next_60: sessionsNext60,
         total_active_sessions: sessionsNow.length,
         total_upcoming_sessions: sessionsNext60.length,
         context_timestamp: new Date().toISOString()
       };
+
+      // Cache for 60 seconds (event data changes frequently)
+      await cacheService.cacheEventContext(contractorId, context);
+
+      return context;
     } catch (error) {
       console.error('Error assembling event context:', error);
       throw error;
