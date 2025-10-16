@@ -1,0 +1,22 @@
+{
+  "alerts": {
+    "high_error_rate": {
+      "description": "Alert when error rate exceeds threshold",
+      "threshold": 0.05,
+      "check_interval": "5 minutes",
+      "notification": "slack"
+    },
+    "slow_response": {
+      "description": "Alert when p95 latency exceeds 500ms",
+      "threshold": 500,
+      "check_interval": "1 minute",
+      "notification": "slack"
+    },
+    "state_machine_stuck": {
+      "description": "Alert when state machine hasn't transitioned in 5 minutes",
+      "threshold": "5 minutes",
+      "check_interval": "2 minutes",
+      "notification": "slack"
+    }
+  }
+}

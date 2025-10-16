@@ -24,7 +24,8 @@ import {
   Mic as MicIcon,
   Brain,
   Radio,
-  GitBranch
+  GitBranch,
+  Activity
 } from "lucide-react";
 import { motion } from "framer-motion";
 import PendingResourcesTabs from "@/components/admin/PendingResourcesTabs";
@@ -547,6 +548,16 @@ export default function AdminDashboard() {
                   <GitBranch className="w-8 h-8 text-power100-red mx-auto mb-3" />
                   <h3 className="font-semibold text-power100-black">State Diagram</h3>
                   <p className="text-sm text-power100-grey mt-1">AI Concierge state machine visualization</p>
+                </CardContent>
+              </Card>
+            </Link>
+
+            <Link href="/admindashboard/monitoring">
+              <Card className="bg-white hover:shadow-lg transition-all duration-300 cursor-pointer border-2 hover:border-power100-red">
+                <CardContent className="p-6 text-center">
+                  <Activity className="w-8 h-8 text-power100-red mx-auto mb-3" />
+                  <h3 className="font-semibold text-power100-black">Production Monitor</h3>
+                  <p className="text-sm text-power100-grey mt-1">Real-time AI Concierge monitoring dashboard</p>
                 </CardContent>
               </Card>
             </Link>
