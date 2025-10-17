@@ -1,9 +1,9 @@
 {
-  "timestamp": "2025-10-15T14:48:14.574Z",
+  "timestamp": "2025-10-17T16:28:08.587Z",
   "mode": "check",
   "stats": {
     "tablesChecked": 7,
-    "recordsChecked": 159,
+    "recordsChecked": 173,
     "issuesFound": 0,
     "issuesFixed": 0,
     "errors": [

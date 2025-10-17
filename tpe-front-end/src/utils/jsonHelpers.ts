@@ -25,13 +25,35 @@ export function safeJsonParse<T = any>(data: any, fallback: T = null as T): T {
       if (data === '[object Object]') {
         return fallback;
       }
-      
+
       // Handle boolean strings that sometimes come from forms
       if (data === 'true') return true as T;
       if (data === 'false') return false as T;
-      
-      // Try to parse using native JSON.parse
-      return JSON.parse(data) as T;
+
+      // Clean up common JSON formatting issues from database
+      let cleanedData = data.trim();
+
+      // Try to parse first - most data is already valid JSON
+      try {
+        return JSON.parse(cleanedData) as T;
+      } catch (firstError) {
+        // If that fails, try to fix PostgreSQL array format {item1,item2}
+        if (cleanedData.startsWith('{') && cleanedData.endsWith('}') && !cleanedData.includes('[') && !cleanedData.includes(':')) {
+          // This looks like PostgreSQL array syntax, convert it
+          cleanedData = cleanedData
+            .replace(/^\{/, '[')
+            .replace(/\}$/, ']')
+            .split(',')
+            .map(item => `"${item.trim()}"`)
+            .join(',');
+          cleanedData = `[${cleanedData.slice(1, -1)}]`; // Wrap in array brackets
+
+          return JSON.parse(cleanedData) as T;
+        }
+
+        // If still can't parse, throw the original error to be caught by outer try/catch
+        throw firstError;
+      }
     }
     
     // If it's not a string or object, return as-is

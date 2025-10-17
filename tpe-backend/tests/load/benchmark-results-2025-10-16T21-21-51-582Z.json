@@ -1,0 +1,48 @@
+{
+  "timestamp": "2025-10-16T21:21:51.585Z",
+  "environment": "https://tpx.power100.io",
+  "results": [
+    {
+      "name": "State Machine Diagram",
+      "url": "https://tpx.power100.io/api/state-machine/diagram",
+      "iterations": 50,
+      "successCount": 50,
+      "errorCount": 0,
+      "successRate": "100.00",
+      "min": 144,
+      "max": 947,
+      "median": 162,
+      "p95": 181,
+      "p99": 947,
+      "avg": 177.7
+    },
+    {
+      "name": "State Machine Metadata",
+      "url": "https://tpx.power100.io/api/state-machine/metadata",
+      "iterations": 50,
+      "successCount": 50,
+      "errorCount": 0,
+      "successRate": "100.00",
+      "min": 140,
+      "max": 187,
+      "median": 158,
+      "p95": 177,
+      "p99": 187,
+      "avg": 159.1
+    },
+    {
+      "name": "Health Check",
+      "url": "https://tpx.power100.io/api/health",
+      "iterations": 50,
+      "successCount": 0,
+      "errorCount": 50,
+      "successRate": "0.00",
+      "min": 143,
+      "max": 188,
+      "median": 156,
+      "p95": 178,
+      "p99": 188,
+      "avg": 158
+    }
+  ]
+}
