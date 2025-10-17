@@ -28,12 +28,14 @@ const langsmithClient = process.env.LANGSMITH_API_KEY ? new Client({
   apiKey: process.env.LANGSMITH_API_KEY
 }) : null;
 
-// Import all 5 tools
+// Import all 7 tools (5 original + 2 communication tools)
 const partnerMatchTool = require('./tools/partnerMatchTool');
 const eventSponsorMatchTool = require('./tools/eventSponsorMatchTool');
 const eventSessionsTool = require('./tools/eventSessionsTool');
 const captureNoteTool = require('./tools/captureNoteTool');
 const scheduleFollowupTool = require('./tools/scheduleFollowupTool');
+const sendSMSTool = require('./tools/sendSMSTool');
+const sendEmailTool = require('./tools/sendEmailTool');
 
 // AI Concierge Identity - Four Pillars
 const STANDARD_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 Experience - a HIGHLY PERSONALIZED, home improvement industry-specific intelligent assistant.
@@ -69,6 +71,8 @@ const STANDARD_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 
 - get_event_sessions: Show what's happening at events right now
 - capture_event_note: Capture insights, action items, observations
 - schedule_followup: Schedule proactive check-ins, reminders, resource recommendations
+- send_sms: Send SMS messages to contractors for urgent or time-sensitive information
+- send_email: Send emails to contractors with detailed information, resources, or follow-ups
 
 Remember: To the contractor, you're always "the AI Concierge" - not limited by mode.`;
 
@@ -77,7 +81,7 @@ Remember: To the contractor, you're always "the AI Concierge" - not limited by m
  * Temperature: 0.7 (strategic, conversational)
  */
 function createStandardAgent() {
-  console.log('[AI Concierge Standard] Creating agent with all 5 tools');
+  console.log('[AI Concierge Standard] Creating agent with all 7 tools (including SMS/Email)');
 
   // Initialize ChatOpenAI model with LangSmith tracing and token usage tracking
   const modelConfig = {
@@ -98,13 +102,15 @@ function createStandardAgent() {
 
   const model = new ChatOpenAI(modelConfig);
 
-  // Bind all 5 tools to model (Standard Mode has access to ALL tools)
+  // Bind all 7 tools to model (Standard Mode has access to ALL tools including SMS/Email)
   const modelWithTools = model.bindTools([
     partnerMatchTool,
     eventSponsorMatchTool,
     eventSessionsTool,
     captureNoteTool,
-    scheduleFollowupTool
+    scheduleFollowupTool,
+    sendSMSTool,
+    sendEmailTool
   ]);
 
   // Define agent function

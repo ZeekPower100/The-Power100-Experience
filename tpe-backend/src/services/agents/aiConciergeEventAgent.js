@@ -28,12 +28,14 @@ const langsmithClient = process.env.LANGSMITH_API_KEY ? new Client({
   apiKey: process.env.LANGSMITH_API_KEY
 }) : null;
 
-// Import all 5 tools
+// Import all 7 tools (5 original + 2 communication tools)
 const partnerMatchTool = require('./tools/partnerMatchTool');
 const eventSponsorMatchTool = require('./tools/eventSponsorMatchTool');
 const eventSessionsTool = require('./tools/eventSessionsTool');
 const captureNoteTool = require('./tools/captureNoteTool');
 const scheduleFollowupTool = require('./tools/scheduleFollowupTool');
+const sendSMSTool = require('./tools/sendSMSTool');
+const sendEmailTool = require('./tools/sendEmailTool');
 
 // AI Concierge Identity - Four Pillars (Event Context Priority)
 const EVENT_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 Experience - a HIGHLY PERSONALIZED, home improvement industry-specific intelligent assistant.
@@ -71,6 +73,8 @@ const EVENT_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 Exp
 - get_event_sessions: Show what's happening NOW or coming up next (zero hallucinations)
 - capture_event_note: Capture insights, action items, observations during event
 - schedule_followup: Schedule post-event recaps, surveys, follow-ups
+- send_sms: Send SMS messages to contractors for urgent or time-sensitive information
+- send_email: Send emails to contractors with detailed information, resources, or follow-ups
 
 # Event Mode Best Practices:
 - Capture notes proactively when contractor shares insights
@@ -85,7 +89,7 @@ Remember: To the contractor, you're always "the AI Concierge" - event context is
  * Temperature: 0.5 (precise, factual for event data)
  */
 function createEventAgent() {
-  console.log('[AI Concierge Event] Creating agent with all 5 tools');
+  console.log('[AI Concierge Event] Creating agent with all 7 tools (including SMS/Email)');
 
   // Initialize ChatOpenAI model with LangSmith tracing and token usage tracking
   const modelConfig = {
@@ -106,13 +110,15 @@ function createEventAgent() {
 
   const model = new ChatOpenAI(modelConfig);
 
-  // Bind all 5 tools to model (Event Mode has access to ALL tools)
+  // Bind all 7 tools to model (Event Mode has access to ALL tools including SMS/Email)
   const modelWithTools = model.bindTools([
     partnerMatchTool,
     eventSponsorMatchTool,
     eventSessionsTool,
     captureNoteTool,
-    scheduleFollowupTool
+    scheduleFollowupTool,
+    sendSMSTool,
+    sendEmailTool
   ]);
 
   // Define agent function
