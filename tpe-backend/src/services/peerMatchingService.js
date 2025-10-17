@@ -76,15 +76,16 @@ class PeerMatchingService {
    * Calculate comprehensive match score between two contractors
    *
    * Scoring weights:
-   * - Focus Area Overlap: 40%
+   * - Focus Area Overlap: 35% (reduced from 40% to make room for job_title)
    * - Geographic Separation: 25%
    * - Business Scale Similarity: 20%
    * - Industry Alignment: 15%
+   * - Job Title Match: 5% (bonus when both have job_title)
    */
   calculateMatchScore(contractor1, contractor2) {
     const breakdown = {};
 
-    // 1. Focus Area Overlap (40%) - REQUIRED
+    // 1. Focus Area Overlap (35%) - REQUIRED
     const focusAreaScore = this.scoreFocusAreaMatch(
       contractor1.focus_areas,
       contractor2.focus_areas
@@ -118,13 +119,30 @@ class PeerMatchingService {
     );
     breakdown.industry = industryScore;
 
-    // Calculate weighted total
-    const total = (
-      (focusAreaScore * 0.40) +
-      (geoScore * 0.25) +
-      (scaleScore * 0.20) +
-      (industryScore * 0.15)
+    // 5. Job Title Match (5%) - OPTIONAL BONUS
+    const jobTitleScore = this.scoreJobTitleMatch(
+      contractor1.job_title,
+      contractor2.job_title
     );
+    breakdown.jobTitle = jobTitleScore;
+
+    // Calculate weighted total
+    // If job_title is missing for both, focusAreaScore gets its full weight (40%)
+    const hasJobTitles = contractor1.job_title && contractor2.job_title;
+    const total = hasJobTitles
+      ? (
+          (focusAreaScore * 0.35) +
+          (geoScore * 0.25) +
+          (scaleScore * 0.20) +
+          (industryScore * 0.15) +
+          (jobTitleScore * 0.05)
+        )
+      : (
+          (focusAreaScore * 0.40) + // Full 40% when no job_title
+          (geoScore * 0.25) +
+          (scaleScore * 0.20) +
+          (industryScore * 0.15)
+        );
 
     return {
       total: Math.round(total * 100) / 100, // Round to 2 decimals
@@ -279,6 +297,49 @@ class PeerMatchingService {
   }
 
   /**
+   * Score job title match
+   * Same or similar job titles = better peer match
+   * Returns 0-1 score, or 0 if either is missing (doesn't penalize)
+   */
+  scoreJobTitleMatch(title1, title2) {
+    // If either is missing, return 0 (no bonus, no penalty)
+    if (!title1 || !title2) return 0;
+
+    const normalized1 = title1.toLowerCase().trim();
+    const normalized2 = title2.toLowerCase().trim();
+
+    // Exact match
+    if (normalized1 === normalized2) return 1.0;
+
+    // Check for common title variations
+    const titleSynonyms = {
+      'owner': ['ceo', 'founder', 'president', 'principal'],
+      'manager': ['director', 'supervisor', 'lead'],
+      'operations': ['ops', 'project manager', 'pm'],
+      'sales': ['business development', 'account executive', 'bd']
+    };
+
+    // Check if titles are synonymous
+    for (const [key, synonyms] of Object.entries(titleSynonyms)) {
+      const hasKey1 = normalized1.includes(key) || synonyms.some(s => normalized1.includes(s));
+      const hasKey2 = normalized2.includes(key) || synonyms.some(s => normalized2.includes(s));
+
+      if (hasKey1 && hasKey2) return 0.8; // Similar role category
+    }
+
+    // Partial string match (e.g., "Operations Manager" and "Project Manager")
+    const words1 = normalized1.split(/\s+/);
+    const words2 = normalized2.split(/\s+/);
+    const commonWords = words1.filter(w => words2.includes(w) && w.length > 3);
+
+    if (commonWords.length > 0) {
+      return 0.5; // Some overlap in title
+    }
+
+    return 0; // No match, no bonus
+  }
+
+  /**
    * Generate human-readable match reason
    */
   generateMatchReason(contractor1, contractor2, score) {
@@ -346,7 +407,7 @@ class PeerMatchingService {
       SELECT
         id, first_name, last_name, email, phone,
         company_name, revenue_tier, annual_revenue, team_size,
-        focus_areas, service_area, services_offered
+        focus_areas, service_area, services_offered, job_title
       FROM contractors
       WHERE id = $1
     `;
@@ -363,7 +424,7 @@ class PeerMatchingService {
       SELECT
         c.id, c.first_name, c.last_name, c.email, c.phone,
         c.company_name, c.revenue_tier, c.annual_revenue, c.team_size,
-        c.focus_areas, c.service_area, c.services_offered
+        c.focus_areas, c.service_area, c.services_offered, c.job_title
       FROM contractors c
       INNER JOIN event_attendees ea ON c.id = ea.contractor_id
       WHERE ea.event_id = $1

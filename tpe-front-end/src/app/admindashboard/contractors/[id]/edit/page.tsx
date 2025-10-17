@@ -40,9 +40,10 @@ interface ContractorEditData {
   phone: string;
   company_name: string;
   company_website: string;
-  
+
   // Location & Services
   service_area: string;
+  job_title: string;
   services_offered: string[];
   
   // Business Focus
@@ -140,6 +141,7 @@ export default function ContractorEditPage() {
     
     // Location & Services
     service_area: '',
+    job_title: '',
     services_offered: [],
     
     // Business Focus
@@ -237,6 +239,7 @@ export default function ContractorEditPage() {
         
         // Location & Services
         service_area: contractorData.service_area || '',
+        job_title: contractorData.job_title || '',
         services_offered: parseJsonField(contractorData.services_offered),
         
         // Business Focus
@@ -331,6 +334,7 @@ export default function ContractorEditPage() {
         
         // Location & Services
         service_area: contractor.service_area,
+        job_title: contractor.job_title,
         services_offered: safeJsonStringify(contractor.services_offered),
         
         // Business Focus
@@ -555,13 +559,23 @@ export default function ContractorEditPage() {
                 />
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">Service Area</label>
-              <Input
-                value={contractor.service_area}
-                onChange={(e) => setContractor(prev => ({ ...prev, service_area: e.target.value }))}
-                placeholder="Geographic service area"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Service Area</label>
+                <Input
+                  value={contractor.service_area}
+                  onChange={(e) => setContractor(prev => ({ ...prev, service_area: e.target.value }))}
+                  placeholder="Geographic service area"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Job Title</label>
+                <Input
+                  value={contractor.job_title}
+                  onChange={(e) => setContractor(prev => ({ ...prev, job_title: e.target.value }))}
+                  placeholder="e.g., Owner, Operations Manager"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

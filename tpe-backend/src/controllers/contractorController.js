@@ -140,7 +140,7 @@ const updateProfile = async (req, res, next) => {
     'name', 'email', 'phone', 'company_name', 'company_website',
     
     // Location & Services
-    'service_area', 'services_offered',
+    'service_area', 'job_title', 'services_offered',
     
     // Business Focus
     'focus_areas', 'primary_focus_area',

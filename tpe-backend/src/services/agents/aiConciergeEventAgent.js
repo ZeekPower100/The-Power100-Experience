@@ -4,7 +4,7 @@
 // ================================================================
 // Purpose: Real-time event support with zero hallucinations (materialized views)
 // Mode: Event - Focus on current sessions, sponsors, note capture, follow-ups
-// Tools: ALL 5 tools available (partnerMatch, eventSponsorMatch, eventSessions, captureNote, scheduleFollowup)
+// Tools: ALL 8 tools available (partnerMatch, eventSponsorMatch, eventSessions, captureNote, scheduleFollowup, sendSMS, sendEmail, peerMatch)
 // ================================================================
 // VERIFIED DATABASE FIELDS:
 // - ai_concierge_sessions.contractor_id (NOT contractorId)
@@ -28,7 +28,7 @@ const langsmithClient = process.env.LANGSMITH_API_KEY ? new Client({
   apiKey: process.env.LANGSMITH_API_KEY
 }) : null;
 
-// Import all 7 tools (5 original + 2 communication tools)
+// Import all 8 tools (5 original + 2 communication + 1 peer matching)
 const partnerMatchTool = require('./tools/partnerMatchTool');
 const eventSponsorMatchTool = require('./tools/eventSponsorMatchTool');
 const eventSessionsTool = require('./tools/eventSessionsTool');
@@ -36,6 +36,7 @@ const captureNoteTool = require('./tools/captureNoteTool');
 const scheduleFollowupTool = require('./tools/scheduleFollowupTool');
 const sendSMSTool = require('./tools/sendSMSTool');
 const sendEmailTool = require('./tools/sendEmailTool');
+const peerMatchTool = require('./tools/peerMatchTool');
 
 // AI Concierge Identity - Four Pillars (Event Context Priority)
 const EVENT_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 Experience - a HIGHLY PERSONALIZED, home improvement industry-specific intelligent assistant.
@@ -75,12 +76,16 @@ const EVENT_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 Exp
 - schedule_followup: Schedule post-event recaps, surveys, follow-ups
 - send_sms: Send SMS messages to contractors for urgent or time-sensitive information
 - send_email: Send emails to contractors with detailed information, resources, or follow-ups
+- find_peer_matches: Connect contractors with valuable peer networking opportunities at events
 
 # Event Mode Best Practices:
 - Capture notes proactively when contractor shares insights
 - Recommend sponsors with specific booth numbers and talking points
 - Schedule post-event follow-ups (recap, survey, partner introductions)
 - Use lower temperature for factual accuracy (no guessing session times!)
+- Proactively suggest peer matches for networking opportunities
+- Check existing peer matches first before finding new ones
+- Explain WHY peer matches would be valuable (based on match scores and reasons)
 
 Remember: To the contractor, you're always "the AI Concierge" - event context is ADDITIVE, not limiting.`;
 
@@ -89,7 +94,7 @@ Remember: To the contractor, you're always "the AI Concierge" - event context is
  * Temperature: 0.5 (precise, factual for event data)
  */
 function createEventAgent() {
-  console.log('[AI Concierge Event] Creating agent with all 7 tools (including SMS/Email)');
+  console.log('[AI Concierge Event] Creating agent with all 8 tools (including SMS/Email/Peer Matching)');
 
   // Initialize ChatOpenAI model with LangSmith tracing and token usage tracking
   const modelConfig = {
@@ -110,7 +115,7 @@ function createEventAgent() {
 
   const model = new ChatOpenAI(modelConfig);
 
-  // Bind all 7 tools to model (Event Mode has access to ALL tools including SMS/Email)
+  // Bind all 8 tools to model (Event Mode has access to ALL tools including SMS/Email/Peer Matching)
   const modelWithTools = model.bindTools([
     partnerMatchTool,
     eventSponsorMatchTool,
@@ -118,7 +123,8 @@ function createEventAgent() {
     captureNoteTool,
     scheduleFollowupTool,
     sendSMSTool,
-    sendEmailTool
+    sendEmailTool,
+    peerMatchTool
   ]);
 
   // Define agent function

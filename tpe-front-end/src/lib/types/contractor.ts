@@ -34,6 +34,7 @@ export interface Contractor {
   company_name: string;
   company_website?: string;
   service_area: string;
+  job_title?: string;
   services_offered: string[];
   verification_status: "pending" | "verified" | "failed";
   verification_code?: string;

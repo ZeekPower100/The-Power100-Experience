@@ -31,6 +31,7 @@ export default function ProfilingStep({ data, onNext, onPrev, onUpdate }: StepPr
   // We ensure team_size is a number for the input, but handle it as a string for display
   const [formData, setFormData] = useState({
     service_area: data.service_area || '',
+    job_title: data.job_title || '',
     services_offered: data.services_offered || [],
     annual_revenue: data.annual_revenue || '',
     team_size: data.team_size?.toString() || '',
@@ -110,6 +111,12 @@ export default function ProfilingStep({ data, onNext, onPrev, onUpdate }: StepPr
               <Input id="service_area" value={formData.service_area} onChange={(e) => handleInputChange('service_area', e.target.value)} className="mt-2 h-12" placeholder="e.g., Dallas-Fort Worth, Texas" />
             </div>
             <div>
+              <Label htmlFor="job_title" className="text-sm font-semibold text-gray-700">Your Job Title</Label>
+              <Input id="job_title" value={formData.job_title} onChange={(e) => handleInputChange('job_title', e.target.value)} className="mt-2 h-12" placeholder="e.g., Owner, Operations Manager" />
+            </div>
+          </div>
+          <div className="grid md:grid-cols-2 gap-6">
+            <div>
               <Label htmlFor="annual_revenue" className="text-sm font-semibold text-gray-700">Annual Revenue Range *</Label>
               <Select value={formData.annual_revenue} onValueChange={(value) => handleInputChange('annual_revenue', value)}>
                 <SelectTrigger className="mt-2 h-12 bg-white"><SelectValue placeholder="Select revenue range" /></SelectTrigger>
@@ -126,10 +133,10 @@ export default function ProfilingStep({ data, onNext, onPrev, onUpdate }: StepPr
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          <div>
-            <Label htmlFor="team_size" className="text-sm font-semibold text-gray-700">Team Size (Total Employees) *</Label>
-            <Input id="team_size" type="number" value={formData.team_size} onChange={(e) => handleInputChange('team_size', e.target.value)} className="mt-2 h-12" placeholder="25" min="1" />
+            <div>
+              <Label htmlFor="team_size" className="text-sm font-semibold text-gray-700">Team Size (Total Employees) *</Label>
+              <Input id="team_size" type="number" value={formData.team_size} onChange={(e) => handleInputChange('team_size', e.target.value)} className="mt-2 h-12" placeholder="25" min="1" />
+            </div>
           </div>
           <div>
             <Label className="text-sm font-semibold text-gray-700 mb-4 block">Services You Offer *</Label>
