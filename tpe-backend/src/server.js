@@ -119,15 +119,18 @@ if (process.env.NODE_ENV !== 'test') {
 // Data collection middleware - track all API interactions
 app.use(dataCollectionService.trackAPICall());
 
-// Health check endpoint
-app.get('/health', (req, res) => {
+// Health check endpoints (both /health and /api/health for compatibility)
+const healthCheck = (req, res) => {
   res.status(200).json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     version: '1.0.0'
   });
-});
+};
+
+app.get('/health', healthCheck);
+app.get('/api/health', healthCheck);
 
 // Request logger for debugging
 app.use((req, res, next) => {
