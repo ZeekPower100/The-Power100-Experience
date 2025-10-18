@@ -3,6 +3,11 @@
 const { query } = require('../../config/database');
 const { safeJsonParse, safeJsonStringify } = require('../../utils/jsonHelpers');
 const axios = require('axios');
+const {
+  triggerRegistrationConfirmationEmail,
+  triggerProfileCompletionEmail,
+  triggerPersonalizedAgendaEmail
+} = require('../../controllers/n8nEventWebhookController');
 
 /**
  * Event Registration & Onboarding Service
@@ -176,6 +181,9 @@ async function handleExistingContractor(eventId, contractor, urgencyLevel, hours
 
   const attendeeId = attendeeResult.rows[0].id;
 
+  // Send registration confirmation email (existing user - has profile)
+  await triggerRegistrationConfirmationEmail(eventId, contractor.id, isComplete);
+
   // Send appropriate message with urgency awareness
   let messageSent = false;
   if (isComplete) {
@@ -194,7 +202,8 @@ async function handleExistingContractor(eventId, contractor, urgencyLevel, hours
     event_id: eventId,
     status: isComplete ? 'complete_sent_agenda' : 'incomplete_sent_request',
     message_sent: messageSent,
-    urgency_level: urgencyLevel
+    urgency_level: urgencyLevel,
+    email_sent: true // Registration confirmation email sent
   };
 }
 
@@ -236,6 +245,9 @@ async function handleNewContractor(eventId, data, urgencyLevel, hoursUntilEvent)
 
   const attendeeId = attendeeResult.rows[0].id;
 
+  // Send registration confirmation email (new user - needs to complete profile)
+  await triggerRegistrationConfirmationEmail(eventId, contractorId, false);
+
   // Send profile completion request with urgency awareness (collect ALL contractor flow data)
   await sendProfileCompletionRequest(eventId, contractorId, {
     id: contractorId,
@@ -250,7 +262,8 @@ async function handleNewContractor(eventId, data, urgencyLevel, hoursUntilEvent)
     event_id: eventId,
     status: 'new_contractor_created',
     message_sent: true,
-    urgency_level: urgencyLevel
+    urgency_level: urgencyLevel,
+    email_sent: true // Registration confirmation email sent
   };
 }
 
@@ -369,8 +382,11 @@ async function sendProfileCompletionRequest(eventId, contractorId, contractor, u
 
     console.log(`[EventRegistration] Profile completion request sent (${urgencyLevel}):`, messageResult.rows[0].id);
 
-    // Send via n8n webhook
+    // Send via n8n webhook (SMS)
     await sendViaWebhook(contractor.phone, [message]);
+
+    // Send profile completion email (parallel to SMS)
+    await triggerProfileCompletionEmail(eventId, contractorId);
 
     return messageResult.rows[0].id;
 
@@ -531,8 +547,16 @@ async function sendPersonalizedAgenda(eventId, contractorId, urgencyLevel = 'nor
 
     console.log(`[EventRegistration] Personalized agenda sent (${urgencyLevel}):`, messageResult.rows[0].id, `(${messages.length} SMS)`);
 
-    // Send via n8n webhook
+    // Send via n8n webhook (SMS)
     await sendViaWebhook(contractor.phone, messages);
+
+    // Send personalized agenda email (parallel to SMS)
+    const agendaData = {
+      speakers: speakersResult.rows,
+      sponsors: sponsorsResult.rows,
+      urgency_level: urgencyLevel
+    };
+    await triggerPersonalizedAgendaEmail(eventId, contractorId, agendaData);
 
     return messageResult.rows[0].id;
 

@@ -389,12 +389,475 @@ const receiveDeliveryStatus = async (req, res, next) => {
   }
 };
 
+// ============================================================
+// EMAIL WEBHOOK FUNCTIONS (Parallel to SMS)
+// ============================================================
+
+/**
+ * Trigger registration confirmation email
+ * 2 variants: new user (with profile completion prompt) vs existing user
+ */
+const triggerRegistrationConfirmationEmail = async (eventId, contractorId, hasExistingProfile = false) => {
+  try {
+    // Get contractor and event details
+    const contractorResult = await query(`
+      SELECT c.*, ea.real_email
+      FROM contractors c
+      LEFT JOIN event_attendees ea ON c.id = ea.contractor_id AND ea.event_id = $1
+      WHERE c.id = $2
+    `, [eventId, contractorId]);
+
+    if (contractorResult.rows.length === 0) {
+      return false;
+    }
+
+    const contractor = contractorResult.rows[0];
+    const email = contractor.real_email || contractor.email;
+
+    if (!email) {
+      console.log('No email address found for contractor');
+      return false;
+    }
+
+    // Get event details
+    const eventResult = await query(`
+      SELECT name, date, location
+      FROM events
+      WHERE id = $1
+    `, [eventId]);
+
+    if (eventResult.rows.length === 0) {
+      return false;
+    }
+
+    const event = eventResult.rows[0];
+
+    // Different message based on profile status
+    const subject = hasExistingProfile
+      ? `You're registered for ${event.name}!`
+      : `Complete your profile for ${event.name}`;
+
+    const messageContent = hasExistingProfile
+      ? `Great news! You're confirmed for ${event.name} on ${event.date} at ${event.location}. Your personalized agenda is processing and we'll send it to you soon. Get ready for an amazing experience!`
+      : `You're registered for ${event.name}! To receive your personalized agenda and extract maximum value from the event, please complete your profile. We'll use this to match you with the perfect speakers, sponsors, and networking opportunities.`;
+
+    const payload = {
+      event_type: 'registration_confirmation',
+      event_id: eventId,
+      contractor_id: contractorId,
+      to_email: email,
+      from_email: process.env.EVENT_FROM_EMAIL || 'events@power100.io',
+      subject: subject,
+      message_content: messageContent,
+      has_existing_profile: hasExistingProfile,
+      personalization_data: {
+        contractor_name: contractor.first_name || contractor.email.split('@')[0],
+        company_name: contractor.company_name,
+        event_name: event.name,
+        event_date: event.date,
+        event_location: event.location
+      }
+    };
+
+    // Store in event_messages table
+    await query(`
+      INSERT INTO event_messages (
+        event_id,
+        contractor_id,
+        message_type,
+        message_category,
+        channel,
+        from_email,
+        to_email,
+        subject,
+        message_content,
+        personalization_data,
+        status,
+        created_at,
+        updated_at
+      ) VALUES ($1, $2, $3, 'confirmation', 'email', $4, $5, $6, $7, $8, 'pending', NOW(), NOW())
+    `, [
+      eventId,
+      contractorId,
+      'registration_confirmation',
+      payload.from_email,
+      payload.to_email,
+      payload.subject,
+      payload.message_content,
+      safeJsonStringify(payload.personalization_data)
+    ]);
+
+    // Send to n8n webhook
+    const webhookPath = process.env.NODE_ENV === 'production'
+      ? '/webhook/event-registration-email'
+      : '/webhook/event-registration-email-dev';
+    const response = await fetch(`${N8N_WEBHOOK_BASE}${webhookPath}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: safeJsonStringify(payload)
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Error triggering registration confirmation email:', error);
+    return false;
+  }
+};
+
+/**
+ * Trigger profile completion email
+ */
+const triggerProfileCompletionEmail = async (eventId, contractorId) => {
+  try {
+    // Get contractor details
+    const contractorResult = await query(`
+      SELECT c.*, ea.real_email
+      FROM contractors c
+      LEFT JOIN event_attendees ea ON c.id = ea.contractor_id AND ea.event_id = $1
+      WHERE c.id = $2
+    `, [eventId, contractorId]);
+
+    if (contractorResult.rows.length === 0) {
+      return false;
+    }
+
+    const contractor = contractorResult.rows[0];
+    const email = contractor.real_email || contractor.email;
+
+    if (!email) {
+      console.log('No email address found for contractor');
+      return false;
+    }
+
+    // Get event details
+    const eventResult = await query(`
+      SELECT name, date, location
+      FROM events
+      WHERE id = $1
+    `, [eventId]);
+
+    if (eventResult.rows.length === 0) {
+      return false;
+    }
+
+    const event = eventResult.rows[0];
+
+    const payload = {
+      event_type: 'profile_completion',
+      event_id: eventId,
+      contractor_id: contractorId,
+      to_email: email,
+      from_email: process.env.EVENT_FROM_EMAIL || 'events@power100.io',
+      subject: `Profile complete! Your ${event.name} agenda is being prepared`,
+      message_content: `Thanks for completing your profile! We're now generating your personalized agenda for ${event.name}. You'll receive your custom recommendations for speakers, sponsors, and networking opportunities shortly. Get ready for a breakthrough experience!`,
+      personalization_data: {
+        contractor_name: contractor.first_name || contractor.email.split('@')[0],
+        company_name: contractor.company_name,
+        event_name: event.name,
+        event_date: event.date,
+        event_location: event.location
+      }
+    };
+
+    // Store in event_messages table
+    await query(`
+      INSERT INTO event_messages (
+        event_id,
+        contractor_id,
+        message_type,
+        message_category,
+        channel,
+        from_email,
+        to_email,
+        subject,
+        message_content,
+        personalization_data,
+        status,
+        created_at,
+        updated_at
+      ) VALUES ($1, $2, 'profile_completion', 'confirmation', 'email', $3, $4, $5, $6, $7, 'pending', NOW(), NOW())
+    `, [
+      eventId,
+      contractorId,
+      payload.from_email,
+      payload.to_email,
+      payload.subject,
+      payload.message_content,
+      safeJsonStringify(payload.personalization_data)
+    ]);
+
+    // Send to n8n webhook
+    const webhookPath = process.env.NODE_ENV === 'production'
+      ? '/webhook/event-profile-completion-email'
+      : '/webhook/event-profile-completion-email-dev';
+    const response = await fetch(`${N8N_WEBHOOK_BASE}${webhookPath}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: safeJsonStringify(payload)
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Error triggering profile completion email:', error);
+    return false;
+  }
+};
+
+/**
+ * Trigger personalized agenda email
+ */
+const triggerPersonalizedAgendaEmail = async (eventId, contractorId, agendaData) => {
+  try {
+    // Get contractor details
+    const contractorResult = await query(`
+      SELECT c.*, ea.real_email
+      FROM contractors c
+      LEFT JOIN event_attendees ea ON c.id = ea.contractor_id AND ea.event_id = $1
+      WHERE c.id = $2
+    `, [eventId, contractorId]);
+
+    if (contractorResult.rows.length === 0) {
+      return false;
+    }
+
+    const contractor = contractorResult.rows[0];
+    const email = contractor.real_email || contractor.email;
+
+    if (!email) {
+      console.log('No email address found for contractor');
+      return false;
+    }
+
+    // Get event details
+    const eventResult = await query(`
+      SELECT name, date, location
+      FROM events
+      WHERE id = $1
+    `, [eventId]);
+
+    if (eventResult.rows.length === 0) {
+      return false;
+    }
+
+    const event = eventResult.rows[0];
+
+    const payload = {
+      event_type: 'personalized_agenda',
+      event_id: eventId,
+      contractor_id: contractorId,
+      to_email: email,
+      from_email: process.env.EVENT_FROM_EMAIL || 'events@power100.io',
+      subject: `Your personalized agenda for ${event.name} is ready!`,
+      message_content: `Your custom event experience is ready! We've matched you with speakers, sponsors, and networking opportunities based on your profile. Check your agenda to maximize your breakthrough at ${event.name}.`,
+      personalization_data: {
+        contractor_name: contractor.first_name || contractor.email.split('@')[0],
+        company_name: contractor.company_name,
+        event_name: event.name,
+        event_date: event.date,
+        event_location: event.location,
+        agenda_data: agendaData
+      }
+    };
+
+    // Store in event_messages table
+    await query(`
+      INSERT INTO event_messages (
+        event_id,
+        contractor_id,
+        message_type,
+        message_category,
+        channel,
+        from_email,
+        to_email,
+        subject,
+        message_content,
+        personalization_data,
+        status,
+        created_at,
+        updated_at
+      ) VALUES ($1, $2, 'personalized_agenda', 'agenda', 'email', $3, $4, $5, $6, $7, 'pending', NOW(), NOW())
+    `, [
+      eventId,
+      contractorId,
+      payload.from_email,
+      payload.to_email,
+      payload.subject,
+      payload.message_content,
+      safeJsonStringify(payload.personalization_data)
+    ]);
+
+    // Send to n8n webhook
+    const webhookPath = process.env.NODE_ENV === 'production'
+      ? '/webhook/event-personalized-agenda-email'
+      : '/webhook/event-personalized-agenda-email-dev';
+    const response = await fetch(`${N8N_WEBHOOK_BASE}${webhookPath}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: safeJsonStringify(payload)
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Error triggering personalized agenda email:', error);
+    return false;
+  }
+};
+
+/**
+ * Trigger check-in reminder email
+ */
+const triggerCheckInReminderEmail = async (eventId, contractorId, reminderType, personalizationData) => {
+  try {
+    // Get contractor details
+    const contractorResult = await query(`
+      SELECT c.*, ea.real_email
+      FROM contractors c
+      LEFT JOIN event_attendees ea ON c.id = ea.contractor_id AND ea.event_id = $1
+      WHERE c.id = $2
+    `, [eventId, contractorId]);
+
+    if (contractorResult.rows.length === 0) {
+      return false;
+    }
+
+    const contractor = contractorResult.rows[0];
+    const email = contractor.real_email || contractor.email;
+
+    if (!email) {
+      console.log('No email address found for contractor');
+      return false;
+    }
+
+    // Create message content based on reminder type
+    let subject = '';
+    let messageContent = '';
+
+    switch (reminderType) {
+      case 'check_in_reminder_night_before':
+        subject = `Tomorrow's the big day - ${personalizationData.event_name}!`;
+        messageContent = `Hi ${personalizationData.first_name}! Tomorrow's the big day - ${personalizationData.event_name} starts at ${personalizationData.event_time}. Location: ${personalizationData.location}. See you there!`;
+        break;
+
+      case 'check_in_reminder_1_hour':
+        subject = `${personalizationData.event_name} starts in 1 hour!`;
+        messageContent = `Alright, ${personalizationData.first_name}! You have just enough time to grab a coffee and a quick bite before we need to be at the event in an hour. Let's get ready to breakthrough. The time is now!`;
+        break;
+
+      case 'check_in_reminder_event_start':
+        subject = `${personalizationData.event_name} is starting NOW!`;
+        messageContent = `${personalizationData.event_name} is starting NOW! Head to ${personalizationData.location} for check-in. Let's make today count!`;
+        break;
+
+      default:
+        subject = `Reminder: ${personalizationData.event_name}`;
+        messageContent = `Reminder about ${personalizationData.event_name}`;
+    }
+
+    const payload = {
+      event_type: 'check_in_reminder',
+      event_id: eventId,
+      contractor_id: contractorId,
+      reminder_type: reminderType,
+      to_email: email,
+      from_email: process.env.EVENT_FROM_EMAIL || 'events@power100.io',
+      subject: subject,
+      message_content: messageContent,
+      personalization_data: personalizationData
+    };
+
+    // Store in event_messages table
+    await query(`
+      INSERT INTO event_messages (
+        event_id,
+        contractor_id,
+        message_type,
+        message_category,
+        channel,
+        from_email,
+        to_email,
+        subject,
+        message_content,
+        personalization_data,
+        status,
+        created_at,
+        updated_at
+      ) VALUES ($1, $2, $3, 'reminder', 'email', $4, $5, $6, $7, $8, 'pending', NOW(), NOW())
+    `, [
+      eventId,
+      contractorId,
+      reminderType,
+      payload.from_email,
+      payload.to_email,
+      payload.subject,
+      payload.message_content,
+      safeJsonStringify(payload.personalization_data)
+    ]);
+
+    // Send to n8n webhook
+    const webhookPath = process.env.NODE_ENV === 'production'
+      ? '/webhook/event-check-in-reminder-email'
+      : '/webhook/event-check-in-reminder-email-dev';
+    const response = await fetch(`${N8N_WEBHOOK_BASE}${webhookPath}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: safeJsonStringify(payload)
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Error triggering check-in reminder email:', error);
+    return false;
+  }
+};
+
+/**
+ * Trigger scheduled email messages (batch)
+ * Similar to triggerScheduledMessages but for email channel
+ */
+const triggerScheduledEmailMessages = async (messages) => {
+  try {
+    const payload = {
+      event_type: 'scheduled_batch_email',
+      messages: messages.map(msg => ({
+        message_id: msg.id,
+        event_id: msg.event_id,
+        contractor_id: msg.contractor_id,
+        message_type: msg.message_type,
+        from_email: msg.from_email,
+        to_email: msg.to_email,
+        subject: msg.subject,
+        message_content: msg.message_content,
+        personalization_data: safeJsonParse(msg.personalization_data, {})
+      }))
+    };
+
+    const response = await fetch(`${N8N_WEBHOOK_BASE}/webhook/event-scheduled-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: safeJsonStringify(payload)
+    });
+
+    return response.ok;
+  } catch (error) {
+    console.error('Error triggering scheduled email messages:', error);
+    return false;
+  }
+};
+
 module.exports = {
+  // SMS Functions
   triggerCheckInSMS,
   triggerMassSMS,
   triggerScheduledMessages,
   triggerSpeakerRecommendationSMS,
   triggerSponsorRecommendationSMS,
   receiveInboundSMS,
-  receiveDeliveryStatus
+  receiveDeliveryStatus,
+
+  // Email Functions
+  triggerRegistrationConfirmationEmail,
+  triggerProfileCompletionEmail,
+  triggerPersonalizedAgendaEmail,
+  triggerCheckInReminderEmail,
+  triggerScheduledEmailMessages
 };

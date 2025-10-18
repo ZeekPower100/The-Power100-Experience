@@ -3,7 +3,7 @@ const { AppError } = require('../middleware/errorHandler');
 const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const crypto = require('crypto');
 const eventOrchestratorAutomation = require('../services/eventOrchestratorAutomation');
-const { triggerCheckInSMS, triggerMassSMS } = require('./n8nEventWebhookController');
+const { triggerCheckInSMS, triggerMassSMS, triggerProfileCompletionEmail } = require('./n8nEventWebhookController');
 const { sendPersonalizedAgenda } = require('../services/eventOrchestrator/eventRegistrationService');
 
 /**
@@ -231,6 +231,9 @@ const completeProfile = async (req, res, next) => {
     if (result.rows.length === 0) {
       throw new AppError('Attendee not found', 404);
     }
+
+    // 🎯 TRIGGER: Send profile completion email
+    await triggerProfileCompletionEmail(eventId, contractorId);
 
     // 🎯 TRIGGER: Send personalized agenda after profile completion
     // This is the missing automation piece - contractors who complete profiles later

@@ -16,6 +16,7 @@
 
 const { query } = require('../../config/database');
 const { safeJsonStringify } = require('../../utils/jsonHelpers');
+const { triggerCheckInReminderEmail } = require('../../controllers/n8nEventWebhookController');
 
 /**
  * Schedule all check-in reminder messages for an event
@@ -121,7 +122,7 @@ async function scheduleCheckInReminders(eventId) {
         hour12: true
       });
 
-      // 1. Night before reminder
+      // 1. Night before reminder (SMS + Email)
       await scheduleCheckInReminderMessage({
         eventId,
         contractorId: attendee.id,
@@ -135,9 +136,23 @@ async function scheduleCheckInReminders(eventId) {
           location: event.location
         }
       });
-      messagesScheduled++;
+      // Schedule email reminder (parallel to SMS)
+      await scheduleCheckInReminderEmail({
+        eventId,
+        contractorId: attendee.id,
+        reminderType: 'check_in_reminder_night_before',
+        scheduledTime: nightBeforeTime,
+        personalizationData: {
+          first_name: firstName,
+          event_name: event.name,
+          event_date: event.date,
+          event_time: eventTimeFormatted,
+          location: event.location
+        }
+      });
+      messagesScheduled += 2; // SMS + Email
 
-      // 2. One hour before reminder
+      // 2. One hour before reminder (SMS + Email)
       await scheduleCheckInReminderMessage({
         eventId,
         contractorId: attendee.id,
@@ -150,9 +165,22 @@ async function scheduleCheckInReminders(eventId) {
           location: event.location
         }
       });
-      messagesScheduled++;
+      // Schedule email reminder (parallel to SMS)
+      await scheduleCheckInReminderEmail({
+        eventId,
+        contractorId: attendee.id,
+        reminderType: 'check_in_reminder_1_hour',
+        scheduledTime: oneHourBeforeTime,
+        personalizationData: {
+          first_name: firstName,
+          event_name: event.name,
+          event_time: eventTimeFormatted,
+          location: event.location
+        }
+      });
+      messagesScheduled += 2; // SMS + Email
 
-      // 3. Event start reminder
+      // 3. Event start reminder (SMS + Email)
       await scheduleCheckInReminderMessage({
         eventId,
         contractorId: attendee.id,
@@ -164,10 +192,22 @@ async function scheduleCheckInReminders(eventId) {
           location: event.location
         }
       });
-      messagesScheduled++;
+      // Schedule email reminder (parallel to SMS)
+      await scheduleCheckInReminderEmail({
+        eventId,
+        contractorId: attendee.id,
+        reminderType: 'check_in_reminder_event_start',
+        scheduledTime: atEventStartTime,
+        personalizationData: {
+          first_name: firstName,
+          event_name: event.name,
+          location: event.location
+        }
+      });
+      messagesScheduled += 2; // SMS + Email
     }
 
-    console.log(`[CheckInReminderScheduler] ✅ Scheduled ${messagesScheduled} check-in reminder messages (${attendees.length} attendees × 3 reminders)`);
+    console.log(`[CheckInReminderScheduler] ✅ Scheduled ${messagesScheduled} check-in reminder messages (${attendees.length} attendees × 6 reminders: 3 SMS + 3 Email)`);
 
     return {
       success: true,
@@ -248,6 +288,96 @@ async function scheduleCheckInReminderMessage({
 
   } catch (error) {
     console.error(`[CheckInReminderScheduler] Error scheduling ${reminderType} for contractor ${contractorId}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Schedule a single check-in reminder EMAIL
+ *
+ * @param {Object} params - Message parameters
+ * @returns {Object} - Database insert result
+ */
+async function scheduleCheckInReminderEmail({
+  eventId,
+  contractorId,
+  reminderType,
+  scheduledTime,
+  personalizationData
+}) {
+  try {
+    // Create message content based on reminder type
+    let subject = '';
+    let messageContent = '';
+
+    switch (reminderType) {
+      case 'check_in_reminder_night_before':
+        subject = `Tomorrow's the big day - ${personalizationData.event_name}!`;
+        messageContent = `Hi ${personalizationData.first_name}! Tomorrow's the big day - ${personalizationData.event_name} starts at ${personalizationData.event_time}. Location: ${personalizationData.location}. See you there!`;
+        break;
+
+      case 'check_in_reminder_1_hour':
+        subject = `${personalizationData.event_name} starts in 1 hour!`;
+        messageContent = `Alright, ${personalizationData.first_name}! You have just enough time to grab a coffee and a quick bite before we need to be at the event in an hour. Let's get ready to breakthrough. The time is now!`;
+        break;
+
+      case 'check_in_reminder_event_start':
+        subject = `${personalizationData.event_name} is starting NOW!`;
+        messageContent = `${personalizationData.event_name} is starting NOW! Head to ${personalizationData.location} for check-in. Let's make today count!`;
+        break;
+
+      default:
+        subject = `Reminder: ${personalizationData.event_name}`;
+        messageContent = `Reminder about ${personalizationData.event_name}`;
+    }
+
+    // Get contractor email
+    const contractorResult = await query(`
+      SELECT email FROM contractors WHERE id = $1
+    `, [contractorId]);
+
+    if (contractorResult.rows.length === 0) {
+      console.error(`[CheckInReminderScheduler] Contractor ${contractorId} not found`);
+      return null;
+    }
+
+    const email = contractorResult.rows[0].email;
+
+    // DATABASE-CHECKED: event_messages has channel, from_email, to_email, subject fields
+    // Insert scheduled email message into database
+    const result = await query(`
+      INSERT INTO event_messages (
+        event_id,
+        contractor_id,
+        message_type,
+        direction,
+        channel,
+        from_email,
+        to_email,
+        subject,
+        scheduled_time,
+        status,
+        message_content,
+        personalization_data,
+        created_at
+      ) VALUES ($1, $2, $3, 'outbound', 'email', $4, $5, $6, $7, 'scheduled', $8, $9, CURRENT_TIMESTAMP)
+      RETURNING id
+    `, [
+      eventId,
+      contractorId,
+      reminderType,
+      process.env.EVENT_FROM_EMAIL || 'events@power100.io',
+      email,
+      subject,
+      scheduledTime,
+      messageContent,
+      safeJsonStringify(personalizationData)
+    ]);
+
+    return result.rows[0];
+
+  } catch (error) {
+    console.error(`[CheckInReminderScheduler] Error scheduling email ${reminderType} for contractor ${contractorId}:`, error);
     throw error;
   }
 }
