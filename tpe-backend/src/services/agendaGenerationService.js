@@ -13,6 +13,7 @@ const { scheduleSponsorRecommendations } = require('./eventOrchestrator/sponsorR
 const { schedulePCRRequests } = require('./eventOrchestrator/pcrRequestScheduler');
 const { scheduleSponsorBatchCheck } = require('./eventOrchestrator/sponsorBatchCheckScheduler');
 const { scheduleOverallEventPCR } = require('./eventOrchestrator/overallEventPcrScheduler');
+const { scheduleCheckInReminders } = require('./eventOrchestrator/checkInReminderScheduler');
 
 /**
  * Generate agenda items from event speakers and sponsors
@@ -278,6 +279,16 @@ async function generateAgendaFromSpeakers(eventId, eventDate, accelerated = fals
       WHERE id = $1
     `, [eventId]);
 
+    // Schedule check-in reminders (night before, 1 hour before, event start)
+    console.log('[AgendaGeneration] Scheduling check-in reminders...');
+    const checkInRemindersSchedule = await scheduleCheckInReminders(eventId);
+
+    if (checkInRemindersSchedule.success) {
+      console.log('[AgendaGeneration] ✅ Check-in reminders scheduled:', checkInRemindersSchedule.messages_scheduled, 'messages for', checkInRemindersSchedule.attendees_count, 'attendees');
+    } else {
+      console.warn('[AgendaGeneration] ⚠️ Check-in reminders not scheduled:', checkInRemindersSchedule.error);
+    }
+
     // Schedule batch peer matching (15 min before lunch)
     console.log('[AgendaGeneration] Scheduling batch peer matching...');
     const peerMatchingSchedule = await scheduleBatchPeerMatching(eventId);
@@ -342,6 +353,9 @@ async function generateAgendaFromSpeakers(eventId, eventDate, accelerated = fals
       success: true,
       agenda_items: agendaItems,
       accelerated: accelerated,
+      check_in_reminders_scheduled: checkInRemindersSchedule.success,
+      check_in_reminders_count: checkInRemindersSchedule.messages_scheduled,
+      check_in_reminders_attendees: checkInRemindersSchedule.attendees_count,
       peer_matching_scheduled: peerMatchingSchedule.success,
       peer_matching_time: peerMatchingSchedule.matching_scheduled_time,
       speaker_alerts_scheduled: speakerAlertsSchedule.success,

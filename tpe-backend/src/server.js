@@ -18,6 +18,7 @@ const { connectDB } = require('./config/database');
 const { errorHandler } = require('./middleware/errorHandler');
 const dataCollectionService = require('./services/dataCollectionService');
 const { registerAllHandlers } = require('./services/eventOrchestrator/messageHandlerRegistry');
+const { initializeScheduledMessageProcessor } = require('./queues/eventOrchestrationQueue');
 
 // Import routes
 const contractorRoutes = require('./routes/contractorRoutes');
@@ -231,6 +232,16 @@ app.use(errorHandler);
 
 // Initialize event orchestration handlers
 registerAllHandlers();
+
+// 🔥 CRITICAL: Initialize scheduled message processor (runs every minute)
+// This is THE automation that makes all scheduled messages send!
+initializeScheduledMessageProcessor()
+  .then(() => {
+    console.log('✅ Scheduled message processor initialized successfully');
+  })
+  .catch((err) => {
+    console.error('❌ Failed to initialize scheduled message processor:', err);
+  });
 
 // Start server
 const PORT = process.env.PORT || 5000;

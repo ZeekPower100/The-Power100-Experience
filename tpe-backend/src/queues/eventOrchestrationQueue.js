@@ -105,6 +105,38 @@ async function cancelBatchPeerMatchingJob(eventId) {
 }
 
 /**
+ * Initialize repeatable job for processing scheduled messages every minute
+ * This is the CRITICAL automation that makes all scheduled messages send!
+ * @returns {Object} - Job info
+ */
+async function initializeScheduledMessageProcessor() {
+  try {
+    console.log('[EventOrchestrationQueue] Initializing scheduled message processor (every 1 minute)...');
+
+    // Add repeatable job that runs every minute
+    const job = await eventOrchestrationQueue.add(
+      'process-scheduled-messages',
+      {}, // No data needed
+      {
+        repeat: {
+          every: 60000, // Run every 60 seconds (1 minute)
+          immediately: true // Start immediately on server start
+        },
+        jobId: 'scheduled-message-processor', // Unique job ID
+        priority: 1 // Highest priority
+      }
+    );
+
+    console.log('[EventOrchestrationQueue] ✅ Scheduled message processor initialized - runs every 1 minute');
+    return job;
+
+  } catch (error) {
+    console.error('[EventOrchestrationQueue] ❌ Error initializing scheduled message processor:', error);
+    throw error;
+  }
+}
+
+/**
  * Get queue statistics
  * @returns {Object} - Queue stats
  */
@@ -152,5 +184,6 @@ module.exports = {
   eventOrchestrationQueue,
   scheduleBatchPeerMatchingJob,
   cancelBatchPeerMatchingJob,
+  initializeScheduledMessageProcessor,
   getOrchestrationQueueStats
 };

@@ -11,6 +11,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
 
 const { runBatchPeerMatching } = require('../services/eventOrchestrator/peerMatchingBatchScheduler');
+const eventOrchestratorAutomation = require('../services/eventOrchestratorAutomation');
 
 // Redis connection for worker
 const connection = new Redis({
@@ -27,8 +28,10 @@ const connection = new Redis({
 async function processOrchestrationJob(job) {
   const { event_id, scheduled_time } = job.data;
 
-  console.log(`[EventOrchestrationWorker] 🚀 Processing ${job.name} for event ${event_id}`);
-  console.log(`[EventOrchestrationWorker] Scheduled: ${scheduled_time}, Actual: ${new Date().toISOString()}`);
+  console.log(`[EventOrchestrationWorker] 🚀 Processing ${job.name}${event_id ? ` for event ${event_id}` : ''}`);
+  if (scheduled_time) {
+    console.log(`[EventOrchestrationWorker] Scheduled: ${scheduled_time}, Actual: ${new Date().toISOString()}`);
+  }
 
   try {
     if (job.name === 'batch-peer-matching') {
@@ -48,11 +51,30 @@ async function processOrchestrationJob(job) {
       };
     }
 
+    if (job.name === 'process-scheduled-messages') {
+      // 🔥 CRITICAL: Process all scheduled messages that are due
+      // This is the heartbeat of the entire event automation system!
+      console.log(`[EventOrchestrationWorker] 📨 Processing scheduled messages...`);
+
+      const result = await eventOrchestratorAutomation.processScheduledMessages();
+
+      console.log(`[EventOrchestrationWorker] ✅ Scheduled message processing complete:`, {
+        messages_processed: result.processed
+      });
+
+      return {
+        success: true,
+        job_type: 'process-scheduled-messages',
+        messages_processed: result.processed,
+        timestamp: new Date().toISOString()
+      };
+    }
+
     // Future: Add more orchestration job types here
-    // - Automated speaker alerts
-    // - Sponsor recommendation batching
-    // - PCR request scheduling
-    // - Wrap-up email generation
+    // - Automated speaker alerts (DONE - scheduled via agendaGenerationService)
+    // - Sponsor recommendation batching (DONE - scheduled via agendaGenerationService)
+    // - PCR request scheduling (DONE - scheduled via agendaGenerationService)
+    // - Wrap-up email generation (DONE - scheduled via agendaGenerationService)
 
     throw new Error(`Unknown job type: ${job.name}`);
 
