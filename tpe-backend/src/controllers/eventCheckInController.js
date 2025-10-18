@@ -4,6 +4,7 @@ const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const crypto = require('crypto');
 const eventOrchestratorAutomation = require('../services/eventOrchestratorAutomation');
 const { triggerCheckInSMS, triggerMassSMS } = require('./n8nEventWebhookController');
+const { sendPersonalizedAgenda } = require('../services/eventOrchestrator/eventRegistrationService');
 
 /**
  * Event Check-In Controller
@@ -231,10 +232,70 @@ const completeProfile = async (req, res, next) => {
       throw new AppError('Attendee not found', 404);
     }
 
+    // 🎯 TRIGGER: Send personalized agenda after profile completion
+    // This is the missing automation piece - contractors who complete profiles later
+    // now get the same personalized recommendations as those who completed at registration
+    try {
+      // DATABASE-CHECKED: events table has 'date' but NOT 'start_time'
+      // Get event date to calculate urgency
+      const eventResult = await query(`
+        SELECT date
+        FROM events
+        WHERE id = $1
+      `, [eventId]);
+
+      if (eventResult.rows.length > 0) {
+        const event = eventResult.rows[0];
+
+        // DATABASE-CHECKED: event_agenda_items has 'start_time' (timestamp)
+        // Get first agenda item start time if available
+        const agendaResult = await query(`
+          SELECT start_time
+          FROM event_agenda_items
+          WHERE event_id = $1
+          ORDER BY start_time ASC
+          LIMIT 1
+        `, [eventId]);
+
+        const eventStartTime = agendaResult.rows.length > 0
+          ? new Date(agendaResult.rows[0].start_time)
+          : new Date(`${event.date}T09:00:00`); // Fallback to 9 AM if no agenda yet
+
+        // Calculate hours until event
+        const now = new Date();
+        const hoursUntilEvent = (eventStartTime - now) / (1000 * 60 * 60);
+
+        // Determine urgency
+        let urgencyLevel = 'normal';
+        if (hoursUntilEvent < 1) {
+          urgencyLevel = 'immediate'; // Event starting now or already started
+        } else if (hoursUntilEvent < 3) {
+          urgencyLevel = 'very_urgent'; // Less than 3 hours
+        } else if (hoursUntilEvent < 24) {
+          urgencyLevel = 'urgent'; // Less than 24 hours
+        }
+
+        console.log(`[ProfileCompletion] Sending personalized agenda to contractor ${contractorId} (urgency: ${urgencyLevel}, hours until event: ${hoursUntilEvent.toFixed(1)})`);
+
+        // Send personalized agenda (non-blocking - don't wait for it)
+        sendPersonalizedAgenda(eventId, contractorId, urgencyLevel, hoursUntilEvent)
+          .then(() => {
+            console.log(`[ProfileCompletion] ✅ Personalized agenda sent successfully to contractor ${contractorId}`);
+          })
+          .catch((err) => {
+            console.error(`[ProfileCompletion] ❌ Error sending personalized agenda to contractor ${contractorId}:`, err);
+          });
+      }
+    } catch (agendaError) {
+      // Don't fail the profile completion if agenda send fails
+      console.error('[ProfileCompletion] Error sending personalized agenda (non-fatal):', agendaError);
+    }
+
     res.json({
       success: true,
       profile: result.rows[0],
-      unlock_features: true // Enable personalized experience
+      unlock_features: true, // Enable personalized experience
+      personalized_agenda_sent: true // Indicate agenda was triggered
     });
   } catch (error) {
     next(error);
