@@ -81,4 +81,8 @@ router.get('/:id/pcr/breakdown', eventController.getPCRBreakdown);
 // Analyze sentiment from any response
 router.post('/pcr/analyze-sentiment', eventController.analyzeSentiment);
 
+// Agenda Generation Routes
+// Generate agenda items from event speakers
+router.post('/:id/generate-agenda', eventController.generateAgenda);
+
 module.exports = router;

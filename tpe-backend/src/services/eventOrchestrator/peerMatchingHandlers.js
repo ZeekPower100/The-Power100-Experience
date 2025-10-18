@@ -1,8 +1,9 @@
-// DATABASE-CHECKED: event_peer_matches, event_messages columns verified on 2025-10-06
+// DATABASE-CHECKED: event_peer_matches, event_messages, event_pcr_scores, event_notes columns verified on 2025-10-18
 const { query } = require('../../config/database');
 const { safeJsonParse, safeJsonStringify } = require('../../utils/jsonHelpers');
 const { processMessageForSMS } = require('../../utils/smsHelpers');
 const aiConciergeController = require('../../controllers/aiConciergeController');
+const eventNoteService = require('../eventNoteService');
 
 /**
  * Handle peer match response
@@ -148,6 +149,10 @@ Respond in JSON:
 
     console.log('[PeerMatchHandler] Updated peer match response:', responseField, '=', isInterested);
 
+    // NEW: Save response to event_pcr_scores and event_notes
+    await savePeerMatchPCR(matchId, smsData, analysis, isInterested, peerName);
+    await savePeerMatchNotes(matchId, smsData, analysis, peerName, matchReason);
+
     // Check if both contractors have responded positively
     const otherContractorResponse = peerMatch[otherResponseField];
     const bothInterested = isInterested && otherContractorResponse === true;
@@ -163,6 +168,9 @@ Respond in JSON:
       `, [matchId]);
 
       console.log('[PeerMatchHandler] Both contractors interested - connection made!');
+
+      // NEW: Update peer match PCR score with aggregated average
+      await updatePeerMatchPCRScore(matchId);
     }
 
     // Route based on interest level
@@ -230,22 +238,30 @@ function fallbackInterestDetection(messageText) {
  * Handle when contractor wants more info about the peer match
  */
 async function handlePeerMatchInfoRequest(smsData, peerMatch, peerName, matchReason, question) {
-  const prompt = `I just received a peer networking match recommendation to connect with ${peerName}.
+  const prompt = `I'm at the Power100 Summit and I just received a peer networking match recommendation to connect with ${peerName} (who is also at the event).
 
 Match Reason: ${matchReason}
 
 I asked: "${question || 'Tell me more'}"
 
-Please provide helpful information about:
+Provide helpful information about:
 - Why this match makes sense for my business
-- What we might collaborate on or discuss
-- How this connection could benefit me
+- What we might discuss or collaborate on
+- How connecting at the event could benefit me
 
-CRITICAL SMS CONSTRAINTS:
+PERSONALITY & TONE:
+- Sound like their moderately laid back cool cousin on mom's side
+- Witty one-liners are great IF they stay relevant to the topic
+- Encouraging and motivating
+- Straight to the point while being clever and concise
+- CRITICAL: Value first - never sacrifice delivering value for wit
+- If adding cleverness reduces value, skip the wit and deliver value
+
+SMS CONSTRAINTS:
 - Maximum 320 characters (can use 2 messages if needed)
 - Be specific about the match value
-- Encourage connection
-- NO fluff or filler words`;
+- Encourage in-person connection at the event
+- NO corporate language, signatures, or sign-offs`;
 
   const aiResponse = await aiConciergeController.generateAIResponse(
     prompt,
@@ -289,17 +305,26 @@ CRITICAL SMS CONSTRAINTS:
  * Handle when contractor is interested in peer match
  */
 async function handlePeerMatchInterested(smsData, peerMatch, peerName, matchReason, bothInterested) {
-  const prompt = `I just confirmed I'm interested in connecting with ${peerName} based on our shared focus on ${matchReason}.
+  const prompt = `I'm at the Power100 Summit and I just confirmed I'm interested in connecting with ${peerName} (who is also HERE at the event) based on our shared focus on ${matchReason}.
 
 ${bothInterested ? `${peerName} is also interested!` : `${peerName} hasn't responded yet.`}
 
-Please send me a ${bothInterested ? 'confirmation that we\'re both interested and next steps to connect' : 'acknowledgment that my interest is noted and we\'ll connect when they respond'}
+Send me a ${bothInterested ? 'confirmation and let me know how to connect with them at the event (table number, session location, etc)' : 'quick acknowledgment that I\'ll be notified when they respond'}
 
-CRITICAL SMS CONSTRAINTS:
+PERSONALITY & TONE:
+- Sound like their moderately laid back cool cousin on mom's side
+- Witty one-liners are great IF they stay relevant to the topic
+- Encouraging and motivating
+- Straight to the point while being clever and concise
+- CRITICAL: Value first - never sacrifice delivering value for wit
+- If adding cleverness reduces value, skip the wit and deliver value
+
+SMS CONSTRAINTS:
 - Maximum 320 characters
-- ${bothInterested ? 'Provide clear next steps (exchange contact info, suggest meeting location)' : 'Set expectation for when we\'ll follow up'}
-- Be encouraging
-- NO fluff or filler words`;
+- This is a LIVE EVENT - focus on immediate in-person connection
+- ${bothInterested ? 'Suggest meeting at the event NOW or during a break' : 'Keep it brief - just "noted, will update you when they respond"'}
+- NO corporate language like "reach out" or "follow up in X days"
+- NO signatures or sign-offs`;
 
   const aiResponse = await aiConciergeController.generateAIResponse(
     prompt,
@@ -423,17 +448,26 @@ async function handlePeerMatchNotInterested(smsData, peerMatch, peerName) {
  * Handle general peer match question when no specific match is found
  */
 async function handleGeneralPeerMatchQuestion(smsData, analysis) {
-  const prompt = `I'm asking about peer networking matches at the Power100 Summit: "${smsData.messageText}"
+  const prompt = `I'm at the Power100 Summit and I'm asking about peer networking matches: "${smsData.messageText}"
 
-Please help me:
-- Understand how peer matching works
+Help me:
+- Understand how peer matching works at this event
 - See if there are any matches for me
-- Learn about networking opportunities
+- Learn about networking opportunities here
 
-CRITICAL SMS CONSTRAINTS:
+PERSONALITY & TONE:
+- Sound like their moderately laid back cool cousin on mom's side
+- Witty one-liners are great IF they stay relevant to the topic
+- Encouraging and motivating
+- Straight to the point while being clever and concise
+- CRITICAL: Value first - never sacrifice delivering value for wit
+- If adding cleverness reduces value, skip the wit and deliver value
+
+SMS CONSTRAINTS:
 - Maximum 320 characters
 - Be helpful and encouraging
-- NO fluff or filler words`;
+- Focus on the live event happening now
+- NO corporate language, signatures, or sign-offs`;
 
   const aiResponse = await aiConciergeController.generateAIResponse(
     prompt,
@@ -530,6 +564,147 @@ async function trackPeerMatchInteraction(interaction) {
     console.log('[PeerMatchHandler] Tracked peer match interaction for AI learning');
   } catch (error) {
     console.error('[PeerMatchHandler] Error tracking peer match interaction:', error);
+  }
+}
+
+/**
+ * Save peer match response to event_pcr_scores tracking table
+ * DATABASE-CHECKED: event_pcr_scores columns verified on 2025-10-18
+ */
+async function savePeerMatchPCR(matchId, smsData, analysis, isInterested, peerName) {
+  try {
+    // Convert interest to 1-5 score (yes=5, maybe=3, no=1)
+    const explicitScore = analysis.interested === 'yes' ? 5 :
+                         analysis.interested === 'maybe' ? 3 : 1;
+
+    // Calculate sentiment score (positive=1.0, neutral=0.5, negative=0.0)
+    const sentimentScore = analysis.sentiment === 'positive' ? 1.0 :
+                          analysis.sentiment === 'negative' ? 0.0 : 0.5;
+
+    // Calculate final PCR score (70% explicit, 30% sentiment)
+    const normalizedRating = explicitScore / 5;
+    const finalPcrScore = (normalizedRating * 0.7) + (sentimentScore * 0.3);
+
+    // UPSERT to event_pcr_scores
+    await query(`
+      INSERT INTO event_pcr_scores (
+        event_id, contractor_id, pcr_type, entity_id, entity_name,
+        explicit_score, sentiment_score, final_pcr_score,
+        response_received, sentiment_analysis, confidence_level,
+        responded_at, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT (event_id, contractor_id, pcr_type, entity_id)
+      DO UPDATE SET
+        explicit_score = EXCLUDED.explicit_score,
+        sentiment_score = EXCLUDED.sentiment_score,
+        final_pcr_score = EXCLUDED.final_pcr_score,
+        response_received = EXCLUDED.response_received,
+        sentiment_analysis = EXCLUDED.sentiment_analysis,
+        confidence_level = EXCLUDED.confidence_level,
+        responded_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+    `, [
+      smsData.eventContext?.id,
+      smsData.contractor.id,
+      'peer_match',
+      matchId,
+      peerName,
+      explicitScore,
+      sentimentScore,
+      finalPcrScore,
+      smsData.messageText,
+      JSON.stringify({
+        sentiment: analysis.sentiment,
+        interested: analysis.interested,
+        confidence: analysis.confidence,
+        question: analysis.question
+      }),
+      analysis.confidence / 100 // Convert to 0-1 scale
+    ]);
+
+    console.log(`[PeerMatchHandler] ✅ Saved PCR ${explicitScore}/5 (final: ${finalPcrScore.toFixed(2)}) to event_pcr_scores for peer match`);
+  } catch (error) {
+    console.error('[PeerMatchHandler] Error saving peer match PCR:', error);
+    // Don't throw - tracking is optional
+  }
+}
+
+/**
+ * Save peer match notes to event_notes
+ * DATABASE-CHECKED: event_notes columns verified on 2025-10-18
+ */
+async function savePeerMatchNotes(matchId, smsData, analysis, peerName, matchReason) {
+  try {
+    // Only save notes if message has more than just yes/no
+    const messageText = smsData.messageText.trim();
+    const isSimpleResponse = /^(yes|no|maybe|interested|not interested)$/i.test(messageText);
+
+    if (isSimpleResponse) {
+      console.log('[PeerMatchHandler] Message is simple response, skipping note save');
+      return;
+    }
+
+    // Determine if high interest indicates follow-up
+    const requiresFollowup = analysis.interested === 'yes' || analysis.interested === 'asking_more';
+
+    await eventNoteService.captureEventNote({
+      event_id: smsData.eventContext?.id,
+      contractor_id: smsData.contractor.id,
+      note_text: analysis.question || messageText,
+      note_type: 'peer_connection',
+      session_context: `Peer match with ${peerName}`,
+      ai_categorization: analysis.sentiment,
+      ai_tags: [
+        'peer_match',
+        analysis.interested,
+        analysis.sentiment,
+        matchReason ? 'matched_on_' + matchReason.toLowerCase().replace(/\s+/g, '_') : ''
+      ].filter(Boolean),
+      ai_priority_score: requiresFollowup ? 0.8 : 0.5,
+      requires_followup: requiresFollowup,
+      extracted_entities: {
+        match_id: matchId,
+        peer_name: peerName,
+        interested: analysis.interested,
+        sentiment: analysis.sentiment,
+        match_reason: matchReason
+      },
+      conversation_context: {
+        message_text: messageText,
+        analysis: analysis,
+        ai_confidence: analysis.confidence
+      }
+    });
+
+    console.log(`[PeerMatchHandler] ✅ Saved peer match contextual note to event_notes`);
+  } catch (error) {
+    console.error('[PeerMatchHandler] Error saving peer match notes:', error);
+    // Don't throw - note save is optional
+  }
+}
+
+/**
+ * Update peer match PCR score with aggregated average
+ * DATABASE-CHECKED: event_peer_matches.pcr_score verified on 2025-10-18
+ */
+async function updatePeerMatchPCRScore(matchId) {
+  try {
+    await query(`
+      UPDATE event_peer_matches
+      SET pcr_score = (
+        SELECT AVG(final_pcr_score)
+        FROM event_pcr_scores
+        WHERE pcr_type = 'peer_match'
+          AND entity_id = $1
+      ),
+      updated_at = CURRENT_TIMESTAMP
+      WHERE id = $1
+    `, [matchId]);
+
+    console.log(`[PeerMatchHandler] ✅ Updated peer match ${matchId} PCR score from event_pcr_scores average`);
+  } catch (error) {
+    console.error('[PeerMatchHandler] Error updating peer match PCR score:', error);
+    // Don't throw - PCR update is optional
   }
 }
 

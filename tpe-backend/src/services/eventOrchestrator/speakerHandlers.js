@@ -277,31 +277,46 @@ SMS RESPONSE GUIDELINES:
 }
 
 /**
- * Handle speaker feedback/rating
- * When contractor replies 1-10 to speaker recommendation
+ * Handle speaker feedback/rating - AI-FIRST VERSION
+ * Extracts rating, notes, and context naturally from contractor message
+ * Generates conversational AI response instead of template
  */
 async function handleSpeakerFeedback(smsData, classification) {
   try {
-    console.log('[SpeakerHandler] Processing speaker feedback:', smsData.messageText);
-
-    // Extract rating from message (1-10)
-    const rating = parseInt(smsData.messageText.trim());
-
-    if (isNaN(rating) || rating < 1 || rating > 10) {
-      return {
-        success: false,
-        error: 'Invalid rating (must be 1-10)'
-      };
-    }
+    console.log('[SpeakerHandler] Processing speaker feedback (AI-first):', smsData.messageText);
 
     // Get the pending speaker recommendation to find which speaker
-    const pendingMessages = classification.context_data?.pending_messages || [];
+    // WORKAROUND: Query database directly if classification doesn't provide pending_messages
+    let pendingMessages = classification.context_data?.pending_messages || [];
+    console.log('[SpeakerHandler] Pending messages from classification:', pendingMessages.length);
+
+    if (pendingMessages.length === 0) {
+      console.log('[SpeakerHandler] No pending messages from router, querying database directly');
+      const messagesResult = await query(`
+        SELECT
+          id,
+          message_type,
+          personalization_data,
+          actual_send_time
+        FROM event_messages
+        WHERE contractor_id = $1
+          AND direction = 'outbound'
+          AND actual_send_time > NOW() - INTERVAL '24 hours'
+        ORDER BY actual_send_time DESC
+        LIMIT 5
+      `, [smsData.contractor.id]);
+
+      pendingMessages = messagesResult.rows;
+      console.log('[SpeakerHandler] Found', pendingMessages.length, 'messages from database');
+    }
+
     const speakerRecommendation = pendingMessages.find(m => m.message_type === 'speaker_recommendation');
 
     if (!speakerRecommendation) {
+      console.log('[SpeakerHandler] ERROR: No speaker_recommendation found in last 24 hours');
       return {
         success: false,
-        error: 'No speaker recommendation found in context'
+        error: 'No speaker recommendation found in context - please rate a specific speaker after receiving a recommendation'
       };
     }
 
@@ -315,38 +330,255 @@ async function handleSpeakerFeedback(smsData, classification) {
       };
     }
 
-    // Save speaker rating to database
-    await query(`
-      INSERT INTO speaker_ratings (
-        contractor_id,
-        speaker_id,
-        event_id,
-        rating,
-        rating_source,
-        created_at
-      ) VALUES ($1, $2, $3, $4, 'sms', CURRENT_TIMESTAMP)
-    `, [
+    // Get speaker details from database
+    const speakerResult = await query(`
+      SELECT id, name, session_title, session_description
+      FROM event_speakers
+      WHERE id = $1
+    `, [speakerId]);
+
+    const speaker = speakerResult.rows.length > 0 ? speakerResult.rows[0] : null;
+    const speakerName = speaker?.name || 'this speaker';
+
+    // Get full event context for AI
+    let eventContext = null;
+    if (smsData.eventContext?.id) {
+      eventContext = await aiKnowledgeService.getCurrentEventContext(
+        smsData.eventContext.id,
+        smsData.contractor.id
+      );
+    }
+
+    // AI EXTRACTION: Use AI to extract rating, sentiment, and contextual notes
+    const extractionPrompt = `EXTRACT STRUCTURED DATA from this speaker feedback message:
+"${smsData.messageText}"
+
+Speaker they're rating: ${speakerName}
+
+EXTRACT:
+1. Rating (1-10 scale) - Look for numbers, "out of 10", or infer from sentiment
+2. Key insights/notes - Important comments (e.g., "my COO needs to watch this")
+3. Sentiment - positive/neutral/negative
+4. Entities - People mentioned, action items, follow-up needs
+
+RESPOND ONLY WITH JSON:
+{
+  "rating": <number 1-10 or null>,
+  "confidence": <0-1>,
+  "sentiment": "<positive|neutral|negative>",
+  "key_insights": "<extracted important notes or null>",
+  "entities": {
+    "people_mentioned": ["list of people/roles"],
+    "action_items": ["list of actions"],
+    "requires_followup": <true|false>
+  },
+  "extracted_context": "<natural summary of their feedback>"
+}`;
+
+    const aiExtraction = await aiConciergeController.generateAIResponse(
+      extractionPrompt,
+      smsData.contractor,
       smsData.contractor.id,
-      speakerId,
-      smsData.eventContext?.id,
-      rating
-    ]);
+      eventContext
+    );
 
-    // Format thank you message
-    const message = `Thanks for the feedback! Your ${rating}/10 rating has been recorded. We appreciate you taking the time to share your thoughts! 🙌`;
+    // Parse AI extraction (safely)
+    let extractedData;
+    try {
+      // Remove markdown code blocks if present
+      const cleanJson = aiExtraction.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      extractedData = JSON.parse(cleanJson);
+    } catch (parseError) {
+      console.error('[SpeakerHandler] AI extraction parse error:', parseError);
+      // Fallback to basic extraction
+      const rating = parseInt(smsData.messageText.match(/\d+/)?.[0]);
+      extractedData = {
+        rating: isNaN(rating) ? null : rating,
+        confidence: 0.5,
+        sentiment: 'positive',
+        key_insights: smsData.messageText,
+        entities: { people_mentioned: [], action_items: [], requires_followup: false },
+        extracted_context: smsData.messageText
+      };
+    }
 
-    // Save outbound message with ACTUAL content
+    console.log('[SpeakerHandler] AI Extraction:', JSON.stringify(extractedData, null, 2));
+
+    // Save rating to event_pcr_scores if extracted
+    if (extractedData.rating && extractedData.rating >= 1 && extractedData.rating <= 10) {
+      // Convert 1-10 scale to 1-5 scale for explicit_score (database constraint)
+      // 1-2 → 1, 3-4 → 2, 5-6 → 3, 7-8 → 4, 9-10 → 5
+      const explicitScore5Point = Math.ceil(extractedData.rating / 2);
+
+      // Calculate sentiment score from sentiment (positive=1.0, neutral=0.5, negative=0.0)
+      const sentimentScore = extractedData.sentiment === 'positive' ? 1.0 :
+                            extractedData.sentiment === 'negative' ? 0.0 : 0.5;
+
+      // Final PCR score combines explicit rating (normalized to 0-1) and sentiment
+      const normalizedRating = extractedData.rating / 10;
+      const finalPcrScore = (normalizedRating * 0.7) + (sentimentScore * 0.3);
+
+      // Save to event_pcr_scores tracking table (UPSERT - update if exists)
+      await query(`
+        INSERT INTO event_pcr_scores (
+          event_id,
+          contractor_id,
+          pcr_type,
+          entity_id,
+          entity_name,
+          explicit_score,
+          sentiment_score,
+          final_pcr_score,
+          response_received,
+          sentiment_analysis,
+          confidence_level,
+          responded_at,
+          created_at,
+          updated_at
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT (event_id, contractor_id, pcr_type, entity_id)
+        DO UPDATE SET
+          explicit_score = EXCLUDED.explicit_score,
+          sentiment_score = EXCLUDED.sentiment_score,
+          final_pcr_score = EXCLUDED.final_pcr_score,
+          response_received = EXCLUDED.response_received,
+          sentiment_analysis = EXCLUDED.sentiment_analysis,
+          confidence_level = EXCLUDED.confidence_level,
+          responded_at = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+      `, [
+        smsData.eventContext?.id,
+        smsData.contractor.id,
+        'speaker',
+        speakerId,
+        speakerName,
+        explicitScore5Point, // Use 1-5 scale
+        sentimentScore,
+        finalPcrScore,
+        smsData.messageText,
+        JSON.stringify({
+          sentiment: extractedData.sentiment,
+          key_insights: extractedData.key_insights,
+          entities: extractedData.entities,
+          extracted_context: extractedData.extracted_context,
+          original_10_point_rating: extractedData.rating // Store original for reference
+        }),
+        extractedData.confidence
+      ]);
+
+      // Update speaker's pcr_score column with latest aggregated score
+      await query(`
+        UPDATE event_speakers
+        SET pcr_score = (
+          SELECT AVG(final_pcr_score)
+          FROM event_pcr_scores
+          WHERE pcr_type = 'speaker'
+            AND entity_id = $1
+        ),
+        updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1
+      `, [speakerId]);
+
+      console.log(`[SpeakerHandler] ✅ Saved PCR score ${extractedData.rating}/10 (${explicitScore5Point}/5, final: ${finalPcrScore.toFixed(2)}) for speaker ${speakerName}`);
+    }
+
+    // Save contextual notes to event_notes if insights extracted
+    const eventNoteService = require('../eventNoteService');
+    if (extractedData.key_insights || extractedData.entities.people_mentioned.length > 0) {
+      await eventNoteService.captureEventNote({
+        event_id: smsData.eventContext?.id,
+        contractor_id: smsData.contractor.id,
+        note_text: extractedData.key_insights || smsData.messageText,
+        note_type: 'speaker_note',
+        speaker_id: speakerId,
+        session_context: speaker?.session_title,
+        ai_categorization: extractedData.sentiment,
+        ai_tags: [
+          'speaker_feedback',
+          ...extractedData.entities.people_mentioned,
+          ...extractedData.entities.action_items
+        ],
+        ai_priority_score: extractedData.entities.requires_followup ? 0.8 : 0.5,
+        requires_followup: extractedData.entities.requires_followup,
+        extracted_entities: {
+          speaker_id: speakerId,
+          speaker_name: speakerName,
+          rating: extractedData.rating,
+          sentiment: extractedData.sentiment,
+          ...extractedData.entities
+        },
+        conversation_context: {
+          message_text: smsData.messageText,
+          extracted_context: extractedData.extracted_context,
+          ai_confidence: extractedData.confidence
+        }
+      });
+
+      console.log('[SpeakerHandler] ✅ Saved contextual note to event_notes');
+    }
+
+    // AI RESPONSE: Generate conversational thank you acknowledging ALL aspects
+    const responsePrompt = `I just gave speaker feedback at the event:
+"${smsData.messageText}"
+
+Speaker: ${speakerName}
+${speaker?.session_title ? `Session: "${speaker.session_title}"` : ''}
+
+Generate a natural, conversational thank you response that:
+1. Acknowledges their rating (${extractedData.rating || 'feedback'})
+2. References their specific comments naturally (e.g., about COO, action items)
+3. Shows you understood the context
+4. Is warm and appreciative
+5. Fits in ~320 characters
+
+PERSONALITY & TONE:
+- Sound like their moderately laid back cool cousin on mom's side
+- Witty one-liners are great IF they stay relevant to the topic
+- Encouraging and motivating
+- Straight to the point while being clever and concise
+- CRITICAL: Value first - never sacrifice delivering value for wit
+- If adding cleverness reduces value, skip the wit and deliver value
+
+SMS CONSTRAINTS:
+- Maximum 320 characters
+- NO signatures or sign-offs
+- End naturally without formal closing`;
+
+    const aiResponse = await aiConciergeController.generateAIResponse(
+      responsePrompt,
+      smsData.contractor,
+      smsData.contractor.id,
+      eventContext
+    );
+
+    // Process for SMS
+    const smsResult = processMessageForSMS(aiResponse, {
+      allowMultiSMS: false,
+      maxMessages: 1,
+      context: {
+        messageType: 'speaker_feedback_confirmation',
+        speakerId: speakerId
+      }
+    });
+
+    const message = smsResult.messages[0];
+
+    // Save outbound message with ACTUAL AI-generated content
     await saveOutboundMessage({
       contractor_id: smsData.contractor.id,
       event_id: smsData.eventContext?.id,
       message_type: 'speaker_feedback_confirmation',
       personalization_data: {
         speaker_id: speakerId,
-        rating: rating
+        speaker_name: speakerName,
+        rating: extractedData.rating,
+        key_insights: extractedData.key_insights,
+        sentiment: extractedData.sentiment,
+        ai_extraction: extractedData
       },
       ghl_contact_id: smsData.ghl_contact_id,
       ghl_location_id: smsData.ghl_location_id,
-      message_content: message // Save actual thank you message
+      message_content: message
     });
 
     return {
@@ -357,7 +589,8 @@ async function handleSpeakerFeedback(smsData, classification) {
       contractor_id: smsData.contractor.id,
       message_type: 'speaker_feedback_confirmation',
       response_sent: true,
-      rating
+      rating: extractedData.rating,
+      ai_extracted: extractedData
     };
 
   } catch (error) {

@@ -6,8 +6,8 @@
   "scripts": {
     "start": "node src/server.js 2>&1 | tee -a backend-live.log",
     "dev": "nodemon src/server.js",
-    "worker": "node src/workers/followUpWorker.js",
-    "worker:dev": "nodemon src/workers/followUpWorker.js",
+    "worker": "node src/workers/startAll.js",
+    "worker:dev": "nodemon src/workers/startAll.js",
     "test": "jest",
     "test:watch": "jest --watch",
     "migrate": "node src/database/migrate.js",

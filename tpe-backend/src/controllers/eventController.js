@@ -410,6 +410,16 @@ exports.createEvent = async (req, res) => {
       await syncEventSponsors(newEvent.id, newEvent.sponsors);
     }
 
+    // Auto-generate agenda from speakers if speakers were added
+    if (newEvent.speaker_profiles) {
+      const agendaGenerationService = require('../services/agendaGenerationService');
+      await agendaGenerationService.generateAgendaFromSpeakers(
+        newEvent.id,
+        newEvent.date,
+        false // not accelerated for new events
+      );
+    }
+
     res.status(201).json(newEvent);
   } catch (error) {
     console.error('Error creating event:', error);
@@ -1057,6 +1067,46 @@ exports.analyzeSentiment = async (req, res) => {
     console.error('Error analyzing sentiment:', error);
     res.status(500).json({
       error: 'Failed to analyze sentiment',
+      details: error.message
+    });
+  }
+};
+
+// ============================================
+// AGENDA GENERATION ENDPOINTS
+// ============================================
+
+/**
+ * Generate agenda items from event speakers
+ * @api {post} /events/:id/generate-agenda Generate event agenda
+ * @apiParam {Boolean} accelerated Whether to generate accelerated timeline (optional, default: false)
+ */
+exports.generateAgenda = async (req, res) => {
+  try {
+    const { id: event_id } = req.params;
+    const { accelerated = false } = req.body;
+
+    // Get event details
+    const eventResult = await db.query('SELECT date FROM events WHERE id = $1', [event_id]);
+
+    if (eventResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+
+    const eventDate = eventResult.rows[0].date;
+    const agendaGenerationService = require('../services/agendaGenerationService');
+
+    const result = await agendaGenerationService.generateAgendaFromSpeakers(
+      parseInt(event_id),
+      eventDate,
+      accelerated
+    );
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error generating agenda:', error);
+    res.status(500).json({
+      error: 'Failed to generate agenda',
       details: error.message
     });
   }

@@ -1,8 +1,10 @@
-// DATABASE-CHECKED: event_messages columns verified on 2025-10-06
+// DATABASE-CHECKED: event_messages, event_pcr_scores, event_notes columns verified on 2025-10-18
 const { query } = require('../../config/database');
 const { safeJsonParse, safeJsonStringify } = require('../../utils/jsonHelpers');
 const { processMessageForSMS } = require('../../utils/smsHelpers');
 const aiConciergeController = require('../../controllers/aiConciergeController');
+const aiKnowledgeService = require('../aiKnowledgeService');
+const eventNoteService = require('../eventNoteService');
 
 /**
  * Handle PCR (Personal Connection Rating) response
@@ -139,6 +141,12 @@ SMS RESPONSE GUIDELINES:
     // ALSO update the appropriate entity table based on PCR type
     await savePCRToEntityTable(pcrType, pcrRating, personalizationData, smsData);
 
+    // NEW: Save to event_pcr_scores tracking table
+    await savePCRToTrackingTable(pcrType, pcrRating, personalizationData, smsData);
+
+    // NEW: Save contextual notes to event_notes if message has insights
+    await savePCRNotes(pcrRating, pcrType, personalizationData, smsData);
+
     // Generate AI Concierge thank you response based on rating AND type
     const prompt = buildPCRThankYouPrompt(pcrRating, pcrType, connectionPerson, connectionContext, smsData.contractor);
     const aiResponse = await aiConciergeController.generateAIResponse(
@@ -256,11 +264,18 @@ Please send me a brief thank you message that:
 - ${pcrType === 'sponsor_pcr_request' && pcrRating >= 4 ? 'Encourages booking a demo or follow-up call' : ''}
 - ${pcrType === 'peer_match_pcr_request' && pcrRating >= 4 ? 'Suggests exchanging contact info for future collaboration' : ''}
 
-CRITICAL SMS CONSTRAINTS:
+PERSONALITY & TONE:
+- Sound like their moderately laid back cool cousin on mom's side
+- Witty one-liners are great IF they stay relevant to the topic
+- Encouraging and motivating
+- Straight to the point while being clever and concise
+- CRITICAL: Value first - never sacrifice delivering value for wit
+- If adding cleverness reduces value, skip the wit and deliver value
+
+SMS CONSTRAINTS:
 - Maximum 320 characters (SMS limit enforced by GHL)
-- Be warm and conversational
-- NO fluff or filler words
-- Sign off naturally`;
+- NO signatures, sign-offs, or team names
+- End naturally without formal closing`;
 
   return prompt;
 }
@@ -351,48 +366,59 @@ async function savePCRToEntityTable(pcrType, pcrRating, personalizationData, sms
   try {
     switch(pcrType) {
       case 'speaker_pcr_request':
-        // Update speaker's PCR score and increment total ratings
+        // Update speaker's PCR score with AVERAGE from event_pcr_scores (0-1 scale)
         const speakerId = personalizationData.speaker_id;
         if (speakerId) {
           await query(`
             UPDATE event_speakers
-            SET pcr_score = COALESCE(
-              (pcr_score * total_ratings + $1) / (total_ratings + 1),
-              $1
+            SET pcr_score = (
+              SELECT AVG(final_pcr_score)
+              FROM event_pcr_scores
+              WHERE pcr_type = 'speaker'
+                AND entity_id = $1
             ),
-            total_ratings = COALESCE(total_ratings, 0) + 1,
             updated_at = CURRENT_TIMESTAMP
-            WHERE id = $2
-          `, [pcrRating, speakerId]);
-          console.log(`[PCRHandler] Updated speaker ${speakerId} PCR score`);
+            WHERE id = $1
+          `, [speakerId]);
+          console.log(`[PCRHandler] Updated speaker ${speakerId} PCR score from event_pcr_scores average`);
         }
         break;
 
       case 'sponsor_pcr_request':
-        // Update sponsor's PCR score
+        // Update sponsor's PCR score with AVERAGE from event_pcr_scores (0-1 scale)
         const sponsorId = personalizationData.sponsor_id;
         if (sponsorId) {
           await query(`
             UPDATE event_sponsors
-            SET pcr_score = $1,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = $2
-          `, [pcrRating, sponsorId]);
-          console.log(`[PCRHandler] Updated sponsor ${sponsorId} PCR score`);
+            SET pcr_score = (
+              SELECT AVG(final_pcr_score)
+              FROM event_pcr_scores
+              WHERE pcr_type = 'sponsor'
+                AND entity_id = $1
+            ),
+            updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+          `, [sponsorId]);
+          console.log(`[PCRHandler] Updated sponsor ${sponsorId} PCR score from event_pcr_scores average`);
         }
         break;
 
       case 'peer_match_pcr_request':
-        // Update peer match PCR score
+        // Update peer match PCR score with AVERAGE from event_pcr_scores (0-1 scale)
         const peerMatchId = personalizationData.peer_match_id;
         if (peerMatchId) {
           await query(`
             UPDATE event_peer_matches
-            SET pcr_score = $1,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = $2
-          `, [pcrRating, peerMatchId]);
-          console.log(`[PCRHandler] Updated peer match ${peerMatchId} PCR score`);
+            SET pcr_score = (
+              SELECT AVG(final_pcr_score)
+              FROM event_pcr_scores
+              WHERE pcr_type = 'peer_match'
+                AND entity_id = $1
+            ),
+            updated_at = CURRENT_TIMESTAMP
+            WHERE id = $1
+          `, [peerMatchId]);
+          console.log(`[PCRHandler] Updated peer match ${peerMatchId} PCR score from event_pcr_scores average`);
         }
         break;
 
@@ -408,6 +434,165 @@ async function savePCRToEntityTable(pcrType, pcrRating, personalizationData, sms
   } catch (error) {
     console.error('[PCRHandler] Error saving PCR to entity table:', error);
     // Don't throw - already saved to event_messages which is primary source
+  }
+}
+
+/**
+ * Save PCR to event_pcr_scores tracking table
+ * DATABASE-CHECKED: event_pcr_scores columns verified on 2025-10-18
+ */
+async function savePCRToTrackingTable(pcrType, pcrRating, personalizationData, smsData) {
+  try {
+    // Map message type to pcr_type string
+    const pcrTypeMap = {
+      'speaker_pcr_request': 'speaker',
+      'sponsor_pcr_request': 'sponsor',
+      'peer_match_pcr_request': 'peer_match',
+      'overall_event_pcr_request': 'event',
+      'pcr_request': 'unknown'
+    };
+
+    const dbPcrType = pcrTypeMap[pcrType] || 'unknown';
+
+    // Get entity details based on type
+    let entityId = null;
+    let entityName = 'Unknown';
+
+    if (dbPcrType === 'speaker') {
+      entityId = personalizationData.speaker_id;
+      entityName = personalizationData.connection_person?.name || 'Speaker';
+    } else if (dbPcrType === 'sponsor') {
+      entityId = personalizationData.sponsor_id;
+      entityName = personalizationData.connection_person?.company || 'Sponsor';
+    } else if (dbPcrType === 'peer_match') {
+      entityId = personalizationData.peer_match_id;
+      entityName = personalizationData.connection_person?.name || 'Peer';
+    } else if (dbPcrType === 'event') {
+      entityId = smsData.eventContext?.id;
+      entityName = smsData.eventContext?.name || 'Event';
+    }
+
+    if (!entityId) {
+      console.warn('[PCRHandler] No entity ID found for PCR tracking, skipping event_pcr_scores save');
+      return;
+    }
+
+    // Calculate sentiment from rating (1-2=negative, 3=neutral, 4-5=positive)
+    const sentimentScore = pcrRating <= 2 ? 0.0 : pcrRating === 3 ? 0.5 : 1.0;
+    const sentiment = pcrRating <= 2 ? 'negative' : pcrRating === 3 ? 'neutral' : 'positive';
+
+    // Calculate final PCR score (rating already 1-5, normalize to 0-1)
+    const normalizedRating = pcrRating / 5;
+    const finalPcrScore = (normalizedRating * 0.7) + (sentimentScore * 0.3);
+
+    // UPSERT to event_pcr_scores
+    await query(`
+      INSERT INTO event_pcr_scores (
+        event_id, contractor_id, pcr_type, entity_id, entity_name,
+        explicit_score, sentiment_score, final_pcr_score,
+        response_received, sentiment_analysis, confidence_level,
+        responded_at, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ON CONFLICT (event_id, contractor_id, pcr_type, entity_id)
+      DO UPDATE SET
+        explicit_score = EXCLUDED.explicit_score,
+        sentiment_score = EXCLUDED.sentiment_score,
+        final_pcr_score = EXCLUDED.final_pcr_score,
+        response_received = EXCLUDED.response_received,
+        sentiment_analysis = EXCLUDED.sentiment_analysis,
+        confidence_level = EXCLUDED.confidence_level,
+        responded_at = CURRENT_TIMESTAMP,
+        updated_at = CURRENT_TIMESTAMP
+    `, [
+      smsData.eventContext?.id,
+      smsData.contractor.id,
+      dbPcrType,
+      entityId,
+      entityName,
+      pcrRating, // Already 1-5 scale
+      sentimentScore,
+      finalPcrScore,
+      smsData.messageText,
+      JSON.stringify({
+        sentiment: sentiment,
+        rating: pcrRating,
+        pcr_type: dbPcrType
+      }),
+      1.0 // High confidence for explicit numeric ratings
+    ]);
+
+    console.log(`[PCRHandler] ✅ Saved PCR ${pcrRating}/5 (final: ${finalPcrScore.toFixed(2)}) to event_pcr_scores for ${dbPcrType}`);
+  } catch (error) {
+    console.error('[PCRHandler] Error saving PCR to tracking table:', error);
+    // Don't throw - already saved to event_messages
+  }
+}
+
+/**
+ * Save PCR contextual notes to event_notes
+ * DATABASE-CHECKED: event_notes columns verified on 2025-10-18
+ */
+async function savePCRNotes(pcrRating, pcrType, personalizationData, smsData) {
+  try {
+    // Only save notes if message has more than just a number
+    const messageText = smsData.messageText.trim();
+    const isJustNumber = /^\d+$/.test(messageText);
+
+    if (isJustNumber) {
+      console.log('[PCRHandler] Message is just a number, skipping note save');
+      return;
+    }
+
+    // Determine note type based on PCR type
+    const noteTypeMap = {
+      'speaker_pcr_request': 'speaker_note',
+      'sponsor_pcr_request': 'sponsor_note',
+      'peer_match_pcr_request': 'peer_connection',
+      'overall_event_pcr_request': 'insight',
+      'pcr_request': 'general'
+    };
+
+    const noteType = noteTypeMap[pcrType] || 'general';
+
+    // Extract relevant IDs
+    const speakerId = pcrType === 'speaker_pcr_request' ? personalizationData.speaker_id : null;
+    const sponsorId = pcrType === 'sponsor_pcr_request' ? personalizationData.sponsor_id : null;
+
+    // Determine if high rating indicates potential follow-up
+    const requiresFollowup = pcrRating >= 4;
+
+    await eventNoteService.captureEventNote({
+      event_id: smsData.eventContext?.id,
+      contractor_id: smsData.contractor.id,
+      note_text: messageText,
+      note_type: noteType,
+      speaker_id: speakerId,
+      sponsor_id: sponsorId,
+      session_context: personalizationData.connection_person?.session_title || null,
+      ai_categorization: pcrRating >= 4 ? 'positive' : pcrRating === 3 ? 'neutral' : 'negative',
+      ai_tags: [
+        `pcr_${pcrRating}`,
+        pcrType.replace('_pcr_request', ''),
+        pcrRating >= 4 ? 'high_rating' : pcrRating <= 2 ? 'low_rating' : 'medium_rating'
+      ],
+      ai_priority_score: pcrRating >= 4 ? 0.8 : pcrRating <= 2 ? 0.7 : 0.5,
+      requires_followup: requiresFollowup,
+      extracted_entities: {
+        pcr_rating: pcrRating,
+        entity_name: personalizationData.connection_person?.name || personalizationData.connection_person?.company,
+        pcr_type: pcrType
+      },
+      conversation_context: {
+        message_text: messageText,
+        pcr_rating: pcrRating,
+        entity_context: personalizationData
+      }
+    });
+
+    console.log(`[PCRHandler] ✅ Saved PCR contextual note to event_notes`);
+  } catch (error) {
+    console.error('[PCRHandler] Error saving PCR notes:', error);
+    // Don't throw - note save is optional
   }
 }
 

@@ -153,6 +153,7 @@ class PeerMatchingService {
   /**
    * Score focus area overlap
    * Returns 0-1 score based on common focus areas
+   * Normalizes both underscores and spaces for matching
    */
   scoreFocusAreaMatch(areas1, areas2) {
     const arr1 = Array.isArray(areas1) ? areas1 : safeJsonParse(areas1, []);
@@ -160,8 +161,11 @@ class PeerMatchingService {
 
     if (arr1.length === 0 || arr2.length === 0) return 0;
 
-    const set1 = new Set(arr1.map(a => a.toLowerCase()));
-    const set2 = new Set(arr2.map(a => a.toLowerCase()));
+    // Normalize function: lowercase + replace spaces/underscores with consistent format
+    const normalize = (str) => str.toLowerCase().replace(/[\s_]+/g, '_');
+
+    const set1 = new Set(arr1.map(a => normalize(a)));
+    const set2 = new Set(arr2.map(a => normalize(a)));
 
     const intersection = [...set1].filter(x => set2.has(x));
     const union = new Set([...set1, ...set2]);
@@ -237,28 +241,73 @@ class PeerMatchingService {
 
   /**
    * Compare revenue tiers
+   * Handles multiple database formats: "1M-5M", "2m_5m", "31_50_million", etc.
    */
   compareRevenueTiers(rev1, rev2) {
-    const tierOrder = {
-      'under_500k': 1,
-      '500k_1m': 2,
-      '1m_2m': 3,
-      '2m_5m': 4,
-      '5m_10m': 5,
-      '10m_plus': 6
+    // Normalize revenue string to numeric midpoint for comparison
+    const normalizeRevenue = (rev) => {
+      if (!rev) return null;
+
+      const normalized = rev.toString().toLowerCase().trim();
+
+      // Handle formats like "1M-5M" or "1m-5m"
+      const dashFormat = normalized.match(/(\d+)m?-(\d+)m/i);
+      if (dashFormat) {
+        const low = parseInt(dashFormat[1]);
+        const high = parseInt(dashFormat[2]);
+        return (low + high) / 2; // Million midpoint
+      }
+
+      // Handle underscore formats like "1m_2m", "2m_5m", "500k_1m"
+      const underscoreFormat = normalized.match(/(\d+)(k|m)_(\d+)(k|m)/i);
+      if (underscoreFormat) {
+        let low = parseInt(underscoreFormat[1]);
+        let high = parseInt(underscoreFormat[3]);
+
+        // Convert k to m
+        if (underscoreFormat[2] === 'k') low = low / 1000;
+        if (underscoreFormat[4] === 'k') high = high / 1000;
+
+        return (low + high) / 2; // Million midpoint
+      }
+
+      // Handle "31_50_million" format
+      const millionFormat = normalized.match(/(\d+)_(\d+)_million/);
+      if (millionFormat) {
+        const low = parseInt(millionFormat[1]);
+        const high = parseInt(millionFormat[2]);
+        return (low + high) / 2;
+      }
+
+      // Handle "under_500k"
+      if (normalized.includes('under')) {
+        return 0.25; // Assume 250k midpoint
+      }
+
+      // Handle "10m_plus" or ">10m"
+      if (normalized.includes('plus') || normalized.includes('>')) {
+        return 15; // Assume 15M midpoint for 10M+
+      }
+
+      return null;
     };
 
-    const tier1 = tierOrder[rev1] || 0;
-    const tier2 = tierOrder[rev2] || 0;
+    const tier1Value = normalizeRevenue(rev1);
+    const tier2Value = normalizeRevenue(rev2);
 
-    if (tier1 === 0 || tier2 === 0) return 0.5;
+    if (tier1Value === null || tier2Value === null) return 0.5;
 
-    const difference = Math.abs(tier1 - tier2);
+    // Calculate percentage difference
+    const difference = Math.abs(tier1Value - tier2Value);
+    const average = (tier1Value + tier2Value) / 2;
+    const percentDiff = difference / average;
 
-    if (difference === 0) return 1.0;  // Same tier
-    if (difference === 1) return 0.8;  // Adjacent tier
-    if (difference === 2) return 0.5;  // 2 tiers apart
-    return 0.3; // 3+ tiers apart
+    // Score based on percentage difference
+    if (percentDiff < 0.2) return 1.0;  // Within 20%
+    if (percentDiff < 0.5) return 0.8;  // Within 50%
+    if (percentDiff < 1.0) return 0.6;  // Within 100% (double/half)
+    if (percentDiff < 2.0) return 0.4;  // Within 200%
+    return 0.2; // More than 200% different
   }
 
   /**
@@ -374,13 +423,17 @@ class PeerMatchingService {
 
   /**
    * Get common focus areas between two contractors
+   * Uses same normalization as scoreFocusAreaMatch
    */
   getCommonFocusAreas(areas1, areas2) {
     const arr1 = Array.isArray(areas1) ? areas1 : safeJsonParse(areas1, []);
     const arr2 = Array.isArray(areas2) ? areas2 : safeJsonParse(areas2, []);
 
-    const set2 = new Set(arr2.map(a => a.toLowerCase()));
-    return arr1.filter(a => set2.has(a.toLowerCase()));
+    // Normalize function: lowercase + replace spaces/underscores with consistent format
+    const normalize = (str) => str.toLowerCase().replace(/[\s_]+/g, '_');
+
+    const set2 = new Set(arr2.map(a => normalize(a)));
+    return arr1.filter(a => set2.has(normalize(a)));
   }
 
   /**

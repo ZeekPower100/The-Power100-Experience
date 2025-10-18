@@ -10,6 +10,15 @@ const { safeJsonStringify } = require('../utils/jsonHelpers');
 /**
  * Event Note Service
  * Handles capturing and retrieving contractor notes during events
+ *
+ * VALID NOTE TYPES (database constraint):
+ * - 'general' (DEFAULT FALLBACK)
+ * - 'contact'
+ * - 'insight'
+ * - 'action_item'
+ * - 'speaker_note'
+ * - 'sponsor_note'
+ * - 'peer_connection'
  */
 
 /**
@@ -35,6 +44,14 @@ async function captureEventNote({
   try {
     console.log('[EventNoteService] Capturing note for contractor', contractor_id, 'at event', event_id);
 
+    // DEFENSIVE: Valid note types - fallback to 'general' if invalid/null
+    const validNoteTypes = ['general', 'contact', 'insight', 'action_item', 'speaker_note', 'sponsor_note', 'peer_connection'];
+    const safeNoteType = (note_type && validNoteTypes.includes(note_type)) ? note_type : 'general';
+
+    if (safeNoteType !== note_type) {
+      console.warn(`[EventNoteService] Invalid note_type '${note_type}' - defaulting to 'general'`);
+    }
+
     const result = await query(`
       INSERT INTO event_notes (
         event_id, contractor_id, note_text, extracted_entities,
@@ -55,7 +72,7 @@ async function captureEventNote({
       session_context,
       speaker_id,
       sponsor_id,
-      note_type,
+      safeNoteType,
       ai_categorization,
       safeJsonStringify(ai_tags),
       ai_priority_score,

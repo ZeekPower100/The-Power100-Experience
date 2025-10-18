@@ -267,16 +267,18 @@ async function sendViaWebhook(phone, messages) {
 
     for (const message of messages) {
       await axios.post(n8nWebhookUrl, {
-        phone,
-        message,
-        timestamp: new Date().toISOString()
+        send_via_ghl: {
+          phone,
+          message,
+          timestamp: new Date().toISOString()
+        }
       });
     }
 
     console.log('[OutboundScheduler] SMS sent via webhook:', { phone, count: messages.length, webhook: n8nWebhookUrl });
   } catch (error) {
     console.error('[OutboundScheduler] Error sending via webhook:', error.message);
-    // Don't throw - we've already saved to database, can retry later
+    throw error; // Re-throw to allow worker retry
   }
 }
 
@@ -327,5 +329,6 @@ module.exports = {
   sendSponsorRecommendation,
   sendPCRRequest,
   getContractorsForSpeakerAlerts,
-  getContractorsForSponsorRecommendations
+  getContractorsForSponsorRecommendations,
+  sendViaWebhook // Export for use by event message worker
 };

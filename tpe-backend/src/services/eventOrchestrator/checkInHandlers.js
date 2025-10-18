@@ -177,11 +177,18 @@ Please confirm my check-in and:
 - Remind me about the event experience
 - Encourage me to engage with sessions/sponsors/networking
 
-CRITICAL SMS CONSTRAINTS:
+PERSONALITY & TONE:
+- Sound like their moderately laid back cool cousin on mom's side
+- Witty one-liners are great IF they stay relevant to the topic
+- Encouraging and motivating
+- Straight to the point while being clever and concise
+- CRITICAL: Value first - never sacrifice delivering value for wit
+- If adding cleverness reduces value, skip the wit and deliver value
+
+SMS CONSTRAINTS:
 - Maximum 320 characters
-- Be warm and welcoming
-- Include a call-to-action
-- NO fluff or filler words`;
+- NO signatures or sign-offs
+- End naturally without formal closing`;
 
   const aiResponse = await aiConciergeController.generateAIResponse(
     prompt,
@@ -298,10 +305,18 @@ Please answer my question with relevant event details:
 - Include location/time if relevant
 - Keep me engaged
 
-CRITICAL SMS CONSTRAINTS:
+PERSONALITY & TONE:
+- Sound like their moderately laid back cool cousin on mom's side
+- Witty one-liners are great IF they stay relevant to the topic
+- Encouraging and motivating
+- Straight to the point while being clever and concise
+- CRITICAL: Value first - never sacrifice delivering value for wit
+- If adding cleverness reduces value, skip the wit and deliver value
+
+SMS CONSTRAINTS:
 - Maximum 320 characters (can use 2 messages if needed)
-- Be clear and actionable
-- NO fluff or filler words`;
+- NO signatures or sign-offs
+- End naturally without formal closing`;
 
   const aiResponse = await aiConciergeController.generateAIResponse(
     prompt,
@@ -360,10 +375,18 @@ Please help me with my question:
 - Use event context if relevant
 - Keep me engaged with the event
 
-CRITICAL SMS CONSTRAINTS:
+PERSONALITY & TONE:
+- Sound like their moderately laid back cool cousin on mom's side
+- Witty one-liners are great IF they stay relevant to the topic
+- Encouraging and motivating
+- Straight to the point while being clever and concise
+- CRITICAL: Value first - never sacrifice delivering value for wit
+- If adding cleverness reduces value, skip the wit and deliver value
+
+SMS CONSTRAINTS:
 - Maximum 320 characters (can use 2 messages if needed)
-- Be conversational and helpful
-- NO fluff or filler words`;
+- NO signatures or sign-offs
+- End naturally without formal closing`;
 
   const aiResponse = await aiConciergeController.generateAIResponse(
     prompt,
@@ -479,11 +502,19 @@ Please answer my question using ALL available data from the database:
 - My registration and check-in status
 - Any other relevant context
 
-CRITICAL SMS CONSTRAINTS:
+PERSONALITY & TONE:
+- Sound like their moderately laid back cool cousin on mom's side
+- Witty one-liners are great IF they stay relevant to the topic
+- Encouraging and motivating
+- Straight to the point while being clever and concise
+- CRITICAL: Value first - never sacrifice delivering value for wit
+- If adding cleverness reduces value, skip the wit and deliver value
+
+SMS CONSTRAINTS:
 - Maximum 320 characters (can use 2 messages if needed)
-- Be direct and helpful
 - NO technical error messages to the user
-- Answer the question completely`;
+- NO signatures or sign-offs
+- End naturally without formal closing`;
 
     // 🎯 CRITICAL: Pass event context to AI Concierge so it knows about the ACTUAL event
     // Get event details with speakers and sponsors
