@@ -449,6 +449,7 @@ async function sendPersonalizedAgenda(eventId, contractorId, recommendations) {
       eventDate: event.date,
       eventLocation: event.location,
       eventId: eventId,
+      contractorId: contractorId,
       recommendations: recommendations || []
     });
 
@@ -754,8 +755,8 @@ async function sendAgendaReadyNotification(eventId, contractorId, recommendation
  * Sent to ALL registered attendees regardless of check-in status
  * Template: check_in_reminder_night_before
  */
-async function sendCheckInReminderNightBefore(eventId, contractorId) {
-  console.log(`[EMAIL SCHEDULER] Sending night before check-in reminder for event ${eventId}, contractor ${contractorId}`);
+async function sendCheckInReminderNightBefore(eventId, contractorId, messageId = null) {
+  console.log(`[EMAIL SCHEDULER] Sending night before check-in reminder for event ${eventId}, contractor ${contractorId}${messageId ? `, message ${messageId}` : ''}`);
 
   try {
     const { sendSMSNotification } = require('../smsService');
@@ -797,6 +798,13 @@ async function sendCheckInReminderNightBefore(eventId, contractorId) {
     // Skip if already checked in
     if (attendee.check_in_time) {
       console.log(`[EMAIL SCHEDULER] Already checked in, skipping reminder`);
+      if (messageId) {
+        await query(`
+          UPDATE event_messages
+          SET status = 'skipped', error_message = 'Already checked in'
+          WHERE id = $1
+        `, [messageId]);
+      }
       return {
         success: true,
         skipped: true,
@@ -814,32 +822,6 @@ async function sendCheckInReminderNightBefore(eventId, contractorId) {
       eventId: eventId,
       contractorId: contractorId
     });
-
-    // Save to database - DATABASE-CHECKED
-    const messageResult = await query(`
-      INSERT INTO event_messages (
-        contractor_id, event_id, message_type, direction, channel,
-        scheduled_time, actual_send_time, personalization_data,
-        phone, message_content, status
-      ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $6, $7, $8, $9)
-      RETURNING id
-    `, [
-      contractorId,
-      eventId,
-      'check_in_reminder_night_before',
-      'outbound',
-      'email',
-      safeJsonStringify({
-        email_subject: emailSubject,
-        event_name: event.name,
-        event_date: event.date
-      }),
-      contractor.phone,
-      emailBody,
-      'pending'
-    ]);
-
-    const messageId = messageResult.rows[0].id;
 
     // Trigger n8n email workflow
     const n8nWebhook = `${N8N_WEBHOOK_BASE}/webhook/email-outbound${N8N_ENV}`;
@@ -865,25 +847,10 @@ async function sendCheckInReminderNightBefore(eventId, contractorId) {
       }
     }
 
-    await query(`
-      UPDATE event_messages
-      SET status = 'sent', actual_send_time = CURRENT_TIMESTAMP
-      WHERE id = $1
-    `, [messageId]);
+    // Note: Message status update is handled by eventMessageWorker
+    // No database update needed here - worker handles it after this function returns
 
-    // Send SMS notification with check-in link
-    if (contractor.phone) {
-      const smsMessage = `${contractor.first_name || 'Hi'}! ${event.name} is tomorrow! 🎉 Check in now to skip the line: https://tpx.power100.io/events/${eventId}/check-in?contractor=${contractorId}`;
-
-      try {
-        await sendSMSNotification(contractor.phone, smsMessage);
-        console.log(`[EMAIL SCHEDULER] 📱 Check-in reminder SMS sent`);
-      } catch (smsError) {
-        console.warn(`[EMAIL SCHEDULER] ⚠️  SMS error:`, smsError.message);
-      }
-    }
-
-    console.log(`[EMAIL SCHEDULER] ✅ Night before check-in reminder sent successfully`);
+    console.log(`[EMAIL SCHEDULER] ✅ Night before check-in reminder email sent successfully`);
 
     return {
       success: true,
@@ -902,8 +869,8 @@ async function sendCheckInReminderNightBefore(eventId, contractorId) {
  * ONLY sent if NOT checked in yet (conditional logic)
  * Template: check_in_reminder_1_hour
  */
-async function sendCheckInReminder1HourBefore(eventId, contractorId) {
-  console.log(`[EMAIL SCHEDULER] Sending 1 hour before check-in reminder for event ${eventId}, contractor ${contractorId}`);
+async function sendCheckInReminder1HourBefore(eventId, contractorId, messageId = null) {
+  console.log(`[EMAIL SCHEDULER] Sending 1 hour before check-in reminder for event ${eventId}, contractor ${contractorId}${messageId ? `, message ${messageId}` : ''}`);
 
   try {
     const { sendSMSNotification } = require('../smsService');
@@ -945,6 +912,13 @@ async function sendCheckInReminder1HourBefore(eventId, contractorId) {
     // CONDITIONAL LOGIC: Only send if NOT checked in yet
     if (attendee.check_in_time) {
       console.log(`[EMAIL SCHEDULER] Already checked in, skipping 1 hour reminder`);
+      if (messageId) {
+        await query(`
+          UPDATE event_messages
+          SET status = 'skipped', error_message = 'Already checked in'
+          WHERE id = $1
+        `, [messageId]);
+      }
       return {
         success: true,
         skipped: true,
@@ -961,31 +935,6 @@ async function sendCheckInReminder1HourBefore(eventId, contractorId) {
       eventId: eventId,
       contractorId: contractorId
     });
-
-    // Save to database - DATABASE-CHECKED
-    const messageResult = await query(`
-      INSERT INTO event_messages (
-        contractor_id, event_id, message_type, direction, channel,
-        scheduled_time, actual_send_time, personalization_data,
-        phone, message_content, status
-      ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $6, $7, $8, $9)
-      RETURNING id
-    `, [
-      contractorId,
-      eventId,
-      'check_in_reminder_1_hour',
-      'outbound',
-      'email',
-      safeJsonStringify({
-        email_subject: emailSubject,
-        event_name: event.name
-      }),
-      contractor.phone,
-      emailBody,
-      'pending'
-    ]);
-
-    const messageId = messageResult.rows[0].id;
 
     // Trigger n8n email workflow
     const n8nWebhook = `${N8N_WEBHOOK_BASE}/webhook/email-outbound${N8N_ENV}`;
@@ -1011,25 +960,10 @@ async function sendCheckInReminder1HourBefore(eventId, contractorId) {
       }
     }
 
-    await query(`
-      UPDATE event_messages
-      SET status = 'sent', actual_send_time = CURRENT_TIMESTAMP
-      WHERE id = $1
-    `, [messageId]);
+    // Note: Message status update is handled by eventMessageWorker
+    // No database update needed here - worker handles it after this function returns
 
-    // Send SMS notification with check-in link
-    if (contractor.phone) {
-      const smsMessage = `${contractor.first_name || 'Hi'}! ${event.name} starts in 1 hour! ⏰ Check in now: https://tpx.power100.io/events/${eventId}/check-in?contractor=${contractorId}`;
-
-      try {
-        await sendSMSNotification(contractor.phone, smsMessage);
-        console.log(`[EMAIL SCHEDULER] 📱 1 hour reminder SMS sent`);
-      } catch (smsError) {
-        console.warn(`[EMAIL SCHEDULER] ⚠️  SMS error:`, smsError.message);
-      }
-    }
-
-    console.log(`[EMAIL SCHEDULER] ✅ 1 hour before check-in reminder sent successfully`);
+    console.log(`[EMAIL SCHEDULER] ✅ 1 hour before check-in reminder email sent successfully`);
 
     return {
       success: true,
@@ -1048,8 +982,8 @@ async function sendCheckInReminder1HourBefore(eventId, contractorId) {
  * ONLY sent if NOT checked in within the hour (conditional logic)
  * Template: check_in_reminder_event_start
  */
-async function sendCheckInReminderEventStart(eventId, contractorId) {
-  console.log(`[EMAIL SCHEDULER] Sending event start check-in reminder for event ${eventId}, contractor ${contractorId}`);
+async function sendCheckInReminderEventStart(eventId, contractorId, messageId = null) {
+  console.log(`[EMAIL SCHEDULER] Sending event start check-in reminder for event ${eventId}, contractor ${contractorId}${messageId ? `, message ${messageId}` : ''}`);
 
   try {
     const { sendSMSNotification } = require('../smsService');
@@ -1091,6 +1025,13 @@ async function sendCheckInReminderEventStart(eventId, contractorId) {
     // CONDITIONAL LOGIC: Only send if NOT checked in yet
     if (attendee.check_in_time) {
       console.log(`[EMAIL SCHEDULER] Already checked in, skipping event start reminder`);
+      if (messageId) {
+        await query(`
+          UPDATE event_messages
+          SET status = 'skipped', error_message = 'Already checked in'
+          WHERE id = $1
+        `, [messageId]);
+      }
       return {
         success: true,
         skipped: true,
@@ -1106,31 +1047,6 @@ async function sendCheckInReminderEventStart(eventId, contractorId) {
       eventId: eventId,
       contractorId: contractorId
     });
-
-    // Save to database - DATABASE-CHECKED
-    const messageResult = await query(`
-      INSERT INTO event_messages (
-        contractor_id, event_id, message_type, direction, channel,
-        scheduled_time, actual_send_time, personalization_data,
-        phone, message_content, status
-      ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $6, $7, $8, $9)
-      RETURNING id
-    `, [
-      contractorId,
-      eventId,
-      'check_in_reminder_event_start',
-      'outbound',
-      'email',
-      safeJsonStringify({
-        email_subject: emailSubject,
-        event_name: event.name
-      }),
-      contractor.phone,
-      emailBody,
-      'pending'
-    ]);
-
-    const messageId = messageResult.rows[0].id;
 
     // Trigger n8n email workflow
     const n8nWebhook = `${N8N_WEBHOOK_BASE}/webhook/email-outbound${N8N_ENV}`;
@@ -1156,25 +1072,10 @@ async function sendCheckInReminderEventStart(eventId, contractorId) {
       }
     }
 
-    await query(`
-      UPDATE event_messages
-      SET status = 'sent', actual_send_time = CURRENT_TIMESTAMP
-      WHERE id = $1
-    `, [messageId]);
+    // Note: Message status update is handled by eventMessageWorker
+    // No database update needed here - worker handles it after this function returns
 
-    // Send SMS notification with check-in link
-    if (contractor.phone) {
-      const smsMessage = `${contractor.first_name || 'Hi'}! ${event.name} is starting now! 🚀 Check in: https://tpx.power100.io/events/${eventId}/check-in?contractor=${contractorId}`;
-
-      try {
-        await sendSMSNotification(contractor.phone, smsMessage);
-        console.log(`[EMAIL SCHEDULER] 📱 Event start reminder SMS sent`);
-      } catch (smsError) {
-        console.warn(`[EMAIL SCHEDULER] ⚠️  SMS error:`, smsError.message);
-      }
-    }
-
-    console.log(`[EMAIL SCHEDULER] ✅ Event start check-in reminder sent successfully`);
+    console.log(`[EMAIL SCHEDULER] ✅ Event start check-in reminder email sent successfully`);
 
     return {
       success: true,

@@ -42,25 +42,33 @@ export default function EventAgendaPage() {
     try {
       setLoading(true);
 
+      // Backend API base URL
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
       // Load event details
-      const eventResponse = await fetch(`/api/events/${eventId}`);
+      const eventResponse = await fetch(`${API_BASE}/api/events/${eventId}`);
       if (eventResponse.ok) {
         const eventData = await eventResponse.json();
-        setEvent(eventData);
+        setEvent(eventData.event || eventData);
       }
 
       // Load contractor details
-      const contractorResponse = await fetch(`/api/contractors/${contractorId}`);
+      const contractorResponse = await fetch(`${API_BASE}/api/contractors/${contractorId}`);
       if (contractorResponse.ok) {
         const contractorData = await contractorResponse.json();
         setContractor(contractorData.contractor || contractorData);
       }
 
-      // Load AI recommendations
-      const recommendationsResponse = await fetch(`/api/contractor-recommendations/contractor/${contractorId}`);
-      if (recommendationsResponse.ok) {
-        const recsData = await recommendationsResponse.json();
-        setRecommendations(recsData.data || []);
+      // Load AI recommendations (optional - may not exist for all contractors)
+      try {
+        const recommendationsResponse = await fetch(`${API_BASE}/api/contractor-recommendations/contractor/${contractorId}`);
+        if (recommendationsResponse.ok) {
+          const recsData = await recommendationsResponse.json();
+          setRecommendations(recsData.data || recsData.recommendations || []);
+        }
+      } catch (err) {
+        // Recommendations are optional, continue without them
+        console.log('No recommendations available');
       }
 
     } catch (error) {

@@ -16,6 +16,7 @@ const aiKnowledgeService = require('./aiKnowledgeService');
 const { safeJsonStringify, safeJsonParse } = require('../utils/jsonHelpers');
 const { sendAgendaReadyNotification } = require('./eventOrchestrator/emailScheduler');
 const { sendSMSNotification } = require('./smsService');
+const axios = require('axios');
 
 class EventOrchestratorAutomation {
   /**
@@ -724,32 +725,70 @@ class EventOrchestratorAutomation {
    */
   async sendScheduledMessage(message) {
     try {
-      // Get contractor phone
+      // Get contractor phone and name
       const contractor = await query(
-        'SELECT phone FROM contractors WHERE id = $1',
+        'SELECT phone, name FROM contractors WHERE id = $1',
         [message.contractor_id]
       );
 
-      if (contractor.rows[0]?.phone) {
-        // For now, just mark as sent (SMS will be handled by n8n webhook)
+      if (!contractor.rows[0]?.phone) {
+        console.error(`[EventOrchestrator] ❌ Contractor ${message.contractor_id} has no phone number`);
         await query(`
           UPDATE event_messages
-          SET status = 'sent', actual_send_time = NOW()
+          SET status = 'failed', error_message = 'No phone number'
           WHERE id = $1
         `, [message.id]);
-
-        // Create learning event
-        await this.createLearningEvent(
-          message.contractor_id,
-          message.event_id,
-          `sent_${message.message_type}`,
-          { message_id: message.id }
-        );
-
-        console.log(`📱 Message queued for SMS: ${message.message_type} to contractor ${message.contractor_id}`);
+        return;
       }
+
+      const phone = contractor.rows[0].phone;
+      const contractorName = contractor.rows[0].name;
+
+      // Get message content (should already be in database)
+      let messageText = message.message_content;
+
+      // Personalize with contractor name
+      const firstName = contractorName?.split(' ')[0] || 'there';
+      messageText = messageText.replace(/\{firstName\}/g, firstName);
+      messageText = messageText.replace(/\{name\}/g, contractorName || 'there');
+
+      // Determine correct webhook URL based on environment
+      const n8nWebhookUrl = process.env.NODE_ENV === 'production'
+        ? 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl'
+        : 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl-dev';
+
+      console.log(`[EventOrchestrator] 📱 Sending SMS ${message.id} (${message.message_type}) to ${phone} via ${n8nWebhookUrl}`);
+
+      // Send SMS via n8n webhook
+      await axios.post(n8nWebhookUrl, {
+        send_via_ghl: {
+          phone,
+          message: messageText,
+          timestamp: new Date().toISOString(),
+          message_type: message.message_type,
+          message_id: message.id
+        }
+      });
+
+      // Mark as sent in database
+      await query(`
+        UPDATE event_messages
+        SET status = 'sent', actual_send_time = NOW()
+        WHERE id = $1
+      `, [message.id]);
+
+      // Create learning event
+      await this.createLearningEvent(
+        message.contractor_id,
+        message.event_id,
+        `sent_${message.message_type}`,
+        { message_id: message.id }
+      );
+
+      console.log(`[EventOrchestrator] ✅ SMS ${message.id} sent successfully to ${phone}`);
+
     } catch (error) {
-      console.error('Error sending scheduled message:', error);
+      console.error('[EventOrchestrator] ❌ Error sending scheduled message:', error);
       await query(`
         UPDATE event_messages
         SET status = 'failed', error_message = $1

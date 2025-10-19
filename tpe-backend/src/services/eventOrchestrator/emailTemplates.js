@@ -170,7 +170,7 @@ function buildProfileCompletionReminderEmail(data) {
  * Personalized Agenda Email Template
  */
 function buildPersonalizedAgendaEmail(data) {
-  const { firstName, eventName, eventDate, eventLocation, eventId, recommendations } = data;
+  const { firstName, eventName, eventDate, eventLocation, eventId, contractorId, recommendations } = data;
 
   const formattedDate = new Date(eventDate).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -236,7 +236,7 @@ function buildPersonalizedAgendaEmail(data) {
     ${recommendationsHtml}
 
     <div style="text-align: center; margin: 40px 0 0 0;">
-      <a href="${getBaseUrl()}/events/${eventId}/agenda"
+      <a href="${getBaseUrl()}/events/${eventId}/agenda?contractor=${contractorId}"
          style="display: inline-block; background-color: #28a745; color: #ffffff;
                 padding: 15px 40px; text-decoration: none; border-radius: 6px;
                 font-weight: bold; font-size: 16px;">

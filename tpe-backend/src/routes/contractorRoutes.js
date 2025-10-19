@@ -27,6 +27,7 @@ router.post('/verify-code', asyncHandler(contractorController.verifyCode));
 router.get('/:id/matches', asyncHandler(contractorController.getMatches));
 router.post('/:id/complete', asyncHandler(contractorController.completeFlow));
 router.put('/:id/profile', asyncHandler(contractorController.updateProfile)); // Public profile updates (contractor flow)
+router.get('/:id', asyncHandler(contractorController.getContractor)); // Public view contractor (needed for email agenda links)
 
 // n8n webhook helper (accepts API key)
 router.get('/lookup-by-phone', flexibleProtect, asyncHandler(contractorController.lookupByPhone));
@@ -36,7 +37,6 @@ router.use(protect);
 router.get('/', asyncHandler(contractorController.getAllContractors));
 router.post('/search', asyncHandler(contractorController.searchContractors));
 router.get('/stats/overview', asyncHandler(contractorController.getStats));
-router.get('/:id', asyncHandler(contractorController.getContractor)); // Admin view contractor details
 router.put('/:id', asyncHandler(contractorController.updateProfile)); // Admin update contractor
 router.delete('/:id', asyncHandler(contractorController.deleteContractor));
 

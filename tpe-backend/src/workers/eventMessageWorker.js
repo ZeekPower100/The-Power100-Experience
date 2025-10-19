@@ -16,6 +16,7 @@ const { processMessageForSMS } = require('../utils/smsHelpers');
 // Import existing outbound scheduler functions
 const outboundScheduler = require('../services/eventOrchestrator/outboundScheduler');
 const aiConciergeController = require('../controllers/aiConciergeController');
+const emailScheduler = require('../services/eventOrchestrator/emailScheduler');
 
 // Define which message types should use AI for natural, conversational messaging
 const AI_DRIVEN_MESSAGE_TYPES = [
@@ -96,6 +97,141 @@ async function processEventMessage(job) {
       return { success: true, skipped: true, reason: 'cancelled' };
     }
 
+    // Route based on channel (email or SMS)
+    const channel = message.channel || 'sms'; // Default to SMS for backwards compatibility
+
+    if (channel === 'email') {
+      // EMAIL PROCESSING
+      return await processEmailMessage(message, message_id, contractor_id);
+    } else {
+      // SMS PROCESSING
+      return await processSMSMessage(message, message_id, contractor_id);
+    }
+
+  } catch (error) {
+    console.error(`[EventMessageWorker] ❌ Error processing message ${message_id}:`, error);
+
+    // Update database with error (using exact field names)
+    try {
+      await query(`
+        UPDATE event_messages
+        SET status = 'failed',
+            error_message = $2,
+            updated_at = NOW()
+        WHERE id = $1
+      `, [message_id, error.message]);
+    } catch (dbError) {
+      console.error(`[EventMessageWorker] Failed to update error status:`, dbError);
+    }
+
+    throw error; // Bull will retry
+  }
+}
+
+/**
+ * Process EMAIL channel message
+ */
+async function processEmailMessage(message, message_id, contractor_id) {
+  try {
+    // Verify contractor has email
+    if (!message.email) {
+      console.error(`[EventMessageWorker] ❌ Contractor ${contractor_id} has no email address`);
+
+      // Mark as failed in database
+      await query(`
+        UPDATE event_messages
+        SET status = 'failed',
+            error_message = 'Contractor has no email address',
+            updated_at = NOW()
+        WHERE id = $1
+      `, [message_id]);
+
+      return { success: false, error: 'No email address' };
+    }
+
+    console.log(`[EventMessageWorker] 📧 Processing EMAIL message ${message_id} (${message.message_type})`);
+
+    // Call appropriate emailScheduler function based on message_type
+    let emailSent = false;
+
+    switch (message.message_type) {
+      case 'check_in_reminder_night_before':
+        await emailScheduler.sendCheckInReminderNightBefore(message.event_id, contractor_id, message_id);
+        emailSent = true;
+        break;
+
+      case 'check_in_reminder_1_hour':
+        await emailScheduler.sendCheckInReminder1HourBefore(message.event_id, contractor_id, message_id);
+        emailSent = true;
+        break;
+
+      case 'check_in_reminder_event_start':
+        await emailScheduler.sendCheckInReminderEventStart(message.event_id, contractor_id, message_id);
+        emailSent = true;
+        break;
+
+      case 'registration_confirmation':
+        await emailScheduler.sendRegistrationConfirmation(message.event_id, contractor_id);
+        emailSent = true;
+        break;
+
+      case 'profile_completion_request':
+        await emailScheduler.sendProfileCompletionRequest(message.event_id, contractor_id);
+        emailSent = true;
+        break;
+
+      case 'personalized_agenda':
+        await emailScheduler.sendPersonalizedAgenda(message.event_id, contractor_id, null);
+        emailSent = true;
+        break;
+
+      default:
+        console.warn(`[EventMessageWorker] ⚠️ No email handler for message_type: ${message.message_type}`);
+        // Mark as failed - unknown message type
+        await query(`
+          UPDATE event_messages
+          SET status = 'failed',
+              error_message = 'No email handler for message type: ${message.message_type}',
+              updated_at = NOW()
+          WHERE id = $1
+        `, [message_id]);
+        return { success: false, error: 'Unknown message type' };
+    }
+
+    if (emailSent) {
+      // Mark as sent in database
+      await query(`
+        UPDATE event_messages
+        SET status = 'sent',
+            actual_send_time = NOW(),
+            updated_at = NOW()
+        WHERE id = $1
+      `, [message_id]);
+
+      console.log(`[EventMessageWorker] ✅ Email ${message_id} sent successfully to ${message.email}`);
+
+      return {
+        success: true,
+        message_id,
+        contractor_id,
+        message_type: message.message_type,
+        channel: 'email',
+        email: message.email,
+        sent_at: new Date().toISOString()
+      };
+    }
+
+  } catch (error) {
+    console.error(`[EventMessageWorker] ❌ Error processing email ${message_id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Process SMS channel message
+ */
+async function processSMSMessage(message, message_id, contractor_id) {
+  try {
     // Verify contractor has phone number
     if (!message.phone) {
       console.error(`[EventMessageWorker] ❌ Contractor ${contractor_id} has no phone number`);
@@ -111,6 +247,8 @@ async function processEventMessage(job) {
 
       return { success: false, error: 'No phone number' };
     }
+
+    console.log(`[EventMessageWorker] 📱 Processing SMS message ${message_id} (${message.message_type})`);
 
     // Get personalized message content
     let messageText = message.message_content;
@@ -145,35 +283,22 @@ async function processEventMessage(job) {
       WHERE id = $1
     `, [message_id]);
 
-    console.log(`[EventMessageWorker] ✅ Message ${message_id} sent successfully to ${message.phone} (${smsResult.messages.length} SMS)`);
+    console.log(`[EventMessageWorker] ✅ SMS ${message_id} sent successfully to ${message.phone} (${smsResult.messages.length} messages)`);
 
     return {
       success: true,
       message_id,
       contractor_id,
-      message_type,
+      message_type: message.message_type,
+      channel: 'sms',
       phone: message.phone,
       sms_count: smsResult.messages.length,
       sent_at: new Date().toISOString()
     };
 
   } catch (error) {
-    console.error(`[EventMessageWorker] ❌ Error processing message ${message_id}:`, error);
-
-    // Update database with error (using exact field names)
-    try {
-      await query(`
-        UPDATE event_messages
-        SET status = 'failed',
-            error_message = $2,
-            updated_at = NOW()
-        WHERE id = $1
-      `, [message_id, error.message]);
-    } catch (dbError) {
-      console.error(`[EventMessageWorker] Failed to update error status:`, dbError);
-    }
-
-    throw error; // Bull will retry
+    console.error(`[EventMessageWorker] ❌ Error processing SMS ${message_id}:`, error);
+    throw error;
   }
 }
 
