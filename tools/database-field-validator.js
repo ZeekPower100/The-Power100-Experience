@@ -261,7 +261,9 @@ set PGPASSWORD=TPXP0stgres!!
             // AI SMS API parameters (not database fields)
             'send_immediately',   // API param for SMS sending
             'scheduled_time',     // API param for scheduling
-            'recommendation_types' // API param for recommendation types
+            'recommendation_types', // API param for recommendation types
+            // Testing/utility parameters (not database fields)
+            'accelerated'         // Agenda generation testing param (creates accelerated timeline)
           ];
           if (field &&
               !field.startsWith('//') &&
