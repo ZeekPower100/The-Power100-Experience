@@ -1084,6 +1084,7 @@ exports.analyzeSentiment = async (req, res) => {
 exports.generateAgenda = async (req, res) => {
   try {
     const { id: event_id } = req.params;
+    // VALIDATOR-BYPASS: "accelerated" is a request parameter for testing (not a database field)
     const { accelerated = false } = req.body;
 
     // Get event details
