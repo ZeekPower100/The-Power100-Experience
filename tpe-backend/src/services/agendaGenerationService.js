@@ -63,8 +63,8 @@ async function generateAgendaFromSpeakers(eventId, eventDate, accelerated = fals
     let currentTime = new Date(baseDate);
 
     if (accelerated) {
-      // Accelerated: Start in 5 minutes from now
-      currentTime = new Date(Date.now() + (5 * 60 * 1000));
+      // Accelerated: Start in 10 minutes from now (allows pre-event communication testing)
+      currentTime = new Date(Date.now() + (10 * 60 * 1000));
 
       // Registration & Welcome (immediate)
       agendaItems.push(await createAgendaItem(eventId, {

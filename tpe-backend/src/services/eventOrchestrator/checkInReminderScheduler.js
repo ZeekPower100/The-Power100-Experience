@@ -52,22 +52,53 @@ async function scheduleCheckInReminders(eventId) {
 
     const event = eventResult.rows[0];
 
-    // Get FIRST speaker session to determine event start time
-    // DATABASE-CHECKED: event_speakers has session_time (timestamp without time zone)
-    const firstSessionResult = await query(`
-      SELECT session_time
-      FROM event_speakers
+    // Get event start time - THREE-TIER FALLBACK
+    // 1. Try event_days table first (most precise - date + time per day)
+    // 2. Fall back to event_agenda_items if no event_days exist
+    // 3. Fall back to event.date + 9 AM if neither exist
+
+    // DATABASE-CHECKED: event_days has day_date, start_time, end_time
+    const eventDayResult = await query(`
+      SELECT day_date, start_time, end_time
+      FROM event_days
       WHERE event_id = $1
-      ORDER BY session_time ASC
+      ORDER BY day_date ASC, start_time ASC
       LIMIT 1
     `, [eventId]);
 
-    if (firstSessionResult.rows.length === 0) {
-      console.error(`[CheckInReminderScheduler] No speaker sessions found for event ${eventId}`);
-      return { success: false, error: 'no_speaker_sessions' };
-    }
+    let eventStartTime;
 
-    const eventStartTime = new Date(firstSessionResult.rows[0].session_time);
+    if (eventDayResult.rows.length > 0) {
+      // event_days exists - use precise date + time
+      const dayData = eventDayResult.rows[0];
+      const dateStr = dayData.day_date.toISOString().split('T')[0]; // YYYY-MM-DD
+      const timeStr = dayData.start_time; // HH:MM:SS
+      eventStartTime = new Date(`${dateStr}T${timeStr}`);
+      console.log(`[CheckInReminderScheduler] Using event_days timing: ${eventStartTime.toISOString()}`);
+    } else {
+      // Try agenda items as fallback
+      // DATABASE-CHECKED: event_agenda_items has start_time, item_type
+      const firstSessionResult = await query(`
+        SELECT start_time
+        FROM event_agenda_items
+        WHERE event_id = $1
+          AND item_type IN ('session', 'keynote', 'registration')
+        ORDER BY start_time ASC
+        LIMIT 1
+      `, [eventId]);
+
+      if (firstSessionResult.rows.length > 0) {
+        // Agenda exists - use first session time
+        eventStartTime = new Date(firstSessionResult.rows[0].start_time);
+        console.log(`[CheckInReminderScheduler] Using agenda start time: ${eventStartTime.toISOString()}`);
+      } else {
+        // No event_days or agenda yet - use event.date + assumed 9 AM
+        // This happens when contractor registers before event details are finalized
+        eventStartTime = new Date(event.date);
+        eventStartTime.setHours(9, 0, 0, 0);
+        console.log(`[CheckInReminderScheduler] No timing data - using event.date with 9 AM start: ${eventStartTime.toISOString()}`);
+      }
+    }
     console.log(`[CheckInReminderScheduler] Event: ${event.name} starts at ${eventStartTime.toISOString()}`);
 
     // Get all attendees with SMS opt-in
@@ -96,17 +127,38 @@ async function scheduleCheckInReminders(eventId) {
     }
 
     // Calculate reminder times
-    // Night before: 8 PM (20:00) on the day before event
-    const nightBeforeTime = new Date(eventStartTime);
-    nightBeforeTime.setDate(nightBeforeTime.getDate() - 1);
-    nightBeforeTime.setHours(20, 0, 0, 0); // 8 PM
+    // Detect if this is an accelerated test event (starts within next 2 hours)
+    const timeUntilEvent = eventStartTime.getTime() - Date.now();
+    const isAcceleratedEvent = timeUntilEvent < (2 * 60 * 60 * 1000); // Less than 2 hours away
 
-    // 1 hour before: event start time - 1 hour
-    const oneHourBeforeTime = new Date(eventStartTime);
-    oneHourBeforeTime.setHours(oneHourBeforeTime.getHours() - 1);
+    let nightBeforeTime, oneHourBeforeTime, atEventStartTime;
 
-    // Event start: exactly at event start time
-    const atEventStartTime = new Date(eventStartTime);
+    if (isAcceleratedEvent) {
+      // ACCELERATED MODE: Compress timeline for testing
+      console.log(`[CheckInReminderScheduler] 🚀 Accelerated event detected (starts in ${Math.round(timeUntilEvent / 1000 / 60)} minutes)`);
+
+      // "Night before" → 2 minutes from now
+      nightBeforeTime = new Date(Date.now() + (2 * 60 * 1000));
+
+      // "1 hour before" → 1 minute before event start
+      oneHourBeforeTime = new Date(eventStartTime.getTime() - (1 * 60 * 1000));
+
+      // Event start: exactly at event start time
+      atEventStartTime = new Date(eventStartTime);
+    } else {
+      // NORMAL MODE: Standard timeline
+      // Night before: 8 PM (20:00) on the day before event
+      nightBeforeTime = new Date(eventStartTime);
+      nightBeforeTime.setDate(nightBeforeTime.getDate() - 1);
+      nightBeforeTime.setHours(20, 0, 0, 0); // 8 PM
+
+      // 1 hour before: event start time - 1 hour
+      oneHourBeforeTime = new Date(eventStartTime);
+      oneHourBeforeTime.setHours(oneHourBeforeTime.getHours() - 1);
+
+      // Event start: exactly at event start time
+      atEventStartTime = new Date(eventStartTime);
+    }
 
     console.log(`[CheckInReminderScheduler] Reminder times:`);
     console.log(`  Night before: ${nightBeforeTime.toISOString()}`);
@@ -456,21 +508,49 @@ async function scheduleCheckInRemindersForAttendee(eventId, contractorId) {
 
     const event = eventResult.rows[0];
 
-    // Get FIRST agenda item to determine event start time
-    const firstItemResult = await query(`
-      SELECT start_time
-      FROM event_agenda_items
+    // Get event start time - THREE-TIER FALLBACK (same as bulk function)
+    // 1. Try event_days table first (most precise)
+    // 2. Fall back to event_agenda_items
+    // 3. Fall back to event.date + 9 AM
+
+    // DATABASE-CHECKED: event_days has day_date, start_time, end_time
+    const eventDayResult = await query(`
+      SELECT day_date, start_time, end_time
+      FROM event_days
       WHERE event_id = $1
-      ORDER BY start_time ASC
+      ORDER BY day_date ASC, start_time ASC
       LIMIT 1
     `, [eventId]);
 
-    if (firstItemResult.rows.length === 0) {
-      console.error(`[CheckInReminderScheduler] No agenda items found for event ${eventId}`);
-      return { success: false, error: 'no_agenda_items' };
-    }
+    let eventStartTime;
 
-    const eventStartTime = new Date(firstItemResult.rows[0].start_time);
+    if (eventDayResult.rows.length > 0) {
+      // event_days exists - use precise date + time
+      const dayData = eventDayResult.rows[0];
+      const dateStr = dayData.day_date.toISOString().split('T')[0];
+      const timeStr = dayData.start_time;
+      eventStartTime = new Date(`${dateStr}T${timeStr}`);
+      console.log(`[CheckInReminderScheduler] Using event_days timing: ${eventStartTime.toISOString()}`);
+    } else {
+      // Try agenda items as fallback
+      const firstItemResult = await query(`
+        SELECT start_time
+        FROM event_agenda_items
+        WHERE event_id = $1
+        ORDER BY start_time ASC
+        LIMIT 1
+      `, [eventId]);
+
+      if (firstItemResult.rows.length > 0) {
+        eventStartTime = new Date(firstItemResult.rows[0].start_time);
+        console.log(`[CheckInReminderScheduler] Using agenda start time: ${eventStartTime.toISOString()}`);
+      } else {
+        // No timing data - use event.date + 9 AM
+        eventStartTime = new Date(event.date);
+        eventStartTime.setHours(9, 0, 0, 0);
+        console.log(`[CheckInReminderScheduler] No timing data - using event.date with 9 AM start: ${eventStartTime.toISOString()}`);
+      }
+    }
     console.log(`[CheckInReminderScheduler] Event: ${event.name} starts at ${eventStartTime.toISOString()}`);
 
     // Get contractor details
@@ -666,21 +746,49 @@ async function scheduleProfileCompletionReminder(eventId, contractorId) {
 
     const event = eventResult.rows[0];
 
-    // Get event start time from first agenda item
-    const agendaResult = await query(`
-      SELECT start_time
-      FROM event_agenda_items
+    // Get event start time - THREE-TIER FALLBACK (same as check-in reminders)
+    // 1. Try event_days table first (most precise)
+    // 2. Fall back to event_agenda_items
+    // 3. Fall back to event.date + 9 AM
+
+    // DATABASE-CHECKED: event_days has day_date, start_time, end_time
+    const eventDayResult = await query(`
+      SELECT day_date, start_time, end_time
+      FROM event_days
       WHERE event_id = $1
-      ORDER BY start_time ASC
+      ORDER BY day_date ASC, start_time ASC
       LIMIT 1
     `, [eventId]);
 
-    if (agendaResult.rows.length === 0) {
-      console.error(`[ProfileCompletionReminder] No agenda items found for event ${eventId} - cannot determine event start time`);
-      return { success: false, error: 'no_agenda_items' };
-    }
+    let eventStartTime;
 
-    const eventStartTime = new Date(agendaResult.rows[0].start_time);
+    if (eventDayResult.rows.length > 0) {
+      // event_days exists - use precise date + time
+      const dayData = eventDayResult.rows[0];
+      const dateStr = dayData.day_date.toISOString().split('T')[0];
+      const timeStr = dayData.start_time;
+      eventStartTime = new Date(`${dateStr}T${timeStr}`);
+      console.log(`[ProfileCompletionReminder] Using event_days timing: ${eventStartTime.toISOString()}`);
+    } else {
+      // Try agenda items as fallback
+      const agendaResult = await query(`
+        SELECT start_time
+        FROM event_agenda_items
+        WHERE event_id = $1
+        ORDER BY start_time ASC
+        LIMIT 1
+      `, [eventId]);
+
+      if (agendaResult.rows.length > 0) {
+        eventStartTime = new Date(agendaResult.rows[0].start_time);
+        console.log(`[ProfileCompletionReminder] Using agenda start time: ${eventStartTime.toISOString()}`);
+      } else {
+        // No timing data - use event.date + 9 AM
+        eventStartTime = new Date(event.date);
+        eventStartTime.setHours(9, 0, 0, 0);
+        console.log(`[ProfileCompletionReminder] No timing data - using event.date with 9 AM start: ${eventStartTime.toISOString()}`);
+      }
+    }
 
     // Get contractor details and profile status
     const contractorResult = await query(`

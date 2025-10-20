@@ -516,14 +516,35 @@ const handleInbound = async (req, res, next) => {
     console.log('[SMS] Contractor found:', contractor.id, contractor.name);
 
     // Step 2: Get current event context (if any)
+    // Use event_days for precise timing - prioritize events happening NOW or soonest
     const eventResult = await query(`
-      SELECT e.id, e.name as event_name, e.date as event_date
+      SELECT
+        e.id,
+        e.name as event_name,
+        e.date as event_date,
+        ed.day_date,
+        ed.start_time,
+        ed.end_time,
+        (ed.day_date + ed.start_time) as event_start_timestamp,
+        (ed.day_date + ed.end_time) as event_end_timestamp,
+        ABS(EXTRACT(EPOCH FROM (NOW() - (ed.day_date + ed.start_time)))) as time_distance
       FROM events e
       JOIN event_attendees ea ON e.id = ea.event_id
+      LEFT JOIN event_days ed ON e.id = ed.event_id
       WHERE ea.contractor_id = $1
-        AND e.date >= CURRENT_DATE - INTERVAL '1 day'
-        AND e.date <= CURRENT_DATE + INTERVAL '7 days'
-      ORDER BY e.date ASC
+        AND (
+          -- Event is happening NOW
+          (ed.day_date + ed.start_time <= NOW() AND ed.day_date + ed.end_time >= NOW())
+          OR
+          -- Event is within 24 hours (past or future)
+          (ed.day_date + ed.start_time >= NOW() - INTERVAL '24 hours'
+           AND ed.day_date + ed.start_time <= NOW() + INTERVAL '24 hours')
+        )
+      ORDER BY
+        -- Prioritize events happening NOW
+        CASE WHEN ed.day_date + ed.start_time <= NOW() AND ed.day_date + ed.end_time >= NOW() THEN 0 ELSE 1 END,
+        -- Then by closest to current time
+        time_distance ASC
       LIMIT 1
     `, [contractor.id]);
 
