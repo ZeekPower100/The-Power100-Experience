@@ -29,6 +29,7 @@ export default function EventAgendaPage() {
   const [event, setEvent] = useState<any>(null);
   const [contractor, setContractor] = useState<any>(null);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [recommendationError, setRecommendationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!contractorId) {
@@ -42,33 +43,80 @@ export default function EventAgendaPage() {
     try {
       setLoading(true);
 
-      // Backend API base URL
-      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      // Backend API base URL (already includes /api)
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
       // Load event details
-      const eventResponse = await fetch(`${API_BASE}/api/events/${eventId}`);
+      const eventResponse = await fetch(`${API_BASE}/events/${eventId}`);
       if (eventResponse.ok) {
         const eventData = await eventResponse.json();
         setEvent(eventData.event || eventData);
       }
 
       // Load contractor details
-      const contractorResponse = await fetch(`${API_BASE}/api/contractors/${contractorId}`);
+      const contractorResponse = await fetch(`${API_BASE}/contractors/${contractorId}`);
       if (contractorResponse.ok) {
         const contractorData = await contractorResponse.json();
         setContractor(contractorData.contractor || contractorData);
       }
 
-      // Load AI recommendations (optional - may not exist for all contractors)
+      // Load personalized agenda - CRITICAL FEATURE, NOT OPTIONAL
       try {
-        const recommendationsResponse = await fetch(`${API_BASE}/api/contractor-recommendations/contractor/${contractorId}`);
-        if (recommendationsResponse.ok) {
-          const recsData = await recommendationsResponse.json();
-          setRecommendations(recsData.data || recsData.recommendations || []);
+        const agendaResponse = await fetch(`${API_BASE}/events/${eventId}/ai/agenda?contractor_id=${contractorId}`);
+
+        if (!agendaResponse.ok) {
+          throw new Error(`Failed to load personalized agenda: ${agendaResponse.status}`);
         }
+
+        const agendaData = await agendaResponse.json();
+        const agenda = agendaData.personalized_agenda || {};
+
+        // Convert event-specific agenda format to recommendations format for display
+        const speakers = agenda.recommended_speakers || agenda.speakers || [];
+        const sponsors = agenda.recommended_sponsors || agenda.sponsors || [];
+        const peers = agenda.recommended_peers || agenda.peers || [];
+
+        const formattedRecommendations = [
+          ...speakers.map((s: any) => ({
+            id: s.speaker_id,
+            entity_type: 'speaker',
+            entity_id: s.speaker_id,
+            entity_name: s.name,
+            reason: s.why || `${s.session?.title || 'Industry expert session'}`,
+            confidence_score: s.score || s.relevance_score || 50,
+            engagement: s.session?.title || s.session_title || '',
+            created_at: new Date().toISOString(),
+            ...s
+          })),
+          ...sponsors.map((s: any) => ({
+            id: s.sponsor_id,
+            entity_type: 'sponsor',
+            entity_id: s.sponsor_id,
+            entity_name: s.company_name || s.sponsor_name,
+            reason: s.why || `Booth ${s.booth_number}: ${s.talking_points?.[0] || 'Strategic partner'}`,
+            confidence_score: s.score || s.relevance_score || 50,
+            engagement: s.booth_number || '',
+            created_at: new Date().toISOString(),
+            ...s
+          })),
+          ...peers.map((p: any) => ({
+            id: p.contractor_id,
+            entity_type: 'peer',
+            entity_id: p.contractor_id,
+            entity_name: p.contractor_name || p.name,
+            reason: p.why || 'Great networking match',
+            confidence_score: p.compatibility_score || p.score || 50,
+            engagement: p.company_name || '',
+            created_at: new Date().toISOString(),
+            ...p
+          }))
+        ];
+
+        setRecommendations(formattedRecommendations);
+        setRecommendationError(null); // Clear any previous errors
       } catch (err) {
-        // Recommendations are optional, continue without them
-        console.log('No recommendations available');
+        console.error('Failed to load personalized agenda:', err);
+        setRecommendationError('We couldn\'t generate your personalized recommendations due to technical difficulties. Our team has been notified. Please refresh the page or contact support if the issue persists.');
       }
 
     } catch (error) {
@@ -130,6 +178,27 @@ export default function EventAgendaPage() {
               Welcome, {contractor?.first_name || contractor?.name}! Here's your AI-curated experience.
             </p>
           </div>
+
+          {/* Error Alert - Critical Feature Failure */}
+          {recommendationError && (
+            <div className="bg-red-50 border-2 border-red-500 rounded-lg p-6 mb-6">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-xl font-bold">!</span>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-red-900 mb-2">Personalization Temporarily Unavailable</h3>
+                  <p className="text-red-800 mb-4">{recommendationError}</p>
+                  <Button
+                    onClick={() => window.location.reload()}
+                    className="bg-red-600 hover:bg-red-700 text-white"
+                  >
+                    Refresh Page
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Stats Overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

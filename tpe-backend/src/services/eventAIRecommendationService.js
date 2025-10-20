@@ -138,6 +138,20 @@ class EventAIRecommendationService {
       if (focusMatches.length > 0) {
         score += focusMatches.length * 15;
         reasons.push(`Addresses your focus areas: ${focusMatches.join(', ')}`);
+      } else {
+        // Fallback: Analyze session content for contractor focus area keywords
+        const sessionContent = `${speaker.session_title || ''} ${speaker.session_description || ''} ${speaker.synopsis || ''}`.toLowerCase();
+        const focusAreaKeywords = this.getFocusAreaKeywords(focusAreas);
+
+        const contentMatches = focusAreaKeywords.filter(keyword =>
+          sessionContent.includes(keyword.toLowerCase())
+        );
+
+        if (contentMatches.length > 0) {
+          // Give partial credit (10 points per match, max 30) when content is relevant
+          score += Math.min(contentMatches.length * 10, 30);
+          reasons.push(`Session content relevant to: ${contentMatches.slice(0, 3).join(', ')}`);
+        }
       }
 
       // Score based on PCR rating (20 points max)
@@ -408,6 +422,22 @@ class EventAIRecommendationService {
       if (focusMatches.length > 0) {
         score += focusMatches.length * 15;
         reasons.push(`Serves your focus areas: ${focusMatches.join(', ')}`);
+      } else {
+        // Fallback: Analyze talking points and special offers for contractor focus area keywords
+        const talkingPoints = typeof sponsor.talking_points === 'string' ? sponsor.talking_points : '';
+        const specialOffers = typeof sponsor.special_offers === 'string' ? sponsor.special_offers : '';
+        const sponsorContent = `${talkingPoints} ${specialOffers}`.toLowerCase();
+        const focusAreaKeywords = this.getFocusAreaKeywords(focusAreas);
+
+        const contentMatches = focusAreaKeywords.filter(keyword =>
+          sponsorContent.includes(keyword.toLowerCase())
+        );
+
+        if (contentMatches.length > 0) {
+          // Give partial credit (10 points per match, max 30) when content is relevant
+          score += Math.min(contentMatches.length * 10, 30);
+          reasons.push(`Offerings relevant to: ${contentMatches.slice(0, 3).join(', ')}`);
+        }
       }
 
       // PCR Score or PowerConfidence Score rating (20 points max)
@@ -633,6 +663,55 @@ class EventAIRecommendationService {
   }
 
   /**
+   * Map contractor focus areas to searchable keywords for content matching
+   */
+  getFocusAreaKeywords(focusAreas) {
+    const keywordMap = {
+      // Growth-related focus areas
+      'greenfield_growth': ['growth', 'new market', 'expansion', 'revenue', 'opportunities', 'new customers'],
+      'scaling': ['scale', 'scaling', 'expansion', 'growth', 'increase', 'multiply'],
+
+      // Sales focus areas
+      'controlling_lead_flow': ['lead', 'pipeline', 'sales process', 'conversion', 'sales funnel', 'marketing'],
+      'hiring_sales_leadership': ['sales', 'leadership', 'hiring', 'team building', 'sales manager', 'recruiting'],
+      'sales_growth': ['sales', 'revenue', 'growth', 'selling', 'closing', 'deals'],
+
+      // Operational focus areas
+      'operational_efficiency': ['efficiency', 'operations', 'process', 'systems', 'streamline', 'optimize'],
+      'business_development': ['business', 'development', 'strategy', 'growth', 'partnerships'],
+
+      // Team and culture
+      'team_building': ['team', 'culture', 'hiring', 'retention', 'people', 'management'],
+      'leadership': ['leadership', 'management', 'leading', 'vision', 'strategy'],
+
+      // Financial
+      'profitability': ['profit', 'margin', 'financial', 'revenue', 'cash flow', 'ROI'],
+      'cash_flow': ['cash', 'financial', 'budget', 'finance', 'money'],
+
+      // Market positioning
+      'market_differentiation': ['differentiate', 'unique', 'competitive', 'positioning', 'brand'],
+      'competitive_advantage': ['competitive', 'advantage', 'differentiation', 'unique', 'positioning']
+    };
+
+    const keywords = [];
+
+    for (const focusArea of focusAreas) {
+      // Normalize focus area (remove underscores, lowercase)
+      const normalizedArea = focusArea.toLowerCase().replace(/_/g, ' ');
+
+      // Add the focus area itself as a keyword
+      keywords.push(normalizedArea);
+
+      // Add mapped keywords if they exist
+      if (keywordMap[focusArea]) {
+        keywords.push(...keywordMap[focusArea]);
+      }
+    }
+
+    return [...new Set(keywords)]; // Remove duplicates
+  }
+
+  /**
    * Identify current needs based on profile
    */
   identifyCurrentNeeds(contractorProfile) {
@@ -707,11 +786,11 @@ class EventAIRecommendationService {
    */
   async getPersonalizedAgenda(eventId, contractorId) {
     try {
-      // Get speaker recommendations
-      const speakerRecs = await this.recommendSpeakers(eventId, contractorId, 5);
+      // Get top 3 speaker recommendations (TPX standard)
+      const speakerRecs = await this.recommendSpeakers(eventId, contractorId, 3);
 
-      // Get sponsor recommendations
-      const sponsorRecs = await this.recommendSponsors(eventId, contractorId, 5);
+      // Get top 3 sponsor recommendations (TPX standard)
+      const sponsorRecs = await this.recommendSponsors(eventId, contractorId, 3);
 
       // Get all agenda items for the event
       const agenda = await query(`

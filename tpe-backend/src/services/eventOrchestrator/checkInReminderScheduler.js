@@ -2,16 +2,17 @@
 /**
  * Check-In Reminder Scheduler
  *
- * Creates scheduled check-in reminder messages when agenda is generated
+ * Creates scheduled check-in reminder messages when contractor registers for event
  * Three reminders are sent to ensure maximum attendance:
  * 1. Night before (8 PM day before event)
  * 2. 1 hour before event start
  * 3. At event start time
  *
  * Flow:
- * 1. Agenda generation calls scheduleCheckInReminders()
+ * 1. Contractor registration calls scheduleCheckInReminders()
  * 2. Creates 3 event_messages records per attendee with template-based content
  * 3. eventMessageWorker automatically sends reminders at scheduled times
+ * 4. Check-in triggers personalized agenda generation and full orchestration
  */
 
 const { query } = require('../../config/database');
@@ -23,7 +24,7 @@ const { scheduleEventMessage } = require('../../queues/eventMessageQueue');
 
 /**
  * Schedule all check-in reminder messages for an event
- * Called during agenda generation
+ * Called during contractor registration
  *
  * @param {number} eventId - Event ID
  * @returns {Object} - Scheduling results
@@ -51,22 +52,22 @@ async function scheduleCheckInReminders(eventId) {
 
     const event = eventResult.rows[0];
 
-    // Get FIRST agenda item to determine event start time
-    // DATABASE-CHECKED: event_agenda_items has start_time (timestamp without time zone)
-    const firstItemResult = await query(`
-      SELECT start_time
-      FROM event_agenda_items
+    // Get FIRST speaker session to determine event start time
+    // DATABASE-CHECKED: event_speakers has session_time (timestamp without time zone)
+    const firstSessionResult = await query(`
+      SELECT session_time
+      FROM event_speakers
       WHERE event_id = $1
-      ORDER BY start_time ASC
+      ORDER BY session_time ASC
       LIMIT 1
     `, [eventId]);
 
-    if (firstItemResult.rows.length === 0) {
-      console.error(`[CheckInReminderScheduler] No agenda items found for event ${eventId}`);
-      return { success: false, error: 'no_agenda_items' };
+    if (firstSessionResult.rows.length === 0) {
+      console.error(`[CheckInReminderScheduler] No speaker sessions found for event ${eventId}`);
+      return { success: false, error: 'no_speaker_sessions' };
     }
 
-    const eventStartTime = new Date(firstItemResult.rows[0].start_time);
+    const eventStartTime = new Date(firstSessionResult.rows[0].session_time);
     console.log(`[CheckInReminderScheduler] Event: ${event.name} starts at ${eventStartTime.toISOString()}`);
 
     // Get all attendees with SMS opt-in

@@ -5,9 +5,9 @@ const { safeJsonParse, safeJsonStringify } = require('../../utils/jsonHelpers');
 const axios = require('axios');
 const {
   sendRegistrationConfirmation,
-  sendProfileCompletionRequest,
-  sendPersonalizedAgenda: sendPersonalizedAgendaEmail
+  sendProfileCompletionRequest
 } = require('./emailScheduler');
+const { scheduleCheckInReminders } = require('./checkInReminderScheduler');
 
 /**
  * Event Registration & Onboarding Service
@@ -184,26 +184,29 @@ async function handleExistingContractor(eventId, contractor, urgencyLevel, hours
   // Send registration confirmation email (HTML formatted via emailScheduler)
   await sendRegistrationConfirmation(eventId, contractor.id);
 
-  // Send appropriate message
+  // Schedule check-in reminders based on event schedule
+  // Reminders will be sent: night before at 8pm, 1 hour before, and at event start
+  const reminderResult = await scheduleCheckInReminders(eventId);
+  console.log(`[EventRegistration] Check-in reminders scheduled: ${reminderResult.messages_scheduled || 0} messages`);
+
+  // Send appropriate message based on profile completeness
   let messageSent = false;
-  if (isComplete) {
-    // Profile complete - send personalized agenda immediately (Email via emailScheduler)
-    await sendPersonalizedAgendaEmail(eventId, contractor.id, null);
-    messageSent = true;
-  } else {
+  if (!isComplete) {
     // Profile incomplete - send profile completion request (SMS + Email via emailScheduler)
     await sendProfileCompletionRequest(eventId, contractor.id);
     messageSent = true;
   }
+  // Note: Personalized agenda is NOT sent here - it's generated after check-in
 
   return {
     contractor_id: contractor.id,
     attendee_id: attendeeId,
     event_id: eventId,
-    status: isComplete ? 'complete_sent_agenda' : 'incomplete_sent_request',
+    status: isComplete ? 'registered_reminders_scheduled' : 'registered_profile_incomplete',
     message_sent: messageSent,
     urgency_level: urgencyLevel,
-    email_sent: true // Registration confirmation email sent
+    email_sent: true, // Registration confirmation email sent
+    check_in_reminders_scheduled: reminderResult.messages_scheduled || 0
   };
 }
 
@@ -248,6 +251,11 @@ async function handleNewContractor(eventId, data, urgencyLevel, hoursUntilEvent)
   // Send registration confirmation email (HTML formatted via emailScheduler)
   await sendRegistrationConfirmation(eventId, contractorId);
 
+  // Schedule check-in reminders based on event schedule
+  // Reminders will be sent: night before at 8pm, 1 hour before, and at event start
+  const reminderResult = await scheduleCheckInReminders(eventId);
+  console.log(`[EventRegistration] Check-in reminders scheduled: ${reminderResult.messages_scheduled || 0} messages`);
+
   // Send profile completion request (SMS + Email via emailScheduler - handles both)
   await sendProfileCompletionRequest(eventId, contractorId);
 
@@ -258,7 +266,8 @@ async function handleNewContractor(eventId, data, urgencyLevel, hoursUntilEvent)
     status: 'new_contractor_created',
     message_sent: true,
     urgency_level: urgencyLevel,
-    email_sent: true // Registration confirmation email sent
+    email_sent: true, // Registration confirmation email sent
+    check_in_reminders_scheduled: reminderResult.messages_scheduled || 0
   };
 }
 

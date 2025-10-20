@@ -20,6 +20,10 @@ router.get('/pending', protect, eventController.getPendingEvents);
 // MUST be public so contractors can access from email links without auth
 router.get('/:id', eventController.getEvent);
 
+// Public route - Get personalized agenda for a contractor
+// MUST be public so contractors can access from email/SMS links without auth
+router.get('/:id/ai/agenda', eventController.getPersonalizedAgenda);
+
 // Protected routes (CRUD operations)
 router.use(protect);
 
@@ -38,9 +42,6 @@ router.get('/:id/ai/speakers', eventController.getAISpeakerRecommendations);
 
 // Get AI sponsor recommendations with talking points
 router.get('/:id/ai/sponsors', eventController.getAISponsorRecommendations);
-
-// Get personalized agenda for a contractor
-router.get('/:id/ai/agenda', eventController.getPersonalizedAgenda);
 
 // Test AI recommendations (admin endpoint)
 router.get('/:id/ai/test', eventController.testAIRecommendations);
