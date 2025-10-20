@@ -70,7 +70,7 @@ function buildRegistrationConfirmationEmail(data) {
     </p>
 
     <p style="margin: 0 0 25px 0; font-size: 16px; line-height: 1.6;">
-      Welcome to <strong>${eventName}</strong>! We're excited to have you join us.
+      You're registered for <strong>${eventName}</strong>! Get ready for a personalized experience powered by The Power100.
     </p>
 
     <div style="background-color: #f8f9fa; border-left: 4px solid #FB0401; padding: 20px 25px; margin: 0 0 30px 0;">
@@ -109,7 +109,7 @@ function buildRegistrationConfirmationEmail(data) {
     </div>
 
     <p style="margin: 30px 0 0 0; font-size: 16px; line-height: 1.6; color: #000000;">
-      See you there!<br>
+      Looking forward to enhancing your event experience!<br>
       <strong>Power100 Team</strong>
     </p>
   `;
@@ -158,7 +158,7 @@ function buildProfileCompletionReminderEmail(data) {
     </div>
 
     <p style="margin: 30px 0 0 0; font-size: 16px; line-height: 1.6; color: #000000;">
-      See you at <strong>${eventName}</strong>!<br>
+      Looking forward to your experience at <strong>${eventName}</strong>!<br>
       <strong>Power100 Team</strong>
     </p>
   `;
@@ -245,7 +245,7 @@ function buildPersonalizedAgendaEmail(data) {
     </div>
 
     <p style="margin: 30px 0 0 0; font-size: 16px; line-height: 1.6; color: #000000;">
-      Can't wait to see you there!<br>
+      Your personalized experience awaits!<br>
       <strong>Power100 Team</strong>
     </p>
   `;
@@ -285,7 +285,7 @@ function buildEventSummaryEmail(data) {
     </p>
 
     <p style="margin: 0 0 25px 0; font-size: 16px; line-height: 1.6;">
-      Thank you for joining us at <strong>${eventName}</strong>! We hope you found it valuable.
+      How was your experience at <strong>${eventName}</strong>? We hope the personalized recommendations were valuable!
     </p>
 
     ${sessionRecapHtml}
@@ -373,7 +373,7 @@ function buildAgendaReadyEmail(data) {
     </div>
 
     <p style="margin: 30px 0 0 0; font-size: 16px; line-height: 1.6; color: #000000;">
-      We can't wait to see you at <strong>${eventName}</strong>!<br>
+      Your personalized <strong>${eventName}</strong> experience is ready!<br>
       <strong>Power100 Team</strong>
     </p>
   `;
@@ -444,7 +444,7 @@ function buildCheckInReminderNightBefore(data) {
     </div>
 
     <p style="margin: 30px 0 0 0; font-size: 16px; line-height: 1.6; color: #000000;">
-      See you tomorrow!<br>
+      Your personalized experience is ready!<br>
       <strong>Power100 Team</strong>
     </p>
   `;
@@ -488,7 +488,7 @@ function buildCheckInReminder1HourBefore(data) {
     </div>
 
     <p style="margin: 30px 0 0 0; font-size: 16px; line-height: 1.6; color: #000000;">
-      See you soon!<br>
+      Get ready for your personalized experience!<br>
       <strong>Power100 Team</strong>
     </p>
   `;

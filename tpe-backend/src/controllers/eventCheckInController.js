@@ -4,7 +4,9 @@ const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const crypto = require('crypto');
 const eventOrchestratorAutomation = require('../services/eventOrchestratorAutomation');
 const { triggerCheckInSMS, triggerMassSMS } = require('./n8nEventWebhookController');
-const { sendPersonalizedAgenda } = require('../services/eventOrchestrator/emailScheduler');
+const { scheduleCheckInRemindersForAttendee, scheduleProfileCompletionReminder } = require('../services/eventOrchestrator/checkInReminderScheduler');
+const { sendRegistrationConfirmation } = require('../services/eventOrchestrator/emailScheduler');
+const { sendSMSNotification } = require('../services/smsService');
 
 /**
  * Event Check-In Controller
@@ -16,6 +18,56 @@ const { sendPersonalizedAgenda } = require('../services/eventOrchestrator/emailS
 const generateQRCode = (eventId, contractorId) => {
   const data = `${eventId}-${contractorId}-${Date.now()}`;
   return crypto.createHash('sha256').update(data).digest('hex').substring(0, 16);
+};
+
+// Check if contractor's main profile is complete
+const isContractorProfileComplete = async (contractorId) => {
+  try {
+    const result = await query(`
+      SELECT
+        first_name,
+        last_name,
+        email,
+        phone,
+        company_name,
+        revenue_tier,
+        team_size,
+        focus_areas
+      FROM contractors
+      WHERE id = $1
+    `, [contractorId]);
+
+    if (result.rows.length === 0) {
+      return { complete: false, missing: ['contractor_not_found'] };
+    }
+
+    const contractor = result.rows[0];
+    const missing = [];
+
+    // Check required fields
+    if (!contractor.first_name) missing.push('first_name');
+    if (!contractor.last_name) missing.push('last_name');
+    if (!contractor.email) missing.push('email');
+    if (!contractor.phone) missing.push('phone');
+    if (!contractor.company_name) missing.push('company_name');
+    if (!contractor.revenue_tier) missing.push('revenue_tier');
+    if (!contractor.team_size) missing.push('team_size');
+
+    // Check focus_areas (array must have at least one item)
+    const focusAreas = safeJsonParse(contractor.focus_areas);
+    if (!Array.isArray(focusAreas) || focusAreas.length === 0) {
+      missing.push('focus_areas');
+    }
+
+    return {
+      complete: missing.length === 0,
+      missing,
+      contractor
+    };
+  } catch (error) {
+    console.error('Error checking profile completeness:', error);
+    return { complete: false, missing: ['error_checking_profile'], error: error.message };
+  }
 };
 
 // Register attendee for an event
@@ -53,6 +105,87 @@ const registerAttendee = async (req, res, next) => {
       ) VALUES ($1, $2, CURRENT_TIMESTAMP, 'pending', $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
     `, [event_id, contractor_id, safeJsonStringify(pre_filled_data || {}), qr_code_data]);
+
+    // 📧 AUTOMATIC: Send registration confirmation email
+    try {
+      console.log(`[RegisterAttendee] Sending registration confirmation email for contractor ${contractor_id} at event ${event_id}`);
+
+      await sendRegistrationConfirmation(event_id, contractor_id);
+
+      console.log(`[RegisterAttendee] ✅ Registration confirmation email sent to contractor ${contractor_id}`);
+    } catch (emailError) {
+      console.error('[RegisterAttendee] ❌ Error sending registration confirmation email (non-fatal):', emailError);
+      // Don't fail registration if email fails
+    }
+
+    // 📱 AUTOMATIC: Send registration confirmation SMS
+    try {
+      console.log(`[RegisterAttendee] Sending registration confirmation SMS for contractor ${contractor_id} at event ${event_id}`);
+
+      // Get event and contractor info for SMS
+      const eventInfo = await query('SELECT name, date, location FROM events WHERE id = $1', [event_id]);
+      const contractorInfo = await query('SELECT first_name, phone FROM contractors WHERE id = $1', [contractor_id]);
+
+      if (eventInfo.rows.length > 0 && contractorInfo.rows.length > 0 && contractorInfo.rows[0].phone) {
+        const event = eventInfo.rows[0];
+        const contractor = contractorInfo.rows[0];
+        const firstName = contractor.first_name || 'there';
+
+        const smsMessage = `Hi ${firstName}! You're registered for ${event.name}. 🎉 Check your email for details. We'll send check-in reminders as the event approaches. Reply STOP to opt out.`;
+
+        await sendSMSNotification(contractor.phone, smsMessage, {
+          contractor_id,
+          event_id,
+          message_type: 'registration_confirmation'
+        });
+
+        console.log(`[RegisterAttendee] ✅ Registration confirmation SMS sent to contractor ${contractor_id}`);
+      } else {
+        console.log(`[RegisterAttendee] ⚠️ Skipping SMS - no phone number for contractor ${contractor_id}`);
+      }
+    } catch (smsError) {
+      console.error('[RegisterAttendee] ❌ Error sending registration confirmation SMS (non-fatal):', smsError);
+      // Don't fail registration if SMS fails
+    }
+
+    // 🔔 AUTOMATIC: Schedule check-in reminders for this attendee
+    try {
+      console.log(`[RegisterAttendee] Scheduling check-in reminders for contractor ${contractor_id} at event ${event_id}`);
+
+      const reminderResult = await scheduleCheckInRemindersForAttendee(event_id, contractor_id);
+
+      if (reminderResult.success) {
+        console.log(`[RegisterAttendee] ✅ Scheduled ${reminderResult.messages_scheduled} check-in reminders for contractor ${contractor_id}`);
+      } else {
+        console.error(`[RegisterAttendee] ⚠️ Failed to schedule check-in reminders: ${reminderResult.error}`);
+        // Don't fail registration if reminders fail - continue
+      }
+    } catch (reminderError) {
+      console.error('[RegisterAttendee] ❌ Error scheduling check-in reminders (non-fatal):', reminderError);
+      // Don't fail registration if reminder scheduling fails
+    }
+
+    // 📝 AUTOMATIC: Schedule profile completion reminder for this attendee (24 hours after registration)
+    // Note: The reminder will auto-skip if profile gets completed before send time
+    try {
+      console.log(`[RegisterAttendee] Scheduling profile completion reminder for contractor ${contractor_id} at event ${event_id}`);
+
+      const profileReminderResult = await scheduleProfileCompletionReminder(event_id, contractor_id);
+
+      if (profileReminderResult.success) {
+        if (profileReminderResult.skipped) {
+          console.log(`[RegisterAttendee] ⚠️ Profile completion reminder skipped: ${profileReminderResult.reason}`);
+        } else {
+          console.log(`[RegisterAttendee] ✅ Scheduled ${profileReminderResult.messages_scheduled} profile completion reminder(s) for contractor ${contractor_id}`);
+        }
+      } else {
+        console.error(`[RegisterAttendee] ⚠️ Failed to schedule profile completion reminder: ${profileReminderResult.error}`);
+        // Don't fail registration if reminder fails - continue
+      }
+    } catch (profileReminderError) {
+      console.error('[RegisterAttendee] ❌ Error scheduling profile completion reminder (non-fatal):', profileReminderError);
+      // Don't fail registration if reminder scheduling fails
+    }
 
     res.status(201).json({
       success: true,
@@ -232,37 +365,21 @@ const completeProfile = async (req, res, next) => {
       throw new AppError('Attendee not found', 404);
     }
 
-    // 🎯 TRIGGER: Send personalized agenda after profile completion
-    // Uses emailScheduler with HTML template - sends EMAIL with speaker/sponsor recommendations
-    try {
-      console.log(`[ProfileCompletion] Sending personalized agenda to contractor ${contractorId}`);
-
-      // Send personalized agenda (non-blocking - don't wait for it)
-      // emailScheduler.sendPersonalizedAgenda fetches speakers/sponsors and sends HTML email
-      sendPersonalizedAgenda(eventId, contractorId, null)
-        .then(() => {
-          console.log(`[ProfileCompletion] ✅ Personalized agenda sent successfully to contractor ${contractorId}`);
-        })
-        .catch((err) => {
-          console.error(`[ProfileCompletion] ❌ Error sending personalized agenda to contractor ${contractorId}:`, err);
-        });
-    } catch (agendaError) {
-      // Don't fail the profile completion if agenda send fails
-      console.error('[ProfileCompletion] Error sending personalized agenda (non-fatal):', agendaError);
-    }
+    // ℹ️ Personalized agenda will be sent when contractor checks in
+    console.log(`[ProfileCompletion] Profile completed for contractor ${contractorId} - agenda will be sent upon check-in`);
 
     res.json({
       success: true,
       profile: result.rows[0],
       unlock_features: true, // Enable personalized experience
-      personalized_agenda_sent: true // Indicate agenda was triggered
+      message: 'Profile completed! You will receive your personalized agenda when you check in to the event.'
     });
   } catch (error) {
     next(error);
   }
 };
 
-// Get specific attendee info
+// Get specific attendee info with auto profile approval
 const getAttendeeInfo = async (req, res, next) => {
   const { eventId, contractorId } = req.query;
 
@@ -283,10 +400,51 @@ const getAttendeeInfo = async (req, res, next) => {
       });
     }
 
+    const attendee = result.rows[0];
+
+    // If profile is already completed, just return
+    if (attendee.profile_completion_status === 'completed') {
+      return res.json({
+        success: true,
+        attendee,
+        profile_auto_approved: false
+      });
+    }
+
+    // Check if contractor's main profile is complete
+    const profileCheck = await isContractorProfileComplete(contractorId);
+
+    if (profileCheck.complete) {
+      // Auto-approve: Mark event profile as completed since main profile is complete
+      console.log(`[AutoApprove] Contractor ${contractorId} has complete main profile - auto-approving event profile`);
+
+      const updated = await query(`
+        UPDATE event_attendees
+        SET
+          profile_completion_status = 'completed',
+          profile_completion_time = CURRENT_TIMESTAMP,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE event_id = $1 AND contractor_id = $2
+        RETURNING *
+      `, [eventId, contractorId]);
+
+      return res.json({
+        success: true,
+        attendee: updated.rows[0],
+        profile_auto_approved: true,
+        message: 'Profile automatically approved - main profile is complete'
+      });
+    }
+
+    // Profile incomplete - return status with missing fields
     res.json({
       success: true,
-      attendee: result.rows[0]
+      attendee,
+      profile_auto_approved: false,
+      profile_incomplete: true,
+      missing_fields: profileCheck.missing
     });
+
   } catch (error) {
     next(error);
   }

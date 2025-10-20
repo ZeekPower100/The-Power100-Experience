@@ -150,7 +150,7 @@ async function handleCheckInStatusQuery(smsData, attendance) {
   if (!attendance || !attendance.check_in_time) {
     // Not checked in yet
     const firstName = smsData.contractor.name.split(' ')[0];
-    const message = `Hi ${firstName}! You're not checked in yet. Please visit the registration desk with your QR code (check your email) to check in. See you soon!`;
+    const message = `Hi ${firstName}! You're not checked in yet. Please visit the registration desk with your QR code (check your email) to check in and unlock your personalized agenda!`;
 
     return {
       success: true,
