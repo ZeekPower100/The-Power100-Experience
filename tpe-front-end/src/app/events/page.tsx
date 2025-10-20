@@ -31,7 +31,10 @@ export default function EventsPage() {
   const fetchEvents = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:5000/api/events');
+
+      // Backend API base URL
+      const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${API_BASE}/api/events`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch events');
