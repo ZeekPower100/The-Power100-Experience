@@ -699,12 +699,12 @@ const aiConciergeController = {
     try {
       // Fetch books
       const booksResult = await query(
-        `SELECT title, author, focus_areas_covered FROM books WHERE status IN ('published', 'active') LIMIT 5`
+        `SELECT title, author, to_json(focus_areas_covered) as focus_areas_covered FROM books WHERE status IN ('published', 'active') LIMIT 5`
       );
 
       // Fetch podcasts
       const podcastsResult = await query(
-        `SELECT title, host, focus_areas_covered FROM podcasts WHERE is_active = true AND status = 'published' LIMIT 5`
+        `SELECT title, host, to_json(focus_areas_covered) as focus_areas_covered FROM podcasts WHERE is_active = true AND status = 'published' LIMIT 5`
       );
 
       // Fetch partners
@@ -783,7 +783,7 @@ const aiConciergeController = {
     }
   },
 
-  async generateAIResponse(userInput, contractor, contractorId, eventContext = null) {
+  async generateAIResponse(userInput, contractor, contractorId, eventContext = null, timezone = 'America/New_York') {
     try {
       // Get recent conversation history
       const conversationHistory = await AIConcierge.getConversations(
@@ -1211,7 +1211,8 @@ const aiConciergeController = {
         contractor,
         conversationHistory,
         partnersToPass,
-        finalKnowledge  // Pass the full knowledge base
+        finalKnowledge,  // Pass the full knowledge base
+        timezone  // Pass contractor's timezone for accurate date/time calculations
       );
 
       // Extract just the content from the response object

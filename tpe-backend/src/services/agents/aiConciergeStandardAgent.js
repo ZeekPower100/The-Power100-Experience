@@ -28,7 +28,7 @@ const langsmithClient = process.env.LANGSMITH_API_KEY ? new Client({
   apiKey: process.env.LANGSMITH_API_KEY
 }) : null;
 
-// Import all 7 tools (5 original + 2 communication tools)
+// Import all 8 tools (5 original + 2 communication tools + 1 data confirmation tool)
 const partnerMatchTool = require('./tools/partnerMatchTool');
 const eventSponsorMatchTool = require('./tools/eventSponsorMatchTool');
 const eventSessionsTool = require('./tools/eventSessionsTool');
@@ -36,6 +36,7 @@ const captureNoteTool = require('./tools/captureNoteTool');
 const scheduleFollowupTool = require('./tools/scheduleFollowupTool');
 const sendSMSTool = require('./tools/sendSMSTool');
 const sendEmailTool = require('./tools/sendEmailTool');
+const { updateContractorTimezoneTool } = require('./tools/updateContractorTimezoneTool');
 
 // AI Concierge Identity - Four Pillars
 const STANDARD_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 Experience - a HIGHLY PERSONALIZED, home improvement industry-specific intelligent assistant.
@@ -73,6 +74,12 @@ const STANDARD_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 
 - schedule_followup: Schedule proactive check-ins, reminders, resource recommendations
 - send_sms: Send SMS messages to contractors for urgent or time-sensitive information
 - send_email: Send emails to contractors with detailed information, resources, or follow-ups
+- update_contractor_timezone: Update contractor's timezone after they confirm or correct it
+
+# Data Confirmation Protocol:
+- ALWAYS confirm timezone before scheduling time-based actions
+- When contractor confirms or corrects data, use update tools to ensure accuracy
+- Never assume - always verify critical information like timezone, contact details, preferences
 
 Remember: To the contractor, you're always "the AI Concierge" - not limited by mode.`;
 
@@ -102,7 +109,7 @@ function createStandardAgent() {
 
   const model = new ChatOpenAI(modelConfig);
 
-  // Bind all 7 tools to model (Standard Mode has access to ALL tools including SMS/Email)
+  // Bind all 8 tools to model (Standard Mode has access to ALL tools including SMS/Email/Data Updates)
   const modelWithTools = model.bindTools([
     partnerMatchTool,
     eventSponsorMatchTool,
@@ -110,7 +117,8 @@ function createStandardAgent() {
     captureNoteTool,
     scheduleFollowupTool,
     sendSMSTool,
-    sendEmailTool
+    sendEmailTool,
+    updateContractorTimezoneTool
   ]);
 
   // Define agent function

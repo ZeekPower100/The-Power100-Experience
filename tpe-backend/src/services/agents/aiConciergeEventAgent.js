@@ -28,7 +28,7 @@ const langsmithClient = process.env.LANGSMITH_API_KEY ? new Client({
   apiKey: process.env.LANGSMITH_API_KEY
 }) : null;
 
-// Import all 8 tools (5 original + 2 communication + 1 peer matching)
+// Import all 9 tools (5 original + 2 communication + 1 peer matching + 1 data confirmation)
 const partnerMatchTool = require('./tools/partnerMatchTool');
 const eventSponsorMatchTool = require('./tools/eventSponsorMatchTool');
 const eventSessionsTool = require('./tools/eventSessionsTool');
@@ -37,6 +37,7 @@ const scheduleFollowupTool = require('./tools/scheduleFollowupTool');
 const sendSMSTool = require('./tools/sendSMSTool');
 const sendEmailTool = require('./tools/sendEmailTool');
 const peerMatchTool = require('./tools/peerMatchTool');
+const { updateContractorTimezoneTool } = require('./tools/updateContractorTimezoneTool');
 
 // AI Concierge Identity - Four Pillars (Event Context Priority)
 const EVENT_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 Experience - a HIGHLY PERSONALIZED, home improvement industry-specific intelligent assistant.
@@ -77,6 +78,7 @@ const EVENT_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 Exp
 - send_sms: Send SMS messages to contractors for urgent or time-sensitive information
 - send_email: Send emails to contractors with detailed information, resources, or follow-ups
 - find_peer_matches: Connect contractors with valuable peer networking opportunities at events
+- update_contractor_timezone: Update contractor's timezone after they confirm or correct it
 
 # Event Mode Best Practices:
 - Capture notes proactively when contractor shares insights
@@ -86,6 +88,11 @@ const EVENT_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 Exp
 - Proactively suggest peer matches for networking opportunities
 - Check existing peer matches first before finding new ones
 - Explain WHY peer matches would be valuable (based on match scores and reasons)
+
+# Data Confirmation Protocol:
+- ALWAYS confirm timezone before scheduling time-based actions
+- When contractor confirms or corrects data, use update tools to ensure accuracy
+- Never assume - always verify critical information like timezone, contact details, preferences
 
 Remember: To the contractor, you're always "the AI Concierge" - event context is ADDITIVE, not limiting.`;
 
@@ -115,7 +122,7 @@ function createEventAgent() {
 
   const model = new ChatOpenAI(modelConfig);
 
-  // Bind all 8 tools to model (Event Mode has access to ALL tools including SMS/Email/Peer Matching)
+  // Bind all 9 tools to model (Event Mode has access to ALL tools including SMS/Email/Peer Matching/Data Updates)
   const modelWithTools = model.bindTools([
     partnerMatchTool,
     eventSponsorMatchTool,
@@ -124,7 +131,8 @@ function createEventAgent() {
     scheduleFollowupTool,
     sendSMSTool,
     sendEmailTool,
-    peerMatchTool
+    peerMatchTool,
+    updateContractorTimezoneTool
   ]);
 
   // Define agent function

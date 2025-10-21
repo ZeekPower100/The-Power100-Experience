@@ -7,6 +7,7 @@ const aiKnowledgeService = require('../aiKnowledgeService');
 const { query } = require('../../config/database');
 const { safeJsonParse } = require('../../utils/jsonHelpers');
 const { processMessageForSMS } = require('../../utils/smsHelpers');
+const { detectTimezone } = require('../../utils/timezoneDetector');
 
 /**
  * Register all event orchestration handlers
@@ -72,7 +73,7 @@ async function handleGeneralQuestion(smsData, classification) {
               to_json(focus_areas) as focus_areas,
               revenue_tier, team_size,
               to_json(business_goals) as business_goals,
-              email, phone
+              email, phone, timezone
        FROM contractors WHERE id = $1`,
       [smsData.contractor.id]
     );
@@ -83,8 +84,24 @@ async function handleGeneralQuestion(smsData, classification) {
 
     const contractor = contractorResult.rows[0];
 
+    // Auto-detect and save timezone if not set
+    if (!contractor.timezone && contractor.phone) {
+      const detectedTimezone = detectTimezone(contractor.phone);
+      console.log(`[Handler] Auto-detected timezone ${detectedTimezone} for contractor ${contractor.id} from phone ${contractor.phone}`);
+
+      // Save timezone to database
+      await query(
+        'UPDATE contractors SET timezone = $1 WHERE id = $2',
+        [detectedTimezone, contractor.id]
+      );
+
+      // Update local contractor object
+      contractor.timezone = detectedTimezone;
+    }
+
     // Prepare contractor data for AI Concierge
     const contractorData = {
+      id: contractor.id,  // CRITICAL: Required for AI function calls (action items, follow-ups, etc.)
       name: contractor.name,
       company_name: contractor.company_name,
       focus_areas: safeJsonParse(contractor.focus_areas, []),
@@ -114,7 +131,8 @@ async function handleGeneralQuestion(smsData, classification) {
       smsData.messageText,
       contractorData,
       smsData.contractor.id,
-      eventContext  // Pass event context so AI knows actual speakers/sponsors/schedule
+      eventContext,  // Pass event context so AI knows actual speakers/sponsors/schedule
+      contractor.timezone || 'America/New_York'  // Pass contractor's timezone for date calculations
     );
 
     // Extract response content (handles both string and object responses)
@@ -124,8 +142,13 @@ async function handleGeneralQuestion(smsData, classification) {
 
     console.log('[Handler] AI Concierge response generated:', responseContent.substring(0, 100) + '...');
 
+    // CRITICAL: Strip markdown formatting for SMS (asterisks don't work in plain text)
+    const smsCleanedContent = responseContent
+      .replace(/\*\*([^*]+)\*\*/g, '$1')  // Remove **bold**
+      .replace(/\*([^*]+)\*/g, '$1');      // Remove *italic*
+
     // Process for SMS with multi-message support (CRITICAL: enforces GHL limits)
-    const smsResult = processMessageForSMS(responseContent, {
+    const smsResult = processMessageForSMS(smsCleanedContent, {
       allowMultiSMS: true,
       maxMessages: 3,
       context: {

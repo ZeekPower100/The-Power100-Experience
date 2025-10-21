@@ -697,7 +697,7 @@ Provide a JSON response with exactly 5 actionable insights:
   /**
    * AI Concierge - Generate conversational response for contractor
    */
-  async generateConciergeResponse(message, contractor, conversationHistory = [], partners = [], knowledgeBase = {}) {
+  async generateConciergeResponse(message, contractor, conversationHistory = [], partners = [], knowledgeBase = {}, timezone = 'America/New_York') {
     // Initialize on first use
     this.initializeClient();
 
@@ -1084,6 +1084,21 @@ Key Guidelines:
 - Include contact info, URLs, and pricing when available
 - Reference actual data like satisfaction scores, engagement rates, testimonials
 
+SMS FORMATTING (CRITICAL - This is for text messages):
+- DO NOT use asterisks, markdown, or any formatting symbols
+- Use clean plain text with structure for readability
+- When listing items (sponsors, partners, books, etc.):
+  * Use UPPERCASE for main entity names (e.g., "WESTLAKE ROYAL BUILDING PRODUCTS")
+  * Use 📍 emoji ONLY for location information
+  * Use ⭐ emoji ONLY for tier/rating information
+  * Maximum 1-2 emojis per ENTIRE message (not per item)
+  * Example format:
+    1. WESTLAKE ROYAL BUILDING PRODUCTS
+       📍 Main Expo Hall - East Wing
+       ⭐ Platinum Sponsor
+- Keep emojis minimal and balanced - they should enhance, not overwhelm
+- Use spacing and structure for visual appeal instead of formatting symbols
+
 CRITICAL PARTNER RULES:
 - You can ONLY recommend partners listed in "=== STRATEGIC PARTNERS IN TPX NETWORK ==="
 - NEVER make up partner names or companies
@@ -1125,7 +1140,26 @@ Your knowledge includes:
 - Transcribed insights from industry podcasts and videos
 - Key takeaways from recommended business books
 
-Always remember: You're here to be their AI-powered business advisor, providing insights and recommendations based on their unique situation, goals, AND the collective intelligence of the entire TPX ecosystem.`;
+Always remember: You're here to be their AI-powered business advisor, providing insights and recommendations based on their unique situation, goals, AND the collective intelligence of the entire TPX ecosystem.
+
+===== FINAL CRITICAL INSTRUCTION FOR SMS FORMATTING =====
+YOU ARE RESPONDING VIA TEXT MESSAGE (SMS).
+NEVER EVER use **asterisks** for bold or any markdown formatting.
+NEVER use *asterisks* around text.
+SMS does not support formatting - asterisks will show as literal characters.
+
+REQUIRED FORMAT for lists (sponsors, partners, books, etc.):
+1. ENTITY NAME IN UPPERCASE
+   📍 Location info here (use location emoji ONLY)
+   ⭐ Tier/rating info (use star emoji ONLY)
+
+2. SECOND ENTITY NAME
+   📍 Location
+   ⭐ Rating
+
+Maximum 1-2 emojis TOTAL in the entire message.
+Use clean spacing and structure - NO formatting symbols.
+================================================================`;
 
     // Build contractor context
     const contractorContext = `
@@ -1156,6 +1190,63 @@ Contractor Information:
           });
         });
       }
+
+      // CRITICAL: Add current date/time AFTER history (so AI uses correct dates)
+      // Use contractor's timezone (auto-detected from phone area code)
+      const currentDate = new Date();
+      const formattedDate = currentDate.toLocaleString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: timezone
+      });
+
+      // Get friendly timezone name
+      const { getFriendlyTimezoneName } = require('../utils/timezoneDetector');
+      const timezoneName = getFriendlyTimezoneName(timezone);
+
+      messages.push({
+        role: 'system',
+        content: `🚨 CRITICAL DATE/TIME INFORMATION 🚨
+
+TODAY'S CURRENT DATE AND TIME: ${formattedDate} (${timezoneName})
+
+DATE CALCULATIONS - Use these exact dates:
+- TODAY: ${currentDate.toISOString().split('T')[0]}
+- "Next week" (7 days): ${new Date(currentDate.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+- "Tomorrow": ${new Date(currentDate.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+- "In 3 days": ${new Date(currentDate.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
+
+DO NOT use dates from your training data (2023). Use the dates above.
+
+TIMEZONE: This contractor is in ${timezoneName}.
+- All scheduling should use ${timezoneName}
+- Mention timezone in your confirmation (e.g., "12:00 PM ${timezoneName}")
+- If they mention a different timezone, use update_contractor_timezone tool
+
+When using schedule_followup, the scheduled_time parameter must be in ISO 8601 format.`
+      });
+
+      // CRITICAL: Add SMS formatting override AFTER history (so it's the last instruction AI sees)
+      messages.push({
+        role: 'system',
+        content: `CRITICAL FORMATTING OVERRIDE FOR THIS RESPONSE:
+You are responding via TEXT MESSAGE (SMS). Plain text only - NO markdown formatting.
+
+When listing sponsors, partners, or any entities, use this EXACT format:
+
+Your top match is WESTLAKE ROYAL BUILDING PRODUCTS
+📍 Main Expo Hall - East Wing
+⭐ Platinum Sponsor
+
+They align with Zeek Co's growth goals. Want to set up a meeting?
+
+Use UPPERCASE for entity names. Use 📍 for location. Use ⭐ for tier/rating. Max 2 emojis total.
+DO NOT write long paragraphs. Use spacing and structure.`
+      });
 
       // Add current message
       messages.push({ role: 'user', content: message });

@@ -183,8 +183,8 @@ ROUTING RULES:
 3. If the expected response is "speaker_feedback_rating" and user sends a number 1-10, route to "speaker_feedback"
 4. If user asks about a speaker by name or mentions session topics, route to "speaker_details"
 5. If user asks about sponsors or booths, route to "sponsor_details"
-6. If the context is stale (>24 hours) and message is ambiguous, route to "general_question"
-7. For natural language questions, analyze intent from conversation history
+6. For follow-up requests, scheduling, or natural language questions, route to "general_question" with good confidence
+7. If context is unclear and no pattern matches, route to "general_question" (let the AI Concierge figure it out)
 
 Return ONLY valid JSON in this exact format:
 {
