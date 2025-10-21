@@ -19,6 +19,35 @@ class AIKnowledgeService {
     this.DEFAULT_CACHE_EXPIRY = 3600000; // 1 hour for general knowledge
     this.ACTIVE_EVENT_CACHE_EXPIRY = 30000; // 30 seconds during events
     this.PAST_EVENT_CACHE_EXPIRY = 86400000; // 24 hours for past events
+
+    // Known array columns that need to_json() conversion (PostgreSQL array → JSON array)
+    this.arrayColumns = [
+      'focus_areas',
+      'focus_areas_served',
+      'focus_areas_covered',
+      'focus_areas_12_months',
+      'topics',
+      'key_differentiators',
+      'social_proof',
+      'testimonials',
+      'booth_representatives',
+      'ai_tags',
+      'ai_insights',
+      'actionable_insights'
+    ];
+  }
+
+  /**
+   * Wrap array columns with to_json() to convert PostgreSQL arrays to JSON
+   * Prevents "Unexpected token ," errors when parsing
+   */
+  wrapArrayColumn(columnName, tableAlias = null) {
+    const fullName = tableAlias ? `${tableAlias}.${columnName}` : columnName;
+
+    if (this.arrayColumns.includes(columnName)) {
+      return `to_json(${fullName}) as ${columnName}`;
+    }
+    return fullName;
   }
 
   /**
@@ -41,8 +70,10 @@ class AIKnowledgeService {
         if (!tableInfo.isEntityTable) continue;
 
         // Build dynamic query based on discovered columns
+        // CRITICAL: Wrap array columns with to_json() to convert PostgreSQL arrays to JSON
         const columns = Object.keys(tableInfo.columns)
           .filter(col => !tableInfo.columns[col].isSensitive || tableInfo.columns[col].isAIProcessed)
+          .map(col => this.wrapArrayColumn(col))
           .join(', ');
 
         // Debug logging for strategic_partners
@@ -180,8 +211,10 @@ class AIKnowledgeService {
       }
 
       // Build dynamic query
+      // CRITICAL: Wrap array columns with to_json() to convert PostgreSQL arrays to JSON
       const columns = Object.keys(tableInfo.columns)
         .filter(col => !tableInfo.columns[col].isSensitive || tableInfo.columns[col].isAIProcessed)
+        .map(col => this.wrapArrayColumn(col))
         .join(', ');
 
       let queryStr = `SELECT ${columns} FROM ${entityType}`;
@@ -245,9 +278,9 @@ class AIKnowledgeService {
           e.expected_attendance,
           e.speaker_profiles,
           e.sponsors,
-          e.focus_areas_covered,
+          to_json(e.focus_areas_covered) as focus_areas_covered,
           e.ai_summary,
-          e.ai_tags,
+          to_json(e.ai_tags) as ai_tags,
           -- Get speakers as JSON
           (
             SELECT json_agg(json_build_object(
@@ -348,8 +381,8 @@ class AIKnowledgeService {
         const partnersResult = await query(`
           SELECT
             company_name,
-            focus_areas_served,
-            key_differentiators,
+            to_json(focus_areas_served) as focus_areas_served,
+            to_json(key_differentiators) as key_differentiators,
             powerconfidence_score,
             ai_confidence_score
           FROM strategic_partners
@@ -364,8 +397,8 @@ class AIKnowledgeService {
         const partnersResult = await query(`
           SELECT
             company_name,
-            focus_areas_served,
-            key_differentiators,
+            to_json(focus_areas_served) as focus_areas_served,
+            to_json(key_differentiators) as key_differentiators,
             powerconfidence_score,
             ai_confidence_score
           FROM strategic_partners
@@ -388,9 +421,9 @@ class AIKnowledgeService {
           SELECT
             title,
             author,
-            focus_areas_covered,
+            to_json(focus_areas_covered) as focus_areas_covered,
             ai_summary,
-            ai_insights
+            to_json(ai_insights) as ai_insights
           FROM books
           WHERE status = 'published'
           AND (${bookConditions})
@@ -402,9 +435,9 @@ class AIKnowledgeService {
           SELECT
             title,
             author,
-            focus_areas_covered,
+            to_json(focus_areas_covered) as focus_areas_covered,
             ai_summary,
-            ai_insights
+            to_json(ai_insights) as ai_insights
           FROM books
           WHERE status = 'published'
           LIMIT 10
@@ -424,9 +457,9 @@ class AIKnowledgeService {
           SELECT
             title,
             host,
-            focus_areas_covered,
+            to_json(focus_areas_covered) as focus_areas_covered,
             ai_summary,
-            actionable_insights
+            to_json(actionable_insights) as actionable_insights
           FROM podcasts
           WHERE is_active = true
           AND status = 'published'
@@ -439,9 +472,9 @@ class AIKnowledgeService {
           SELECT
             title,
             host,
-            focus_areas_covered,
+            to_json(focus_areas_covered) as focus_areas_covered,
             ai_summary,
-            actionable_insights
+            to_json(actionable_insights) as actionable_insights
           FROM podcasts
           WHERE is_active = true
           AND status = 'published'
@@ -463,7 +496,7 @@ class AIKnowledgeService {
             name,
             date,
             format,
-            focus_areas_covered,
+            to_json(focus_areas_covered) as focus_areas_covered,
             ai_summary
           FROM events
           WHERE status = 'active'
@@ -479,7 +512,7 @@ class AIKnowledgeService {
             name,
             date,
             format,
-            focus_areas_covered,
+            to_json(focus_areas_covered) as focus_areas_covered,
             ai_summary
           FROM events
           WHERE status = 'active'
@@ -653,7 +686,7 @@ class AIKnowledgeService {
           session_description,
           session_time,
           session_location,
-          focus_areas,
+          to_json(focus_areas) as focus_areas,
           pcr_score,
           average_rating,
           total_ratings
@@ -669,8 +702,8 @@ class AIKnowledgeService {
           es.sponsor_name,
           es.booth_number,
           es.booth_location,
-          es.booth_representatives,
-          es.focus_areas_served,
+          to_json(es.booth_representatives) as booth_representatives,
+          to_json(es.focus_areas_served) as focus_areas_served,
           es.special_offers,
           es.pcr_score,
           sp.company_name,
@@ -754,8 +787,8 @@ class AIKnowledgeService {
               ELSE c1.company_name
             END as peer_company,
             CASE
-              WHEN pm.contractor1_id = $2 THEN c2.focus_areas
-              ELSE c1.focus_areas
+              WHEN pm.contractor1_id = $2 THEN to_json(c2.focus_areas)
+              ELSE to_json(c1.focus_areas)
             END as peer_focus_areas,
             -- Get my response status
             CASE
