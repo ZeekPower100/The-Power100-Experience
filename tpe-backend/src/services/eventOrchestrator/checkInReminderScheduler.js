@@ -18,6 +18,7 @@
 const { query } = require('../../config/database');
 const { safeJsonStringify } = require('../../utils/jsonHelpers');
 const { scheduleEventMessage } = require('../../queues/eventMessageQueue');
+const { generateContextualMessage } = require('../aiMessageGenerator');
 
 // Email scheduling: Creates event_messages records that eventMessageWorker will process
 // Worker calls emailScheduler functions at scheduled times
@@ -285,32 +286,77 @@ async function scheduleCheckInReminderMessage({
   personalizationData
 }) {
   try {
-    // Create message content based on reminder type
-    let messageContent = '';
+    // Check if contractor already checked in
+    const checkInStatus = await query(`
+      SELECT check_in_time FROM event_attendees
+      WHERE event_id = $1 AND contractor_id = $2
+    `, [eventId, contractorId]);
 
-    switch (reminderType) {
-      case 'check_in_reminder_night_before':
-        messageContent = `Hi ${personalizationData.first_name}! ${personalizationData.event_name} is tomorrow! Tap here to check in now and get your personalized agenda early. Start planning your day before you arrive!`;
-        break;
+    const alreadyCheckedIn = checkInStatus.rows[0]?.check_in_time != null;
 
-      case 'check_in_reminder_1_hour':
-        messageContent = `${personalizationData.event_name} starts in 1 hour! Check in now to unlock your personalized experience - tap here to see your custom speaker, sponsor, and peer recommendations!`;
-        break;
-
-      case 'check_in_reminder_event_start':
-        messageContent = `${personalizationData.event_name} is starting now! Tap to check in and access your personalized agenda with curated connections. Make today count!`;
-        break;
-
-      default:
-        messageContent = `Reminder: ${personalizationData.event_name} check-in required for personalized agenda`;
-    }
-
-    // Get contractor phone for BullMQ job
+    // Get contractor details for AI context
     const contractorResult = await query(`
-      SELECT phone FROM contractors WHERE id = $1
+      SELECT first_name, company_name, focus_areas, phone FROM contractors WHERE id = $1
     `, [contractorId]);
 
-    const phone = contractorResult.rows[0]?.phone;
+    const contractor = contractorResult.rows[0] || {};
+
+    // Determine timing context
+    const now = new Date();
+    const eventTime = new Date(scheduledTime);
+    const hoursUntilEvent = Math.round((eventTime - now) / (1000 * 60 * 60));
+
+    let timingLabel, timeContext;
+    switch (reminderType) {
+      case 'check_in_reminder_night_before':
+        timingLabel = 'is tomorrow';
+        timeContext = 'night_before';
+        break;
+      case 'check_in_reminder_1_hour':
+        timingLabel = 'starts in 1 hour';
+        timeContext = 'one_hour_before';
+        break;
+      case 'check_in_reminder_event_start':
+        timingLabel = 'is starting now';
+        timeContext = 'event_start';
+        break;
+      default:
+        timingLabel = 'is coming up';
+        timeContext = 'general';
+    }
+
+    // Build context for AI
+    const messageContext = {
+      contractor: {
+        first_name: contractor.first_name || personalizationData.first_name,
+        company_name: contractor.company_name,
+        focus_areas: typeof contractor.focus_areas === 'string'
+          ? JSON.parse(contractor.focus_areas || '[]')
+          : contractor.focus_areas
+      },
+      event: {
+        name: personalizationData.event_name
+      },
+      timing: {
+        hours_until_event: hoursUntilEvent,
+        time_context: timeContext,
+        day_number: personalizationData.day_number || 1
+      },
+      already_checked_in: alreadyCheckedIn
+    };
+
+    // AI generates contextual message
+    const messageContent = await generateContextualMessage(
+      'check_in_reminder',
+      {
+        timing_label: timingLabel,
+        reminder_type: reminderType
+      },
+      messageContext
+    );
+
+    // Get phone from contractor data we already fetched
+    const phone = contractor.phone;
 
     // DATABASE-CHECKED: event_messages has these exact fields
     // Insert scheduled message into database
@@ -375,9 +421,17 @@ async function scheduleCheckInReminderEmail({
   personalizationData
 }) {
   try {
-    // Get contractor email
+    // Check if contractor already checked in
+    const checkInStatus = await query(`
+      SELECT check_in_time FROM event_attendees
+      WHERE event_id = $1 AND contractor_id = $2
+    `, [eventId, contractorId]);
+
+    const alreadyCheckedIn = checkInStatus.rows[0]?.check_in_time != null;
+
+    // Get contractor details
     const contractorResult = await query(`
-      SELECT email, first_name, last_name FROM contractors WHERE id = $1
+      SELECT email, first_name, last_name, company_name, focus_areas FROM contractors WHERE id = $1
     `, [contractorId]);
 
     if (contractorResult.rows.length === 0) {
@@ -393,29 +447,66 @@ async function scheduleCheckInReminderEmail({
       return null;
     }
 
-    // Create subject and content based on reminder type (matching emailScheduler templates)
-    let subject = '';
-    let messageContent = '';
+    // Determine timing context (same as SMS)
+    const now = new Date();
+    const eventTime = new Date(scheduledTime);
+    const hoursUntilEvent = Math.round((eventTime - now) / (1000 * 60 * 60));
 
+    let timingLabel, timeContext;
     switch (reminderType) {
       case 'check_in_reminder_night_before':
-        subject = `${personalizationData.event_name} is tomorrow!`;
-        messageContent = `Hi ${personalizationData.first_name}! ${personalizationData.event_name} is tomorrow at ${personalizationData.event_time} at ${personalizationData.location}. Tap the check-in button below to get your personalized agenda now and start planning your day before you arrive!`;
+        timingLabel = 'is tomorrow';
+        timeContext = 'night_before';
         break;
-
       case 'check_in_reminder_1_hour':
-        subject = `${personalizationData.event_name} starts in 1 hour!`;
-        messageContent = `${personalizationData.event_name} starts in 1 hour! Check in now to unlock your personalized experience - click below to see your custom speaker, sponsor, and peer recommendations!`;
+        timingLabel = 'starts in 1 hour';
+        timeContext = 'one_hour_before';
         break;
-
       case 'check_in_reminder_event_start':
-        subject = `${personalizationData.event_name} is starting now!`;
-        messageContent = `${personalizationData.event_name} is starting now! Click to check in and access your personalized agenda with curated connections. Make today count!`;
+        timingLabel = 'is starting now';
+        timeContext = 'event_start';
         break;
-
       default:
-        subject = `Reminder: ${personalizationData.event_name}`;
-        messageContent = `Reminder: ${personalizationData.event_name} check-in required for personalized agenda`;
+        timingLabel = 'is coming up';
+        timeContext = 'general';
+    }
+
+    // Build context for AI (same structure as SMS)
+    const messageContext = {
+      contractor: {
+        first_name: contractor.first_name || personalizationData.first_name,
+        company_name: contractor.company_name,
+        focus_areas: typeof contractor.focus_areas === 'string'
+          ? JSON.parse(contractor.focus_areas || '[]')
+          : contractor.focus_areas
+      },
+      event: {
+        name: personalizationData.event_name,
+        location: personalizationData.location,
+        time: personalizationData.event_time
+      },
+      timing: {
+        hours_until_event: hoursUntilEvent,
+        time_context: timeContext,
+        day_number: personalizationData.day_number || 1
+      },
+      already_checked_in: alreadyCheckedIn
+    };
+
+    // AI generates contextual message (same tone as SMS, slightly longer for email)
+    const messageContent = await generateContextualMessage(
+      'check_in_reminder',
+      {
+        timing_label: timingLabel,
+        reminder_type: reminderType
+      },
+      messageContext
+    );
+
+    // Generate subject line
+    let subject = `${personalizationData.event_name} ${timingLabel}`;
+    if (alreadyCheckedIn && timeContext === 'night_before') {
+      subject = `${personalizationData.event_name} - You're all set for tomorrow!`;
     }
 
     // DATABASE-CHECKED: event_messages has channel, from_email, to_email, subject fields

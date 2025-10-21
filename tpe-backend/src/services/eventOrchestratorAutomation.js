@@ -16,6 +16,7 @@ const aiKnowledgeService = require('./aiKnowledgeService');
 const { safeJsonStringify, safeJsonParse } = require('../utils/jsonHelpers');
 const { sendAgendaReadyNotification } = require('./eventOrchestrator/emailScheduler');
 const { sendSMSNotification } = require('./smsService');
+const { generateContextualMessage } = require('./aiMessageGenerator');
 const axios = require('axios');
 
 class EventOrchestratorAutomation {
@@ -489,19 +490,23 @@ class EventOrchestratorAutomation {
   async scheduleAllMessages(contractor_id, event_id, recommendations) {
     const messages = [];
 
-    // 1. Welcome message (immediate)
+    // Get contractor data for AI message generation
+    const contractor = await this.getContractorProfile(contractor_id);
+
+    // 1. Welcome message (immediate - keep static, sets the tone)
     messages.push({
       message_type: 'welcome',
       scheduled_time: new Date(),
       message_content: this.generateWelcomeMessage(recommendations)
     });
 
-    // 2. Speaker alerts (15 min before each session)
+    // 2. Speaker alerts (15 min before each session) - AI-generated
     for (const speaker of recommendations.speakers) {
+      const speakerMessage = await this.generateSpeakerAlert(speaker, contractor);
       messages.push({
         message_type: 'speaker_alert',
         scheduled_time: speaker.alert_time,
-        message_content: this.generateSpeakerAlert(speaker),
+        message_content: speakerMessage,
         related_entity_id: speaker.speaker_id
       });
     }
@@ -683,6 +688,9 @@ class EventOrchestratorAutomation {
     try {
       console.log(`[EventOrchestrator] Scheduling sponsor recommendations for ${recommendedSponsors.length} sponsors`);
 
+      // Get contractor data for AI message generation
+      const contractor = await this.getContractorProfile(contractor_id);
+
       // Get all breaks/lunch from agenda
       const breaksResult = await query(`
         SELECT id, title, start_time, item_type
@@ -701,18 +709,35 @@ class EventOrchestratorAutomation {
 
       console.log(`[EventOrchestrator] Found ${breaks.length} breaks in agenda`);
 
-      // Schedule one sponsor recommendation per break
+      // Schedule one sponsor recommendation per break with AI-generated messages
+      let visitedBooths = []; // Track "visited" booths across messages for context
       for (const breakPeriod of breaks) {
         // Calculate recommendation time: 2 minutes after break starts
         const recommendationTime = new Date(breakPeriod.start_time);
         recommendationTime.setMinutes(recommendationTime.getMinutes() + 2);
 
+        // Determine time context based on break type
+        const timeContext = breakPeriod.item_type === 'lunch' ? 'lunch' : 'break';
+
+        // AI-generated sponsor message with context
+        const sponsorMessage = await this.generateSponsorMessage(
+          recommendedSponsors,
+          contractor,
+          visitedBooths,
+          timeContext
+        );
+
         messages.push({
           message_type: 'sponsor_recommendation',
           scheduled_time: recommendationTime,
-          message_content: this.generateSponsorMessage(recommendedSponsors),
+          message_content: sponsorMessage,
           related_entity_id: recommendedSponsors[0]?.sponsor_id || null
         });
+
+        // Add booth to "visited" list for next message context
+        if (recommendedSponsors[0]?.booth_number) {
+          visitedBooths.push(recommendedSponsors[0].booth_number);
+        }
 
         console.log(`[EventOrchestrator] Sponsor recommendation scheduled for break "${breakPeriod.title}" at ${recommendationTime.toISOString()}`);
       }
@@ -737,6 +762,9 @@ class EventOrchestratorAutomation {
     try {
       console.log(`[EventOrchestrator] Scheduling peer introduction`);
 
+      // Get contractor data for AI message generation
+      const contractor = await this.getContractorProfile(contractor_id);
+
       // Get lunch time from agenda
       const lunchResult = await query(`
         SELECT start_time, title
@@ -758,12 +786,15 @@ class EventOrchestratorAutomation {
       const introductionTime = new Date(lunchTime);
       introductionTime.setMinutes(introductionTime.getMinutes() + 5);
 
+      // AI-generated peer introduction message
+      const peerMessage = await this.generatePeerMessage(recommendedPeers, contractor);
+
       console.log(`[EventOrchestrator] Peer introduction scheduled at ${introductionTime.toISOString()} (lunch + 5 min)`);
 
       return {
         message_type: 'peer_introduction',
         scheduled_time: introductionTime,
-        message_content: this.generatePeerMessage(recommendedPeers),
+        message_content: peerMessage,
         related_entity_id: recommendedPeers[0]?.peer_id || null
       };
     } catch (error) {
@@ -784,36 +815,88 @@ class EventOrchestratorAutomation {
   }
 
   /**
-   * Generate speaker alert message
+   * Generate AI-powered speaker alert message
    */
-  generateSpeakerAlert(speaker) {
-    return `🎤 Starting in 15 min: "${speaker.session_title}" by ${speaker.speaker_name}. ${speaker.why}. Location: Main Stage.`;
+  async generateSpeakerAlert(speaker, contractor) {
+    const messageContext = {
+      contractor: {
+        first_name: contractor.first_name
+      },
+      entity: {
+        speaker_name: speaker.speaker_name,
+        session_title: speaker.session_title,
+        why: speaker.why,
+        location: 'Main Stage'
+      }
+    };
+
+    return await generateContextualMessage(
+      'speaker_alert',
+      {
+        minutes_until: 15
+      },
+      messageContext
+    );
   }
 
   /**
-   * Generate sponsor recommendation message
+   * Generate AI-powered sponsor recommendation message
    */
-  generateSponsorMessage(sponsors) {
+  async generateSponsorMessage(sponsors, contractor, visitedBooths = [], timeContext = 'break') {
     if (sponsors.length === 0) return null;
 
     const topSponsor = sponsors[0];
-    let message = `🤝 Visit Booth ${topSponsor.booth_number}: ${topSponsor.sponsor_name}. ${topSponsor.why}.`;
 
-    if (topSponsor.talking_points?.length > 0) {
-      message += ` Ask about: ${topSponsor.talking_points[0]}`;
-    }
+    const messageContext = {
+      contractor: {
+        first_name: contractor.first_name
+      },
+      entity: {
+        sponsor_name: topSponsor.sponsor_name,
+        booth_number: topSponsor.booth_number,
+        why: topSponsor.why,
+        talking_points: topSponsor.talking_points || []
+      },
+      history: {
+        visited_booths: visitedBooths
+      },
+      timing: {
+        time_context: timeContext
+      }
+    };
 
-    return message;
+    return await generateContextualMessage(
+      'sponsor_recommendation',
+      {},
+      messageContext
+    );
   }
 
   /**
-   * Generate peer introduction message
+   * Generate AI-powered peer introduction message
    */
-  generatePeerMessage(peers) {
+  async generatePeerMessage(peers, contractor) {
     if (peers.length === 0) return null;
 
     const topPeer = peers[0];
-    return `👥 Connect with ${topPeer.peer_name} from ${topPeer.company_name}. ${topPeer.why}. ${topPeer.common_ground?.length > 0 ? `You both ${topPeer.common_ground[0]}` : ''}`;
+
+    const messageContext = {
+      contractor: {
+        first_name: contractor.first_name
+      },
+      entity: {
+        peer_name: topPeer.peer_name,
+        company_name: topPeer.company_name,
+        why: topPeer.why,
+        common_ground: topPeer.common_ground || []
+      }
+    };
+
+    return await generateContextualMessage(
+      'peer_introduction',
+      {},
+      messageContext
+    );
   }
 
   /**
@@ -903,7 +986,16 @@ class EventOrchestratorAutomation {
   }
 
   async getEventDetails(event_id) {
-    const result = await query('SELECT * FROM events WHERE id = $1', [event_id]);
+    const result = await query(`
+      SELECT
+        id, name, date, end_date, location, description,
+        website, logo_url, status, sms_event_code, timezone,
+        expected_attendance, format, registration_deadline,
+        to_json(ai_tags) as ai_tags,
+        to_json(focus_areas_covered) as focus_areas_covered,
+        ai_summary, target_audience, event_type
+      FROM events WHERE id = $1
+    `, [event_id]);
     return result.rows[0];
   }
 
