@@ -29,6 +29,7 @@ function registerAllHandlers() {
 
   // Register sponsor handlers
   aiRouter.registerHandler('sponsor_details', sponsorHandlers.handleSponsorDetails);
+  aiRouter.registerHandler('sponsor_batch_response', sponsorHandlers.handleSponsorBatchResponse);
 
   // Register PCR handlers
   aiRouter.registerHandler('pcr_response', pcrHandlers.handlePCRResponse);
@@ -131,17 +132,23 @@ async function handleGeneralQuestion(smsData, classification) {
 
     console.log(`[Handler] Processed AI response: ${smsResult.messages.length} message(s), split: ${smsResult.wasSplit}, truncated: ${smsResult.wasTruncated}`);
 
+    // CRITICAL: Detect if AI is requesting structured data (PCR, attendance, etc.)
+    // This allows AI to drive workflows without needing perfect routing
+    const detectedIntent = await detectAIIntent(responseContent, smsData, eventContext);
+
+    console.log('[Handler] Detected intent from AI response:', detectedIntent);
+
     return {
       success: true,
       action: 'send_message',
       messages: smsResult.messages,  // Array of messages (not single message)
       phone: smsData.phone,
       contractor_id: smsData.contractor.id,
-      message_type: 'ai_concierge_response',
+      message_type: detectedIntent.message_type || 'ai_concierge_response',
       response_sent: true,
       multi_sms: smsResult.wasSplit,
       sms_count: smsResult.messages.length,
-      personalization_data: {
+      personalization_data: detectedIntent.personalization_data || {
         ai_model: 'gpt-4',
         original_question: smsData.messageText,
         confidence: classification.confidence
@@ -167,6 +174,103 @@ Or contact support if this persists.`;
       message_type: 'error_fallback',
       response_sent: true,
       error: error.message
+    };
+  }
+}
+
+/**
+ * Detect structured intent from AI response
+ * Enables AI to drive workflows (PCR requests, attendance checks, etc.) without perfect routing
+ */
+async function detectAIIntent(aiResponse, smsData, eventContext) {
+  try {
+    const responseLower = aiResponse.toLowerCase();
+
+    // Detect PCR request pattern
+    if (/rate|rating|1-5|score/.test(responseLower) && eventContext) {
+      console.log('[IntentDetector] PCR pattern detected in AI response');
+
+      // Extract entity names from response
+      const sponsors = eventContext.sponsors || [];
+      const speakers = eventContext.fullSchedule || [];
+
+      // Check for sponsor mentions
+      for (const sponsor of sponsors) {
+        if (responseLower.includes(sponsor.sponsor_name.toLowerCase())) {
+          console.log('[IntentDetector] ✅ Sponsor PCR request:', sponsor.sponsor_name);
+          return {
+            message_type: 'sponsor_pcr_request',
+            personalization_data: {
+              sponsor_id: sponsor.id,
+              sponsor_name: sponsor.sponsor_name,
+              connection_person: { company: sponsor.sponsor_name }
+            }
+          };
+        }
+      }
+
+      // Check for speaker mentions
+      for (const speaker of speakers) {
+        if (responseLower.includes(speaker.name.toLowerCase())) {
+          console.log('[IntentDetector] ✅ Speaker PCR request:', speaker.name);
+          return {
+            message_type: 'speaker_pcr_request',
+            personalization_data: {
+              speaker_id: speaker.id,
+              speaker_name: speaker.name,
+              connection_person: { name: speaker.name },
+              session_title: speaker.session_title
+            }
+          };
+        }
+      }
+
+      // Generic PCR if no entity matched
+      console.log('[IntentDetector] Generic PCR request detected');
+      return {
+        message_type: 'pcr_clarification',
+        personalization_data: null
+      };
+    }
+
+    // Detect attendance confirmation pattern
+    if (/did you attend|were you there|make it to/i.test(responseLower) && eventContext) {
+      console.log('[IntentDetector] Attendance check detected');
+      return {
+        message_type: 'attendance_check',
+        personalization_data: null
+      };
+    }
+
+    // Detect sponsor batch check
+    if (/which sponsor|what booths|visit.*sponsor/i.test(responseLower) && eventContext) {
+      console.log('[IntentDetector] Sponsor batch check detected');
+      return {
+        message_type: 'sponsor_batch_check',
+        personalization_data: null
+      };
+    }
+
+    // Detect peer matching introduction/response
+    if (/would you like to connect|introduce you to|fellow contractor|peer match/i.test(responseLower) && eventContext) {
+      console.log('[IntentDetector] Peer matching introduction detected');
+      return {
+        message_type: 'peer_matching_introduction',
+        personalization_data: null
+      };
+    }
+
+    // No structured intent detected - regular conversation
+    return {
+      message_type: 'ai_concierge_response',
+      personalization_data: null
+    };
+
+  } catch (error) {
+    console.error('[IntentDetector] Error detecting intent:', error);
+    return {
+      message_type: 'ai_concierge_response',
+      personalization_data: null
     };
   }
 }

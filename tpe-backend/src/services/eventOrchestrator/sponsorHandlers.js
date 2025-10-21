@@ -404,6 +404,95 @@ async function trackSponsorInteraction(interaction) {
   }
 }
 
+/**
+ * Handle sponsor batch check response
+ * When contractor lists which sponsor booths they visited at end of event
+ */
+async function handleSponsorBatchResponse(smsData, classification) {
+  try {
+    console.log('[SponsorHandler] Processing sponsor batch response:', smsData.messageText);
+
+    const messageText = smsData.messageText.trim();
+
+    // Get event sponsors to match against response
+    const sponsorsResult = await query(`
+      SELECT id, sponsor_name, booth_number
+      FROM event_sponsors
+      WHERE event_id = $1
+    `, [smsData.eventContext?.id]);
+
+    const eventSponsors = sponsorsResult.rows;
+
+    // Parse sponsor names from response (fuzzy matching)
+    const visitedSponsors = [];
+    for (const sponsor of eventSponsors) {
+      const sponsorName = sponsor.sponsor_name.toLowerCase();
+      const messageTextLower = messageText.toLowerCase();
+
+      // Check if sponsor name or key words are in the message
+      if (messageTextLower.includes(sponsorName.toLowerCase()) ||
+          messageTextLower.includes(sponsor.sponsor_name.split(' ')[0].toLowerCase())) {
+        visitedSponsors.push(sponsor);
+      }
+    }
+
+    if (visitedSponsors.length === 0) {
+      // No sponsors found - ask for clarification
+      const availableSponsors = eventSponsors.map(s => s.sponsor_name).join(', ');
+      const message = `Thanks! I want to make sure I got that right. Which of these sponsor booths did you visit? ${availableSponsors}. You can list multiple sponsors.`;
+
+      return {
+        success: true,
+        action: 'send_message',
+        messages: [message],
+        phone: smsData.phone,
+        contractor_id: smsData.contractor.id,
+        message_type: 'sponsor_batch_clarification',
+        response_sent: true
+      };
+    }
+
+    // Found sponsors - request PCR for first one
+    const firstSponsor = visitedSponsors[0];
+    const message = `Great! How would you rate your experience with ${firstSponsor.sponsor_name}? Reply with a number 1-5 (1=Not valuable, 5=Extremely valuable)`;
+
+    // Save the list for follow-up PCR requests
+    await saveOutboundMessage({
+      contractor_id: smsData.contractor.id,
+      event_id: smsData.eventContext?.id,
+      message_type: 'sponsor_pcr_request',
+      personalization_data: {
+        visited_sponsors: visitedSponsors.map(s => ({ id: s.id, name: s.sponsor_name })),
+        current_sponsor_index: 0,
+        current_sponsor_id: firstSponsor.id,
+        current_sponsor_name: firstSponsor.sponsor_name
+      },
+      ghl_contact_id: smsData.ghl_contact_id,
+      ghl_location_id: smsData.ghl_location_id,
+      message_content: message
+    });
+
+    return {
+      success: true,
+      action: 'send_message',
+      messages: [message],
+      phone: smsData.phone,
+      contractor_id: smsData.contractor.id,
+      message_type: 'sponsor_pcr_request',
+      response_sent: true,
+      visited_sponsors: visitedSponsors.length
+    };
+
+  } catch (error) {
+    console.error('[SponsorHandler] Error handling sponsor batch response:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+}
+
 module.exports = {
-  handleSponsorDetails
+  handleSponsorDetails,
+  handleSponsorBatchResponse
 };

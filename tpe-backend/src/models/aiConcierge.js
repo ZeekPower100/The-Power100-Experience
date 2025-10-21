@@ -49,6 +49,7 @@ class AIConcierge {
    */
   static async getConversations(contractor_id, limit = 50, offset = 0) {
     try {
+      // UNION query to get both standard AI chat AND event orchestration messages
       const sql = `
         SELECT
           id,
@@ -57,9 +58,31 @@ class AIConcierge {
           content,
           media_type,
           media_url,
-          created_at
+          created_at,
+          'ai_chat' as source
         FROM ai_concierge_conversations
         WHERE contractor_id = $1
+
+        UNION ALL
+
+        SELECT
+          id,
+          contractor_id::text as contractor_id,
+          CASE
+            WHEN direction = 'outbound' THEN 'assistant'
+            WHEN direction = 'inbound' THEN 'user'
+            ELSE direction
+          END as message_type,
+          message_content as content,
+          NULL as media_type,
+          NULL as media_url,
+          COALESCE(actual_send_time, created_at) as created_at,
+          'event_orchestration' as source
+        FROM event_messages
+        WHERE contractor_id::text = $1
+          AND message_content IS NOT NULL
+          AND message_content != ''
+
         ORDER BY created_at DESC
         LIMIT $2 OFFSET $3
       `;

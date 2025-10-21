@@ -123,7 +123,7 @@ class EventOrchestratorAutomation {
     const { contractor, event, speakers, sponsors, attendees } = context;
 
     // 1. Match speakers to contractor interests
-    const speakerRecommendations = await this.matchSpeakers(contractor, speakers);
+    const speakerRecommendations = await this.matchSpeakers(contractor, speakers, event);
 
     // 2. Match sponsors to contractor needs
     const sponsorRecommendations = await this.matchSponsors(contractor, sponsors);
@@ -142,7 +142,7 @@ class EventOrchestratorAutomation {
   /**
    * Match speakers based on AI analysis
    */
-  async matchSpeakers(contractor, speakers) {
+  async matchSpeakers(contractor, speakers, event) {
     const matches = [];
 
     for (const speaker of speakers) {
@@ -158,7 +158,7 @@ class EventOrchestratorAutomation {
           session_time: speaker.session_time,
           relevance_score: score,
           why: this.explainSpeakerMatch(contractor, speaker) || 'Industry expert speaker',
-          alert_time: this.calculateAlertTime(speaker.session_time)
+          alert_time: this.calculateAlertTime(speaker.session_time, event)
         });
       }
     }
@@ -168,11 +168,14 @@ class EventOrchestratorAutomation {
   }
 
   /**
-   * Calculate when to send speaker alert (15 minutes before)
+   * Calculate when to send speaker alert
+   * Accelerated events: 2 minutes before session
+   * Normal events: 15 minutes before session
    */
-  calculateAlertTime(session_time) {
+  calculateAlertTime(session_time, event) {
     const alertTime = new Date(session_time);
-    alertTime.setMinutes(alertTime.getMinutes() - 15);
+    const minutesBefore = event.accelerated ? 2 : 15;
+    alertTime.setMinutes(alertTime.getMinutes() - minutesBefore);
     return alertTime;
   }
 
@@ -481,6 +484,7 @@ class EventOrchestratorAutomation {
 
   /**
    * Schedule all messages with optimal timing
+   * Called on check-in to schedule ALL event-day messages for this contractor
    */
   async scheduleAllMessages(contractor_id, event_id, recommendations) {
     const messages = [];
@@ -502,28 +506,31 @@ class EventOrchestratorAutomation {
       });
     }
 
-    // 3. Sponsor recommendations (30 min after check-in)
-    const sponsorTime = new Date();
-    sponsorTime.setMinutes(sponsorTime.getMinutes() + 30);
-    if (recommendations.sponsors.length > 0) {
-      messages.push({
-        message_type: 'sponsor_recommendation',
-        scheduled_time: sponsorTime,
-        message_content: this.generateSponsorMessage(recommendations.sponsors),
-        related_entity_id: recommendations.sponsors[0].sponsor_id
-      });
+    // 3. Sponsor recommendations (2 min after EACH break starts - agenda-based timing)
+    const sponsorRecommendationMessages = await this.scheduleSponsorRecommendations(contractor_id, event_id, recommendations.sponsors);
+    messages.push(...sponsorRecommendationMessages);
+
+    // 4. Peer introductions (5 min after lunch starts - agenda-based timing)
+    const peerIntroductionMessage = await this.schedulePeerIntroduction(contractor_id, event_id, recommendations.peers);
+    if (peerIntroductionMessage) {
+      messages.push(peerIntroductionMessage);
     }
 
-    // 4. Peer introductions (45 min after check-in)
-    const peerTime = new Date();
-    peerTime.setMinutes(peerTime.getMinutes() + 45);
-    if (recommendations.peers.length > 0) {
-      messages.push({
-        message_type: 'peer_introduction',
-        scheduled_time: peerTime,
-        message_content: this.generatePeerMessage(recommendations.peers),
-        related_entity_id: recommendations.peers[0].peer_id
-      });
+    // 5. PCR requests (7 min after each recommended session ends)
+    // Get session end times from event_agenda_items for recommended speakers
+    const pcrMessages = await this.schedulePCRForRecommendedSessions(contractor_id, event_id, recommendations.speakers);
+    messages.push(...pcrMessages);
+
+    // 6. End-of-day sponsor batch check (at event end)
+    const sponsorBatchCheckMessage = await this.scheduleSponsorBatchCheck(contractor_id, event_id);
+    if (sponsorBatchCheckMessage) {
+      messages.push(sponsorBatchCheckMessage);
+    }
+
+    // 7. Overall event PCR (1 hour after event ends)
+    const overallPCRMessage = await this.scheduleOverallEventPCR(contractor_id, event_id);
+    if (overallPCRMessage) {
+      messages.push(overallPCRMessage);
     }
 
     // Insert all scheduled messages into database
@@ -531,7 +538,238 @@ class EventOrchestratorAutomation {
       await this.scheduleMessage(contractor_id, event_id, message, recommendations);
     }
 
+    console.log(`[EventOrchestrator] ✅ Scheduled ${messages.length} messages for contractor ${contractor_id}`);
     return messages;
+  }
+
+  /**
+   * Schedule PCR requests for each recommended speaker session
+   * 7 minutes after session ends
+   */
+  async schedulePCRForRecommendedSessions(contractor_id, event_id, recommendedSpeakers) {
+    const messages = [];
+
+    if (!recommendedSpeakers || recommendedSpeakers.length === 0) {
+      console.log(`[EventOrchestrator] No recommended speakers, skipping PCR scheduling`);
+      return messages;
+    }
+
+    console.log(`[EventOrchestrator] Scheduling PCR requests for ${recommendedSpeakers.length} recommended sessions`);
+
+    // Get session end times from event_agenda_items for each recommended speaker
+    for (const speaker of recommendedSpeakers) {
+      try {
+        const sessionResult = await query(`
+          SELECT eai.end_time, es.session_title, es.name as speaker_name
+          FROM event_agenda_items eai
+          INNER JOIN event_speakers es ON eai.speaker_id = es.id
+          WHERE eai.event_id = $1
+            AND eai.speaker_id = $2
+            AND eai.item_type = 'session'
+          LIMIT 1
+        `, [event_id, speaker.speaker_id]);
+
+        if (sessionResult.rows.length > 0) {
+          const session = sessionResult.rows[0];
+
+          // Calculate PCR request time: 7 minutes after session ends
+          const pcrRequestTime = new Date(session.end_time);
+          pcrRequestTime.setMinutes(pcrRequestTime.getMinutes() + 7);
+
+          messages.push({
+            message_type: 'attendance_check',
+            scheduled_time: pcrRequestTime,
+            message_content: `📊 Quick check: Did you attend "${session.session_title}" by ${session.speaker_name}? Reply YES or NO.`,
+            related_entity_id: speaker.speaker_id
+          });
+
+          console.log(`[EventOrchestrator] PCR scheduled for "${session.session_title}" at ${pcrRequestTime.toISOString()}`);
+        }
+      } catch (error) {
+        console.error(`[EventOrchestrator] Error scheduling PCR for speaker ${speaker.speaker_id}:`, error);
+      }
+    }
+
+    return messages;
+  }
+
+  /**
+   * Schedule end-of-day sponsor batch check
+   * At event end time
+   */
+  async scheduleSponsorBatchCheck(contractor_id, event_id) {
+    try {
+      console.log(`[EventOrchestrator] Scheduling end-of-day sponsor batch check`);
+
+      // Get event end time from agenda (last agenda item end_time)
+      const eventEndResult = await query(`
+        SELECT MAX(end_time) as event_end_time
+        FROM event_agenda_items
+        WHERE event_id = $1
+      `, [event_id]);
+
+      if (eventEndResult.rows.length === 0 || !eventEndResult.rows[0].event_end_time) {
+        console.log(`[EventOrchestrator] No agenda items found, skipping sponsor batch check`);
+        return null;
+      }
+
+      const eventEndTime = new Date(eventEndResult.rows[0].event_end_time);
+
+      console.log(`[EventOrchestrator] Sponsor batch check scheduled at ${eventEndTime.toISOString()}`);
+
+      return {
+        message_type: 'sponsor_batch_check',
+        scheduled_time: eventEndTime,
+        message_content: `🤝 Event wrap-up! Which sponsor booths did you visit today? I'll help you follow up on the conversations that matter most.`,
+        related_entity_id: null
+      };
+    } catch (error) {
+      console.error(`[EventOrchestrator] Error scheduling sponsor batch check:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Schedule overall event PCR
+   * 1 hour after event ends
+   */
+  async scheduleOverallEventPCR(contractor_id, event_id) {
+    try {
+      console.log(`[EventOrchestrator] Scheduling overall event PCR`);
+
+      // Get event end time from agenda (last agenda item end_time)
+      const eventEndResult = await query(`
+        SELECT MAX(end_time) as event_end_time
+        FROM event_agenda_items
+        WHERE event_id = $1
+      `, [event_id]);
+
+      if (eventEndResult.rows.length === 0 || !eventEndResult.rows[0].event_end_time) {
+        console.log(`[EventOrchestrator] No agenda items found, skipping overall event PCR`);
+        return null;
+      }
+
+      const eventEndTime = new Date(eventEndResult.rows[0].event_end_time);
+
+      // Schedule PCR 1 hour after event ends
+      const pcrTime = new Date(eventEndTime.getTime() + (60 * 60 * 1000));
+
+      console.log(`[EventOrchestrator] Overall event PCR scheduled at ${pcrTime.toISOString()}`);
+
+      return {
+        message_type: 'post_event_wrap_up',
+        scheduled_time: pcrTime,
+        message_content: `🎯 How was your overall experience today? Rate 1-5 (1=Poor, 5=Excellent). Your feedback helps us improve future events!`,
+        related_entity_id: null
+      };
+    } catch (error) {
+      console.error(`[EventOrchestrator] Error scheduling overall event PCR:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Schedule sponsor recommendations for each break
+   * 2 minutes after each break starts
+   */
+  async scheduleSponsorRecommendations(contractor_id, event_id, recommendedSponsors) {
+    const messages = [];
+
+    if (!recommendedSponsors || recommendedSponsors.length === 0) {
+      console.log(`[EventOrchestrator] No recommended sponsors, skipping sponsor recommendation scheduling`);
+      return messages;
+    }
+
+    try {
+      console.log(`[EventOrchestrator] Scheduling sponsor recommendations for ${recommendedSponsors.length} sponsors`);
+
+      // Get all breaks/lunch from agenda
+      const breaksResult = await query(`
+        SELECT id, title, start_time, item_type
+        FROM event_agenda_items
+        WHERE event_id = $1
+          AND item_type IN ('break', 'lunch')
+        ORDER BY start_time ASC
+      `, [event_id]);
+
+      const breaks = breaksResult.rows;
+
+      if (breaks.length === 0) {
+        console.log(`[EventOrchestrator] No breaks found in agenda, skipping sponsor recommendations`);
+        return messages;
+      }
+
+      console.log(`[EventOrchestrator] Found ${breaks.length} breaks in agenda`);
+
+      // Schedule one sponsor recommendation per break
+      for (const breakPeriod of breaks) {
+        // Calculate recommendation time: 2 minutes after break starts
+        const recommendationTime = new Date(breakPeriod.start_time);
+        recommendationTime.setMinutes(recommendationTime.getMinutes() + 2);
+
+        messages.push({
+          message_type: 'sponsor_recommendation',
+          scheduled_time: recommendationTime,
+          message_content: this.generateSponsorMessage(recommendedSponsors),
+          related_entity_id: recommendedSponsors[0]?.sponsor_id || null
+        });
+
+        console.log(`[EventOrchestrator] Sponsor recommendation scheduled for break "${breakPeriod.title}" at ${recommendationTime.toISOString()}`);
+      }
+
+      return messages;
+    } catch (error) {
+      console.error(`[EventOrchestrator] Error scheduling sponsor recommendations:`, error);
+      return messages;
+    }
+  }
+
+  /**
+   * Schedule peer introduction
+   * 5 minutes after lunch starts (formerly called "2 minutes into lunch")
+   */
+  async schedulePeerIntroduction(contractor_id, event_id, recommendedPeers) {
+    if (!recommendedPeers || recommendedPeers.length === 0) {
+      console.log(`[EventOrchestrator] No recommended peers, skipping peer introduction scheduling`);
+      return null;
+    }
+
+    try {
+      console.log(`[EventOrchestrator] Scheduling peer introduction`);
+
+      // Get lunch time from agenda
+      const lunchResult = await query(`
+        SELECT start_time, title
+        FROM event_agenda_items
+        WHERE event_id = $1
+          AND item_type = 'lunch'
+        ORDER BY start_time ASC
+        LIMIT 1
+      `, [event_id]);
+
+      if (lunchResult.rows.length === 0) {
+        console.log(`[EventOrchestrator] No lunch found in agenda, skipping peer introduction`);
+        return null;
+      }
+
+      const lunchTime = lunchResult.rows[0].start_time;
+
+      // Calculate introduction time: 5 minutes after lunch starts
+      const introductionTime = new Date(lunchTime);
+      introductionTime.setMinutes(introductionTime.getMinutes() + 5);
+
+      console.log(`[EventOrchestrator] Peer introduction scheduled at ${introductionTime.toISOString()} (lunch + 5 min)`);
+
+      return {
+        message_type: 'peer_introduction',
+        scheduled_time: introductionTime,
+        message_content: this.generatePeerMessage(recommendedPeers),
+        related_entity_id: recommendedPeers[0]?.peer_id || null
+      };
+    } catch (error) {
+      console.error(`[EventOrchestrator] Error scheduling peer introduction:`, error);
+      return null;
+    }
   }
 
   /**
@@ -671,9 +909,14 @@ class EventOrchestratorAutomation {
 
   async getEventSpeakers(event_id) {
     const result = await query(`
-      SELECT * FROM event_speakers
-      WHERE event_id = $1
-      ORDER BY session_time
+      SELECT
+        es.*,
+        eai.start_time as session_time,
+        eai.end_time as session_end_time
+      FROM event_speakers es
+      LEFT JOIN event_agenda_items eai ON eai.speaker_id = es.id AND eai.event_id = es.event_id
+      WHERE es.event_id = $1
+      ORDER BY eai.start_time
     `, [event_id]);
     return result.rows;
   }

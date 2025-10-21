@@ -3,7 +3,6 @@ const { AppError } = require('../middleware/errorHandler');
 const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const crypto = require('crypto');
 const eventOrchestratorAutomation = require('../services/eventOrchestratorAutomation');
-const { triggerCheckInSMS, triggerMassSMS } = require('./n8nEventWebhookController');
 const { scheduleCheckInRemindersForAttendee, scheduleProfileCompletionReminder } = require('../services/eventOrchestrator/checkInReminderScheduler');
 const { sendRegistrationConfirmation } = require('../services/eventOrchestrator/emailScheduler');
 const { sendSMSNotification } = require('../services/smsService');
@@ -72,7 +71,7 @@ const isContractorProfileComplete = async (contractorId) => {
 
 // Register attendee for an event
 const registerAttendee = async (req, res, next) => {
-  const { event_id, contractor_id, pre_filled_data } = req.body;
+  const { event_id, contractor_id, pre_filled_data, sms_opt_in } = req.body;
 
   try {
     // Check if already registered
@@ -100,11 +99,12 @@ const registerAttendee = async (req, res, next) => {
         profile_completion_status,
         pre_filled_data,
         qr_code_data,
+        sms_opt_in,
         created_at,
         updated_at
-      ) VALUES ($1, $2, CURRENT_TIMESTAMP, 'pending', $3, $4, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ) VALUES ($1, $2, CURRENT_TIMESTAMP, 'pending', $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
-    `, [event_id, contractor_id, safeJsonStringify(pre_filled_data || {}), qr_code_data]);
+    `, [event_id, contractor_id, safeJsonStringify(pre_filled_data || {}), qr_code_data, sms_opt_in || false]);
 
     // 📧 AUTOMATIC: Send registration confirmation email
     try {
@@ -240,10 +240,8 @@ const checkInAttendee = async (req, res, next) => {
       [result.rows[0].contractor_id]
     );
 
-    // Trigger n8n webhook for check-in SMS
     const attendeeData = result.rows[0];
     const contractorData = contractor.rows[0];
-    await triggerCheckInSMS(attendeeData, contractorData);
 
     // 🤖 TRIGGER AI ORCHESTRATION - This is where the magic happens!
     try {

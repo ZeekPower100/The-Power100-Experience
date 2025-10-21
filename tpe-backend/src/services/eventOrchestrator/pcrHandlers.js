@@ -31,46 +31,12 @@ async function handlePCRResponse(smsData, classification) {
     }
 
     if (isNaN(pcrRating) || pcrRating < 1 || pcrRating > 5) {
-      // If they're asking a general question about PCR (not giving a rating),
-      // route to AI Concierge for a conversational response
-      console.log('[PCRHandler] Not a PCR rating - routing to AI Concierge for general PCR question');
-
-      const prompt = `I'm at the Power100 Summit 2025 event and I just received a message: "${smsData.messageText}"
-
-I was expecting a Personal Connection Rating (1-5) but got this instead. Please help me understand what they're asking.
-
-SMS RESPONSE GUIDELINES:
-- Target 320 characters per message
-- Be conversational and helpful
-- If they're asking what PCR is, explain it briefly
-- If they need help rating, guide them to respond with 1-5
-- Be friendly and encouraging`;
-
-      const aiResponse = await aiConciergeController.generateAIResponse(
-        prompt,
-        smsData.contractor,
-        smsData.contractor.id
-      );
-
-      const smsResult = processMessageForSMS(aiResponse, {
-        allowMultiSMS: true,
-        maxMessages: 2,
-        context: {
-          messageType: 'pcr_clarification',
-          contractorId: smsData.contractor.id
-        }
-      });
-
+      // Not a valid rating - this should have been handled by AI Concierge with intent detection
+      // If we're here, something went wrong - return error
+      console.log('[PCRHandler] ERROR: Invalid PCR rating received, should have been caught by AI Concierge');
       return {
-        success: true,
-        action: 'send_message',
-        messages: smsResult.messages,
-        phone: smsData.phone,
-        contractor_id: smsData.contractor.id,
-        message_type: 'pcr_clarification',
-        response_sent: true,
-        multi_sms: smsResult.wasSplit,
-        sms_count: smsResult.messages.length
+        success: false,
+        error: 'Invalid PCR rating - expected 1-5'
       };
     }
 
@@ -100,13 +66,14 @@ SMS RESPONSE GUIDELINES:
 
     console.log('[PCRHandler] Message types:', pendingMessages.map(m => m.message_type).join(', '));
 
-    // Find ANY PCR request type (speaker, sponsor, peer match, or generic)
+    // Find ANY PCR request type (speaker, sponsor, peer match, clarification, or generic)
     const pcrRequest = pendingMessages.find(m =>
       m.message_type === 'pcr_request' ||
       m.message_type === 'speaker_pcr_request' ||
       m.message_type === 'sponsor_pcr_request' ||
       m.message_type === 'peer_match_pcr_request' ||
-      m.message_type === 'overall_event_pcr_request'
+      m.message_type === 'overall_event_pcr_request' ||
+      m.message_type === 'pcr_clarification'  // Also accept clarification messages
     );
 
     if (!pcrRequest) {
@@ -121,6 +88,7 @@ SMS RESPONSE GUIDELINES:
     console.log('[PCRHandler] PCR Type:', pcrType);
 
     // Parse personalization_data to get connection details
+    // Intent detector already formatted this correctly
     const personalizationData = safeJsonParse(pcrRequest.personalization_data);
     const connectionPerson = personalizationData?.connection_person || {};
     const connectionContext = personalizationData?.connection_context || {};
@@ -138,13 +106,13 @@ SMS RESPONSE GUIDELINES:
 
     console.log('[PCRHandler] Updated PCR request message with rating:', pcrRating);
 
-    // ALSO update the appropriate entity table based on PCR type
-    await savePCRToEntityTable(pcrType, pcrRating, personalizationData, smsData);
-
-    // NEW: Save to event_pcr_scores tracking table
+    // CRITICAL: Save to event_pcr_scores FIRST (so AVG calculation works)
     await savePCRToTrackingTable(pcrType, pcrRating, personalizationData, smsData);
 
-    // NEW: Save contextual notes to event_notes if message has insights
+    // THEN update entity table with the average from event_pcr_scores
+    await savePCRToEntityTable(pcrType, pcrRating, personalizationData, smsData);
+
+    // Save contextual notes to event_notes if message has insights
     await savePCRNotes(pcrRating, pcrType, personalizationData, smsData);
 
     // Generate AI Concierge thank you response based on rating AND type

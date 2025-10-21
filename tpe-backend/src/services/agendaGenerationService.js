@@ -7,13 +7,10 @@
 
 const { query } = require('../config/database');
 const { safeJsonStringify } = require('../utils/jsonHelpers');
-const { scheduleBatchPeerMatching } = require('./eventOrchestrator/peerMatchingBatchScheduler');
-const { scheduleSpeakerAlerts } = require('./eventOrchestrator/speakerAlertMessageScheduler');
-const { scheduleSponsorRecommendations } = require('./eventOrchestrator/sponsorRecommendationScheduler');
-const { schedulePCRRequests } = require('./eventOrchestrator/pcrRequestScheduler');
-const { scheduleSponsorBatchCheck } = require('./eventOrchestrator/sponsorBatchCheckScheduler');
-const { scheduleOverallEventPCR } = require('./eventOrchestrator/overallEventPcrScheduler');
-const { scheduleCheckInReminders } = require('./eventOrchestrator/checkInReminderScheduler');
+
+// NOTE: Message scheduling has been moved to eventOrchestratorAutomation.js
+// All event-day messages are now scheduled on check-in, not during agenda generation
+// This ensures we only schedule messages for contractors who actually attend
 
 /**
  * Generate agenda items from event speakers and sponsors
@@ -279,98 +276,17 @@ async function generateAgendaFromSpeakers(eventId, eventDate, accelerated = fals
       WHERE id = $1
     `, [eventId]);
 
-    // Schedule check-in reminders (night before, 1 hour before, event start)
-    console.log('[AgendaGeneration] Scheduling check-in reminders...');
-    const checkInRemindersSchedule = await scheduleCheckInReminders(eventId);
-
-    if (checkInRemindersSchedule.success) {
-      console.log('[AgendaGeneration] ✅ Check-in reminders scheduled:', checkInRemindersSchedule.messages_scheduled, 'messages for', checkInRemindersSchedule.attendees_count, 'attendees');
-    } else {
-      console.warn('[AgendaGeneration] ⚠️ Check-in reminders not scheduled:', checkInRemindersSchedule.error);
-    }
-
-    // Schedule batch peer matching (15 min before lunch)
-    console.log('[AgendaGeneration] Scheduling batch peer matching...');
-    const peerMatchingSchedule = await scheduleBatchPeerMatching(eventId);
-
-    if (peerMatchingSchedule.success) {
-      console.log('[AgendaGeneration] ✅ Peer matching scheduled for:', peerMatchingSchedule.matching_scheduled_time);
-    } else {
-      console.warn('[AgendaGeneration] ⚠️ Peer matching not scheduled:', peerMatchingSchedule.error);
-    }
-
-    // Schedule speaker alerts (15 min before each session)
-    console.log('[AgendaGeneration] Scheduling speaker alerts...');
-    const speakerAlertsSchedule = await scheduleSpeakerAlerts(eventId);
-
-    if (speakerAlertsSchedule.success) {
-      console.log('[AgendaGeneration] ✅ Speaker alerts scheduled:', speakerAlertsSchedule.messages_scheduled, 'messages');
-    } else {
-      console.warn('[AgendaGeneration] ⚠️ Speaker alerts not scheduled:', speakerAlertsSchedule.error);
-    }
-
-    // Schedule sponsor recommendations (2 min after each break)
-    console.log('[AgendaGeneration] Scheduling sponsor recommendations...');
-    const sponsorRecsSchedule = await scheduleSponsorRecommendations(eventId);
-
-    if (sponsorRecsSchedule.success) {
-      console.log('[AgendaGeneration] ✅ Sponsor recommendations scheduled:', sponsorRecsSchedule.messages_scheduled, 'messages');
-    } else {
-      console.warn('[AgendaGeneration] ⚠️ Sponsor recommendations not scheduled:', sponsorRecsSchedule.error);
-    }
-
-    // Schedule PCR requests (7 min after each session)
-    console.log('[AgendaGeneration] Scheduling PCR requests...');
-    const pcrRequestsSchedule = await schedulePCRRequests(eventId);
-
-    if (pcrRequestsSchedule.success) {
-      console.log('[AgendaGeneration] ✅ PCR requests scheduled:', pcrRequestsSchedule.messages_scheduled, 'messages');
-    } else {
-      console.warn('[AgendaGeneration] ⚠️ PCR requests not scheduled:', pcrRequestsSchedule.error);
-    }
-
-    // Schedule end-of-day sponsor batch check (at event end)
-    console.log('[AgendaGeneration] Scheduling end-of-day sponsor batch check...');
-    const sponsorBatchCheckSchedule = await scheduleSponsorBatchCheck(eventId, 1);
-
-    if (sponsorBatchCheckSchedule.success) {
-      console.log('[AgendaGeneration] ✅ Sponsor batch check scheduled:', sponsorBatchCheckSchedule.messages_scheduled, 'messages at', sponsorBatchCheckSchedule.scheduled_time);
-    } else {
-      console.warn('[AgendaGeneration] ⚠️ Sponsor batch check not scheduled:', sponsorBatchCheckSchedule.error);
-    }
-
-    // Schedule overall event PCR (1 hour after event ends)
-    console.log('[AgendaGeneration] Scheduling overall event PCR...');
-    const overallEventPCRSchedule = await scheduleOverallEventPCR(eventId);
-
-    if (overallEventPCRSchedule.success) {
-      console.log('[AgendaGeneration] ✅ Overall event PCR scheduled:', overallEventPCRSchedule.messages_scheduled, 'messages at', overallEventPCRSchedule.scheduled_time);
-    } else {
-      console.warn('[AgendaGeneration] ⚠️ Overall event PCR not scheduled:', overallEventPCRSchedule.error);
-    }
+    // ✅ AGENDA GENERATION COMPLETE
+    // All event-day message scheduling now happens on check-in via eventOrchestratorAutomation.js
+    // This ensures messages are only scheduled for contractors who actually attend
+    console.log(`[AgendaGeneration] ✅ Complete: Generated ${agendaItems.length} agenda items`);
+    console.log(`[AgendaGeneration] 📋 Event-day messaging will be scheduled on check-in for each attendee`);
 
     return {
       success: true,
       agenda_items: agendaItems,
       accelerated: accelerated,
-      check_in_reminders_scheduled: checkInRemindersSchedule.success,
-      check_in_reminders_count: checkInRemindersSchedule.messages_scheduled,
-      check_in_reminders_attendees: checkInRemindersSchedule.attendees_count,
-      peer_matching_scheduled: peerMatchingSchedule.success,
-      peer_matching_time: peerMatchingSchedule.matching_scheduled_time,
-      speaker_alerts_scheduled: speakerAlertsSchedule.success,
-      speaker_alerts_count: speakerAlertsSchedule.messages_scheduled,
-      sponsor_recs_scheduled: sponsorRecsSchedule.success,
-      sponsor_recs_count: sponsorRecsSchedule.messages_scheduled,
-      pcr_requests_scheduled: pcrRequestsSchedule.success,
-      pcr_requests_count: pcrRequestsSchedule.messages_scheduled,
-      sponsor_batch_check_scheduled: sponsorBatchCheckSchedule.success,
-      sponsor_batch_check_count: sponsorBatchCheckSchedule.messages_scheduled,
-      sponsor_batch_check_time: sponsorBatchCheckSchedule.scheduled_time,
-      overall_event_pcr_scheduled: overallEventPCRSchedule.success,
-      overall_event_pcr_count: overallEventPCRSchedule.messages_scheduled,
-      overall_event_pcr_time: overallEventPCRSchedule.scheduled_time,
-      message: `Generated ${agendaItems.length} agenda items with full event automation`
+      message: `Generated ${agendaItems.length} agenda items. Event-day messaging will be scheduled on check-in.`
     };
 
   } catch (error) {

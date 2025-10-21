@@ -55,6 +55,29 @@ class AIRouter {
       const aiRoute = await this.classifyWithAI(inboundMessage, contractorContext, eventContext);
       if (aiRoute.confidence >= this.defaultConfidenceThreshold) {
         console.log('[AIRouter] AI routing found:', aiRoute.route, 'confidence:', aiRoute.confidence);
+
+        // CRITICAL: Validate handler input format
+        if (!this.validateHandlerInput(aiRoute.route, inboundMessage)) {
+          console.log('[AIRouter] ⚠️ Route validation failed - message format mismatch. Routing to AI Concierge instead.');
+          console.log('[AIRouter] Expected structured input for', aiRoute.route, 'but got conversational message');
+
+          // Override to AI Concierge - let it handle conversationally with intent detection
+          return {
+            classified_intent: 'conversational_request',
+            confidence: 0.9,
+            routing_method: 'validation_override',
+            route_to: 'general_question',
+            ai_reasoning: `Original route '${aiRoute.route}' failed validation. Message needs conversational handling.`,
+            ai_model_used: aiRoute.model,
+            context_data: {
+              contractor: contractorContext,
+              event: eventContext,
+              original_route: aiRoute.route
+            },
+            processing_time_ms: Date.now() - startTime
+          };
+        }
+
         return {
           classified_intent: aiRoute.intent,
           confidence: aiRoute.confidence,
@@ -74,6 +97,26 @@ class AIRouter {
       const keywordRoute = this.classifyByKeywords(inboundMessage);
       if (keywordRoute.route) {
         console.log('[AIRouter] Keyword routing found:', keywordRoute.route, 'confidence:', keywordRoute.confidence);
+
+        // CRITICAL: Validate handler input format (same as AI routing)
+        if (!this.validateHandlerInput(keywordRoute.route, inboundMessage)) {
+          console.log('[AIRouter] ⚠️ Keyword route validation failed - routing to AI Concierge');
+
+          return {
+            classified_intent: 'conversational_request',
+            confidence: 0.8,
+            routing_method: 'validation_override',
+            route_to: 'general_question',
+            ai_reasoning: `Keyword route '${keywordRoute.route}' failed validation. Message needs conversational handling.`,
+            context_data: {
+              contractor: contractorContext,
+              event: eventContext,
+              original_route: keywordRoute.route
+            },
+            processing_time_ms: Date.now() - startTime
+          };
+        }
+
         return {
           classified_intent: keywordRoute.intent,
           confidence: keywordRoute.confidence,
@@ -243,6 +286,43 @@ class AIRouter {
             };
           }
           break;
+
+        case 'attendance_check':
+          // Check for YES/NO or affirmative/negative responses
+          const normalizedMessage = inboundMessage.trim().toLowerCase();
+
+          // More flexible YES detection - handles "yes", "yes i did", "yeah i attended", etc.
+          const isYes = /^(yes|yeah|yep|yup|y|sure|definitely|absolutely|attended|👍)/i.test(normalizedMessage) ||
+                       /\b(attended|was there|made it|went|i did)\b/i.test(normalizedMessage);
+
+          // NO detection
+          const isNo = /^(no|nope|nah|n|not|didn't|did not|couldn't|missed|❌)/i.test(normalizedMessage) ||
+                      /\b(didn't attend|couldn't make|missed it|wasn't there)\b/i.test(normalizedMessage);
+
+          if (isYes || isNo) {
+            return {
+              route: 'attendance_confirmation',
+              intent: 'attendance_confirmation',
+              confidence: 0.95,
+              reasoning: `Reply "${inboundMessage}" to attendance check indicates ${isYes ? 'attended' : 'did not attend'}`,
+              attended: isYes,
+              pendingMessages
+            };
+          }
+          break;
+
+        case 'sponsor_batch_check':
+          // Route any text response to sponsor batch handler for fuzzy sponsor name matching
+          if (inboundMessage.trim().length > 0) {
+            return {
+              route: 'sponsor_batch_response',
+              intent: 'sponsor_batch_list',
+              confidence: 0.90,
+              reasoning: `Reply "${inboundMessage}" to sponsor batch check contains sponsor names`,
+              pendingMessages
+            };
+          }
+          break;
       }
 
       return { route: null };
@@ -251,6 +331,30 @@ class AIRouter {
       console.error('[AIRouter] Error checking database context:', error);
       return { route: null };
     }
+  }
+
+  /**
+   * Validate that message matches expected handler input format
+   * Prevents conversational messages from bypassing AI Concierge
+   */
+  validateHandlerInput(route, message) {
+    const trimmed = message.trim().toLowerCase();
+
+    const validations = {
+      'pcr_response': /\b[1-5]\b/.test(trimmed),  // Must contain 1-5
+      'speaker_recommendation': /\b[1-3]\b/.test(trimmed),  // Must contain 1-3
+      'sponsor_recommendation': /\b[1-3]\b/.test(trimmed),  // Must contain 1-3
+      'attendance_confirmation': /^(yes|no|yeah|nope|yep|nah|y|n)/i.test(trimmed),  // Must start with yes/no
+      'peer_match_response': /^(yes|no|yeah|nope|yep|nah|sure|ok)/i.test(trimmed)  // Must start with affirmative/negative
+    };
+
+    // If route has validation and fails, return false
+    if (validations[route] !== undefined) {
+      return validations[route];
+    }
+
+    // No validation needed for this route - allow it
+    return true;
   }
 
   /**
