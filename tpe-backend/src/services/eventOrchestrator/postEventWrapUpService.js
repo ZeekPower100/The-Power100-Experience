@@ -38,7 +38,8 @@ async function sendPostEventWrapUp(eventId, contractorId = null) {
 
     if (contractorId) {
       attendeesQuery = `
-        SELECT ea.contractor_id, c.first_name, c.last_name, c.phone, c.email, c.focus_areas
+        SELECT ea.contractor_id, c.first_name, c.last_name, c.phone, c.email,
+               to_json(c.focus_areas) as focus_areas
         FROM event_attendees ea
         JOIN contractors c ON ea.contractor_id = c.id
         WHERE ea.event_id = $1 AND ea.contractor_id = $2
@@ -46,7 +47,8 @@ async function sendPostEventWrapUp(eventId, contractorId = null) {
       attendeesParams = [eventId, contractorId];
     } else {
       attendeesQuery = `
-        SELECT ea.contractor_id, c.first_name, c.last_name, c.phone, c.email, c.focus_areas
+        SELECT ea.contractor_id, c.first_name, c.last_name, c.phone, c.email,
+               to_json(c.focus_areas) as focus_areas
         FROM event_attendees ea
         JOIN contractors c ON ea.contractor_id = c.id
         WHERE ea.event_id = $1 AND ea.check_in_time IS NOT NULL
@@ -341,7 +343,7 @@ async function getContentRecommendations(contractorId, event) {
   try {
     // Get contractor's focus areas
     const contractorResult = await query(`
-      SELECT focus_areas FROM contractors WHERE id = $1
+      SELECT to_json(focus_areas) as focus_areas FROM contractors WHERE id = $1
     `, [contractorId]);
 
     const focusAreas = safeJsonParse(contractorResult.rows[0]?.focus_areas) || [];

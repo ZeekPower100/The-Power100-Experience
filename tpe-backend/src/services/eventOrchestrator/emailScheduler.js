@@ -421,7 +421,8 @@ async function sendPersonalizedAgenda(eventId, contractorId, recommendations) {
   try {
     // Get contractor info
     const contractorResult = await query(`
-      SELECT id, first_name, last_name, email, phone, focus_areas
+      SELECT id, first_name, last_name, email, phone,
+             to_json(focus_areas) as focus_areas
       FROM contractors WHERE id = $1
     `, [contractorId]);
 

@@ -66,9 +66,13 @@ async function handleGeneralQuestion(smsData, classification) {
 
   try {
     // Get full contractor context from database
+    // CRITICAL: Wrap array fields with to_json() to convert PostgreSQL arrays to JSON
     const contractorResult = await query(
-      `SELECT id, name, company_name, focus_areas, revenue_tier, team_size,
-              business_goals, email, phone
+      `SELECT id, name, company_name,
+              to_json(focus_areas) as focus_areas,
+              revenue_tier, team_size,
+              to_json(business_goals) as business_goals,
+              email, phone
        FROM contractors WHERE id = $1`,
       [smsData.contractor.id]
     );

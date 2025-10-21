@@ -32,8 +32,26 @@ class AIRouter {
     try {
       console.log('[AIRouter] Classifying intent for message:', inboundMessage);
 
+      // Load pending messages ONCE for all validation layers
+      const pendingMessagesResult = await query(`
+        SELECT
+          id,
+          message_type,
+          personalization_data,
+          actual_send_time
+        FROM event_messages
+        WHERE contractor_id = $1
+          AND direction = 'outbound'
+          AND actual_send_time > NOW() - INTERVAL '24 hours'
+        ORDER BY actual_send_time DESC
+        LIMIT 5
+      `, [contractorContext.id]);
+
+      const pendingMessages = pendingMessagesResult.rows;
+      console.log('[AIRouter] Loaded', pendingMessages.length, 'pending messages for validation');
+
       // LAYER 1: Database-driven routing (highest confidence)
-      const databaseRoute = await this.checkDatabaseContext(inboundMessage, contractorContext);
+      const databaseRoute = await this.checkDatabaseContextWithMessages(inboundMessage, contractorContext, pendingMessages);
       if (databaseRoute.route) {
         console.log('[AIRouter] Database routing found:', databaseRoute.route, 'confidence:', databaseRoute.confidence);
         return {
@@ -56,8 +74,8 @@ class AIRouter {
       if (aiRoute.confidence >= this.defaultConfidenceThreshold) {
         console.log('[AIRouter] AI routing found:', aiRoute.route, 'confidence:', aiRoute.confidence);
 
-        // CRITICAL: Validate handler input format
-        if (!this.validateHandlerInput(aiRoute.route, inboundMessage)) {
+        // CRITICAL: Validate handler input format with pending messages context
+        if (!this.validateHandlerInput(aiRoute.route, inboundMessage, pendingMessages)) {
           console.log('[AIRouter] ⚠️ Route validation failed - message format mismatch. Routing to AI Concierge instead.');
           console.log('[AIRouter] Expected structured input for', aiRoute.route, 'but got conversational message');
 
@@ -98,8 +116,8 @@ class AIRouter {
       if (keywordRoute.route) {
         console.log('[AIRouter] Keyword routing found:', keywordRoute.route, 'confidence:', keywordRoute.confidence);
 
-        // CRITICAL: Validate handler input format (same as AI routing)
-        if (!this.validateHandlerInput(keywordRoute.route, inboundMessage)) {
+        // CRITICAL: Validate handler input format with pending messages context
+        if (!this.validateHandlerInput(keywordRoute.route, inboundMessage, pendingMessages)) {
           console.log('[AIRouter] ⚠️ Keyword route validation failed - routing to AI Concierge');
 
           return {
@@ -164,27 +182,9 @@ class AIRouter {
    * Check database context for routing hints
    * Looks at recent outbound messages to determine conversation context
    */
-  async checkDatabaseContext(inboundMessage, contractorContext) {
+  async checkDatabaseContextWithMessages(inboundMessage, contractorContext, pendingMessages) {
     try {
       console.log('[AIRouter] Checking database context for contractor:', contractorContext.id);
-
-      // Get recent outbound messages (last 24 hours)
-      const result = await query(`
-        SELECT
-          id,
-          message_type,
-          personalization_data,
-          actual_send_time,
-          EXTRACT(EPOCH FROM (NOW() - actual_send_time))/3600 as hours_since_sent
-        FROM event_messages
-        WHERE contractor_id = $1
-          AND direction = 'outbound'
-          AND actual_send_time > NOW() - INTERVAL '24 hours'
-        ORDER BY actual_send_time DESC
-        LIMIT 5
-      `, [contractorContext.id]);
-
-      const pendingMessages = result.rows;
       console.log('[AIRouter] Found', pendingMessages.length, 'pending messages');
       console.log('[AIRouter] Message types:', pendingMessages.map(m => m.message_type).join(', '));
 
@@ -337,10 +337,11 @@ class AIRouter {
    * Validate that message matches expected handler input format
    * Prevents conversational messages from bypassing AI Concierge
    */
-  validateHandlerInput(route, message) {
+  validateHandlerInput(route, message, pendingMessages = []) {
     const trimmed = message.trim().toLowerCase();
 
-    const validations = {
+    // RESPONSE HANDLERS: Validate format of user response
+    const responseValidations = {
       'pcr_response': /\b[1-5]\b/.test(trimmed),  // Must contain 1-5
       'speaker_recommendation': /\b[1-3]\b/.test(trimmed),  // Must contain 1-3
       'sponsor_recommendation': /\b[1-3]\b/.test(trimmed),  // Must contain 1-3
@@ -348,9 +349,44 @@ class AIRouter {
       'peer_match_response': /^(yes|no|yeah|nope|yep|nah|sure|ok)/i.test(trimmed)  // Must start with affirmative/negative
     };
 
-    // If route has validation and fails, return false
-    if (validations[route] !== undefined) {
-      return validations[route];
+    // If route has response validation and fails, return false
+    if (responseValidations[route] !== undefined) {
+      return responseValidations[route];
+    }
+
+    // INQUIRY HANDLERS: Validate that there's context for the inquiry
+    // These handlers need pending messages to have something to discuss
+    // Otherwise, it's a conversational question → route to AI Concierge
+    const inquiryHandlers = {
+      'sponsor_details': (msgs) => msgs.some(m =>
+        m.message_type === 'sponsor_recommendation' ||
+        m.message_type === 'sponsor_batch_check'
+      ),
+      'sponsor_batch_response': (msgs) => msgs.some(m =>
+        m.message_type === 'sponsor_batch_check'
+      ),
+      'speaker_details': (msgs) => msgs.some(m =>
+        m.message_type === 'speaker_recommendation' ||
+        m.message_type === 'speaker_alert'
+      ),
+      'speaker_feedback': (msgs) => msgs.some(m =>
+        m.message_type === 'speaker_recommendation' ||
+        m.message_type === 'speaker_alert'
+      ),
+      'event_details': (msgs) => msgs.some(m =>
+        m.message_type.includes('event') ||
+        m.message_type === 'attendance_check'
+      )
+    };
+
+    // If route is an inquiry handler, validate pending messages exist
+    if (inquiryHandlers[route]) {
+      const hasContext = inquiryHandlers[route](pendingMessages);
+      if (!hasContext) {
+        console.log(`[Validation] ❌ Inquiry handler '${route}' needs pending messages but found none`);
+        console.log(`[Validation] Available messages:`, pendingMessages.map(m => m.message_type).join(', '));
+      }
+      return hasContext;
     }
 
     // No validation needed for this route - allow it

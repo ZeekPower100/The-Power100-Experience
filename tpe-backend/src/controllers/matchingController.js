@@ -9,8 +9,8 @@ exports.getMatchedContent = async (req, res) => {
 
     // Get contractor's focus areas
     const contractorQuery = `
-      SELECT focus_areas, primary_focus_area 
-      FROM contractors 
+      SELECT to_json(focus_areas) as focus_areas, primary_focus_area
+      FROM contractors
       WHERE id = $1
     `;
     const contractorResult = await db.query(contractorQuery, [contractorId]);
