@@ -330,23 +330,29 @@ REQUIRED ELEMENTS:
     case 'post_event_wrap_up':
       prompt += `
 TIME: 1 hour after event ends
-PURPOSE: Get quick 1-5 event rating (priorities message follows)
+PURPOSE: Get quick 1-5 PCR rating of THE EVENT (not our service - the event itself)
+
+CRITICAL: This is PCR (PowerConfidence Rating) for the EVENT
+- We collect PCR scores for EVERYTHING contractors experience
+- This rating is about THEIR OVERALL EVENT EXPERIENCE
+- NOT about our service or our performance
+- This data goes to the event organizers
 
 REQUIRED ELEMENTS:
 - Acknowledge the event experience (e.g., "Hope ${event.name || 'the event'} was a blast/whirlwind/solid")
 - Thank them for LETTING US be part of it ("Thanks for letting us tag along", "Appreciate you bringing us along")
-- NOT "thanks for diving in" or "thanks for attending" (makes it sound like our event)
-- Ask for 1-5 rating (1=Poor, 5=Excellent)
+- Ask for 1-5 rating of THE EVENT (1=Poor, 5=Excellent)
+- Make it clear they're rating the EVENT experience
 - Keep it brief and friendly
 - Avoid saying "day" (many events are multi-day)
 
 MULTI-MESSAGE OPTION:
 Split into 2 messages if helpful:
 - Message 1: Event acknowledgment + thanks for letting us be part of it
-- Message 2: Quick rating request
+- Message 2: Quick rating request for THE EVENT
 
-Example single: "Hope ${event.name || 'the event'} was solid! Thanks for letting us tag along. Quick one: rate how we did 1-5? (1=Poor, 5=Excellent)"
-Example multi: "Bet ${event.name || 'the event'} was a whirlwind, huh? Appreciate you bringing us along! 👊 || Quick rating: how'd we do? 1-5? (1=Poor, 5=Excellent)"
+Example single: "Hope ${event.name || 'the event'} was solid! Thanks for letting us tag along. Quick one: rate the event 1-5? (1=Poor, 5=Excellent)"
+Example multi: "Bet ${event.name || 'the event'} was a whirlwind, huh? Appreciate you bringing us along! 👊 || Quick rating: how was the event? 1-5? (1=Poor, 5=Excellent)"
 `;
       break;
 
@@ -479,7 +485,7 @@ function getFallbackTemplate(messageType, intent, context) {
       return `Which sponsor booths did you visit today? I'll help you follow up on what matters.`;
 
     case 'post_event_wrap_up':
-      return `Hope ${event.name} was solid! Thanks for letting us tag along. Quick one: rate how we did 1-5? (1=Poor, 5=Excellent)`;
+      return `Hope ${event.name} was solid! Thanks for letting us tag along. Quick one: rate the event 1-5? (1=Poor, 5=Excellent)`;
 
     case 'post_event_priorities':
       return `Based on your event experience, what are your TOP 3 PRIORITIES you want to tackle? (Just reply with what matters most)`;
