@@ -177,10 +177,11 @@ CREATE INDEX idx_trigger_checklist ON ai_concierge_checklist_items(trigger_condi
 
 #### Tasks:
 1. **Create Database Tables** (2 hours)
-   - Create `ai_concierge_goals` table with indexes
-   - Create `ai_concierge_checklist_items` table with indexes
-   - Run verification queries to confirm structure
-   - Test foreign key relationships
+   - **IMPORTANT**: Use Node.js migration script (NOT SQL file)
+   - Create `tpe-database/migrations/create-internal-goal-engine-tables.js`
+   - Execute: `node tpe-database/migrations/create-internal-goal-engine-tables.js`
+   - Script auto-verifies: column counts, constraints, foreign keys, indexes
+   - ✅ **PROVEN WORKING**: This approach successfully created both tables with all constraints and indexes
 
 2. **Create Goal Service Layer** (4 hours)
    - Create `tpe-backend/src/services/goalEngineService.js`
