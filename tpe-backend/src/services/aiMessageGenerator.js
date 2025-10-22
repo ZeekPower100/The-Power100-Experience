@@ -97,10 +97,18 @@ const MESSAGE_CONFIGS = {
     allow_multi_message: false
   },
   post_event_wrap_up: {
-    max_length: 320, // Allow 2 messages for priority extraction
-    required_elements: ['top_priorities_request'],
-    tone: 'appreciative and action-oriented',
-    purpose: 'Extract top 3 priorities from event experience',
+    max_length: 320, // Allow 2 messages: thank you + rating request
+    required_elements: ['rating_request', 'event_acknowledgment'],
+    tone: 'appreciative and brief',
+    purpose: 'Collect quick 1-5 event rating (priorities come after)',
+    allow_multi_message: true,
+    split_preference: 'auto'
+  },
+  post_event_priorities: {
+    max_length: 320, // Allow 2 messages for AI-suggested priorities
+    required_elements: ['suggested_priorities', 'confirmation_request'],
+    tone: 'insightful and action-oriented',
+    purpose: 'AI suggests top 3 priorities based on event data, asks for confirmation',
     allow_multi_message: true,
     split_preference: 'auto'
   }
@@ -322,21 +330,56 @@ REQUIRED ELEMENTS:
     case 'post_event_wrap_up':
       prompt += `
 TIME: 1 hour after event ends
-PURPOSE: Extract contractor's top 3 priorities from event experience
+PURPOSE: Get quick 1-5 event rating (priorities message follows)
 
 REQUIRED ELEMENTS:
-- Thank them for attending
-- Ask "What are your TOP 3 PRIORITIES from everything you experienced?"
-- Keep it action-oriented and brief
-- Make it easy to respond with numbered list
+- Thank them for attending (acknowledge third-party event, not "our" event)
+- Ask for 1-5 rating (1=Poor, 5=Excellent)
+- Keep it brief and friendly
+- Avoid saying "day" (many events are multi-day)
 
 MULTI-MESSAGE OPTION:
-If needed, split into 2 messages:
-- Message 1: Acknowledge event value + brief highlight
-- Message 2: Ask for top 3 priorities
+Split into 2 messages if helpful:
+- Message 1: Thank them + acknowledge event value
+- Message 2: Quick rating request
 
-Example single: "Hope ${event.name || 'the event'} delivered some solid value! 🎯 What are your TOP 3 PRIORITIES from everything you experienced?"
-Example multi: "Hope you crushed it at ${event.name || 'the event'}! Some killer connections I bet. || Quick one: What are your TOP 3 PRIORITIES you want to tackle from today? (Just reply 1, 2, 3)"
+Example single: "Hope you got solid value from ${event.name || 'the event'}! Quick one: rate your experience 1-5? (1=Poor, 5=Excellent)"
+Example multi: "Hope ${event.name || 'the event'} delivered! 👊 || Quick rating: 1-5? (1=Poor, 5=Excellent) Helps us improve."
+`;
+      break;
+
+    case 'post_event_priorities':
+      prompt += `
+TIME: Immediately after contractor rates the event
+PURPOSE: AI suggests intelligent priorities based on event data, asks for confirmation
+
+CONTEXT YOU HAVE:
+- Event notes taken by contractor
+- Booth visits with match scores and time spent
+- Speaker sessions attended
+- Peer matches with connection quality
+- Their rating just received (use as context)
+
+REQUIRED ELEMENTS:
+- Reference their rating if provided ("Glad it was a ${rating}/5!")
+- Suggest 3 specific priorities based on actual event data
+- Include WHY each priority makes sense (match score, time spent, goals alignment)
+- Ask if they agree or want to adjust
+
+MULTI-MESSAGE OPTION:
+Split into 2 messages for clarity:
+- Message 1: Context + first 2 priorities with reasoning
+- Message 2: Third priority + confirmation question
+
+Example single: "Based on your ${rating}/5, here's what stood out: 1) Follow up with BuildPro (94% match, 20min at booth), 2) Connect with Mike Johnson (complementary biz), 3) Implement LeadGen tool (from session you attended). Sound right?"
+
+Example multi: "Glad it was a ${rating}/5! Here's what jumped out: 1) BuildPro follow-up (94% match, you spent real time there), 2) Mike Johnson connection (complementary business) || 3) LeadGen implementation (you asked questions in that session). These your top 3, or adjust?"
+
+IMPORTANT:
+- Use REAL data from context (booth numbers, names, match scores, session titles)
+- Don't make up priorities - base them on actual event behavior
+- Avoid saying "from the day" or "today" (multi-day events exist)
+- If no strong event data, ask them directly what stood out
 `;
       break;
   }
@@ -434,7 +477,10 @@ function getFallbackTemplate(messageType, intent, context) {
       return `Which sponsor booths did you visit today? I'll help you follow up on what matters.`;
 
     case 'post_event_wrap_up':
-      return `Hope you got solid value from ${event.name}! 🎯 What are your TOP 3 PRIORITIES from everything you experienced?`;
+      return `Hope you got solid value from ${event.name}! Quick one: rate your experience 1-5? (1=Poor, 5=Excellent)`;
+
+    case 'post_event_priorities':
+      return `Based on your event experience, what are your TOP 3 PRIORITIES you want to tackle? (Just reply with what matters most)`;
 
     default:
       return `Hey ${firstName}! ${event.name} update from your AI Concierge.`;
