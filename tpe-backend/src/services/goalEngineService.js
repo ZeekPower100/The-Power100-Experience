@@ -444,6 +444,303 @@ async function autoUpdateGoalProgress(goalId) {
   return await updateGoalProgress(goalId, progress);
 }
 
+// ================================================================
+// GOAL GENERATION & INTELLIGENCE
+// ================================================================
+
+/**
+ * Identify data gaps for a contractor
+ * Analyzes contractor profile to find missing critical data
+ * @param {Object} contractor - Contractor data from database
+ * @returns {Array} Array of missing field names
+ */
+function identifyDataGaps(contractor) {
+  const dataGaps = [];
+
+  // Revenue & Financial Data
+  if (!contractor.revenue_tier || contractor.revenue_tier === '') {
+    dataGaps.push('revenue_tier');
+  }
+
+  // Team Structure
+  if (!contractor.team_size || contractor.team_size === '') {
+    dataGaps.push('team_size');
+  }
+
+  // Business Focus
+  if (!contractor.focus_areas || contractor.focus_areas === '') {
+    dataGaps.push('focus_areas');
+  }
+
+  // Business Stage
+  if (!contractor.current_stage || contractor.current_stage === '') {
+    dataGaps.push('current_stage');
+  }
+
+  // Service Details
+  if (!contractor.service_area || contractor.service_area === '') {
+    dataGaps.push('service_area');
+  }
+
+  if (!contractor.services_offered || contractor.services_offered === '') {
+    dataGaps.push('services_offered');
+  }
+
+  return dataGaps;
+}
+
+/**
+ * Generate goals for a contractor based on their profile
+ * Analyzes contractor data and creates relevant internal goals
+ * @param {number} contractorId - Contractor ID
+ * @returns {Object} Generated goals and checklist items
+ */
+async function generateGoalsForContractor(contractorId) {
+  // Get contractor profile
+  const contractorResult = await query(`
+    SELECT
+      id, revenue_tier, team_size, focus_areas, current_stage,
+      business_goals, current_challenges, ai_insights,
+      growth_potential, lifecycle_stage, service_area, services_offered
+    FROM contractors
+    WHERE id = $1;
+  `, [contractorId]);
+
+  if (contractorResult.rows.length === 0) {
+    throw new Error(`Contractor ${contractorId} not found`);
+  }
+
+  const contractor = contractorResult.rows[0];
+  const goals = [];
+  const allChecklistItems = [];
+
+  // Identify data gaps first
+  const dataGaps = identifyDataGaps(contractor);
+
+  // Parse focus_areas (could be JSON array or comma-separated text)
+  let focusAreas = [];
+  if (contractor.focus_areas) {
+    try {
+      // Try parsing as JSON first
+      focusAreas = typeof contractor.focus_areas === 'string'
+        ? JSON.parse(contractor.focus_areas)
+        : contractor.focus_areas;
+
+      // Ensure it's an array
+      if (!Array.isArray(focusAreas)) {
+        focusAreas = [focusAreas];
+      }
+
+      // Normalize to lowercase
+      focusAreas = focusAreas.map(a => a.toString().trim().toLowerCase());
+    } catch (e) {
+      // If JSON parsing fails, treat as comma-separated string
+      focusAreas = contractor.focus_areas.split(',').map(a => a.trim().toLowerCase());
+    }
+  }
+
+  // ================================================================
+  // GOAL 1: Revenue Growth (if relevant)
+  // ================================================================
+  // Revenue tiers from contractorflow (profilingstep.tsx)
+  const revenueTiers = {
+    '0_5_million': { target: '$5M - $10M', priority: 9, description: 'Break through to $10M milestone' },
+    '5_10_million': { target: '$11M - $20M', priority: 9, description: 'Scale to mid-tier contractor' },
+    '11_20_million': { target: '$21M - $30M', priority: 8, description: 'Expand market presence' },
+    '21_30_million': { target: '$31M - $50M', priority: 8, description: 'Build regional dominance' },
+    '31_50_million': { target: '$51M - $75M', priority: 7, description: 'Optimize for sustainable growth' },
+    '51_75_million': { target: '$76M - $150M', priority: 6, description: 'Strengthen market position' },
+    '76_150_million': { target: '$151M+', priority: 5, description: 'Maintain leadership position' },
+    '151_300_million': { target: 'Continued excellence', priority: 4, description: 'Focus on operational excellence' },
+    '300_plus_million': { target: 'Market leadership', priority: 3, description: 'Industry leadership & innovation' }
+  };
+
+  if (contractor.revenue_tier && revenueTiers[contractor.revenue_tier]) {
+    const tierInfo = revenueTiers[contractor.revenue_tier];
+    const revenueGoal = {
+      contractor_id: contractorId,
+      goal_type: 'revenue_growth',
+      goal_description: `Help contractor grow to ${tierInfo.target} revenue level`,
+      target_milestone: tierInfo.target,
+      priority_score: tierInfo.priority,
+      success_criteria: { revenue_increase: 20, sustainable_growth: true },
+      data_gaps: dataGaps.filter(gap => ['revenue_tier', 'services_offered', 'service_area'].includes(gap)),
+      trigger_condition: 'next_conversation'
+    };
+
+    goals.push(revenueGoal);
+
+    // Checklist items for revenue growth
+    const revenueChecklist = [
+      {
+        checklist_item: 'Understand current lead flow and conversion rate',
+        item_type: 'data_collection',
+        trigger_condition: 'immediately'
+      },
+      {
+        checklist_item: 'Assess pricing strategy and profitability',
+        item_type: 'data_collection',
+        trigger_condition: 'next_conversation'
+      },
+      {
+        checklist_item: 'Identify revenue growth opportunities',
+        item_type: 'recommendation',
+        trigger_condition: 'after_data_collected'
+      }
+    ];
+
+    allChecklistItems.push(...revenueChecklist);
+  }
+
+  // ================================================================
+  // GOAL 2: Team Expansion (if scaling)
+  // ================================================================
+  const teamSizes = ['solo', '2-5', '6-10'];
+  const isSmallTeam = contractor.team_size && teamSizes.includes(contractor.team_size.toLowerCase());
+
+  if (isSmallTeam && focusAreas.includes('operational_efficiency')) {
+    const teamGoal = {
+      contractor_id: contractorId,
+      goal_type: 'team_expansion',
+      goal_description: 'Prepare contractor for strategic team expansion',
+      target_milestone: 'Hire key role (operations manager or estimator)',
+      priority_score: 8,
+      success_criteria: { team_growth: true, roles_defined: true },
+      data_gaps: dataGaps.filter(gap => ['team_size', 'current_stage'].includes(gap)),
+      trigger_condition: 'next_conversation'
+    };
+
+    goals.push(teamGoal);
+
+    // Checklist items for team expansion
+    const teamChecklist = [
+      {
+        checklist_item: 'Understand current team structure and roles',
+        item_type: 'data_collection',
+        trigger_condition: 'next_conversation'
+      },
+      {
+        checklist_item: 'Identify hiring pain points and timeline',
+        item_type: 'data_collection',
+        trigger_condition: 'next_conversation'
+      },
+      {
+        checklist_item: 'Recommend hiring best practices for contractors',
+        item_type: 'recommendation',
+        trigger_condition: 'after_data_collected'
+      }
+    ];
+
+    allChecklistItems.push(...teamChecklist);
+  }
+
+  // ================================================================
+  // GOAL 3: Lead System Improvement (if greenfield growth focus)
+  // ================================================================
+  if (focusAreas.includes('greenfield_growth') || focusAreas.includes('referral_growth')) {
+    const leadGoal = {
+      contractor_id: contractorId,
+      goal_type: 'lead_improvement',
+      goal_description: 'Optimize lead generation and conversion systems',
+      target_milestone: 'Implement effective CRM and lead tracking',
+      priority_score: 9,
+      success_criteria: { close_rate_improved: true, lead_system_in_place: true },
+      data_gaps: dataGaps.filter(gap => ['focus_areas', 'services_offered'].includes(gap)),
+      trigger_condition: 'immediately'
+    };
+
+    goals.push(leadGoal);
+
+    // Checklist items for lead improvement
+    const leadChecklist = [
+      {
+        checklist_item: 'Get current close rate and lead sources',
+        item_type: 'data_collection',
+        trigger_condition: 'immediately'
+      },
+      {
+        checklist_item: 'Assess current CRM usage and lead tracking',
+        item_type: 'data_collection',
+        trigger_condition: 'next_conversation'
+      },
+      {
+        checklist_item: 'Recommend CRM tools based on business size',
+        item_type: 'recommendation',
+        trigger_condition: 'after_data_collected'
+      }
+    ];
+
+    allChecklistItems.push(...leadChecklist);
+  }
+
+  // ================================================================
+  // GOAL 4: Network Building (if referral focus or small network)
+  // ================================================================
+  if (focusAreas.includes('referral_growth') || focusAreas.includes('networking')) {
+    const networkGoal = {
+      contractor_id: contractorId,
+      goal_type: 'network_building',
+      goal_description: 'Expand professional network and referral sources',
+      target_milestone: 'Attend 2+ industry events, build referral partnerships',
+      priority_score: 6,
+      success_criteria: { events_attended: 2, referral_partnerships: 3 },
+      data_gaps: [],
+      trigger_condition: 'post_event'
+    };
+
+    goals.push(networkGoal);
+
+    // Checklist items for networking
+    const networkChecklist = [
+      {
+        checklist_item: 'Suggest upcoming industry events',
+        item_type: 'recommendation',
+        trigger_condition: 'next_conversation'
+      },
+      {
+        checklist_item: 'Introduce to complementary contractors',
+        item_type: 'introduction',
+        trigger_condition: 'post_event'
+      }
+    ];
+
+    allChecklistItems.push(...networkChecklist);
+  }
+
+  // ================================================================
+  // CREATE GOALS AND CHECKLIST ITEMS IN DATABASE
+  // ================================================================
+  const createdGoals = [];
+  const createdChecklist = [];
+
+  for (const goalData of goals) {
+    const createdGoal = await createGoal(goalData);
+    createdGoals.push(createdGoal);
+
+    // Create checklist items for this goal
+    const goalChecklistItems = allChecklistItems.splice(0, 3); // Get first 3 items for this goal
+
+    for (const itemData of goalChecklistItems) {
+      const checklistItem = await createChecklistItem({
+        goal_id: createdGoal.id,
+        contractor_id: contractorId,
+        ...itemData
+      });
+      createdChecklist.push(checklistItem);
+    }
+  }
+
+  return {
+    contractor_id: contractorId,
+    goals_created: createdGoals.length,
+    checklist_items_created: createdChecklist.length,
+    data_gaps_identified: dataGaps.length,
+    goals: createdGoals,
+    checklist: createdChecklist,
+    data_gaps: dataGaps
+  };
+}
+
 module.exports = {
   // Goal operations
   createGoal,
@@ -465,5 +762,9 @@ module.exports = {
 
   // Helper functions
   calculateGoalProgress,
-  autoUpdateGoalProgress
+  autoUpdateGoalProgress,
+
+  // Goal generation & intelligence (Day 2)
+  generateGoalsForContractor,
+  identifyDataGaps
 };
