@@ -56,43 +56,52 @@ const MESSAGE_CONFIGS = {
     max_length: 160,
     required_elements: ['event_name', 'call_to_action'],
     tone: 'upbeat and motivating',
-    purpose: 'Get them to check in and access their personalized agenda'
+    purpose: 'Get them to check in and access their personalized agenda',
+    allow_multi_message: false
   },
   speaker_alert: {
-    max_length: 160,
+    max_length: 320, // Allow up to 2 SMS messages (160 x 2)
     required_elements: ['speaker_name', 'session_title', 'time_remaining'],
     tone: 'timely and actionable',
-    purpose: 'Alert them about an upcoming session they care about'
+    purpose: 'Alert them about an upcoming session they care about',
+    allow_multi_message: true,
+    split_preference: 'auto' // Auto-split at natural break if over 160
   },
   sponsor_recommendation: {
-    max_length: 160,
+    max_length: 320, // Allow up to 2 SMS messages (160 x 2)
     required_elements: ['booth_number', 'sponsor_name', 'why_relevant'],
     tone: 'helpful and strategic',
-    purpose: 'Guide them to sponsors who can help their business'
+    purpose: 'Guide them to sponsors who can help their business',
+    allow_multi_message: true,
+    split_preference: 'auto' // Auto-split at natural break if over 160
   },
   peer_introduction: {
     max_length: 160,
     required_elements: ['peer_name', 'company_name', 'why_connect'],
     tone: 'friendly and networking-focused',
-    purpose: 'Facilitate valuable peer connections'
+    purpose: 'Facilitate valuable peer connections',
+    allow_multi_message: false
   },
   attendance_check: {
     max_length: 160,
     required_elements: ['session_title', 'yes_no_request'],
     tone: 'quick and casual',
-    purpose: 'Confirm attendance for learning data (keep it super brief)'
+    purpose: 'Confirm attendance for learning data (keep it super brief)',
+    allow_multi_message: false
   },
   sponsor_batch_check: {
     max_length: 160,
     required_elements: ['call_to_action'],
     tone: 'wrap-up and reflective',
-    purpose: 'End-of-day sponsor follow-up collection'
+    purpose: 'End-of-day sponsor follow-up collection',
+    allow_multi_message: false
   },
   post_event_wrap_up: {
     max_length: 160,
     required_elements: ['rating_scale', 'call_to_action'],
     tone: 'appreciative but brief',
-    purpose: 'Collect overall event feedback'
+    purpose: 'Collect overall event feedback',
+    allow_multi_message: false
   }
 };
 
@@ -141,21 +150,31 @@ async function generateContextualMessage(messageType, intent, context) {
     // Remove quotes if AI added them
     generatedMessage = generatedMessage.replace(/^["']|["']$/g, '');
 
-    // Validate the message
-    const validation = validateMessage(generatedMessage, config, intent);
+    // Check if it's a multi-message (contains ||)
+    const isMultiMessage = generatedMessage.includes('||');
+    const messages = isMultiMessage
+      ? generatedMessage.split('||').map(m => m.trim())
+      : [generatedMessage];
 
-    if (!validation.valid) {
-      console.warn(`[AIMessageGenerator] Validation failed: ${validation.reason}`);
-      console.warn(`[AIMessageGenerator] Falling back to template for ${messageType}`);
-      return getFallbackTemplate(messageType, intent, context);
+    // Validate each message
+    for (const msg of messages) {
+      const validation = validateMessage(msg, config, intent);
+      if (!validation.valid) {
+        console.warn(`[AIMessageGenerator] Validation failed: ${validation.reason}`);
+        console.warn(`[AIMessageGenerator] Message: "${msg}"`);
+        console.warn(`[AIMessageGenerator] Falling back to template for ${messageType}`);
+        return getFallbackTemplate(messageType, intent, context);
+      }
     }
 
     const generationTime = Date.now() - startTime;
-    console.log(`[AIMessageGenerator] ✅ Generated ${messageType} in ${generationTime}ms: "${generatedMessage}"`);
+    const displayMsg = isMultiMessage ? `[${messages.length} msgs] ${messages.join(' || ')}` : generatedMessage;
+    console.log(`[AIMessageGenerator] ✅ Generated ${messageType} in ${generationTime}ms: "${displayMsg}"`);
 
     // Log for learning
-    await logGeneratedMessage(messageType, intent, context, generatedMessage, validation);
+    await logGeneratedMessage(messageType, intent, context, generatedMessage, { valid: true });
 
+    // Return as single string with || separator (caller will split if needed)
     return generatedMessage;
 
   } catch (error) {
@@ -182,7 +201,7 @@ function buildMessagePrompt(messageType, config, intent, context) {
 MESSAGE TYPE: ${messageType}
 PURPOSE: ${config.purpose}
 TONE: ${config.tone}
-MAX LENGTH: ${config.max_length} characters
+MAX LENGTH: ${config.max_length} characters${config.allow_multi_message ? ' (can use up to 2 SMS messages if needed for richer context)' : ' (single SMS only)'}
 
 CONTRACTOR CONTEXT:
 - Name: ${contractor.first_name || 'there'}
@@ -223,8 +242,16 @@ LOCATION: ${entity.location || 'Main Stage'}
 REQUIRED ELEMENTS:
 - Speaker name and session title
 - Time remaining ("in 15 min" or similar)
-- Why this matters to them (${entity.why})
+- Why this matters to them based on their focus areas
 - Location
+
+MULTI-MESSAGE OPTION:
+If needed, split into 2 messages naturally:
+- Message 1: Alert + session title + time + location
+- Message 2: Why it's valuable for them + what they'll learn
+
+Example single: "🎤 Sarah Johnson in 15 min: 'Scaling Revenue'. Covers your lead gen focus. Main Stage."
+Example multi: "🎤 Sarah Johnson in 15 min: 'Scaling Revenue with Smart Marketing'. Main Stage. || She's covering automated lead generation strategies - exactly what you're focused on. Worth your time!"
 `;
       break;
 
@@ -240,8 +267,16 @@ TIME OF DAY: ${timing.time_context}
 REQUIRED ELEMENTS:
 - Booth number (Booth ${entity.booth_number})
 - Sponsor name
-- Why it's relevant to their business
+- Why it's relevant to their business and focus areas
 ${history.visited_booths?.length > 0 ? '- Reference their previous booth visits if relevant' : ''}
+
+MULTI-MESSAGE OPTION:
+If needed, split into 2 messages naturally:
+- Message 1: Booth number + sponsor + quick why ("perfect for your lead gen focus")
+- Message 2: Specific talking points or special offers + context from visited booths
+
+Example single: "Break time! Booth 5 - LeadFlow Pro has automated lead tools perfect for you. Ask about the 30% discount!"
+Example multi: "Booth 5 during your break - LeadFlow Pro specializes in automated lead generation. Perfect match for your focus areas. || Ask them about: Event-only 30% discount + CRM integration. Complements what you saw at Booth 3. Worth the stop!"
 `;
       break;
 
@@ -296,7 +331,12 @@ REQUIRED ELEMENTS:
       break;
   }
 
-  prompt += `\nGenerate ONLY the message text (no quotes, no explanation). Make it sound like a helpful buddy, not a corporate robot.`;
+  prompt += `\n\nOUTPUT FORMAT:
+- Single message: Just the text
+- Multi-message (if allowed): Separate with || (double pipe)
+  Example: "Message 1 text here || Message 2 text here"
+
+Generate ONLY the message text (no quotes, no explanation). Make it sound like a helpful buddy, not a corporate robot.`;
 
   return prompt;
 }
@@ -305,11 +345,14 @@ REQUIRED ELEMENTS:
  * Validate generated message meets requirements
  */
 function validateMessage(message, config, intent) {
-  // Length check
-  if (message.length > config.max_length) {
+  // For multi-message types, each individual message should be under 160
+  const singleMessageLimit = 160;
+
+  // Length check - individual message shouldn't exceed SMS limit
+  if (message.length > singleMessageLimit) {
     return {
       valid: false,
-      reason: `Message too long (${message.length} > ${config.max_length})`
+      reason: `Message too long (${message.length} > ${singleMessageLimit} chars per SMS)`
     };
   }
 

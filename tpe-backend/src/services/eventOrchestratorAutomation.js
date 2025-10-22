@@ -500,15 +500,38 @@ class EventOrchestratorAutomation {
       message_content: this.generateWelcomeMessage(recommendations)
     });
 
-    // 2. Speaker alerts (15 min before each session) - AI-generated
+    // 2. Speaker alerts (15 min before each session) - AI-generated (supports multi-message)
     for (const speaker of recommendations.speakers) {
       const speakerMessage = await this.generateSpeakerAlert(speaker, contractor);
-      messages.push({
-        message_type: 'speaker_alert',
-        scheduled_time: speaker.alert_time,
-        message_content: speakerMessage,
-        related_entity_id: speaker.speaker_id
-      });
+
+      // Check if it's a multi-message (contains ||)
+      if (speakerMessage.includes('||')) {
+        const parts = speakerMessage.split('||').map(m => m.trim());
+        // Schedule first message at alert time
+        messages.push({
+          message_type: 'speaker_alert',
+          scheduled_time: speaker.alert_time,
+          message_content: parts[0],
+          related_entity_id: speaker.speaker_id
+        });
+        // Schedule second message 3 seconds later
+        const secondMessageTime = new Date(speaker.alert_time);
+        secondMessageTime.setSeconds(secondMessageTime.getSeconds() + 3);
+        messages.push({
+          message_type: 'speaker_alert',
+          scheduled_time: secondMessageTime,
+          message_content: parts[1],
+          related_entity_id: speaker.speaker_id
+        });
+      } else {
+        // Single message
+        messages.push({
+          message_type: 'speaker_alert',
+          scheduled_time: speaker.alert_time,
+          message_content: speakerMessage,
+          related_entity_id: speaker.speaker_id
+        });
+      }
     }
 
     // 3. Sponsor recommendations (2 min after EACH break starts - agenda-based timing)
@@ -727,12 +750,34 @@ class EventOrchestratorAutomation {
           timeContext
         );
 
-        messages.push({
-          message_type: 'sponsor_recommendation',
-          scheduled_time: recommendationTime,
-          message_content: sponsorMessage,
-          related_entity_id: recommendedSponsors[0]?.sponsor_id || null
-        });
+        // Check if it's a multi-message (contains ||)
+        if (sponsorMessage.includes('||')) {
+          const parts = sponsorMessage.split('||').map(m => m.trim());
+          // Schedule first message
+          messages.push({
+            message_type: 'sponsor_recommendation',
+            scheduled_time: recommendationTime,
+            message_content: parts[0],
+            related_entity_id: recommendedSponsors[0]?.sponsor_id || null
+          });
+          // Schedule second message 3 seconds later
+          const secondMessageTime = new Date(recommendationTime);
+          secondMessageTime.setSeconds(secondMessageTime.getSeconds() + 3);
+          messages.push({
+            message_type: 'sponsor_recommendation',
+            scheduled_time: secondMessageTime,
+            message_content: parts[1],
+            related_entity_id: recommendedSponsors[0]?.sponsor_id || null
+          });
+        } else {
+          // Single message
+          messages.push({
+            message_type: 'sponsor_recommendation',
+            scheduled_time: recommendationTime,
+            message_content: sponsorMessage,
+            related_entity_id: recommendedSponsors[0]?.sponsor_id || null
+          });
+        }
 
         // Add booth to "visited" list for next message context
         if (recommendedSponsors[0]?.booth_number) {
