@@ -741,6 +741,281 @@ async function generateGoalsForContractor(contractorId) {
   };
 }
 
+// ================================================================
+// DAY 4: CHECKLIST TRIGGER EVALUATION & ACTION TRACKING
+// ================================================================
+
+/**
+ * Evaluate which checklist items should trigger based on current context
+ * @param {number} contractorId - Contractor ID
+ * @param {Object} context - Current conversation context
+ * @returns {Array} Prioritized list of checklist items to act on
+ */
+async function evaluateChecklistTriggers(contractorId, context = {}) {
+  const {
+    isInConversation = true,
+    isPostEvent = false,
+    recentlyCompletedActions = [],
+    eventId = null
+  } = context;
+
+  // Get all pending checklist items
+  const result = await query(`
+    SELECT
+      ci.id,
+      ci.checklist_item,
+      ci.item_type,
+      ci.trigger_condition,
+      ci.goal_id,
+      g.goal_description,
+      g.priority_score
+    FROM ai_concierge_checklist_items ci
+    LEFT JOIN ai_concierge_goals g ON ci.goal_id = g.id
+    WHERE ci.contractor_id = $1
+      AND ci.status = 'pending'
+      AND g.status = 'active'
+    ORDER BY g.priority_score DESC, ci.created_at ASC;
+  `, [contractorId]);
+
+  const allItems = result.rows;
+  const triggeredItems = [];
+
+  for (const item of allItems) {
+    let shouldTrigger = false;
+    let triggerReason = '';
+
+    switch (item.trigger_condition) {
+      case 'immediately':
+        // Always trigger immediate items
+        shouldTrigger = true;
+        triggerReason = 'Immediate action required';
+        break;
+
+      case 'next_conversation':
+        // Trigger if currently in conversation
+        if (isInConversation) {
+          shouldTrigger = true;
+          triggerReason = 'Active conversation detected';
+        }
+        break;
+
+      case 'post_event':
+        // Trigger if post-event context
+        if (isPostEvent) {
+          shouldTrigger = true;
+          triggerReason = 'Post-event follow-up';
+        }
+        break;
+
+      case 'after_data_collected':
+        // Trigger if prerequisite data has been collected
+        // Check if related data collection items are complete
+        const prerequisiteCheck = await query(`
+          SELECT COUNT(*) as completed_count
+          FROM ai_concierge_checklist_items
+          WHERE contractor_id = $1
+            AND goal_id = $2
+            AND item_type = 'data_collection'
+            AND status = 'completed';
+        `, [contractorId, item.goal_id]);
+
+        if (prerequisiteCheck.rows[0].completed_count > 0) {
+          shouldTrigger = true;
+          triggerReason = 'Prerequisite data collected';
+        }
+        break;
+
+      case 'after_action_completed':
+        // Trigger if specific action recently completed
+        if (recentlyCompletedActions.length > 0) {
+          shouldTrigger = true;
+          triggerReason = 'Dependent action completed';
+        }
+        break;
+
+      default:
+        // Unknown trigger - default to next_conversation behavior
+        if (isInConversation) {
+          shouldTrigger = true;
+          triggerReason = 'Default trigger (conversation active)';
+        }
+    }
+
+    if (shouldTrigger) {
+      triggeredItems.push({
+        ...item,
+        trigger_reason: triggerReason
+      });
+    }
+  }
+
+  console.log(`[Goal Engine] Evaluated ${allItems.length} items, ${triggeredItems.length} triggered`);
+
+  return triggeredItems;
+}
+
+/**
+ * Mark checklist item as in-progress and track execution
+ * @param {number} itemId - Checklist item ID
+ * @param {Object} executionContext - Context about how item was executed
+ * @returns {Object} Updated checklist item
+ */
+async function trackActionExecution(itemId, executionContext = {}) {
+  const result = await query(`
+    UPDATE ai_concierge_checklist_items
+    SET
+      status = 'in_progress',
+      executed_at = NOW(),
+      execution_context = $1::jsonb,
+      updated_at = NOW()
+    WHERE id = $2
+    RETURNING *;
+  `, [JSON.stringify(executionContext), itemId]);
+
+  const item = result.rows[0];
+
+  // Update goal's last_action_at timestamp
+  if (item.goal_id) {
+    await query(`
+      UPDATE ai_concierge_goals
+      SET last_action_at = NOW()
+      WHERE id = $1;
+    `, [item.goal_id]);
+  }
+
+  console.log(`[Goal Engine] Tracked execution for checklist item ${itemId}`);
+
+  return item;
+}
+
+/**
+ * Complete checklist item and update goal progress
+ * @param {number} itemId - Checklist item ID
+ * @param {string} completionNotes - Notes about completion
+ * @param {Object} executionContext - Additional context
+ * @returns {Object} Result with updated item and goal progress
+ */
+async function completeActionAndUpdateProgress(itemId, completionNotes = '', executionContext = {}) {
+  // Mark item as completed
+  const itemResult = await query(`
+    UPDATE ai_concierge_checklist_items
+    SET
+      status = 'completed',
+      completed_at = NOW(),
+      completion_notes = $1,
+      execution_context = $2::jsonb,
+      updated_at = NOW()
+    WHERE id = $3
+    RETURNING *;
+  `, [completionNotes, JSON.stringify(executionContext), itemId]);
+
+  const item = itemResult.rows[0];
+
+  // Auto-update goal progress
+  let goalProgress = null;
+  if (item.goal_id) {
+    const progress = await calculateGoalProgress(item.goal_id);
+
+    await query(`
+      UPDATE ai_concierge_goals
+      SET
+        current_progress = $1,
+        last_action_at = NOW(),
+        updated_at = NOW()
+      WHERE id = $2;
+    `, [progress, item.goal_id]);
+
+    goalProgress = progress;
+
+    console.log(`[Goal Engine] Goal ${item.goal_id} progress updated to ${progress}%`);
+
+    // If goal is 100% complete, mark it as completed
+    if (progress >= 100) {
+      await query(`
+        UPDATE ai_concierge_goals
+        SET
+          status = 'completed',
+          completed_at = NOW()
+        WHERE id = $1;
+      `, [item.goal_id]);
+
+      console.log(`[Goal Engine] Goal ${item.goal_id} marked as completed!`);
+    }
+  }
+
+  return {
+    item,
+    goalProgress
+  };
+}
+
+/**
+ * Parse AI response to detect completed actions
+ * @param {string} aiResponse - AI's response text
+ * @param {Array} activeChecklist - Current active checklist items
+ * @returns {Object} Detected actions
+ */
+function parseResponseForActions(aiResponse, activeChecklist = []) {
+  const detectedActions = {
+    questionsAsked: [],
+    dataCollected: [],
+    recommendationsMade: [],
+    matchedChecklistItems: []
+  };
+
+  const lowerResponse = aiResponse.toLowerCase();
+
+  // Detect questions asked (data collection indicators)
+  const questionPatterns = [
+    /what(?:'s| is) your ([\w\s]+)\??/gi,
+    /how (?:much|many) ([\w\s]+)\??/gi,
+    /can you (?:tell me|share) (?:about )?([\w\s]+)\??/gi,
+    /do you (?:have|use|know) ([\w\s]+)\??/gi
+  ];
+
+  questionPatterns.forEach(pattern => {
+    const matches = aiResponse.matchAll(pattern);
+    for (const match of matches) {
+      detectedActions.questionsAsked.push(match[1].trim());
+    }
+  });
+
+  // Detect recommendations made
+  const recommendationPatterns = [
+    /(?:i |let me )recommend ([\w\s]+)/gi,
+    /(?:you should|i suggest|consider) ([\w\s]+)/gi,
+    /(?:check out|take a look at) ([\w\s]+)/gi
+  ];
+
+  recommendationPatterns.forEach(pattern => {
+    const matches = aiResponse.matchAll(pattern);
+    for (const match of matches) {
+      detectedActions.recommendationsMade.push(match[1].trim());
+    }
+  });
+
+  // Match detected actions to checklist items
+  activeChecklist.forEach(item => {
+    const itemKeywords = item.checklist_item.toLowerCase().split(' ');
+
+    // Check if response relates to this checklist item
+    const hasKeywordMatch = itemKeywords.some(keyword =>
+      keyword.length > 3 && lowerResponse.includes(keyword)
+    );
+
+    if (hasKeywordMatch) {
+      detectedActions.matchedChecklistItems.push({
+        id: item.id,
+        checklist_item: item.checklist_item,
+        item_type: item.item_type,
+        confidence: 'medium' // Could be enhanced with better NLP
+      });
+    }
+  });
+
+  return detectedActions;
+}
+
 module.exports = {
   // Goal operations
   createGoal,
@@ -766,5 +1041,11 @@ module.exports = {
 
   // Goal generation & intelligence (Day 2)
   generateGoalsForContractor,
-  identifyDataGaps
+  identifyDataGaps,
+
+  // Day 4: Trigger evaluation & action tracking
+  evaluateChecklistTriggers,
+  trackActionExecution,
+  completeActionAndUpdateProgress,
+  parseResponseForActions
 };
