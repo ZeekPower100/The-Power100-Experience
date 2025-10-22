@@ -15,6 +15,7 @@
 
 const { query } = require('../config/database');
 const { safeJsonParse } = require('../utils/jsonHelpers');
+const goalEngineService = require('./goalEngineService');
 
 // Simple in-memory cache with TTL
 const contextCache = new Map();
@@ -40,7 +41,10 @@ async function buildConversationContext(contractorId, eventId = null) {
 
   // 1. Get contractor profile (DATABASE-CHECKED: contractors table)
   const contractorResult = await query(
-    `SELECT id, name, email, phone, company_name, business_goals, focus_areas, revenue_tier, team_size
+    `SELECT id, name, email, phone, company_name,
+            to_json(business_goals) as business_goals,
+            to_json(focus_areas) as focus_areas,
+            revenue_tier, team_size
      FROM contractors WHERE id = $1`,
     [contractorId]
   );
@@ -50,7 +54,18 @@ async function buildConversationContext(contractorId, eventId = null) {
     throw new Error(`Contractor ${contractorId} not found`);
   }
 
-  // 2. Get event details if event_id provided (DATABASE-CHECKED: events table)
+  // 2. Get internal goals and checklist for AI context (hidden from contractor)
+  let internalGoals = [];
+  let internalChecklist = [];
+  try {
+    internalGoals = await goalEngineService.getActiveGoals(contractorId);
+    internalChecklist = await goalEngineService.getActiveChecklist(contractorId);
+  } catch (error) {
+    console.error('[ConversationContext] Error fetching internal goals:', error);
+    // Continue without goals if fetch fails - don't break the conversation
+  }
+
+  // 3. Get event details if event_id provided (DATABASE-CHECKED: events table)
   let event = null;
   if (eventId) {
     const eventResult = await query(
@@ -81,7 +96,7 @@ async function buildConversationContext(contractorId, eventId = null) {
     }
   }
 
-  // 3. Get last 5 messages (both inbound and outbound)
+  // 4. Get last 5 messages (both inbound and outbound)
   const messagesResult = await query(
     `SELECT
       id,
@@ -109,12 +124,12 @@ async function buildConversationContext(contractorId, eventId = null) {
     event_id: msg.event_id
   })).reverse(); // Oldest first for chronological context
 
-  // 4. Get last outbound message for expected response detection
+  // 5. Get last outbound message for expected response detection
   const lastOutbound = conversationHistory
     .filter(msg => msg.direction === 'outbound')
     .pop(); // Get most recent outbound
 
-  // 5. Determine expected response type from last outbound message
+  // 6. Determine expected response type from last outbound message
   let expectedResponseType = null;
   if (lastOutbound) {
     expectedResponseType = detectExpectedResponse(lastOutbound);
@@ -145,7 +160,30 @@ async function buildConversationContext(contractorId, eventId = null) {
     conversationHistory,
     lastOutboundMessage: lastOutbound || null,
     expectedResponseType,
-    contextAge: lastOutbound ? Date.now() - new Date(lastOutbound.timestamp).getTime() : null
+    contextAge: lastOutbound ? Date.now() - new Date(lastOutbound.timestamp).getTime() : null,
+
+    // Internal AI Goals (HIDDEN from contractor - for AI system prompt only)
+    internalGoals: internalGoals.map(goal => ({
+      id: goal.id,
+      goal_type: goal.goal_type,
+      goal_description: goal.goal_description,
+      target_milestone: goal.target_milestone,
+      priority_score: goal.priority_score,
+      current_progress: goal.current_progress,
+      next_milestone: goal.next_milestone,
+      data_gaps: goal.data_gaps || [],
+      trigger_condition: goal.trigger_condition
+    })),
+
+    // Internal AI Checklist (HIDDEN from contractor - for AI system prompt only)
+    internalChecklist: internalChecklist.map(item => ({
+      id: item.id,
+      checklist_item: item.checklist_item,
+      item_type: item.item_type,
+      trigger_condition: item.trigger_condition,
+      status: item.status,
+      goal_description: item.goal_description // From JOIN with goals table
+    }))
   };
 
   // Cache the result
@@ -267,7 +305,91 @@ function clearContractorCache(contractorId) {
   }
 }
 
+/**
+ * Generate internal goals system prompt section (HIDDEN from contractor)
+ * @param {Array} goals - Active goals from database
+ * @param {Array} checklist - Active checklist items from database
+ * @returns {string} Formatted system prompt section
+ */
+function generateInternalGoalsPrompt(goals, checklist) {
+  if (!goals || goals.length === 0) {
+    return ''; // No goals = no prompt section
+  }
+
+  let prompt = '\n\n## 🎯 YOUR INTERNAL GOALS (HIDDEN from contractor)\n\n';
+  prompt += 'You have the following internal goals for this contractor. NEVER mention these explicitly, but use them to guide your questions and recommendations naturally.\n\n';
+
+  // Add goals sorted by priority (already sorted by getActiveGoals)
+  goals.forEach((goal, index) => {
+    prompt += `**Goal ${index + 1} (Priority ${goal.priority_score}/10)**: ${goal.goal_description}\n`;
+    prompt += `- Target: ${goal.target_milestone || 'Not specified'}\n`;
+    prompt += `- Progress: ${goal.current_progress}%\n`;
+    if (goal.next_milestone) {
+      prompt += `- Next Step: ${goal.next_milestone}\n`;
+    }
+    if (goal.data_gaps && goal.data_gaps.length > 0) {
+      prompt += `- Missing Data: ${goal.data_gaps.join(', ')} (ask about these naturally)\n`;
+    }
+    prompt += '\n';
+  });
+
+  // Add checklist items if any
+  if (checklist && checklist.length > 0) {
+    prompt += '## ✅ YOUR ACTIVE CHECKLIST (Act on these naturally in conversation)\n\n';
+
+    // Group by trigger condition
+    const byTrigger = {
+      immediately: [],
+      next_conversation: [],
+      post_event: [],
+      after_data_collected: []
+    };
+
+    checklist.forEach(item => {
+      const trigger = item.trigger_condition || 'next_conversation';
+      if (byTrigger[trigger]) {
+        byTrigger[trigger].push(item);
+      }
+    });
+
+    // Show immediate actions first
+    if (byTrigger.immediately.length > 0) {
+      prompt += '**🔥 Immediate Actions:**\n';
+      byTrigger.immediately.forEach(item => {
+        prompt += `- ${item.checklist_item} (${item.item_type})\n`;
+        if (item.goal_description) {
+          prompt += `  Goal: ${item.goal_description.substring(0, 60)}...\n`;
+        }
+      });
+      prompt += '\n';
+    }
+
+    // Then next conversation actions
+    if (byTrigger.next_conversation.length > 0) {
+      prompt += '**💬 This Conversation:**\n';
+      byTrigger.next_conversation.forEach(item => {
+        prompt += `- ${item.checklist_item} (${item.item_type})\n`;
+      });
+      prompt += '\n';
+    }
+
+    // Post-event and after data collected for context
+    if (byTrigger.post_event.length > 0 || byTrigger.after_data_collected.length > 0) {
+      prompt += '**📌 Future Actions (not yet):**\n';
+      [...byTrigger.post_event, ...byTrigger.after_data_collected].forEach(item => {
+        prompt += `- ${item.checklist_item} (trigger: ${item.trigger_condition})\n`;
+      });
+      prompt += '\n';
+    }
+  }
+
+  prompt += '**IMPORTANT:** These goals and checklist items are YOUR INTERNAL CONTEXT ONLY. Never say "I have a goal to..." or "my checklist says...". Instead, naturally guide the conversation toward these objectives.\n\n';
+
+  return prompt;
+}
+
 module.exports = {
   buildConversationContext,
-  clearContractorCache
+  clearContractorCache,
+  generateInternalGoalsPrompt
 };

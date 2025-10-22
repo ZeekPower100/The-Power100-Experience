@@ -21,6 +21,8 @@ const { ChatOpenAI } = require('@langchain/openai');
 const { StateGraph, MessagesAnnotation } = require('@langchain/langgraph');
 const { MemorySaver } = require('@langchain/langgraph');
 const { query } = require('../../config/database');
+const goalEngineService = require('../goalEngineService');
+const { generateInternalGoalsPrompt } = require('../conversationContext');
 
 // Phase 3: LangSmith tracing
 const { Client } = require('langsmith');
@@ -99,8 +101,9 @@ Remember: To the contractor, you're always "the AI Concierge" - event context is
 /**
  * Create AI Concierge Event Agent
  * Temperature: 0.5 (precise, factual for event data)
+ * @param {number} contractorId - Optional contractor ID to inject internal goals
  */
-function createEventAgent() {
+function createEventAgent(contractorId = null) {
   console.log('[AI Concierge Event] Creating agent with all 8 tools (including SMS/Email/Peer Matching)');
 
   // Initialize ChatOpenAI model with LangSmith tracing and token usage tracking
@@ -135,11 +138,33 @@ function createEventAgent() {
     updateContractorTimezoneTool
   ]);
 
-  // Define agent function
+  // Define agent function with dynamic system prompt
   async function callModel(state) {
     const { messages } = state;
+
+    // Build dynamic system prompt with internal goals (if contractorId provided)
+    let systemPrompt = EVENT_AGENT_SYSTEM_PROMPT;
+
+    if (contractorId) {
+      try {
+        // Fetch internal goals and checklist for this contractor
+        const internalGoals = await goalEngineService.getActiveGoals(contractorId);
+        const internalChecklist = await goalEngineService.getActiveChecklist(contractorId);
+
+        // Generate and append internal goals section to system prompt
+        const goalsSection = generateInternalGoalsPrompt(internalGoals, internalChecklist);
+        if (goalsSection) {
+          systemPrompt += goalsSection;
+          console.log(`[AI Concierge Event] ✅ Injected ${internalGoals.length} goals and ${internalChecklist.length} checklist items into system prompt`);
+        }
+      } catch (error) {
+        console.error('[AI Concierge Event] ⚠️  Failed to inject internal goals:', error.message);
+        // Continue without goals - don't break the conversation
+      }
+    }
+
     const response = await modelWithTools.invoke([
-      { role: 'system', content: EVENT_AGENT_SYSTEM_PROMPT },
+      { role: 'system', content: systemPrompt },
       ...messages
     ]);
     return { messages: [response] };
