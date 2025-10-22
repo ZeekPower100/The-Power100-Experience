@@ -97,11 +97,12 @@ const MESSAGE_CONFIGS = {
     allow_multi_message: false
   },
   post_event_wrap_up: {
-    max_length: 160,
-    required_elements: ['rating_scale', 'call_to_action'],
-    tone: 'appreciative but brief',
-    purpose: 'Collect overall event feedback',
-    allow_multi_message: false
+    max_length: 320, // Allow 2 messages for priority extraction
+    required_elements: ['top_priorities_request'],
+    tone: 'appreciative and action-oriented',
+    purpose: 'Extract top 3 priorities from event experience',
+    allow_multi_message: true,
+    split_preference: 'auto'
   }
 };
 
@@ -321,12 +322,21 @@ REQUIRED ELEMENTS:
     case 'post_event_wrap_up':
       prompt += `
 TIME: 1 hour after event ends
-PURPOSE: Get overall satisfaction rating
+PURPOSE: Extract contractor's top 3 priorities from event experience
 
 REQUIRED ELEMENTS:
-- Rating scale (1-5, 1=Poor, 5=Excellent)
-- Brief ask for feedback
-- Thank them for coming
+- Thank them for attending
+- Ask "What are your TOP 3 PRIORITIES from everything you experienced?"
+- Keep it action-oriented and brief
+- Make it easy to respond with numbered list
+
+MULTI-MESSAGE OPTION:
+If needed, split into 2 messages:
+- Message 1: Acknowledge event value + brief highlight
+- Message 2: Ask for top 3 priorities
+
+Example single: "Hope ${event.name || 'the event'} delivered some solid value! 🎯 What are your TOP 3 PRIORITIES from everything you experienced?"
+Example multi: "Hope you crushed it at ${event.name || 'the event'}! Some killer connections I bet. || Quick one: What are your TOP 3 PRIORITIES you want to tackle from today? (Just reply 1, 2, 3)"
 `;
       break;
   }
@@ -424,7 +434,7 @@ function getFallbackTemplate(messageType, intent, context) {
       return `Which sponsor booths did you visit today? I'll help you follow up on what matters.`;
 
     case 'post_event_wrap_up':
-      return `How was your experience today? Rate 1-5 (1=Poor, 5=Excellent). Thanks for coming!`;
+      return `Hope you got solid value from ${event.name}! 🎯 What are your TOP 3 PRIORITIES from everything you experienced?`;
 
     default:
       return `Hey ${firstName}! ${event.name} update from your AI Concierge.`;
