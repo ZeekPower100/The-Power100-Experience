@@ -514,6 +514,21 @@ async function generateGoalsForContractor(contractorId) {
   const goals = [];
   const allChecklistItems = [];
 
+  // ================================================================
+  // PHASE 2 ENHANCEMENT: Query matching patterns first
+  // ================================================================
+  let matchingPatterns = [];
+  try {
+    const patternMatchingService = require('./patternMatchingService');
+    matchingPatterns = await patternMatchingService.findMatchingPatterns(contractorId);
+    console.log(`[Goal Engine] Found ${matchingPatterns.length} matching pattern(s) for contractor ${contractorId}`);
+  } catch (error) {
+    console.error('[Goal Engine] Error fetching patterns (continuing without patterns):', error.message);
+  }
+
+  // Get top pattern for goal enhancement
+  const topPattern = matchingPatterns.length > 0 ? matchingPatterns[0] : null;
+
   // Identify data gaps first
   const dataGaps = identifyDataGaps(contractor);
 
@@ -557,38 +572,83 @@ async function generateGoalsForContractor(contractorId) {
 
   if (contractor.revenue_tier && revenueTiers[contractor.revenue_tier]) {
     const tierInfo = revenueTiers[contractor.revenue_tier];
+
+    // PHASE 2 ENHANCEMENT: Use pattern data to enhance goal
+    let goalDescription = `Help contractor grow to ${tierInfo.target} revenue level`;
+    let priorityScore = tierInfo.priority;
+    let patternSource = null;
+    let patternConfidence = null;
+    let revenueChecklist = [];
+
+    if (topPattern) {
+      // Enhance description with pattern data
+      goalDescription = `Help contractor grow to ${tierInfo.target} revenue level. Based on ${topPattern.sample_size} contractors who successfully made this transition`;
+
+      // Boost priority if pattern has high confidence
+      if (topPattern.confidence_score >= 0.8) {
+        priorityScore = Math.min(10, tierInfo.priority + 1);
+      }
+
+      // Add pattern attribution
+      patternSource = `Based on ${topPattern.sample_size} contractors who went from ${formatRevenueTier(topPattern.from_revenue_tier)} to ${formatRevenueTier(topPattern.to_revenue_tier)}`;
+      patternConfidence = topPattern.confidence_score;
+
+      // Generate checklist from pattern milestones
+      if (topPattern.common_milestones && topPattern.common_milestones.length > 0) {
+        revenueChecklist = topPattern.common_milestones.map((milestone, index) => ({
+          checklist_item: milestone,
+          item_type: 'recommendation',
+          trigger_condition: index === 0 ? 'immediately' : 'after_data_collected'
+        }));
+      }
+
+      // Add pattern-based focus area items
+      if (topPattern.common_focus_areas && topPattern.common_focus_areas.length > 0) {
+        revenueChecklist.push({
+          checklist_item: `Focus on: ${topPattern.common_focus_areas.join(', ')}`,
+          item_type: 'recommendation',
+          trigger_condition: 'next_conversation'
+        });
+      }
+
+      console.log(`[Goal Engine] Enhanced revenue goal with pattern data (confidence: ${patternConfidence})`);
+    }
+
+    // Fallback checklist if no pattern data
+    if (revenueChecklist.length === 0) {
+      revenueChecklist = [
+        {
+          checklist_item: 'Understand current lead flow and conversion rate',
+          item_type: 'data_collection',
+          trigger_condition: 'immediately'
+        },
+        {
+          checklist_item: 'Assess pricing strategy and profitability',
+          item_type: 'data_collection',
+          trigger_condition: 'next_conversation'
+        },
+        {
+          checklist_item: 'Identify revenue growth opportunities',
+          item_type: 'recommendation',
+          trigger_condition: 'after_data_collected'
+        }
+      ];
+    }
+
     const revenueGoal = {
       contractor_id: contractorId,
       goal_type: 'revenue_growth',
-      goal_description: `Help contractor grow to ${tierInfo.target} revenue level`,
+      goal_description: goalDescription,
       target_milestone: tierInfo.target,
-      priority_score: tierInfo.priority,
+      priority_score: priorityScore,
       success_criteria: { revenue_increase: 20, sustainable_growth: true },
       data_gaps: dataGaps.filter(gap => ['revenue_tier', 'services_offered', 'service_area'].includes(gap)),
-      trigger_condition: 'next_conversation'
+      trigger_condition: 'next_conversation',
+      pattern_source: patternSource,
+      pattern_confidence: patternConfidence
     };
 
     goals.push(revenueGoal);
-
-    // Checklist items for revenue growth
-    const revenueChecklist = [
-      {
-        checklist_item: 'Understand current lead flow and conversion rate',
-        item_type: 'data_collection',
-        trigger_condition: 'immediately'
-      },
-      {
-        checklist_item: 'Assess pricing strategy and profitability',
-        item_type: 'data_collection',
-        trigger_condition: 'next_conversation'
-      },
-      {
-        checklist_item: 'Identify revenue growth opportunities',
-        item_type: 'recommendation',
-        trigger_condition: 'after_data_collected'
-      }
-    ];
-
     allChecklistItems.push(...revenueChecklist);
   }
 
@@ -1049,3 +1109,26 @@ module.exports = {
   completeActionAndUpdateProgress,
   parseResponseForActions
 };
+
+/**
+ * Format revenue tier for human readability
+ * PHASE 2 HELPER FUNCTION
+ * @param {string} tier - Revenue tier (e.g., '0_5_million')
+ * @returns {string} Formatted tier (e.g., '$0-5M')
+ */
+function formatRevenueTier(tier) {
+  const tierMap = {
+    '0_5_million': '$0-5M',
+    '5_10_million': '$5-10M',
+    '11_20_million': '$11-20M',
+    '21_30_million': '$21-30M',
+    '31_50_million': '$31-50M',
+    '51_75_million': '$51-75M',
+    '76_100_million': '$76-100M',
+    '101_150_million': '$101-150M',
+    '151_300_million': '$151-300M',
+    '300_plus_million': '$300M+'
+  };
+
+  return tierMap[tier] || tier;
+}
