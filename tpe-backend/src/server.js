@@ -272,12 +272,30 @@ const PORT = process.env.PORT || 5000;
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
 
-  // Start proactive follow-up scheduler
-  if (process.env.ENABLE_FOLLOWUP_SCHEDULER !== 'false') {
-    const proactiveScheduler = require('./services/proactiveSchedulerService');
-    proactiveScheduler.startScheduler();
-    console.log('✅ Proactive follow-up scheduler started');
-  }
+  // ============================================================================
+  // DISABLED: Proactive Follow-Up Scheduler (setInterval-based)
+  // ============================================================================
+  // REASON: This is REDUNDANT with followUpWorker.js (BullMQ-based worker)
+  //
+  // ARCHITECTURE:
+  // - followUpService.scheduleFollowUp() creates DB record + adds to Bull queue
+  // - followUpWorker.js (BullMQ) processes jobs at EXACT scheduled time
+  // - followUpWorker USES proactiveSchedulerService utility functions:
+  //   - personalizeMessage() - AI message personalization
+  //   - sendFollowUpMessage() - n8n webhook integration
+  //
+  // KEEP: proactiveSchedulerService.js file (utility functions needed)
+  // DISABLED: proactiveSchedulerService.startScheduler() (redundant scheduler)
+  //
+  // If you need to re-enable interval-based scheduler: set ENABLE_FOLLOWUP_SCHEDULER=true
+  // (Not recommended - BullMQ is superior: retry logic, job tracking, exact timing)
+  // ============================================================================
+
+  // if (process.env.ENABLE_FOLLOWUP_SCHEDULER === 'true') {
+  //   const proactiveScheduler = require('./services/proactiveSchedulerService');
+  //   proactiveScheduler.startScheduler();
+  //   console.log('✅ Proactive follow-up scheduler started (interval-based)');
+  // }
 });
 
 // Graceful shutdown
