@@ -18,8 +18,9 @@ const { Worker } = require('bullmq');
 const Redis = require('ioredis');
 const path = require('path');
 
-// Load environment variables
-require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env.development') });
+// Load environment variables (production-aware)
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
+require('dotenv').config({ path: path.join(__dirname, '..', '..', envFile) });
 
 // Import Phase 3 services
 const proactiveMessageService = require('../services/proactiveMessageService');
