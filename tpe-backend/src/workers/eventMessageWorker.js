@@ -6,8 +6,9 @@ const { Worker } = require('bullmq');
 const Redis = require('ioredis');
 const path = require('path');
 
-// Load environment variables
-require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
+// Load environment variables (production-aware)
+const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
+require('dotenv').config({ path: path.join(__dirname, '..', '..', envFile) });
 
 const { query } = require('../config/database');
 const { safeJsonParse } = require('../utils/jsonHelpers');
