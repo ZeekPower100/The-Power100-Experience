@@ -9,7 +9,9 @@ const path = require('path');
 const workers = [
   { name: 'Follow-up Worker', path: './followUpWorker.js' },
   { name: 'Event Message Worker', path: './eventMessageWorker.js' },
-  { name: 'Event Orchestration Worker', path: './eventOrchestrationWorker.js' }
+  { name: 'Event Orchestration Worker', path: './eventOrchestrationWorker.js' },
+  { name: 'Proactive IGE Worker', path: './igeWorker.js' },
+  { name: 'Proactive Message Delivery Worker', path: './proactiveMessageWorker.js' }
 ];
 
 const childProcesses = [];

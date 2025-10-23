@@ -43,7 +43,25 @@ const matchContractorWithPartners = async (contractor) => {
 
   // Get all active partners
   const partnersResult = await query(
-    'SELECT * FROM strategic_partners WHERE is_active = true'
+    `SELECT
+      id, company_name, description, value_proposition, website, logo_url,
+      powerconfidence_score, is_active, status,
+      to_json(focus_areas) as focus_areas,
+      to_json(revenue_tiers) as revenue_tiers,
+      to_json(service_areas) as service_areas,
+      to_json(focus_areas_served) as focus_areas_served,
+      to_json(target_revenue_range) as target_revenue_range,
+      to_json(geographic_regions) as geographic_regions,
+      to_json(landing_page_videos) as landing_page_videos,
+      to_json(client_testimonials) as client_testimonials,
+      to_json(ai_tags) as ai_tags,
+      to_json(ai_insights) as ai_insights,
+      to_json(ai_relevance_scores) as ai_relevance_scores,
+      to_json(demo_analysis) as demo_analysis,
+      to_json(video_metadata) as video_metadata,
+      ai_summary, key_differentiators, testimonials, success_stories,
+      client_count, established_year, primary_contact, primary_email
+    FROM strategic_partners WHERE is_active = true`
   );
   
   // Parse JSON fields for each partner

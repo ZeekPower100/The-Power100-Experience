@@ -22,18 +22,64 @@ class AIKnowledgeService {
 
     // Known array columns that need to_json() conversion (PostgreSQL array → JSON array)
     this.arrayColumns = [
+      // Focus areas (multiple tables)
       'focus_areas',
       'focus_areas_served',
       'focus_areas_covered',
       'focus_areas_12_months',
-      'topics',
+
+      // Strategic Partners TEXT arrays
+      'service_areas',
+      'revenue_tiers',
+      'target_revenue_range',
+      'geographic_regions',
       'key_differentiators',
-      'social_proof',
       'testimonials',
+      'success_stories',
+
+      // Books & Podcasts TEXT arrays
+      'topics',
+      'key_takeaways',
+
+      // Events TEXT arrays
+      'speaker_profiles',
+      'sponsors',
+
+      // Contractors TEXT arrays
+      'business_goals',
+      'services_offered',
+
+      // Event-related TEXT arrays
       'booth_representatives',
+
+      // Generic arrays
+      'social_proof',
+
+      // JSONB columns (already JSON but need to_json for consistency)
       'ai_tags',
       'ai_insights',
-      'actionable_insights'
+      'actionable_insights',
+      'ai_relevance_scores',
+      'landing_page_videos',
+      'client_testimonials',
+      'demo_analysis',
+      'video_metadata',
+      'implementation_guides',
+      'companion_resources',
+      'chapter_summaries',
+      'key_concepts',
+      'related_entities',
+      'engagement_metrics',
+      'episode_transcripts',
+      'guest_credentials',
+      'topic_depth_analysis',
+      'implementation_examples',
+      'roi_discussions',
+      'historical_attendance',
+      'roi_tracking',
+      'networking_opportunities',
+      'speaker_credentials',
+      'follow_up_resources'
     ];
   }
 
@@ -276,8 +322,8 @@ class AIKnowledgeService {
           e.location,
           e.description,
           e.expected_attendance,
-          e.speaker_profiles,
-          e.sponsors,
+          to_json(e.speaker_profiles) as speaker_profiles,
+          to_json(e.sponsors) as sponsors,
           to_json(e.focus_areas_covered) as focus_areas_covered,
           e.ai_summary,
           to_json(e.ai_tags) as ai_tags,
@@ -665,7 +711,25 @@ class AIKnowledgeService {
 
       // Get event details
       const eventResult = await query(`
-        SELECT * FROM events WHERE id = $1
+        SELECT
+          id, name, date, end_date, registration_deadline,
+          location, format, description, expected_attendance, website, logo_url, status,
+          ai_summary,
+          to_json(ai_tags) as ai_tags,
+          to_json(historical_attendance) as historical_attendance,
+          to_json(roi_tracking) as roi_tracking,
+          to_json(networking_opportunities) as networking_opportunities,
+          to_json(speaker_credentials) as speaker_credentials,
+          to_json(follow_up_resources) as follow_up_resources,
+          speaker_profiles, sponsors, focus_areas_covered, topics,
+          agenda_highlights, past_attendee_testimonials,
+          organizer_name, organizer_email, organizer_phone, organizer_company,
+          target_audience, event_type, price_range, duration, registration_url,
+          success_metrics, networking_quality_score, target_revenue,
+          hotel_block_url, pre_registered_attendees,
+          agenda_status, sms_event_code, timezone,
+          created_at
+        FROM events WHERE id = $1
       `, [eventId]);
 
       if (eventResult.rows.length === 0) {

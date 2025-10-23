@@ -19,6 +19,8 @@ const { errorHandler } = require('./middleware/errorHandler');
 const dataCollectionService = require('./services/dataCollectionService');
 const { registerAllHandlers } = require('./services/eventOrchestrator/messageHandlerRegistry');
 const { initializeScheduledMessageProcessor } = require('./queues/eventOrchestrationQueue');
+const { initializeIGEScheduler } = require('./queues/igeQueue');
+const { initializeProactiveMessageScheduler } = require('./queues/proactiveMessageQueue');
 
 // Import routes
 const contractorRoutes = require('./routes/contractorRoutes');
@@ -53,6 +55,7 @@ const podcastRoutes = require('./routes/podcastRoutes');
 const aiRoutes = require('./routes/aiRoutes');
 const schedulerRoutes = require('./routes/schedulerRoutes');
 const stateMachineRoutes = require('./routes/stateMachineRoutes');
+const igeMonitorRoutes = require('./routes/igeMonitorRoutes');
 
 const app = express();
 
@@ -172,6 +175,7 @@ app.use('/api/matching', require('./routes/matchingRoutes'));
 app.use('/api/upload', uploadRoutes);
 app.use('/api/books', bookRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/ige-monitor', igeMonitorRoutes);
 app.use('/api/podcasts', podcastRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/event-check-in', eventCheckInRoutes);
@@ -241,6 +245,26 @@ initializeScheduledMessageProcessor()
   })
   .catch((err) => {
     console.error('❌ Failed to initialize scheduled message processor:', err);
+  });
+
+// 🔥 CRITICAL: Initialize Phase 3 IGE scheduler (runs hourly)
+// This is THE automation that makes Phase 3 Internal Goal Engine work!
+initializeIGEScheduler()
+  .then(() => {
+    console.log('✅ Phase 3 IGE scheduler initialized successfully');
+  })
+  .catch((err) => {
+    console.error('❌ Failed to initialize Phase 3 IGE scheduler:', err);
+  });
+
+// 🔥 CRITICAL: Initialize Proactive Message delivery scheduler (runs every 5 minutes)
+// This sends the scheduled proactive messages to contractors via SMS!
+initializeProactiveMessageScheduler()
+  .then(() => {
+    console.log('✅ Proactive message delivery scheduler initialized successfully');
+  })
+  .catch((err) => {
+    console.error('❌ Failed to initialize proactive message delivery scheduler:', err);
   });
 
 // Start server

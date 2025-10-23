@@ -21,7 +21,18 @@ class ReportGenerationService {
       
       // Get partner details
       const partnerResult = await query(
-        'SELECT * FROM strategic_partners WHERE id = $1',
+        `SELECT
+          id, company_name, description, value_proposition, website, logo_url,
+          powerconfidence_score, is_active, status,
+          to_json(focus_areas) as focus_areas,
+          to_json(service_areas) as service_areas,
+          to_json(focus_areas_served) as focus_areas_served,
+          to_json(target_revenue_range) as target_revenue_range,
+          to_json(client_testimonials) as client_testimonials,
+          to_json(ai_tags) as ai_tags,
+          ai_summary, key_differentiators, testimonials,
+          client_count, established_year
+        FROM strategic_partners WHERE id = $1`,
         [partnerId]
       );
       
@@ -279,7 +290,20 @@ class ReportGenerationService {
       let partnerData = null;
       try {
         const { query } = require('../config/database');
-        const result = await query('SELECT * FROM strategic_partners WHERE id = $1', [partnerId]);
+        const result = await query(
+          `SELECT
+            id, company_name, description, value_proposition, website, logo_url,
+            powerconfidence_score, is_active, status,
+            to_json(focus_areas) as focus_areas,
+            to_json(service_areas) as service_areas,
+            to_json(focus_areas_served) as focus_areas_served,
+            to_json(client_testimonials) as client_testimonials,
+            to_json(ai_tags) as ai_tags,
+            ai_summary, key_differentiators, testimonials,
+            client_count, established_year
+          FROM strategic_partners WHERE id = $1`,
+          [partnerId]
+        );
         if (result.rows.length > 0) {
           partnerData = result.rows[0];
         }

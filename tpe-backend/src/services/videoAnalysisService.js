@@ -405,7 +405,16 @@ Provide the analysis in a structured JSON format.`;
     try {
       // Get partner info
       const partnerResult = await query(
-        'SELECT * FROM strategic_partners WHERE id = $1',
+        `SELECT
+          id, company_name, description, value_proposition, website,
+          to_json(focus_areas) as focus_areas,
+          to_json(service_areas) as service_areas,
+          to_json(landing_page_videos) as landing_page_videos,
+          to_json(client_testimonials) as client_testimonials,
+          to_json(demo_analysis) as demo_analysis,
+          to_json(video_metadata) as video_metadata,
+          client_demos
+        FROM strategic_partners WHERE id = $1`,
         [partnerId]
       );
 

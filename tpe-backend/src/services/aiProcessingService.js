@@ -194,7 +194,29 @@ async function processPartnerAI(partnerId) {
   try {
     // Fetch partner data
     const result = await query(
-      'SELECT * FROM strategic_partners WHERE id = $1',
+      `SELECT
+        id, company_name, description, value_proposition, website, logo_url,
+        powerconfidence_score, is_active, status, created_at, updated_at,
+        primary_contact, primary_email, primary_phone,
+        to_json(focus_areas) as focus_areas,
+        to_json(revenue_tiers) as revenue_tiers,
+        to_json(service_areas) as service_areas,
+        to_json(focus_areas_served) as focus_areas_served,
+        to_json(target_revenue_range) as target_revenue_range,
+        to_json(geographic_regions) as geographic_regions,
+        to_json(landing_page_videos) as landing_page_videos,
+        to_json(client_testimonials) as client_testimonials,
+        to_json(ai_tags) as ai_tags,
+        to_json(ai_insights) as ai_insights,
+        to_json(ai_relevance_scores) as ai_relevance_scores,
+        to_json(demo_analysis) as demo_analysis,
+        to_json(video_metadata) as video_metadata,
+        ai_summary, ai_quality_score, ai_confidence_score,
+        client_count, established_year, employee_count,
+        why_clients_choose_you, why_clients_choose_competitors,
+        key_differentiators, testimonials, success_stories,
+        pricing_model, onboarding_process, support_options
+      FROM strategic_partners WHERE id = $1`,
       [partnerId]
     );
 
@@ -452,7 +474,25 @@ async function processBookAI(bookId) {
   try {
     // Fetch book data
     const result = await query(
-      'SELECT * FROM books WHERE id = $1',
+      `SELECT
+        id, title, author, description, cover_image_url, amazon_url,
+        publication_year, target_audience, reading_time, difficulty_level,
+        is_active, status, created_at, updated_at,
+        to_json(topics) as topics,
+        to_json(focus_areas_covered) as focus_areas_covered,
+        to_json(key_takeaways) as key_takeaways,
+        to_json(ai_tags) as ai_tags,
+        to_json(ai_insights) as ai_insights,
+        to_json(implementation_guides) as implementation_guides,
+        to_json(companion_resources) as companion_resources,
+        to_json(chapter_summaries) as chapter_summaries,
+        to_json(key_concepts) as key_concepts,
+        to_json(related_entities) as related_entities,
+        to_json(engagement_metrics) as engagement_metrics,
+        ai_summary, actionable_ratio, completion_rate,
+        table_of_contents, intended_solutions, testimonials,
+        author_email, author_phone, author_linkedin_url, author_website
+      FROM books WHERE id = $1`,
       [bookId]
     );
 

@@ -246,10 +246,62 @@ async function getSchedulerStats() {
   }
 }
 
+// ============================================================================
+// START SCHEDULER
+// ============================================================================
+
+let schedulerInterval = null;
+
+/**
+ * Start the proactive follow-up scheduler
+ * Runs processDueFollowUps every 5 minutes
+ */
+function startScheduler() {
+  // Check if already running
+  if (schedulerInterval) {
+    console.log('[ProactiveScheduler] ⚠️  Scheduler already running');
+    return;
+  }
+
+  console.log('[ProactiveScheduler] 🚀 Starting proactive follow-up scheduler');
+  console.log('[ProactiveScheduler] Will check for due follow-ups every 5 minutes');
+
+  // Run immediately on start
+  processDueFollowUps()
+    .then(() => console.log('[ProactiveScheduler] ✅ Initial check completed'))
+    .catch(err => console.error('[ProactiveScheduler] ❌ Initial check failed:', err));
+
+  // Then run every 5 minutes
+  schedulerInterval = setInterval(async () => {
+    console.log('[ProactiveScheduler] 🔄 Running scheduled check for due follow-ups');
+    try {
+      await processDueFollowUps();
+      console.log('[ProactiveScheduler] ✅ Scheduled check completed');
+    } catch (error) {
+      console.error('[ProactiveScheduler] ❌ Scheduled check failed:', error);
+    }
+  }, 5 * 60 * 1000); // 5 minutes
+
+  console.log('[ProactiveScheduler] ✅ Scheduler started successfully');
+}
+
+/**
+ * Stop the proactive follow-up scheduler
+ */
+function stopScheduler() {
+  if (schedulerInterval) {
+    clearInterval(schedulerInterval);
+    schedulerInterval = null;
+    console.log('[ProactiveScheduler] 🛑 Scheduler stopped');
+  }
+}
+
 module.exports = {
   getDueFollowUps,
   personalizeMessage,
   sendFollowUpMessage,
   processDueFollowUps,
-  getSchedulerStats
+  getSchedulerStats,
+  startScheduler,
+  stopScheduler
 };

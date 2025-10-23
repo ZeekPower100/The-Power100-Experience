@@ -28,7 +28,12 @@ const matchPodcast = async (contractor) => {
   
   // Get podcasts that match the primary focus area
   const podcastsResult = await query(
-    'SELECT * FROM podcasts WHERE is_active = true'
+    `SELECT id, title, host, description, logo_url, website, frequency,
+            to_json(topics) as topics,
+            to_json(focus_areas_covered) as focus_areas_covered,
+            to_json(ai_tags) as ai_tags,
+            ai_summary, is_active
+     FROM podcasts WHERE is_active = true`
   );
   console.log("Podcasts found:", podcastsResult.rows.length);
   
@@ -115,7 +120,13 @@ const matchEvent = async (contractor) => {
   
   // Get upcoming events
   const eventsResult = await query(
-    'SELECT * FROM events WHERE is_active = true AND registration_deadline > CURRENT_DATE ORDER BY date ASC'
+    `SELECT id, name, date, end_date, location, description, website, logo_url,
+            expected_attendance, format, status, registration_deadline,
+            to_json(focus_areas_covered) as focus_areas_covered,
+            to_json(topics) as topics,
+            to_json(ai_tags) as ai_tags,
+            ai_summary, target_audience, event_type, price_range
+     FROM events WHERE is_active = true AND registration_deadline > CURRENT_DATE ORDER BY date ASC`
   );
   
   let bestMatch = null;
