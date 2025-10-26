@@ -7,13 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { 
-  TrendingUp, 
-  TrendingDown, 
-  Minus, 
-  Award, 
-  Users, 
-  MessageSquare, 
+import {
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Award,
+  Users,
+  MessageSquare,
   Calendar,
   Download,
   LogOut,
@@ -21,7 +21,8 @@ import {
   BarChart3,
   Target,
   Star,
-  FileText
+  FileText,
+  UserCog
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { exportToPDF, exportToExcel } from '@/utils/exportReports';
@@ -68,46 +69,70 @@ export default function PartnerDashboard() {
 
   const fetchPartnerData = async () => {
     try {
+      setLoading(true);
       const token = getFromStorage('partnerToken');
+
       if (!token) {
         router.push('/partner/login');
         return;
       }
 
-      // Mock data for now - will connect to real API
-      setPartnerData({
-        id: 1,
-        company_name: 'TechFlow Solutions',
-        contact_email: 'partner@techflow.com',
-        power_confidence_score: 87,
-        score_trend: 'up',
-        industry_rank: 4,
-        total_partners_in_category: 16,
-        recent_feedback_count: 12,
-        avg_satisfaction: 8.9,
-        total_contractors: 45,
-        active_contractors: 28
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      // Fetch dashboard data
+      const dashboardResponse = await fetch('http://localhost:5000/api/partner-portal/dashboard', {
+        headers
       });
 
-      setCategoryScores([
-        { category: 'Service Quality', score: 91, trend: 'up', feedback_count: 12 },
-        { category: 'Communication', score: 88, trend: 'stable', feedback_count: 12 },
-        { category: 'Results Delivered', score: 85, trend: 'up', feedback_count: 10 },
-        { category: 'Value for Investment', score: 84, trend: 'down', feedback_count: 11 },
-        { category: 'Technical Expertise', score: 89, trend: 'up', feedback_count: 12 }
-      ]);
+      if (!dashboardResponse.ok) {
+        if (dashboardResponse.status === 401) {
+          // Token expired or invalid
+          localStorage.removeItem('partnerToken');
+          localStorage.removeItem('partnerInfo');
+          router.push('/partner/login');
+          return;
+        }
+        throw new Error('Failed to fetch dashboard data');
+      }
 
-      setQuarterlyScores([
-        { quarter: 'Q1 2024', score: 82, feedback_count: 15 },
-        { quarter: 'Q2 2024', score: 85, feedback_count: 18 },
-        { quarter: 'Q3 2024', score: 83, feedback_count: 12 },
-        { quarter: 'Q4 2024', score: 87, feedback_count: 20 }
-      ]);
+      const dashboardData = await dashboardResponse.json();
+
+      if (dashboardData.success) {
+        setPartnerData(dashboardData.partner);
+      }
+
+      // Fetch quarterly scores
+      const quarterlyResponse = await fetch('http://localhost:5000/api/partner-portal/analytics/quarterly', {
+        headers
+      });
+
+      if (quarterlyResponse.ok) {
+        const quarterlyData = await quarterlyResponse.json();
+        if (quarterlyData.success) {
+          setQuarterlyScores(quarterlyData.quarterly_scores);
+        }
+      }
+
+      // Fetch category scores
+      const categoriesResponse = await fetch('http://localhost:5000/api/partner-portal/analytics/categories', {
+        headers
+      });
+
+      if (categoriesResponse.ok) {
+        const categoriesData = await categoriesResponse.json();
+        if (categoriesData.success) {
+          setCategoryScores(categoriesData.category_scores);
+        }
+      }
 
       setLoading(false);
     } catch (error) {
       console.error('Error fetching partner data:', error);
       setLoading(false);
+      // Show error message to user (could add toast notification here)
     }
   };
 
@@ -209,6 +234,24 @@ export default function PartnerDashboard() {
                 <Download className="w-4 h-4" />
                 Export Excel
               </Button>
+              <Link href="/partner/leads">
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2 bg-power100-green hover:bg-green-600 text-white border-green-600"
+                >
+                  <Users className="w-4 h-4" />
+                  Leads
+                </Button>
+              </Link>
+              <Link href="/partner/profile/edit">
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <UserCog className="w-4 h-4" />
+                  Edit Profile
+                </Button>
+              </Link>
               <Button
                 variant="outline"
                 onClick={handleLogout}

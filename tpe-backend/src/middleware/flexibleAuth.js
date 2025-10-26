@@ -64,11 +64,14 @@ const identifyAndValidateToken = async (token) => {
       let userData = {};
       if (userId) {
         const userResult = await query(
-          'SELECT id, email, name, role FROM partner_users WHERE id = $1 AND partner_id = $2',
+          'SELECT id, email, first_name, last_name, role FROM partner_users WHERE id = $1 AND partner_id = $2',
           [userId, partnerId]
         );
         if (userResult.rows.length > 0) {
-          userData = userResult.rows[0];
+          userData = {
+            ...userResult.rows[0],
+            name: `${userResult.rows[0].first_name || ''} ${userResult.rows[0].last_name || ''}`.trim()
+          };
         }
       }
 
@@ -273,6 +276,50 @@ const contractorOnly = async (req, res, next) => {
   next();
 };
 
+// Partner OR Admin middleware - accepts both partner and admin tokens
+const protectPartnerOrAdmin = async (req, res, next) => {
+  let token;
+
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+
+  if (!token && req.cookies && req.cookies.token) {
+    token = req.cookies.token;
+  }
+
+  if (!token) {
+    return next(new AppError('Authentication required', 401));
+  }
+
+  const validationResult = await identifyAndValidateToken(token);
+
+  if (!validationResult) {
+    return next(new AppError('Invalid or expired token', 401));
+  }
+
+  // Accept either partner or admin tokens
+  if (validationResult.type !== 'partner' && validationResult.type !== 'admin') {
+    return next(new AppError('Partner or Admin access required', 403));
+  }
+
+  req.user = validationResult.user;
+  req.userType = validationResult.type;
+
+  // Set context-specific properties for backward compatibility
+  if (validationResult.type === 'partner') {
+    req.partnerId = validationResult.user.partnerId;
+  }
+
+  console.log('✅ Partner/Admin auth successful:', {
+    type: req.userType,
+    userId: req.user.id,
+    partnerId: req.partnerId || 'N/A'
+  });
+
+  next();
+};
+
 // Optional auth - adds user if token is valid but doesn't require it
 const optionalFlexibleAuth = async (req, res, next) => {
   let token;
@@ -307,14 +354,15 @@ module.exports = {
   adminOnly,
   partnerOnly,
   contractorOnly,
+  protectPartnerOrAdmin,
   optionalFlexibleAuth,
-  
+
   // Backwards compatibility (maps to flexible versions)
   protect: flexibleProtect,  // This is the key fix - protect now handles all token types
   authorize: (...roles) => flexibleProtect, // For now, just use flexible protect
   optionalAuth: optionalFlexibleAuth,
   authenticateAdmin: adminOnly,
-  
+
   // Utility function for other modules
   identifyAndValidateToken
 };

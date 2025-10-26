@@ -1,0 +1,118 @@
+# Docker Compose for Production Deployment
+# This file is used for production deployments on AWS EC2/ECS
+# Database is AWS RDS, not a local container
+
+version: '3.8'
+
+services:
+  # Backend API (Production)
+  backend:
+    build:
+      context: ./tpe-backend
+      dockerfile: Dockerfile
+    container_name: tpe-backend-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+
+      # Database (AWS RDS)
+      DB_HOST: tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com
+      DB_PORT: 5432
+      DB_NAME: tpedb
+      DB_USER: tpeadmin
+      DB_PASSWORD: ${DB_PASSWORD}  # Set via environment variable or secrets
+      DB_SSL: "true"
+
+      # JWT (MUST use different secret in production)
+      JWT_SECRET: ${JWT_SECRET}  # Set via environment variable or AWS Secrets Manager
+      JWT_EXPIRE: 7d
+
+      # Frontend URL
+      FRONTEND_URL: https://tpx.power100.io
+      ADMIN_DASHBOARD_URL: https://tpx.power100.io/admindashboard
+
+      # API Keys
+      TPX_N8N_API_KEY: ${TPX_N8N_API_KEY}
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL}
+
+      # AWS Configuration
+      AWS_REGION: us-east-1
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+
+      # GoHighLevel Integration
+      GHL_PRIVATE_INTEGRATION_TOKEN: ${GHL_PRIVATE_INTEGRATION_TOKEN}
+      GHL_LOCATION_ID: ${GHL_LOCATION_ID}
+
+      # Feature Flags
+      ENABLE_SMS_VERIFICATION: "true"
+      ENABLE_EMAIL_VERIFICATION: "true"
+      ENABLE_AI_COACHING_OPTIN: "true"
+      ENABLE_PARTNER_MATCHING: "true"
+      ENABLE_CONFIDENCE_SCORING: "true"
+      ENABLE_ADMIN_DASHBOARD: "true"
+      ENABLE_BULK_OPERATIONS: "true"
+      ENABLE_DATA_COLLECTION: "true"
+      ENABLE_OUTCOME_TRACKING: "true"
+      ENABLE_FOLLOWUP_SCHEDULER: "true"
+      USE_S3: "true"
+
+      # Rate Limiting (Production)
+      RATE_LIMIT_WINDOW_MS: 900000  # 15 minutes
+      RATE_LIMIT_MAX_REQUESTS: 100  # Stricter in production
+
+      # Logging
+      LOG_LEVEL: info
+
+      # Monitoring (Optional - configure if using Sentry)
+      # SENTRY_DSN: ${SENTRY_DSN}
+
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persistent logs directory
+      - /var/log/tpe/backend:/app/logs
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:5000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Frontend (Next.js Production)
+  frontend:
+    build:
+      context: ./tpe-front-end
+      dockerfile: Dockerfile
+    container_name: tpe-frontend-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      NEXT_PUBLIC_API_URL: https://tpx.power100.io/api
+      NEXT_PUBLIC_ENVIRONMENT: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  default:
+    name: tpe-production-network

@@ -17,11 +17,8 @@ import {
   Brain,
   Zap,
   BarChart3,
-  RefreshCw,
-  Search,
-  LayoutDashboard
+  RefreshCw
 } from 'lucide-react';
-import IGEContractorSearch from '@/components/admin/IGEContractorSearch';
 
 interface SystemHealth {
   trust_score: {
@@ -61,7 +58,6 @@ interface SystemAlerts {
 }
 
 export default function IGEMonitorDashboard() {
-  const [activeTab, setActiveTab] = useState<'overview' | 'search'>('overview');
   const [health, setHealth] = useState<SystemHealth | null>(null);
   const [activity, setActivity] = useState<RecentActivity[]>([]);
   const [alerts, setAlerts] = useState<SystemAlerts | null>(null);
@@ -189,35 +185,6 @@ export default function IGEMonitorDashboard() {
           </Button>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex gap-2 border-b border-gray-200">
-          <button
-            onClick={() => setActiveTab('overview')}
-            className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors ${
-              activeTab === 'overview'
-                ? 'text-power100-red border-b-2 border-power100-red'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <LayoutDashboard className="h-5 w-5" />
-            System Overview
-          </button>
-          <button
-            onClick={() => setActiveTab('search')}
-            className={`flex items-center gap-2 px-6 py-3 font-medium transition-colors ${
-              activeTab === 'search'
-                ? 'text-power100-red border-b-2 border-power100-red'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Search className="h-5 w-5" />
-            Contractor Search
-          </button>
-        </div>
-
-        {/* Overview Tab Content */}
-        {activeTab === 'overview' && (
-        <>
         {/* System Alerts */}
         {alerts && (alerts.low_trust_contractors > 0 || alerts.stale_goals > 0 || alerts.unanswered_questions > 0) && (
           <Card className="border-l-4 border-l-yellow-500 bg-yellow-50">
@@ -374,48 +341,6 @@ export default function IGEMonitorDashboard() {
 
         </div>
 
-        {/* Analytics Navigation Card */}
-        <Card className="border-l-4 border-l-power100-red bg-gradient-to-r from-red-50 to-white">
-          <CardHeader>
-            <CardTitle className="flex items-center text-power100-black">
-              <BarChart3 className="h-6 w-6 mr-3 text-power100-red" />
-              IGE Analytics Dashboard
-            </CardTitle>
-            <CardDescription>
-              Comprehensive system-wide analytics, trends, and performance insights
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <div className="flex items-center text-sm text-gray-700">
-                  <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
-                  System-wide performance metrics
-                </div>
-                <div className="flex items-center text-sm text-gray-700">
-                  <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
-                  Time-series trends (7d, 30d, 90d)
-                </div>
-                <div className="flex items-center text-sm text-gray-700">
-                  <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
-                  Contractor segmentation by trust & engagement
-                </div>
-                <div className="flex items-center text-sm text-gray-700">
-                  <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />
-                  Message effectiveness & conversion rates
-                </div>
-              </div>
-              <Button
-                onClick={() => window.location.href = '/admindashboard/ige-monitor/analytics'}
-                className="bg-power100-red hover:bg-red-700 text-white"
-              >
-                <BarChart3 className="h-4 w-4 mr-2" />
-                View Analytics
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
         {/* Recent Activity Feed */}
         <Card>
           <CardHeader>
@@ -561,13 +486,6 @@ export default function IGEMonitorDashboard() {
           </Card>
 
         </div>
-        </>
-        )}
-
-        {/* Contractor Search Tab */}
-        {activeTab === 'search' && (
-          <IGEContractorSearch />
-        )}
 
       </div>
     </div>

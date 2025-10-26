@@ -51,6 +51,8 @@
     "rss-parser": "^3.13.0",
     "twilio": "^4.19.3",
     "uuid": "^11.1.0",
+    "winston": "^3.18.3",
+    "winston-daily-rotate-file": "^5.0.0",
     "xstate": "^5.23.0",
     "youtube-transcript": "^1.2.1",
     "zod": "^3.25.76"
