@@ -205,8 +205,8 @@ class DevManager {
       }
     });
 
-    // Wait for server to be ready (default 120 seconds)
-    await this.waitForServer(config.port, config.name, 120, config.noPortCheck);
+    // Wait for server to be ready (default 300 seconds = 5 minutes)
+    await this.waitForServer(config.port, config.name, 300, config.noPortCheck);
   }
 
   // Wait for server to be ready

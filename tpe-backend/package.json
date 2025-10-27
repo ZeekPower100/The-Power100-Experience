@@ -45,7 +45,6 @@
     "langsmith": "^0.3.74",
     "morgan": "^1.10.0",
     "multer": "^2.0.2",
-    "nodemailer": "^6.9.7",
     "openai": "^5.20.2",
     "pg": "^8.11.3",
     "rss-parser": "^3.13.0",

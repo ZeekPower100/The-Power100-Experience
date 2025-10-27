@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
-import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from './jsonHelpers';
 
@@ -220,102 +220,148 @@ export const exportToPDF = async (data: ExportData, elementId?: string) => {
   pdf.save(`PowerConfidence_${data.partner.company_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`);
 };
 
-export const exportToExcel = (data: ExportData | ExportData[]) => {
-  const workbook = XLSX.utils.book_new();
-  
+export const exportToExcel = async (data: ExportData | ExportData[]) => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'The Power100 Experience';
+  workbook.created = new Date();
+
   if (Array.isArray(data)) {
     // Multiple partners export
-    const worksheetData = data.map(item => ({
-      'Company Name': item.partner.company_name,
-      'Email': item.partner.contact_email,
-      'Phone': item.partner.contact_phone || 'N/A',
-      'Website': item.partner.website || 'N/A',
-      'PowerConfidence Score': item.partner.current_powerconfidence_score,
-      'Trend': item.partner.score_trend,
-      'Status': item.partner.status || 'Active',
-      'Service Categories': parseServiceCategories(item.partner.service_categories),
-      'Total Engagements': item.partner.total_contractor_engagements,
-      'Avg Satisfaction': item.partner.avg_contractor_satisfaction,
-      'Recent Feedback': item.partner.recent_feedback_count
-    }));
+    const worksheet = workbook.addWorksheet('Partners Overview');
 
-    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
-    
-    // Add column widths
-    worksheet['!cols'] = [
-      { wch: 25 }, // Company Name
-      { wch: 30 }, // Email
-      { wch: 15 }, // Phone
-      { wch: 30 }, // Website
-      { wch: 20 }, // Score
-      { wch: 10 }, // Trend
-      { wch: 10 }, // Status
-      { wch: 40 }, // Categories
-      { wch: 15 }, // Engagements
-      { wch: 15 }, // Satisfaction
-      { wch: 15 }  // Feedback
+    // Define columns with widths
+    worksheet.columns = [
+      { header: 'Company Name', key: 'company_name', width: 25 },
+      { header: 'Email', key: 'email', width: 30 },
+      { header: 'Phone', key: 'phone', width: 15 },
+      { header: 'Website', key: 'website', width: 30 },
+      { header: 'PowerConfidence Score', key: 'score', width: 20 },
+      { header: 'Trend', key: 'trend', width: 10 },
+      { header: 'Status', key: 'status', width: 10 },
+      { header: 'Service Categories', key: 'categories', width: 40 },
+      { header: 'Total Engagements', key: 'engagements', width: 15 },
+      { header: 'Avg Satisfaction', key: 'satisfaction', width: 15 },
+      { header: 'Recent Feedback', key: 'feedback', width: 15 }
     ];
 
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Partners Overview');
+    // Add rows
+    data.forEach(item => {
+      worksheet.addRow({
+        company_name: item.partner.company_name,
+        email: item.partner.contact_email,
+        phone: item.partner.contact_phone || 'N/A',
+        website: item.partner.website || 'N/A',
+        score: item.partner.current_powerconfidence_score,
+        trend: item.partner.score_trend,
+        status: item.partner.status || 'Active',
+        categories: parseServiceCategories(item.partner.service_categories),
+        engagements: item.partner.total_contractor_engagements,
+        satisfaction: item.partner.avg_contractor_satisfaction,
+        feedback: item.partner.recent_feedback_count
+      });
+    });
+
+    // Style header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
   } else {
     // Single partner detailed export
     const partner = data.partner;
-    
+
     // Partner Info Sheet
-    const partnerSheet = XLSX.utils.json_to_sheet([{
-      'Company Name': partner.company_name,
-      'Email': partner.contact_email,
-      'Phone': partner.contact_phone || 'N/A',
-      'Website': partner.website || 'N/A',
-      'PowerConfidence Score': partner.current_powerconfidence_score,
-      'Trend': partner.score_trend,
-      'Status': partner.status || 'Active',
-      'Service Categories': parseServiceCategories(partner.service_categories),
-      'Total Engagements': partner.total_contractor_engagements,
-      'Avg Satisfaction': partner.avg_contractor_satisfaction,
-      'Recent Feedback': partner.recent_feedback_count
-    }]);
-    
-    XLSX.utils.book_append_sheet(workbook, partnerSheet, 'Partner Info');
+    const partnerSheet = workbook.addWorksheet('Partner Info');
+    partnerSheet.columns = [
+      { header: 'Field', key: 'field', width: 30 },
+      { header: 'Value', key: 'value', width: 50 }
+    ];
+
+    partnerSheet.addRows([
+      { field: 'Company Name', value: partner.company_name },
+      { field: 'Email', value: partner.contact_email },
+      { field: 'Phone', value: partner.contact_phone || 'N/A' },
+      { field: 'Website', value: partner.website || 'N/A' },
+      { field: 'PowerConfidence Score', value: partner.current_powerconfidence_score },
+      { field: 'Trend', value: partner.score_trend },
+      { field: 'Status', value: partner.status || 'Active' },
+      { field: 'Service Categories', value: parseServiceCategories(partner.service_categories) },
+      { field: 'Total Engagements', value: partner.total_contractor_engagements },
+      { field: 'Avg Satisfaction', value: partner.avg_contractor_satisfaction },
+      { field: 'Recent Feedback', value: partner.recent_feedback_count }
+    ]);
+
+    partnerSheet.getRow(1).font = { bold: true };
 
     // Category Breakdown Sheet
     if (data.categoryBreakdown && data.categoryBreakdown.length > 0) {
-      const categorySheet = XLSX.utils.json_to_sheet(data.categoryBreakdown.map(cat => ({
-        'Category': cat.category,
-        'Score': cat.score,
-        'Weight (%)': cat.weight
-      })));
-      XLSX.utils.book_append_sheet(workbook, categorySheet, 'Category Scores');
+      const categorySheet = workbook.addWorksheet('Category Scores');
+      categorySheet.columns = [
+        { header: 'Category', key: 'category', width: 30 },
+        { header: 'Score', key: 'score', width: 15 },
+        { header: 'Weight (%)', key: 'weight', width: 15 }
+      ];
+
+      data.categoryBreakdown.forEach(cat => {
+        categorySheet.addRow({
+          category: cat.category,
+          score: cat.score,
+          weight: cat.weight
+        });
+      });
+
+      categorySheet.getRow(1).font = { bold: true };
     }
 
     // Score History Sheet
     if (data.scoreHistory && data.scoreHistory.length > 0) {
-      const historySheet = XLSX.utils.json_to_sheet(data.scoreHistory.map(quarter => ({
-        'Quarter': quarter.quarter,
-        'Score': quarter.score,
-        'Feedback Count': quarter.feedback_count
-      })));
-      XLSX.utils.book_append_sheet(workbook, historySheet, 'Score History');
+      const historySheet = workbook.addWorksheet('Score History');
+      historySheet.columns = [
+        { header: 'Quarter', key: 'quarter', width: 20 },
+        { header: 'Score', key: 'score', width: 15 },
+        { header: 'Feedback Count', key: 'feedback_count', width: 20 }
+      ];
+
+      data.scoreHistory.forEach(quarter => {
+        historySheet.addRow({
+          quarter: quarter.quarter,
+          score: quarter.score,
+          feedback_count: quarter.feedback_count
+        });
+      });
+
+      historySheet.getRow(1).font = { bold: true };
     }
 
     // Insights Sheet
     if (data.insights && data.insights.length > 0) {
-      const insightsSheet = XLSX.utils.json_to_sheet(data.insights.map(insight => ({
-        'Type': insight.type,
-        'Insight': insight.message
-      })));
-      XLSX.utils.book_append_sheet(workbook, insightsSheet, 'Insights');
+      const insightsSheet = workbook.addWorksheet('Insights');
+      insightsSheet.columns = [
+        { header: 'Type', key: 'type', width: 15 },
+        { header: 'Insight', key: 'insight', width: 80 }
+      ];
+
+      data.insights.forEach(insight => {
+        insightsSheet.addRow({
+          type: insight.type,
+          insight: insight.message
+        });
+      });
+
+      insightsSheet.getRow(1).font = { bold: true };
     }
   }
 
   // Generate Excel file
-  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
-  const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  
-  const fileName = Array.isArray(data) 
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+  const fileName = Array.isArray(data)
     ? `PowerConfidence_All_Partners_${new Date().toISOString().split('T')[0]}.xlsx`
     : `PowerConfidence_${data.partner.company_name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
-  
+
   saveAs(blob, fileName);
 };
 

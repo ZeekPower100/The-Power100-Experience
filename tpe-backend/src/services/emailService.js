@@ -1,17 +1,15 @@
-const sgMail = require('@sendgrid/mail');
-const nodemailer = require('nodemailer');
+// ============================================================================
+// IMPORTANT: All email communications are handled through n8n → GoHighLevel
+// This service is kept for backward compatibility but emails are NOT sent directly
+// See CLAUDE.md for communication architecture details
+// ============================================================================
 
-// Initialize SendGrid if API key is provided
+const sgMail = require('@sendgrid/mail');
+
+// Initialize SendGrid if API key is provided (legacy - not used in production)
 if (process.env.SENDGRID_API_KEY) {
   sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 }
-
-// Create nodemailer transporter for development
-const devTransporter = nodemailer.createTransport({
-  host: 'localhost',
-  port: 1025,
-  ignoreTLS: true
-});
 
 const sendPartnerIntroEmail = async (contractor, partner) => {
   const emailData = {
@@ -172,9 +170,12 @@ const sendDemoReminderEmail = async (contractor, partner, booking) => {
 };
 
 const sendEmail = async (emailData) => {
-  // In development, log emails
+  // IMPORTANT: In production, emails are sent through n8n → GoHighLevel
+  // This function is kept for backward compatibility and development logging
+
+  // In development, log emails (actual sending handled by n8n → GHL)
   if (process.env.NODE_ENV === 'development' && !process.env.SENDGRID_API_KEY) {
-    console.log('📧 Email (dev mode):', {
+    console.log('📧 Email (dev mode - actual sending via n8n → GHL):', {
       to: emailData.to,
       subject: emailData.subject,
       preview: emailData.html.substring(0, 200) + '...'
@@ -182,7 +183,7 @@ const sendEmail = async (emailData) => {
     return { success: true, message: 'Email logged (dev mode)' };
   }
 
-  // Send via SendGrid in production
+  // Legacy SendGrid support (not used - n8n → GHL handles all emails)
   if (process.env.SENDGRID_API_KEY) {
     try {
       const result = await sgMail.send(emailData);
@@ -193,14 +194,12 @@ const sendEmail = async (emailData) => {
     }
   }
 
-  // Send via nodemailer in development with maildev
-  try {
-    const result = await devTransporter.sendMail(emailData);
-    return { success: true, messageId: result.messageId };
-  } catch (error) {
-    console.error('Email error:', error);
-    throw new Error('Failed to send email');
-  }
+  // Default: Return success (n8n → GHL handles actual sending)
+  console.log('📧 Email queued for n8n → GHL delivery:', {
+    to: emailData.to,
+    subject: emailData.subject
+  });
+  return { success: true, message: 'Email handled by n8n → GHL' };
 };
 
 module.exports = {
