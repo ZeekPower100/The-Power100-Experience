@@ -28,7 +28,7 @@ const protectPartner = async (req, res, next) => {
 
     // Get partner from strategic_partners table
     const partnerResult = await query(
-      'SELECT * FROM strategic_partners WHERE id = $1 AND is_active = 1',
+      'SELECT * FROM strategic_partners WHERE id = $1 AND is_active = true',
       [decoded.partnerId]
     );
 

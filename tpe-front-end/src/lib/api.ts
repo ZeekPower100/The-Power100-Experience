@@ -122,12 +122,15 @@ async function apiRequest<T>(
   }
 
   try {
-    // Uncomment for debugging API requests
-    // console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
-    // console.log(`📡 Current page: ${currentPath}`);
-    // console.log(`📡 Token source: ${isAdminPage ? 'Admin' : isPartnerPage ? 'Partner' : isContractorFlow ? 'Contractor' : 'Auto-detected'}`);
-    // console.log(`📡 Auth token: ${config.headers?.['Authorization'] ? 'Present' : 'Missing'}`);
-    
+    // Debug logging for token authentication
+    console.log(`📡 API Request: ${options.method || 'GET'} ${url}`);
+    console.log(`📡 Current page: ${currentPath}`);
+    console.log(`📡 Token source: ${isAdminPage ? 'Admin' : isPartnerPage ? 'Partner' : isContractorFlow ? 'Contractor' : 'Auto-detected'}`);
+    console.log(`📡 Auth token: ${config.headers?.['Authorization'] ? 'Present' : 'Missing'}`);
+    if (token) {
+      console.log(`📡 Token (first 20 chars): ${token.substring(0, 20)}...`);
+    }
+
     const response = await fetch(url, config);
     
     if (!response.ok) {
@@ -279,11 +282,17 @@ export const partnerApi = {
   getStats: () => apiRequest('/partners/stats/overview'),
 
   // Search partners with advanced filters
-  search: (params: Record<string, any>) => 
+  search: (params: Record<string, any>) =>
     apiRequest('/partners/search', {
       method: 'POST',
       body: safeJsonStringify(params)
     }),
+
+  // Partner self-service profile update (uses partner JWT or admin JWT with partnerId in body)
+  updateProfile: (data: Record<string, unknown>) => apiRequest('/partner-portal/profile', {
+    method: 'PUT',
+    body: safeJsonStringify(data)
+  }),
 
   // Get pending partners (admin)
   getPendingPartners: () => apiRequest('/partners/pending/list'),
@@ -291,6 +300,57 @@ export const partnerApi = {
   // Approve partner (admin)
   approvePartner: (id: string) => apiRequest(`/partners/${id}/approve`, {
     method: 'PUT'
+  }),
+
+  // Phase 3: Lead Management
+  // Get partner's leads with optional filters
+  getLeads: (params?: {
+    engagement_stage?: string;
+    status?: string;
+    min_score?: number;
+    max_score?: number;
+    search?: string;
+    primary_only?: boolean;
+    page?: number;
+    limit?: number;
+  }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.engagement_stage) searchParams.set('engagement_stage', params.engagement_stage);
+    if (params?.status) searchParams.set('status', params.status);
+    if (params?.min_score) searchParams.set('min_score', params.min_score.toString());
+    if (params?.max_score) searchParams.set('max_score', params.max_score.toString());
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.primary_only) searchParams.set('primary_only', 'true');
+    if (params?.page) searchParams.set('page', params.page.toString());
+    if (params?.limit) searchParams.set('limit', params.limit.toString());
+
+    const queryString = searchParams.toString();
+    return apiRequest(`/partner-portal/leads${queryString ? `?${queryString}` : ''}`);
+  },
+
+  // Get lead statistics
+  getLeadStats: () => apiRequest('/partner-portal/leads/stats'),
+
+  // Get specific lead details
+  getLeadDetails: (leadId: string | number) => apiRequest(`/partner-portal/leads/${leadId}`),
+
+  // Update lead status
+  updateLeadStatus: (leadId: string | number, data: {
+    engagement_stage?: string;
+    status?: string;
+    next_follow_up_date?: string | null;
+  }) => apiRequest(`/partner-portal/leads/${leadId}/status`, {
+    method: 'PUT',
+    body: safeJsonStringify(data)
+  }),
+
+  // Add note to lead
+  addLeadNote: (leadId: string | number, data: {
+    note_type?: string;
+    content: string;
+  }) => apiRequest(`/partner-portal/leads/${leadId}/notes`, {
+    method: 'POST',
+    body: safeJsonStringify(data)
   }),
 };
 

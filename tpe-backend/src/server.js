@@ -1,11 +1,18 @@
 // Test automated deployment with npm workspaces - August 30, 2025 23:15 - Verified working!
 const express = require('express');
 const cors = require('cors');
-const helmet = require('helmet');
 const morgan = require('morgan');
 const compression = require('compression');
-const rateLimit = require('express-rate-limit');
 const path = require('path');
+const logger = require('./config/logger');
+const {
+  helmetConfig,
+  createRateLimiter,
+  authRateLimiter,
+  getCorsOptions,
+  sanitizeInput,
+  securityHeaders
+} = require('./config/security');
 
 // Load environment variables based on NODE_ENV
 const envFile = process.env.NODE_ENV === 'production' ? '.env.production' : '.env.development';
@@ -71,36 +78,23 @@ eventViewRefresher.initialize()
   .then(() => console.log('✅ Event View Refresher initialized and listening'))
   .catch(err => console.error('❌ Event View Refresher initialization failed:', err));
 
-// Security middleware
-app.use(helmet());
+// Security middleware (Enhanced configuration)
+app.use(helmetConfig);
+app.use(securityHeaders);
 
-// CORS configuration
-app.use(cors({
-  origin: [
-    'http://3.95.250.211:5000',
-    'http://localhost:3000',
-    'http://localhost:3001', 
-    'http://localhost:3002',
-    'https://tpx.power100.io',
-    'http://tpx.power100.io',
-    'http://3.95.250.211:3000',
-    process.env.FRONTEND_URL
-  ].filter(Boolean),
-  credentials: true,
-  optionsSuccessStatus: 200
-}));
+// CORS configuration (Production-ready)
+app.use(cors(getCorsOptions()));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 1000, // Increased for development
-  message: 'Too many requests from this IP, please try again later.'
-});
+// Rate limiting (General API endpoints)
+const limiter = createRateLimiter();
 app.use('/api/', limiter);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Input sanitization (XSS protection)
+app.use(sanitizeInput);
 
 // Serve uploaded files when AWS is not configured or in development
 const isAWSConfigured = process.env.AWS_ACCESS_KEY_ID && 
@@ -115,9 +109,23 @@ if (!isAWSConfigured) {
 // Compression middleware
 app.use(compression());
 
-// Logging middleware
+// HTTP Request logging with Winston
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('combined'));
+  // Morgan logs HTTP requests to Winston stream
+  app.use(morgan('combined', { stream: logger.stream }));
+
+  // Custom request logging middleware for detailed tracking
+  app.use((req, res, next) => {
+    const start = Date.now();
+
+    // Log when response is finished
+    res.on('finish', () => {
+      const duration = Date.now() - start;
+      logger.logRequest(req, res, duration);
+    });
+
+    next();
+  });
 }
 
 // Data collection middleware - track all API interactions
@@ -149,7 +157,8 @@ app.use('/api/partners/public', publicPartnerRoutes);
 app.use('/api/contractors', contractorRoutes);
 app.use('/api/partners', partnerRoutes);
 app.use('/api/bookings', bookingRoutes);
-app.use('/api/auth', authRoutes);
+// Auth routes with stricter rate limiting (prevent brute force)
+app.use('/api/auth', authRateLimiter, authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/bulk', bulkRoutes);
 app.use('/api/feedback', feedbackRoutes);
@@ -157,7 +166,8 @@ app.use('/api/ai-processing', aiProcessingRoutes);
 app.use('/api/sms', smsRoutes);
 app.use('/api/partners-enhanced', partnerEnhancedRoutes);
 app.use('/api/contractors-enhanced', contractorEnhancedRoutes);
-app.use('/api/partner-auth', partnerAuthRoutes);
+// Partner auth routes with stricter rate limiting
+app.use('/api/partner-auth', authRateLimiter, partnerAuthRoutes);
 app.use('/api/partner-portal', partnerPortalRoutes);
 app.use('/api/ai-concierge', aiConciergeRoutes);
 app.use('/api/analytics/tokens', tokenAnalyticsRoutes);

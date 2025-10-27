@@ -25,6 +25,7 @@ interface PartnerFormProps {
   partner?: StrategicPartner | null;
   onSuccess: () => void;
   onCancel: () => void;
+  isPartnerSelfService?: boolean; // If true, uses partner portal API instead of admin API
 }
 
 // Partner onboarding options based on requirements document
@@ -114,7 +115,7 @@ const INDUSTRY_EVENTS = [
   'Storm Restoration Conference'
 ];
 
-function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
+function PartnerForm({ partner, onSuccess, onCancel, isPartnerSelfService = false }: PartnerFormProps) {
   // Partner search state
   const [partnerSearchQuery, setPartnerSearchQuery] = useState('');
   const [partnerSearchResults, setPartnerSearchResults] = useState<any[]>([]);
@@ -603,30 +604,17 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
     setError(null);
 
     try {
-      // Skip validation for editing existing partners (admin can save partial updates)
-      if (!partner) {
-        // Only validate required fields for new partner creation
-        if (!formData.company_name.trim()) {
-          throw new Error('Company name is required');
-        }
-        if (!formData.established_year) {
-          throw new Error('Established year is required');
-        }
-        if (!formData.ceo_name || !formData.ceo_email) {
-          throw new Error('CEO contact information is required');
-        }
-        if (formData.target_revenue_audience.length === 0) {
-          throw new Error('At least one target revenue range is required');
-        }
-        if (formData.target_revenue_audience.length > 3) {
-          throw new Error('Maximum 3 target revenue ranges allowed');
-        }
-        if (formData.service_areas.length === 0) {
-          throw new Error('At least one service area is required');
-        }
-        if (formData.focus_areas_12_months.length === 0) {
-          throw new Error('At least one focus area for next 12 months is required');
-        }
+      // Minimal validation - only require company name and email
+      if (!formData.company_name.trim()) {
+        throw new Error('Company name is required');
+      }
+      if (!formData.ceo_email || !formData.ceo_email.includes('@')) {
+        throw new Error('Valid email address is required');
+      }
+
+      // Only enforce limits, not requirements
+      if (formData.target_revenue_audience.length > 3) {
+        throw new Error('Maximum 3 target revenue ranges allowed');
       }
       if (formData.focus_areas_12_months.length > 3) {
         throw new Error('Maximum 3 focus areas for next 12 months allowed');
@@ -700,7 +688,14 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
       };
 
       if (partner) {
-        await partnerApi.update(partner.id, apiData);
+        // Use appropriate API based on context
+        if (isPartnerSelfService) {
+          // Partner self-service: use partner portal endpoint with partner JWT
+          await partnerApi.updateProfile(apiData);
+        } else {
+          // Admin editing: use admin endpoint with admin JWT
+          await partnerApi.update(partner.id, apiData);
+        }
       } else {
         await partnerApi.create(apiData);
       }
@@ -773,12 +768,11 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                 value={formData.company_name}
                 onChange={(e) => handleInputChange('company_name', e.target.value)}
                 placeholder="Enter company name"
-                required
                 className="mt-1"
               />
             </div>
             <div>
-              <Label htmlFor="established_year">Year Established *</Label>
+              <Label htmlFor="established_year">Year Established</Label>
               <Input
                 id="established_year"
                 type="number"
@@ -787,7 +781,6 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                 value={formData.established_year}
                 onChange={(e) => handleInputChange('established_year', e.target.value)}
                 placeholder="YYYY"
-                required
                 className="mt-1"
               />
             </div>
@@ -814,13 +807,12 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
               />
             </div>
             <div>
-              <Label htmlFor="website">Company Website *</Label>
+              <Label htmlFor="website">Company Website</Label>
               <Input
                 id="website"
                 value={formData.website}
                 onChange={(e) => handleInputChange('website', e.target.value)}
                 placeholder="https://company.com"
-                required
                 className="mt-1"
               />
             </div>
@@ -858,19 +850,17 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                   value={formData.ceo_name}
                   onChange={(e) => handleInputChange('ceo_name', e.target.value)}
                   placeholder="CEO Name"
-                  required
                   className="mt-1"
                 />
               </div>
               <div>
-                <Label htmlFor="ceo_email">Email</Label>
+                <Label htmlFor="ceo_email">Email *</Label>
                 <Input
                   id="ceo_email"
                   type="email"
                   value={formData.ceo_email}
                   onChange={(e) => handleInputChange('ceo_email', e.target.value)}
                   placeholder="ceo@company.com"
-                  required
                   className="mt-1"
                 />
               </div>
@@ -1048,7 +1038,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           </h3>
           
           <div className="mb-6">
-            <Label>Ideal Client's Revenue Range (Select up to 3) *</Label>
+            <Label>Ideal Client's Revenue Range (Select up to 3)</Label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
               {TARGET_REVENUE_OPTIONS.map(option => (
                 <div
@@ -1097,7 +1087,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           </div>
 
           <div className="mb-6">
-            <Label>Services Offered By Ideal Client (Select All That Apply) *</Label>
+            <Label>Services Offered By Ideal Client (Select All That Apply)</Label>
             <div className="mb-3 mt-2">
               <Button
                 type="button"
@@ -1254,25 +1244,23 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           
           <div className="grid grid-cols-1 gap-6">
             <div>
-              <Label htmlFor="value_proposition">Value Proposition *</Label>
+              <Label htmlFor="value_proposition">Value Proposition</Label>
               <Textarea
                 id="value_proposition"
                 value={formData.value_proposition}
                 onChange={(e) => handleInputChange('value_proposition', e.target.value)}
                 placeholder="Describe your unique value proposition..."
-                required
                 className="mt-1"
                 rows={3}
               />
             </div>
             <div>
-              <Label htmlFor="why_clients_choose_you">Why do clients choose you over competitors? *</Label>
+              <Label htmlFor="why_clients_choose_you">Why do clients choose you over competitors?</Label>
               <Textarea
                 id="why_clients_choose_you"
                 value={formData.why_clients_choose_you}
                 onChange={(e) => handleInputChange('why_clients_choose_you', e.target.value)}
                 placeholder="What makes you stand out from competitors?"
-                required
                 className="mt-1"
                 rows={3}
               />
@@ -1299,7 +1287,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
           </h3>
           
           <div className="mb-6">
-            <Label>Focus Areas (Select up to 3) *</Label>
+            <Label>Focus Areas (Select up to 3)</Label>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-2">
               {FOCUS_AREAS_12_MONTHS.map(area => (
                 <div
@@ -1982,12 +1970,11 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                           value={formData.company_name}
                           onChange={(e) => handleInputChange('company_name', e.target.value)}
                           placeholder="Enter company name"
-                          required
                           className="mt-1"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="established_year">Year Established *</Label>
+                        <Label htmlFor="established_year">Year Established</Label>
                         <Input
                           id="established_year"
                           type="number"
@@ -1996,7 +1983,6 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                           value={formData.established_year}
                           onChange={(e) => handleInputChange('established_year', e.target.value)}
                           placeholder="YYYY"
-                          required
                           className="mt-1"
                         />
                       </div>
@@ -2029,13 +2015,12 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>
-                        <Label htmlFor="website">Company Website *</Label>
+                        <Label htmlFor="website">Company Website</Label>
                         <Input
                           id="website"
                           value={formData.website}
                           onChange={(e) => handleInputChange('website', e.target.value)}
                           placeholder="https://company.com"
-                          required
                           className="mt-1"
                         />
                       </div>
@@ -2099,19 +2084,17 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                         value={formData.ceo_name}
                         onChange={(e) => handleInputChange('ceo_name', e.target.value)}
                         placeholder="CEO Name"
-                        required
                         className="mt-1"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="ceo_email">Email</Label>
+                      <Label htmlFor="ceo_email">Email *</Label>
                       <Input
                         id="ceo_email"
                         type="email"
                         value={formData.ceo_email}
                         onChange={(e) => handleInputChange('ceo_email', e.target.value)}
                         placeholder="ceo@company.com"
-                        required
                         className="mt-1"
                       />
                     </div>
@@ -2297,7 +2280,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div>
-                  <Label>Target Audience by Revenue (Select up to 3) *</Label>
+                  <Label>Target Audience by Revenue (Select up to 3)</Label>
                   <p className="text-sm text-power100-grey mb-2">
                     Choose the revenue ranges that best fit your target audience. Limited to 3 selections.
                   </p>
@@ -2335,7 +2318,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                 </div>
 
                 <div>
-                  <Label>Service Areas *</Label>
+                  <Label>Service Areas</Label>
                   <p className="text-sm text-power100-grey mb-2">
                     Select all service areas that apply to your business
                   </p>
@@ -2464,27 +2447,25 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
                 </div>
 
                 <div>
-                  <Label htmlFor="value_proposition">What is your value proposition? *</Label>
+                  <Label htmlFor="value_proposition">What is your value proposition?</Label>
                   <Textarea
                     id="value_proposition"
                     value={formData.value_proposition}
                     onChange={(e) => handleInputChange('value_proposition', e.target.value)}
                     placeholder="Describe what unique value you bring to your clients"
                     rows={3}
-                    required
                     className="mt-1"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="why_clients_choose_you">Why do clients choose you over competitors? *</Label>
+                  <Label htmlFor="why_clients_choose_you">Why do clients choose you over competitors?</Label>
                   <Textarea
                     id="why_clients_choose_you"
                     value={formData.why_clients_choose_you}
                     onChange={(e) => handleInputChange('why_clients_choose_you', e.target.value)}
                     placeholder="What specific advantages do you offer that competitors don't?"
                     rows={3}
-                    required
                     className="mt-1"
                   />
                 </div>
@@ -2519,7 +2500,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
               </CardHeader>
               <CardContent>
                 <div>
-                  <Label>Top 3 Focus Areas *</Label>
+                  <Label>Top 3 Focus Areas</Label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
                     {FOCUS_AREAS_12_MONTHS.map(area => (
                       <label key={area.value} className="flex items-center space-x-2 cursor-pointer">
