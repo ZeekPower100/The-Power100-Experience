@@ -43,6 +43,8 @@ const partnerEnhancedRoutes = require('./routes/partnerEnhancedRoutes');
 const contractorEnhancedRoutes = require('./routes/contractorEnhancedRoutes');
 const aiProcessingRoutes = require('./routes/aiProcessingRoutes');
 const partnerAuthRoutes = require('./routes/partnerAuthRoutes');
+const contractorAuthRoutes = require('./routes/contractorAuthRoutes');
+const accountCreationRoutes = require('./routes/accountCreationRoutes');
 const partnerPortalRoutes = require('./routes/partnerPortalRoutes');
 const aiConciergeRoutes = require('./routes/aiConciergeRoutes');
 const tokenAnalyticsRoutes = require('./routes/tokenAnalyticsRoutes');
@@ -168,6 +170,10 @@ app.use('/api/partners-enhanced', partnerEnhancedRoutes);
 app.use('/api/contractors-enhanced', contractorEnhancedRoutes);
 // Partner auth routes with stricter rate limiting
 app.use('/api/partner-auth', authRateLimiter, partnerAuthRoutes);
+// Contractor auth routes with stricter rate limiting
+app.use('/api/contractor-auth', authRateLimiter, contractorAuthRoutes);
+// Account creation routes (admin only - protected by middleware)
+app.use('/api/account-creation', accountCreationRoutes);
 app.use('/api/partner-portal', partnerPortalRoutes);
 app.use('/api/ai-concierge', aiConciergeRoutes);
 app.use('/api/analytics/tokens', tokenAnalyticsRoutes);
