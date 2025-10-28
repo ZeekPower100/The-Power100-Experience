@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -54,7 +54,8 @@ const FOCUS_AREAS_OPTIONS = [
   { value: 'financial_management', label: 'Financial Performance', description: 'Improving profitability and financial systems' }
 ];
 
-export default function PartnerProfileCompletionPage() {
+// Content component that uses useSearchParams
+function PartnerProfileCompletionContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const partnerId = searchParams.get('partner');
@@ -686,5 +687,21 @@ export default function PartnerProfileCompletionPage() {
         </form>
       </div>
     </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function PartnerProfileCompletionPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-power100-bg-grey flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-power100-red mx-auto mb-4"></div>
+          <p className="text-power100-grey">Loading...</p>
+        </div>
+      </div>
+    }>
+      <PartnerProfileCompletionContent />
+    </Suspense>
   );
 }
