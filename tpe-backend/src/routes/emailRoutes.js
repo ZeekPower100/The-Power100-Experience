@@ -155,8 +155,11 @@ const sendPartnerDelegationEmail = async (req, res) => {
     }
 
     // Generate secure delegation link if not provided
-    const finalDelegationLink = delegationLink || 
-      `https://tpx.power100.io/partner/onboarding?step=8&partner=${partnerId}`;
+    const baseUrl = process.env.NODE_ENV === 'production'
+      ? 'https://tpx.power100.io'
+      : 'http://localhost:3002';
+    const finalDelegationLink = delegationLink ||
+      `${baseUrl}/partner/onboarding?step=8&partner=${partnerId}`;
 
     // Trigger n8n delegation email workflow
     const n8nPayload = {

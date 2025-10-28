@@ -70,7 +70,10 @@ router.post('/test-agenda-ready', asyncHandler(async (req, res) => {
 
     let smsResult = null;
     if (contractor && contractor.phone) {
-      const smsMessage = `${contractor.first_name || 'Hi'}! Your personalized agenda for ${event.name} is ready! 🎉 ${recommendationCounts.speakers} speakers, ${recommendationCounts.sponsors} sponsors, ${recommendationCounts.peers} networking matches. View now: https://tpx.power100.io/events/${event_id}/agenda?contractor=${contractor_id}`;
+      const baseUrl = process.env.NODE_ENV === 'production'
+        ? 'https://tpx.power100.io'
+        : 'http://localhost:3002';
+      const smsMessage = `${contractor.first_name || 'Hi'}! Your personalized agenda for ${event.name} is ready! 🎉 ${recommendationCounts.speakers} speakers, ${recommendationCounts.sponsors} sponsors, ${recommendationCounts.peers} networking matches. View now: ${baseUrl}/events/${event_id}/agenda?contractor=${contractor_id}`;
       smsResult = await sendSMSNotification(contractor.phone, smsMessage);
     }
 

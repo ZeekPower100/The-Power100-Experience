@@ -257,7 +257,10 @@ async function sendProfileCompletionRequest(eventId, contractorId) {
 
     // Send SMS notification with profile link
     if (contractor.phone) {
-      const smsMessage = `${contractor.first_name || 'Hi'}! You're registered for ${event.name}! 🎉 Complete your profile to unlock your personalized agenda: https://tpx.power100.io/events/${eventId}/profile?contractor=${contractorId}`;
+      const baseUrl = process.env.NODE_ENV === 'production'
+        ? 'https://tpx.power100.io'
+        : 'http://localhost:3002';
+      const smsMessage = `${contractor.first_name || 'Hi'}! You're registered for ${event.name}! 🎉 Complete your profile to unlock your personalized agenda: ${baseUrl}/events/${eventId}/profile?contractor=${contractorId}`;
 
       try {
         await sendSMSNotification(contractor.phone, smsMessage);
