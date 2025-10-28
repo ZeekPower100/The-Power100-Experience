@@ -1,16 +1,9 @@
-// DATABASE-CHECKED: event_speakers, event_messages, event_agenda_items columns verified on 2025-10-28
-// ================================================================
-// HYBRID SESSION MATCHING UPDATE:
-// - Now queries by agenda_item_id (not just speaker_id)
-// - Handles sessions with OR without speaker_id
-// - Backward compatible with old speaker_recommendation messages
-// ================================================================
+// DATABASE-CHECKED: event_speakers, event_messages columns verified on 2025-10-04
 const { query } = require('../../config/database');
 const { safeJsonParse, safeJsonStringify } = require('../../utils/jsonHelpers');
 const { processMessageForSMS } = require('../../utils/smsHelpers');
 const aiConciergeController = require('../../controllers/aiConciergeController');
 const aiKnowledgeService = require('../aiKnowledgeService');
-const { getSessionById } = require('./sessionDataService');
 
 /**
  * Handle speaker session details request
@@ -122,193 +115,81 @@ SMS RESPONSE GUIDELINES:
 
     console.log('[SpeakerHandler] Message types:', pendingMessages.map(m => m.message_type).join(', '));
 
-    // HYBRID MATCHING: Support BOTH old speaker_recommendation and new session_recommendation
-    const recommendation = pendingMessages.find(m =>
-      m.message_type === 'session_recommendation' || m.message_type === 'speaker_recommendation'
-    );
+    const speakerRecommendation = pendingMessages.find(m => m.message_type === 'speaker_recommendation');
 
-    if (!recommendation) {
-      console.log('[SpeakerHandler] ERROR: No session/speaker recommendation found');
+    if (!speakerRecommendation) {
+      console.log('[SpeakerHandler] ERROR: No speaker_recommendation found');
       return {
         success: false,
-        error: 'No recommendation found in context'
+        error: 'No speaker recommendation found in context'
       };
     }
 
-    // Parse personalization_data - handle ALL THREE formats for backward compatibility
-    const personalizationData = safeJsonParse(recommendation.personalization_data);
-
-    // NEW format: recommended_sessions (has agenda_item_id + speaker_id)
-    const recommendedSessions = personalizationData?.recommended_sessions || [];
-    // MIDDLE format: recommended_speakers (has speaker_id only)
+    // Parse personalization_data to get recommended speakers
+    const personalizationData = safeJsonParse(speakerRecommendation.personalization_data);
     const recommendedSpeakers = personalizationData?.recommended_speakers || [];
-    // OLDEST format: recommendations (original production format)
-    const recommendations = personalizationData?.recommendations || [];
 
-    // Determine which format to use (newest format takes priority)
-    let useNewFormat = false;
-    let useMiddleFormat = false;
-    let items = [];
-
-    if (recommendedSessions.length > 0) {
-      useNewFormat = true;
-      items = recommendedSessions;
-      console.log('[SpeakerHandler] Using NEW session-based format (recommended_sessions)');
-    } else if (recommendedSpeakers.length > 0) {
-      useMiddleFormat = true;
-      items = recommendedSpeakers;
-      console.log('[SpeakerHandler] Using MIDDLE speaker-based format (recommended_speakers)');
-    } else if (recommendations.length > 0) {
-      items = recommendations;
-      console.log('[SpeakerHandler] Using OLDEST format (recommendations) - legacy production messages');
-    }
-
-    if (items.length === 0) {
+    if (recommendedSpeakers.length === 0) {
       return {
         success: false,
-        error: 'No sessions found in recommendation'
+        error: 'No speakers found in recommendation'
       };
     }
 
-    // Get the selected item (1-based index)
-    const selectedItem = items[speakerNum - 1];
+    // Get the selected speaker (1-based index)
+    const selectedSpeaker = recommendedSpeakers[speakerNum - 1];
 
-    if (!selectedItem) {
+    if (!selectedSpeaker) {
       return {
         success: false,
-        error: `Session ${speakerNum} not found in recommendations`
+        error: `Speaker ${speakerNum} not found in recommendations`
       };
     }
 
-    // Query strategy based on format detected
-    let sessionData;
+    // Try to fetch full speaker details from database
+    const speakerResult = await query(`
+      SELECT
+        id,
+        name,
+        session_title,
+        session_description,
+        session_time,
+        session_location,
+        bio,
+        company,
+        title
+      FROM event_speakers
+      WHERE id = $1
+    `, [selectedSpeaker.speaker_id]);
 
-    if (useNewFormat && selectedItem.agenda_item_id) {
-      // NEW FORMAT: Query by agenda_item_id to get unified session data
-      console.log('[SpeakerHandler] Querying by agenda_item_id:', selectedItem.agenda_item_id);
-      sessionData = await getSessionById(selectedItem.agenda_item_id);
-
-      if (!sessionData) {
-        return {
-          success: false,
-          error: `Session ${speakerNum} not found in database`
+    // Merge database data with recommendation data (prioritize database if available)
+    const speaker = speakerResult.rows.length > 0
+      ? speakerResult.rows[0]
+      : {
+          id: selectedSpeaker.speaker_id,
+          name: selectedSpeaker.name,
+          session_title: selectedSpeaker.session_title,
+          session_description: selectedSpeaker.session_description || null,
+          session_time: selectedSpeaker.session_time || null,
+          session_location: selectedSpeaker.session_location || null,
+          bio: null,
+          company: null,
+          title: null
         };
-      }
-    } else if (useMiddleFormat && selectedItem.speaker_id) {
-      // MIDDLE FORMAT: Query by speaker_id only
-      console.log('[SpeakerHandler] Querying by speaker_id:', selectedItem.speaker_id);
-      const speakerResult = await query(`
-        SELECT
-          id,
-          name,
-          session_title,
-          session_description,
-          session_time,
-          session_location,
-          bio,
-          company,
-          title
-        FROM event_speakers
-        WHERE id = $1
-      `, [selectedItem.speaker_id]);
 
-      const speaker = speakerResult.rows.length > 0 ? speakerResult.rows[0] : null;
-
-      if (!speaker) {
-        return {
-          success: false,
-          error: `Speaker ${speakerNum} not found in database`
-        };
-      }
-
-      // Convert middle format to session format
-      sessionData = {
-        title: speaker.session_title || selectedItem.session_title,
-        synopsis: null,
-        description: speaker.session_description,
-        focus_areas: [],
-        key_takeaways: [],
-        start_time: speaker.session_time || selectedItem.session_time,
-        location: speaker.session_location || selectedItem.session_location,
-        speaker: {
-          id: speaker.id,
-          name: speaker.name,
-          title: speaker.title,
-          company: speaker.company,
-          bio: speaker.bio
-        },
-        has_speaker_data: true
-      };
-    } else {
-      // OLDEST FORMAT: Legacy recommendations (has name and nested session object)
-      console.log('[SpeakerHandler] Using OLDEST format - legacy recommendations:', selectedItem.name);
-
-      // Try to find speaker by name in database (best effort)
-      let speaker = null;
-      if (selectedItem.name) {
-        const speakerResult = await query(`
-          SELECT
-            id,
-            name,
-            bio,
-            company,
-            title
-          FROM event_speakers
-          WHERE name = $1
-          LIMIT 1
-        `, [selectedItem.name]);
-
-        speaker = speakerResult.rows.length > 0 ? speakerResult.rows[0] : null;
-      }
-
-      // Build sessionData from legacy recommendations format
-      sessionData = {
-        title: selectedItem.session?.title || 'Session Details',
-        synopsis: selectedItem.why || null,
-        description: selectedItem.quick_reasons?.join('; ') || null,
-        focus_areas: selectedItem.quick_reasons || [],
-        key_takeaways: [],
-        keywords: [],
-        start_time: selectedItem.session?.time || null,
-        location: selectedItem.session?.location || null,
-        speaker: speaker ? {
-          id: speaker.id,
-          name: speaker.name,
-          title: speaker.title,
-          company: speaker.company || selectedItem.company,
-          bio: speaker.bio
-        } : (selectedItem.name ? {
-          name: selectedItem.name,
-          company: selectedItem.company,
-          title: null,
-          bio: null
-        } : null),
-        has_speaker_data: !!selectedItem.name
-      };
-
-      console.log('[SpeakerHandler] Built sessionData from legacy format:', {
-        title: sessionData.title,
-        speaker_name: sessionData.speaker?.name,
-        found_in_db: !!speaker
-      });
-    }
-
-    // Build comprehensive context for AI Concierge (works with session data)
+    // Build comprehensive context for AI Concierge
     const localEventContext = {
       event_id: smsData.eventContext?.id,
-      session_requested: {
+      speaker_requested: {
         number: speakerNum,
-        title: sessionData.title,
-        synopsis: sessionData.synopsis,
-        description: sessionData.description,
-        focus_areas: sessionData.focus_areas,
-        key_takeaways: sessionData.key_takeaways,
-        start_time: sessionData.start_time,
-        location: sessionData.location,
-        speaker: sessionData.speaker, // May be null
-        has_speaker_data: sessionData.has_speaker_data
+        speaker_id: speaker.id,
+        name: speaker.name,
+        session_title: speaker.session_title,
+        session_time: speaker.session_time,
+        session_location: speaker.session_location,
+        session_description: speaker.session_description
       },
-      all_recommended_items: items,
+      all_recommended_speakers: recommendedSpeakers,
       previous_speaker_requests: await getRecentConversationHistory(smsData.contractor.id, classification.context_data?.pending_messages)
     };
 
@@ -322,7 +203,7 @@ SMS RESPONSE GUIDELINES:
     }
 
     // Generate AI Concierge response with full contractor context and event knowledge
-    const prompt = buildSessionDetailsPrompt(sessionData, speakerNum, items, localEventContext);
+    const prompt = buildSpeakerDetailsPrompt(speaker, speakerNum, recommendedSpeakers, localEventContext);
     const aiResponse = await aiConciergeController.generateAIResponse(
       prompt,
       smsData.contractor,
@@ -722,46 +603,34 @@ SMS CONSTRAINTS:
 }
 
 /**
- * Build prompt for AI Concierge to generate session details response
- * HYBRID APPROACH: Works with session content + optional speaker data
+ * Build prompt for AI Concierge to generate speaker details response
  * The AI Concierge already knows the contractor's full context, learning preferences, etc.
  */
-function buildSessionDetailsPrompt(sessionData, sessionNum, recommendedItems, eventContext) {
+function buildSpeakerDetailsPrompt(speaker, speakerNum, recommendedSpeakers, eventContext) {
   const isFollowUp = eventContext.previous_speaker_requests.hasAskedAboutSpeakers;
-  const previousSessions = eventContext.previous_speaker_requests.askedSpeakers || [];
+  const previousSpeakers = eventContext.previous_speaker_requests.askedSpeakers || [];
 
-  let prompt = `I'm at an event and just asked about Session ${sessionNum}`;
+  let prompt = `I'm at an event and just asked about Speaker ${speakerNum}`;
 
-  if (isFollowUp && previousSessions.length > 0) {
-    prompt += ` (I previously asked about session ${previousSessions.join(' and ')})`;
+  if (isFollowUp && previousSpeakers.length > 0) {
+    prompt += ` (I previously asked about speaker ${previousSpeakers.join(' and ')})`;
   }
 
   prompt += `.
 
-SESSION ${sessionNum} DETAILS:
-Title: "${sessionData.title}"
-${sessionData.start_time ? `Time: ${new Date(sessionData.start_time).toLocaleString()}` : 'Time: TBD'}
-${sessionData.location ? `Location: ${sessionData.location}` : ''}
+SPEAKER ${speakerNum} DETAILS:
+Name: ${speaker.name}
+${speaker.title ? `Title: ${speaker.title}` : ''}
+${speaker.company ? `Company: ${speaker.company}` : ''}
+Session: "${speaker.session_title}"
+${speaker.session_time ? `Time: ${speaker.session_time}` : ''}
+${speaker.session_location ? `Location: ${speaker.session_location}` : ''}
+${speaker.session_description ? `Description: ${speaker.session_description}` : ''}
 
-CONTENT:
-${sessionData.synopsis || sessionData.description || 'No detailed description available'}
-${sessionData.key_takeaways.length > 0 ? `\nKey Takeaways:\n${sessionData.key_takeaways.map(kt => `- ${kt}`).join('\n')}` : ''}
-${sessionData.focus_areas.length > 0 ? `\nFocus Areas: ${sessionData.focus_areas.join(', ')}` : ''}
+ALL RECOMMENDED SPEAKERS:
+${recommendedSpeakers.map((s, idx) => `${idx + 1}. ${s.name} - "${s.session_title}"`).join('\n')}
 
-${sessionData.speaker ? `SPEAKER:
-Name: ${sessionData.speaker.name}
-${sessionData.speaker.title ? `Title: ${sessionData.speaker.title}` : ''}
-${sessionData.speaker.company ? `Company: ${sessionData.speaker.company}` : ''}
-${sessionData.speaker.bio ? `Bio: ${sessionData.speaker.bio}` : ''}` : 'NOTE: No speaker assigned yet - match based on session content.'}
-
-ALL RECOMMENDED SESSIONS:
-${recommendedItems.map((s, idx) => `${idx + 1}. "${s.title || s.session_title}"`).join('\n')}
-
-Please provide helpful details about this session in a conversational SMS-friendly way.
-- Focus on why this session matches my business goals
-- Include timing and location
-- ${sessionData.speaker ? 'Mention the speaker briefly' : 'Focus on session content since no speaker is assigned'}
-- End with clear call-to-action
+Please share the session details for Speaker ${speakerNum} in a helpful, conversational way. ${isFollowUp ? 'Acknowledge that I\'m exploring multiple speakers naturally.' : ''}
 
 CRITICAL SMS CONSTRAINTS:
 - Maximum 320 characters (SMS limit enforced by GHL)
@@ -772,28 +641,6 @@ CRITICAL SMS CONSTRAINTS:
 - NO fluff or filler words`;
 
   return prompt;
-}
-
-// Keep old function for backward compatibility (alias)
-function buildSpeakerDetailsPrompt(speaker, speakerNum, recommendedSpeakers, eventContext) {
-  // Convert old speaker format to new session format
-  const sessionData = {
-    title: speaker.session_title || speaker.name,
-    synopsis: speaker.session_description,
-    description: null,
-    focus_areas: [],
-    key_takeaways: [],
-    start_time: speaker.session_time,
-    location: speaker.session_location,
-    speaker: {
-      name: speaker.name,
-      title: speaker.title,
-      company: speaker.company,
-      bio: speaker.bio
-    }
-  };
-
-  return buildSessionDetailsPrompt(sessionData, speakerNum, recommendedSpeakers, eventContext);
 }
 
 /**
