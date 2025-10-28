@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { CheckCircle, Target, Users, TrendingUp, BarChart3, ArrowRight } from 'lucide-react';
@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { getApiUrl } from '@/utils/api';
 import { handleApiResponse } from '@/utils/jsonHelpers';
 
-export default function PartnerProfileSuccessPage() {
+function PartnerProfileSuccessPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const partnerId = searchParams.get('partner');
@@ -290,5 +290,21 @@ export default function PartnerProfileSuccessPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function PartnerProfileSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-power100-bg-grey flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-power100-red mx-auto mb-4"></div>
+          <p className="text-power100-grey">Loading...</p>
+        </div>
+      </div>
+    }>
+      <PartnerProfileSuccessPageContent />
+    </Suspense>
   );
 }

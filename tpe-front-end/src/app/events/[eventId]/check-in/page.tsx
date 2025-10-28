@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { CheckCircle, Calendar, MapPin, Clock, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
-export default function EventCheckInPage() {
+function EventCheckInPageContent() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -280,5 +280,21 @@ export default function EventCheckInPage() {
         </motion.div>
       </div>
     </div>
+  );
+}
+
+// Main page component with Suspense boundary
+export default function EventCheckInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-power100-bg-grey flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-power100-red mx-auto mb-4"></div>
+          <p className="text-power100-grey">Loading...</p>
+        </div>
+      </div>
+    }>
+      <EventCheckInPageContent />
+    </Suspense>
   );
 }
