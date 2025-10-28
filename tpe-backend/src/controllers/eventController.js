@@ -80,6 +80,10 @@ async function syncEventSpeakers(eventId, speakerProfiles) {
 // Helper function to sync sponsors to event_sponsors table
 async function syncEventSponsors(eventId, sponsors) {
   try {
+    // Import profile completion functions
+    const { checkPartnerProfileCompleteness } = require('../services/eventOrchestrator/eventRegistrationService');
+    const { sendPartnerProfileCompletionRequest } = require('../services/eventOrchestrator/emailScheduler');
+
     // Clear existing sponsors for this event
     await db.query('DELETE FROM event_sponsors WHERE event_id = $1', [eventId]);
 
@@ -94,10 +98,11 @@ async function syncEventSponsors(eventId, sponsors) {
 
     // Insert each sponsor - using EXACT database column names
     for (const sponsor of sponsorList) {
+      let partnerId = null;
+
       if (typeof sponsor === 'string') {
         // Simple string format: just the sponsor name
         // Try to find matching partner
-        let partnerId = null;
         const partnerResult = await db.query(
           'SELECT id FROM strategic_partners WHERE LOWER(company_name) = LOWER($1) LIMIT 1',
           [sponsor]
@@ -121,7 +126,6 @@ async function syncEventSponsors(eventId, sponsors) {
       } else if (typeof sponsor === 'object') {
         // Object format with more details
         // Try to match sponsor to partner by name
-        let partnerId = null;
         if (sponsor.name || sponsor.sponsor_name || sponsor.company) {
           const searchName = sponsor.name || sponsor.sponsor_name || sponsor.company;
           const partnerResult = await db.query(
@@ -132,6 +136,9 @@ async function syncEventSponsors(eventId, sponsors) {
             partnerId = partnerResult.rows[0].id;
           }
         }
+
+        // Use provided partner_id if available
+        partnerId = partnerId || sponsor.partner_id || null;
 
         const sponsorName = sponsor.name || sponsor.sponsor_name || sponsor.company || '';
 
@@ -151,7 +158,7 @@ async function syncEventSponsors(eventId, sponsors) {
           ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())`,
           [
             eventId,
-            partnerId || sponsor.partner_id || null,
+            partnerId,
             sponsorName,
             sponsor.tier || sponsor.sponsor_tier || 'standard',
             sponsor.booth_number || sponsor.booth || '',
@@ -162,6 +169,27 @@ async function syncEventSponsors(eventId, sponsors) {
             sponsor.presentation_time || null
           ]
         );
+      }
+
+      // ✨ NEW: Check partner profile completeness and trigger email if needed
+      if (partnerId) {
+        try {
+          console.log(`[Event Controller] Checking profile completeness for partner ${partnerId}`);
+          const profileCheck = await checkPartnerProfileCompleteness(partnerId);
+
+          if (profileCheck.exists && !profileCheck.isComplete) {
+            console.log(`[Event Controller] Partner ${partnerId} has incomplete profile, sending completion request`);
+            await sendPartnerProfileCompletionRequest(eventId, partnerId);
+            console.log(`[Event Controller] ✅ Profile completion email sent to partner ${partnerId}`);
+          } else if (profileCheck.exists && profileCheck.isComplete) {
+            console.log(`[Event Controller] Partner ${partnerId} profile already complete`);
+          } else {
+            console.log(`[Event Controller] Partner ${partnerId} not found in database`);
+          }
+        } catch (profileError) {
+          // Don't fail event creation if profile check fails
+          console.error(`[Event Controller] Error checking partner ${partnerId} profile:`, profileError.message);
+        }
       }
     }
   } catch (error) {
@@ -453,7 +481,18 @@ exports.updateEvent = async (req, res) => {
     for (const [key, value] of Object.entries(updates)) {
       if (existingColumns.includes(key)) {
         setClause.push(`${key} = $${placeholderIndex++}`);
-        values.push(value);
+
+        // Handle array/JSON fields the same way as createEvent
+        if (['networking_opportunities', 'follow_up_resources', 'ai_tags', 'historical_attendance',
+             'roi_tracking', 'speaker_credentials'].includes(key)) {
+          // JSONB fields - pass as-is, PostgreSQL will handle
+          values.push(value);
+        } else if (['target_revenue', 'sponsors', 'pre_registered_attendees'].includes(key)) {
+          // TEXT fields that store arrays - stringify them
+          values.push(Array.isArray(value) ? safeJsonStringify(value) : value);
+        } else {
+          values.push(value);
+        }
       }
     }
 

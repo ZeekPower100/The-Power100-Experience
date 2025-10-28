@@ -1,4 +1,5 @@
 // DATABASE-CHECKED: contractors table (69 columns), event_attendees table (16 columns), events table verified on 2025-10-06
+// DATABASE-CHECKED: strategic_partners table (124 columns) verified on 2025-10-27
 
 const { query } = require('../../config/database');
 const { safeJsonParse, safeJsonStringify } = require('../../utils/jsonHelpers');
@@ -288,7 +289,108 @@ function checkProfileCompleteness(contractor) {
   return true;
 }
 
+/**
+ * Check if partner profile is complete
+ * Different requirements than contractor profile
+ * DATABASE-CHECKED: Using exact field names from strategic_partners table
+ */
+function checkPartnerProfileCompletenessLogic(partner) {
+  const requiredFields = [
+    'company_name',
+    'company_description',
+    'primary_contact',
+    'primary_email',
+    'primary_phone',
+    'value_proposition',
+    'focus_areas',
+    'service_areas',
+    'target_revenue_audience'
+  ];
+
+  for (const field of requiredFields) {
+    const value = partner[field];
+
+    // Check if field is missing or empty
+    if (!value || value === '' || value === 'null') {
+      console.log(`[PartnerRegistration] Missing required field: ${field}`);
+      return false;
+    }
+
+    // For JSON string fields (focus_areas, service_areas), parse and check if empty array
+    if (field === 'focus_areas' || field === 'service_areas') {
+      try {
+        const parsed = JSON.parse(value);
+        if (!Array.isArray(parsed) || parsed.length === 0) {
+          console.log(`[PartnerRegistration] Empty array for field: ${field}`);
+          return false;
+        }
+      } catch (e) {
+        console.log(`[PartnerRegistration] Invalid JSON for field: ${field}`);
+        return false; // Invalid JSON
+      }
+    }
+  }
+
+  // Check competitive analysis field (why_clients_choose_you is required)
+  // Note: ai_generated_differentiators is an AI field, not filled out by partners
+  const hasCompetitiveAnalysis =
+    partner.why_clients_choose_you &&
+    partner.why_clients_choose_you !== '' &&
+    partner.why_clients_choose_you !== 'null';
+
+  if (!hasCompetitiveAnalysis) {
+    console.log('[PartnerRegistration] Missing competitive analysis (why_clients_choose_you)');
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Check partner profile completeness by partner ID
+ * Returns: { exists: boolean, isComplete: boolean, partner?: object }
+ * DATABASE-CHECKED: Using exact column names from strategic_partners table
+ */
+async function checkPartnerProfileCompleteness(partnerId) {
+  try {
+    console.log(`[PartnerRegistration] Checking profile completeness for partner ${partnerId}`);
+
+    // DATABASE-CHECKED: All field names verified against strategic_partners table
+    const partnerResult = await query(`
+      SELECT
+        id, company_name, company_description, primary_contact,
+        primary_email, primary_phone, value_proposition,
+        focus_areas, service_areas, target_revenue_audience,
+        why_clients_choose_you, why_clients_choose_competitors, website
+      FROM strategic_partners
+      WHERE id = $1
+    `, [partnerId]);
+
+    if (partnerResult.rows.length === 0) {
+      console.log(`[PartnerRegistration] Partner ${partnerId} not found`);
+      return { exists: false, isComplete: false };
+    }
+
+    const partner = partnerResult.rows[0];
+    const isComplete = checkPartnerProfileCompletenessLogic(partner);
+
+    console.log(`[PartnerRegistration] Partner ${partnerId} profile complete: ${isComplete}`);
+
+    return {
+      exists: true,
+      isComplete,
+      partner
+    };
+
+  } catch (error) {
+    console.error('[PartnerRegistration] Error checking partner profile completeness:', error);
+    return { exists: false, isComplete: false };
+  }
+}
+
 module.exports = {
   registerContractors,
-  registerSingleContractor
+  registerSingleContractor,
+  checkPartnerProfileCompleteness,
+  checkPartnerProfileCompletenessLogic
 };

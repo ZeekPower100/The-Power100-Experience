@@ -534,6 +534,89 @@ function buildCheckInReminderEventStart(data) {
   return wrapEmailTemplate(content);
 }
 
+/**
+ * Partner Profile Completion Email Template
+ * For partners/sponsors registered for events with incomplete TPX profiles
+ */
+function buildPartnerProfileCompletionEmail(data) {
+  const { partnerContact, companyName, eventName, eventDate, eventId, partnerId } = data;
+
+  const formattedDate = eventDate ? new Date(eventDate).toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  }) : '';
+
+  const content = `
+    <p style="margin: 0 0 25px 0; font-size: 16px; line-height: 1.6;">
+      Hi <strong>${partnerContact || companyName}</strong>!
+    </p>
+
+    <p style="margin: 0 0 25px 0; font-size: 16px; line-height: 1.6;">
+      We noticed you are sponsoring <strong>${eventName}</strong> - congratulations on that! 🎉
+    </p>
+
+    <p style="margin: 0 0 25px 0; font-size: 16px; line-height: 1.6;">
+      This is actually perfect because we're reaching out to every sponsor for <strong>${eventName}</strong> to enhance the value you get out of it. Our Power100 TPX platform matches contractors with the exact sponsors who will help them reach the next level based on their pre-expressed goals over the next 12-18 months.
+    </p>
+
+    <p style="margin: 0 0 30px 0; font-size: 16px; line-height: 1.6;">
+      <strong>In other words, we can funnel your ideal clients directly to your booth.</strong>
+    </p>
+
+    <p style="margin: 0 0 30px 0; font-size: 16px; line-height: 1.6;">
+      We've created a profile for you in our system. Any missing fields, please complete as <strong>the more info we have from you, the better our matching algorithm performs.</strong>
+    </p>
+
+    <div style="background-color: #e7f5ff; border-left: 4px solid #1c7ed6; padding: 20px 25px; margin: 0 0 30px 0;">
+      <h2 style="margin: 0 0 15px 0; font-size: 20px; color: #1c7ed6;">
+        📊 Complete Profile Benefits
+      </h2>
+
+      <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #1c7ed6;">
+        For ${eventName}${formattedDate ? ` (${formattedDate})` : ''}:
+      </h3>
+      <ul style="margin: 0 0 20px 0; padding-left: 20px; font-size: 15px; line-height: 1.8; color: #495057;">
+        <li style="margin: 0 0 10px 0;"><strong>Targeted Leads:</strong> Connect with contractors who match your ideal customer profile</li>
+        <li style="margin: 0 0 10px 0;"><strong>Qualified Booth Traffic:</strong> We direct the right contractors to your booth based on their goals</li>
+        <li style="margin: 0 0 10px 0;"><strong>Pre-Qualified Conversations:</strong> Contractors come to you already knowing their needs align with your services</li>
+        <li style="margin: 0;"><strong>Real-time Insights:</strong> Access engagement analytics during the event</li>
+      </ul>
+
+      <h3 style="margin: 0 0 10px 0; font-size: 16px; color: #1c7ed6;">
+        For TPX Platform Overall:
+      </h3>
+      <ul style="margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.8; color: #495057;">
+        <li style="margin: 0 0 10px 0;"><strong>Ongoing Leads:</strong> Continuous matching with contractors in our ecosystem</li>
+        <li style="margin: 0 0 10px 0;"><strong>PowerConfidence Score:</strong> Build your reputation with verified ratings</li>
+        <li style="margin: 0 0 10px 0;"><strong>Industry Insights:</strong> Gain visibility into contractor needs and trends</li>
+        <li style="margin: 0;"><strong>Long-term Partnerships:</strong> Opportunities beyond single events</li>
+      </ul>
+    </div>
+
+    <div style="text-align: center; margin: 40px 0;">
+      <a href="${getBaseUrl()}/partner-portal/profile?partner=${partnerId}&event=${eventId}"
+         style="display: inline-block; background-color: #28a745; color: #ffffff;
+                padding: 15px 40px; text-decoration: none; border-radius: 6px;
+                font-weight: bold; font-size: 16px;">
+        Complete Your Partner Profile
+      </a>
+    </div>
+
+    <p style="margin: 0 0 10px 0; font-size: 14px; line-height: 1.6; color: #6c757d; text-align: center;">
+      <strong>Takes just 5 minutes</strong> and will significantly improve your ${eventName} ROI!
+    </p>
+
+    <p style="margin: 30px 0 0 0; font-size: 16px; line-height: 1.6; color: #000000;">
+      Best regards,<br>
+      <strong>Power100 Team</strong>
+    </p>
+  `;
+
+  return wrapEmailTemplate(content);
+}
+
 module.exports = {
   buildRegistrationConfirmationEmail,
   buildProfileCompletionReminderEmail,
@@ -542,5 +625,6 @@ module.exports = {
   buildEventSummaryEmail,
   buildCheckInReminderNightBefore,
   buildCheckInReminder1HourBefore,
-  buildCheckInReminderEventStart
+  buildCheckInReminderEventStart,
+  buildPartnerProfileCompletionEmail
 };

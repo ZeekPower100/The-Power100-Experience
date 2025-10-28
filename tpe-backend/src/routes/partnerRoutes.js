@@ -28,19 +28,19 @@ const validatePartner = [
 // Public routes
 router.get('/active', asyncHandler(partnerController.getActivePartners));
 
-// Protected routes (admin only)  
-router.use(protect);
-router.get('/pending/list', asyncHandler(partnerController.getPendingPartners));
-router.get('/stats/overview', asyncHandler(partnerController.getPartnerStats));
-router.post('/search', asyncHandler(partnerController.searchPartners));
-router.get('/', asyncHandler(partnerController.getAllPartners));
-router.post('/', validatePartner, asyncHandler(partnerController.createPartner));
-router.put('/:id/toggle-status', asyncHandler(partnerController.togglePartnerStatus));
-router.put('/:id/approve', asyncHandler(partnerController.approvePartner));
-router.put('/:id', asyncHandler(partnerController.updatePartner));
-router.delete('/:id', asyncHandler(partnerController.deletePartner));
+// Protected routes (admin only) - specific paths BEFORE :id routes
+router.get('/pending/list', protect, asyncHandler(partnerController.getPendingPartners));
+router.get('/stats/overview', protect, asyncHandler(partnerController.getPartnerStats));
+router.post('/search', protect, asyncHandler(partnerController.searchPartners));
+router.get('/', protect, asyncHandler(partnerController.getAllPartners));
+router.post('/', protect, validatePartner, asyncHandler(partnerController.createPartner));
+router.put('/:id/toggle-status', protect, asyncHandler(partnerController.togglePartnerStatus));
+router.put('/:id/approve', protect, asyncHandler(partnerController.approvePartner));
+router.delete('/:id', protect, asyncHandler(partnerController.deletePartner));
 
-// Get partner by ID - must be last due to :id param catching all routes
+// Public routes for partner profile completion (accessed via email link)
+// NOTE: Must come LAST to avoid matching specific routes like /pending/list
 router.get('/:id', asyncHandler(partnerController.getPartner));
+router.put('/:id', asyncHandler(partnerController.updatePartner));
 
 module.exports = router;
