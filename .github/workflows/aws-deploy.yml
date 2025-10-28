@@ -64,7 +64,8 @@ jobs:
         run: |
           npm cache clean --force
           rm -rf node_modules package-lock.json
-          npm install --legacy-peer-deps
+          # Increase network timeout for npm registry connections
+          npm install --legacy-peer-deps --fetch-timeout=600000 --fetch-retries=3
 
       - name: Create Backend Environment File
         working-directory: ./tpe-backend
@@ -237,7 +238,9 @@ jobs:
               npm cache clean --force
               
               echo "📦 Installing dependencies with workspaces..."
-              npm install --legacy-peer-deps
+              # Increase network timeout and add retry logic for slow npm registry connections
+              npm install --legacy-peer-deps --fetch-timeout=600000 --fetch-retries=3 || \
+              (echo "⚠️ First install attempt failed, retrying..." && npm install --legacy-peer-deps --fetch-timeout=600000 --fetch-retries=3)
               
               echo "🏗️ Building frontend..."
               cd tpe-front-end
