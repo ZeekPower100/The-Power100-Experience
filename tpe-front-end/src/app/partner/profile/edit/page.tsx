@@ -6,6 +6,11 @@ import PartnerForm from '@/components/admin/PartnerForm';
 import { Card, CardContent } from '@/components/ui/card';
 import { getFromStorage } from '@/utils/jsonHelpers';
 
+// Environment-aware API base URL
+const API_BASE_URL = process.env.NODE_ENV === 'production'
+  ? 'https://tpx.power100.io'
+  : 'http://localhost:5000';
+
 export default function PartnerProfileEditPage() {
   const router = useRouter();
   const [partnerData, setPartnerData] = useState<any>(null);
@@ -27,7 +32,7 @@ export default function PartnerProfileEditPage() {
       }
 
       // Fetch complete partner profile
-      const response = await fetch('http://localhost:5000/api/partner-portal/profile', {
+      const response = await fetch(`${API_BASE_URL}/api/partner-portal/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'

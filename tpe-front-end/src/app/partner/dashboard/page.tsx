@@ -28,6 +28,11 @@ import { motion } from 'framer-motion';
 import { exportToPDF, exportToExcel } from '@/utils/exportReports';
 import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../utils/jsonHelpers';
 
+// Environment-aware API base URL
+const API_BASE_URL = process.env.NODE_ENV === 'production'
+  ? 'https://tpx.power100.io'
+  : 'http://localhost:5000';
+
 interface PartnerData {
   id: number;
   company_name: string;
@@ -83,7 +88,7 @@ export default function PartnerDashboard() {
       };
 
       // Fetch dashboard data
-      const dashboardResponse = await fetch('http://localhost:5000/api/partner-portal/dashboard', {
+      const dashboardResponse = await fetch(`${API_BASE_URL}/api/partner-portal/dashboard`, {
         headers
       });
 
@@ -105,7 +110,7 @@ export default function PartnerDashboard() {
       }
 
       // Fetch quarterly scores
-      const quarterlyResponse = await fetch('http://localhost:5000/api/partner-portal/analytics/quarterly', {
+      const quarterlyResponse = await fetch(`${API_BASE_URL}/api/partner-portal/analytics/quarterly`, {
         headers
       });
 
@@ -117,7 +122,7 @@ export default function PartnerDashboard() {
       }
 
       // Fetch category scores
-      const categoriesResponse = await fetch('http://localhost:5000/api/partner-portal/analytics/categories', {
+      const categoriesResponse = await fetch(`${API_BASE_URL}/api/partner-portal/analytics/categories`, {
         headers
       });
 
