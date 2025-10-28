@@ -226,3 +226,8 @@ deployment.json
 .claude/generated/
 .claude/sessions/
 .claude/*.tmp
+# Test scripts (local development only)
+test-*.js
+create-test-*.js
+tpe-backend/test-*.js
+tpe-backend/create-test-*.js
