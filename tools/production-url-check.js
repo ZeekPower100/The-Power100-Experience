@@ -109,6 +109,8 @@ const IGNORE_PATTERNS = [
   '**/*.spec.ts',
   '**/test-*.js',  // Ignore files starting with test-
   '**/test-*.ts',
+  '**/*-test-*.js',  // Ignore files containing test- (e.g., create-test-*.js)
+  '**/*-test-*.ts',
   '**/test/**',
   '**/tests/**',
   '**/__tests__/**',
