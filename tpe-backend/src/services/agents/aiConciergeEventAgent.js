@@ -30,7 +30,7 @@ const langsmithClient = process.env.LANGSMITH_API_KEY ? new Client({
   apiKey: process.env.LANGSMITH_API_KEY
 }) : null;
 
-// Import all 9 tools (5 original + 2 communication + 1 peer matching + 1 data confirmation)
+// Import all 10 tools (5 original + 2 communication + 1 peer matching + 1 data confirmation + 1 web search)
 const partnerMatchTool = require('./tools/partnerMatchTool');
 const eventSponsorMatchTool = require('./tools/eventSponsorMatchTool');
 const eventSessionsTool = require('./tools/eventSessionsTool');
@@ -40,6 +40,7 @@ const sendSMSTool = require('./tools/sendSMSTool');
 const sendEmailTool = require('./tools/sendEmailTool');
 const peerMatchTool = require('./tools/peerMatchTool');
 const { updateContractorTimezoneTool } = require('./tools/updateContractorTimezoneTool');
+const webSearchTool = require('./tools/webSearchTool');
 
 // AI Concierge Identity - Four Pillars (Event Context Priority)
 const EVENT_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 Experience - a HIGHLY PERSONALIZED, home improvement industry-specific intelligent assistant.
@@ -81,6 +82,20 @@ const EVENT_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 Exp
 - send_email: Send emails to contractors with detailed information, resources, or follow-ups
 - find_peer_matches: Connect contractors with valuable peer networking opportunities at events
 - update_contractor_timezone: Update contractor's timezone after they confirm or correct it
+- web_search: Supplement database knowledge with real-time web search (DATABASE-FIRST ONLY!)
+
+# ⚠️ CRITICAL: Database-First Strategy for Web Search
+When considering web_search tool:
+1. ALWAYS check database FIRST (contractors, strategic_partners, events, books tables)
+2. Only use web_search if database fields are NULL, sparse (<50 chars), or insufficient
+3. Present database data PROMINENTLY, web results as supplemental context
+4. NEVER rely solely on web search when database has information
+
+Examples:
+- "Tell me about this speaker" → Query database event_speakers FIRST, then enrich if bio is sparse
+- Event sponsor has NULL company_description → Use web_search to enrich
+- Event context requires recent news → Query database first, add web context if needed
+- Contractor asks about session topics → ALWAYS from database, NEVER web search
 
 # Event Mode Best Practices:
 - Capture notes proactively when contractor shares insights
@@ -104,7 +119,7 @@ Remember: To the contractor, you're always "the AI Concierge" - event context is
  * @param {number} contractorId - Optional contractor ID to inject internal goals
  */
 function createEventAgent(contractorId = null) {
-  console.log('[AI Concierge Event] Creating agent with all 8 tools (including SMS/Email/Peer Matching)');
+  console.log('[AI Concierge Event] Creating agent with all 10 tools (including SMS/Email/Peer Matching/Web Search)');
 
   // Initialize ChatOpenAI model with LangSmith tracing and token usage tracking
   const modelConfig = {
@@ -125,7 +140,7 @@ function createEventAgent(contractorId = null) {
 
   const model = new ChatOpenAI(modelConfig);
 
-  // Bind all 9 tools to model (Event Mode has access to ALL tools including SMS/Email/Peer Matching/Data Updates)
+  // Bind all 10 tools to model (Event Mode has access to ALL tools including SMS/Email/Peer Matching/Data Updates/Web Search)
   const modelWithTools = model.bindTools([
     partnerMatchTool,
     eventSponsorMatchTool,
@@ -135,7 +150,8 @@ function createEventAgent(contractorId = null) {
     sendSMSTool,
     sendEmailTool,
     peerMatchTool,
-    updateContractorTimezoneTool
+    updateContractorTimezoneTool,
+    webSearchTool
   ]);
 
   // Define agent function with dynamic system prompt

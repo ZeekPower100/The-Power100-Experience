@@ -30,7 +30,7 @@ const langsmithClient = process.env.LANGSMITH_API_KEY ? new Client({
   apiKey: process.env.LANGSMITH_API_KEY
 }) : null;
 
-// Import all 8 tools (5 original + 2 communication tools + 1 data confirmation tool)
+// Import all 9 tools (5 original + 2 communication tools + 1 data confirmation tool + 1 web search tool)
 const partnerMatchTool = require('./tools/partnerMatchTool');
 const eventSponsorMatchTool = require('./tools/eventSponsorMatchTool');
 const eventSessionsTool = require('./tools/eventSessionsTool');
@@ -39,6 +39,7 @@ const scheduleFollowupTool = require('./tools/scheduleFollowupTool');
 const sendSMSTool = require('./tools/sendSMSTool');
 const sendEmailTool = require('./tools/sendEmailTool');
 const { updateContractorTimezoneTool } = require('./tools/updateContractorTimezoneTool');
+const webSearchTool = require('./tools/webSearchTool');
 
 // AI Concierge Identity - Four Pillars
 const STANDARD_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 Experience - a HIGHLY PERSONALIZED, home improvement industry-specific intelligent assistant.
@@ -77,6 +78,20 @@ const STANDARD_AGENT_SYSTEM_PROMPT = `You are the AI Concierge for The Power100 
 - send_sms: Send SMS messages to contractors for urgent or time-sensitive information
 - send_email: Send emails to contractors with detailed information, resources, or follow-ups
 - update_contractor_timezone: Update contractor's timezone after they confirm or correct it
+- web_search: Supplement database knowledge with real-time web search (DATABASE-FIRST ONLY!)
+
+# ⚠️ CRITICAL: Database-First Strategy for Web Search
+When considering web_search tool:
+1. ALWAYS check database FIRST (contractors, strategic_partners, events, books tables)
+2. Only use web_search if database fields are NULL, sparse (<50 chars), or insufficient
+3. Present database data PROMINENTLY, web results as supplemental context
+4. NEVER rely solely on web search when database has information
+
+Examples:
+- "What are current trends in contractor marketing?" → Query database ai_tags, focus_areas, topics FIRST, then add web context
+- Partner has NULL company_description → Use web_search to enrich
+- Partner has 200-word company_description → NO web search needed, use database
+- Contractor asks about their own data → ALWAYS from database, NEVER web search
 
 # Data Confirmation Protocol:
 - ALWAYS confirm timezone before scheduling time-based actions
@@ -91,7 +106,7 @@ Remember: To the contractor, you're always "the AI Concierge" - not limited by m
  * @param {number} contractorId - Optional contractor ID to inject internal goals
  */
 function createStandardAgent(contractorId = null) {
-  console.log('[AI Concierge Standard] Creating agent with all 7 tools (including SMS/Email)');
+  console.log('[AI Concierge Standard] Creating agent with all 9 tools (including SMS/Email/Web Search)');
 
   // Initialize ChatOpenAI model with LangSmith tracing and token usage tracking
   const modelConfig = {
@@ -112,7 +127,7 @@ function createStandardAgent(contractorId = null) {
 
   const model = new ChatOpenAI(modelConfig);
 
-  // Bind all 8 tools to model (Standard Mode has access to ALL tools including SMS/Email/Data Updates)
+  // Bind all 9 tools to model (Standard Mode has access to ALL tools including SMS/Email/Data Updates/Web Search)
   const modelWithTools = model.bindTools([
     partnerMatchTool,
     eventSponsorMatchTool,
@@ -121,7 +136,8 @@ function createStandardAgent(contractorId = null) {
     scheduleFollowupTool,
     sendSMSTool,
     sendEmailTool,
-    updateContractorTimezoneTool
+    updateContractorTimezoneTool,
+    webSearchTool
   ]);
 
   // Define agent function with dynamic system prompt
