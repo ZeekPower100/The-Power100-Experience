@@ -42,6 +42,7 @@ const smsRoutes = require('./routes/smsRoutes');
 const partnerEnhancedRoutes = require('./routes/partnerEnhancedRoutes');
 const contractorEnhancedRoutes = require('./routes/contractorEnhancedRoutes');
 const aiProcessingRoutes = require('./routes/aiProcessingRoutes');
+const aiEventProcessingRoutes = require('./routes/aiEventProcessingRoutes');
 const partnerAuthRoutes = require('./routes/partnerAuthRoutes');
 const contractorAuthRoutes = require('./routes/contractorAuthRoutes');
 const accountCreationRoutes = require('./routes/accountCreationRoutes');
@@ -162,6 +163,7 @@ app.use('/api/bookings', bookingRoutes);
 // Auth routes with stricter rate limiting (prevent brute force)
 app.use('/api/auth', authRateLimiter, authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/admin', aiEventProcessingRoutes);
 app.use('/api/bulk', bulkRoutes);
 app.use('/api/feedback', feedbackRoutes);
 app.use('/api/ai-processing', aiProcessingRoutes);
