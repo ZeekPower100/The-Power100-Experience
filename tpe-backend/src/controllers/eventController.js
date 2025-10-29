@@ -172,7 +172,7 @@ async function syncEventSponsors(eventId, sponsors) {
       }
 
       // ✨ NEW: Check partner profile completeness and trigger email if needed
-      if (partnerId) {
+      if (partnerId && process.env.DISABLE_SPONSOR_EMAILS !== 'true') {
         try {
           console.log(`[Event Controller] Checking profile completeness for partner ${partnerId}`);
           const profileCheck = await checkPartnerProfileCompleteness(partnerId);
@@ -190,6 +190,8 @@ async function syncEventSponsors(eventId, sponsors) {
           // Don't fail event creation if profile check fails
           console.error(`[Event Controller] Error checking partner ${partnerId} profile:`, profileError.message);
         }
+      } else if (partnerId && process.env.DISABLE_SPONSOR_EMAILS === 'true') {
+        console.log(`[Event Controller] ⏸️ Sponsor emails disabled - skipping email for partner ${partnerId}`);
       }
     }
   } catch (error) {
