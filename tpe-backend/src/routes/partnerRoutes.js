@@ -38,6 +38,11 @@ router.put('/:id/toggle-status', protect, asyncHandler(partnerController.toggleP
 router.put('/:id/approve', protect, asyncHandler(partnerController.approvePartner));
 router.delete('/:id', protect, asyncHandler(partnerController.deletePartner));
 
+// PCR (PowerConfidence Rating) routes - specific paths BEFORE :id routes
+router.post('/pcr/recalculate-all', protect, asyncHandler(partnerController.recalculateAllPCR));
+router.post('/:id/calculate-pcr', protect, asyncHandler(partnerController.calculatePCR));
+router.patch('/:id/engagement-tier', protect, asyncHandler(partnerController.updateEngagementTier));
+
 // Public routes for partner profile completion (accessed via email link)
 // NOTE: Must come LAST to avoid matching specific routes like /pending/list
 router.get('/:id', asyncHandler(partnerController.getPartner));

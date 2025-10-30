@@ -1,5 +1,6 @@
 const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const { processPartnerAI } = require('../services/aiProcessingService');
+const pcrService = require('../services/pcrCalculationService');
 
 const { query } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
@@ -259,6 +260,15 @@ const createPartner = async (req, res, next) => {
   // Trigger AI processing for new partner
   const newPartner = result.rows[0];
   await triggerAIProcessing(newPartner.id, 'created');
+
+  // Calculate initial PCR score for new partner
+  try {
+    await pcrService.calculatePartnerPCR(newPartner.id);
+    console.log(`[PCR] ✅ Initial PCR calculated for new partner ${newPartner.id}`);
+  } catch (pcrError) {
+    console.error(`[PCR] ⚠️  Failed to calculate initial PCR for partner ${newPartner.id}:`, pcrError.message);
+    // Don't fail the whole creation if PCR calculation fails
+  }
 
   // Process videos if client_demos URLs were provided
   console.log('🔍 DEBUG - client_demos value:', client_demos);
@@ -528,6 +538,15 @@ const updatePartner = async (req, res, next) => {
         console.error(`⚠️ Video processing setup failed (non-blocking):`, error.message);
         // Don't fail the update, just log the error
       }
+    }
+
+    // Recalculate PCR after profile update
+    try {
+      await pcrService.calculatePartnerPCR(parseInt(id));
+      console.log(`[PCR] ✅ PCR recalculated after profile update for partner ${id}`);
+    } catch (pcrError) {
+      console.error(`[PCR] ⚠️  Failed to recalculate PCR for partner ${id}:`, pcrError.message);
+      // Don't fail the whole update if PCR calculation fails
     }
 
     res.status(200).json({
@@ -871,6 +890,99 @@ const approvePartner = async (req, res, next) => {
   }
 };
 
+// ================================================================
+// PCR (PowerConfidence Rating) Endpoints
+// ================================================================
+
+/**
+ * Calculate PCR score for a single partner
+ * POST /api/partners/:id/calculate-pcr
+ */
+const calculatePCR = async (req, res, next) => {
+  try {
+    const partnerId = parseInt(req.params.id);
+
+    if (!partnerId || isNaN(partnerId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid partner ID is required'
+      });
+    }
+
+    const result = await pcrService.calculatePartnerPCR(partnerId);
+
+    res.json({
+      success: true,
+      message: 'PCR calculated successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('Error calculating PCR:', error);
+    next(error);
+  }
+};
+
+/**
+ * Recalculate PCR scores for all active partners
+ * POST /api/partners/pcr/recalculate-all
+ */
+const recalculateAllPCR = async (req, res, next) => {
+  try {
+    const results = await pcrService.recalculateAllPCR();
+
+    res.json({
+      success: true,
+      message: `PCR recalculation complete: ${results.succeeded} succeeded, ${results.failed} failed`,
+      data: results
+    });
+  } catch (error) {
+    console.error('Error recalculating all PCR:', error);
+    next(error);
+  }
+};
+
+/**
+ * Update engagement tier for a partner
+ * PATCH /api/partners/:id/engagement-tier
+ * Body: { tier: 'free' | 'verified' | 'gold', subscriptionStart?, subscriptionEnd? }
+ */
+const updateEngagementTier = async (req, res, next) => {
+  try {
+    const partnerId = parseInt(req.params.id);
+    const { tier, subscriptionStart, subscriptionEnd } = req.body;
+
+    if (!partnerId || isNaN(partnerId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid partner ID is required'
+      });
+    }
+
+    if (!tier || !['free', 'gold', 'platinum'].includes(tier)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Valid tier is required (free, gold, or platinum)'
+      });
+    }
+
+    const result = await pcrService.updateEngagementTier(
+      partnerId,
+      tier,
+      subscriptionStart ? new Date(subscriptionStart) : null,
+      subscriptionEnd ? new Date(subscriptionEnd) : null
+    );
+
+    res.json({
+      success: true,
+      message: `Engagement tier updated to ${tier}`,
+      data: result
+    });
+  } catch (error) {
+    console.error('Error updating engagement tier:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   getActivePartners,
   getPartner,
@@ -882,5 +994,8 @@ module.exports = {
   getPartnerStats,
   searchPartners,
   getPendingPartners,
-  approvePartner
+  approvePartner,
+  calculatePCR,
+  recalculateAllPCR,
+  updateEngagementTier
 };
