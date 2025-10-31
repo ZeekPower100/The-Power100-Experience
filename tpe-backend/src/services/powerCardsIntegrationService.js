@@ -41,6 +41,7 @@ async function aggregatePowerCardsData(campaignId, partnerId) {
       r.metric_3_score,
       r.satisfaction_score,
       r.recommendation_score,
+      r.custom_metric_score,
       r.submitted_at
     FROM power_card_responses r
     JOIN power_card_templates t ON r.template_id = t.id
@@ -63,9 +64,11 @@ async function aggregatePowerCardsData(campaignId, partnerId) {
   let totalMetric1 = 0;
   let totalMetric2 = 0;
   let totalMetric3 = 0;
+  let totalCustomMetric = 0;
   let metric1Count = 0;
   let metric2Count = 0;
   let metric3Count = 0;
+  let customMetricCount = 0;
   let satisfactionCount = 0;
   let recommendationCount = 0;
 
@@ -82,7 +85,7 @@ async function aggregatePowerCardsData(campaignId, partnerId) {
       recommendationCount++;
     }
 
-    // Custom metrics (0-10 scale, convert to 0-100)
+    // Standard metrics (0-10 scale, convert to 0-100)
     if (response.metric_1_score !== null) {
       totalMetric1 += parseInt(response.metric_1_score) * 10;
       metric1Count++;
@@ -95,13 +98,19 @@ async function aggregatePowerCardsData(campaignId, partnerId) {
       totalMetric3 += parseInt(response.metric_3_score) * 10;
       metric3Count++;
     }
+
+    // Custom metric (0-10 scale, convert to 0-100)
+    if (response.custom_metric_score !== null) {
+      totalCustomMetric += parseInt(response.custom_metric_score) * 10;
+      customMetricCount++;
+    }
   });
 
   // Calculate averages (already on 0-100 scale after conversion)
   const avgSatisfaction = satisfactionCount > 0 ? totalSatisfaction / satisfactionCount : 50; // Default 50 if no data
   const avgRecommendation = recommendationCount > 0 ? totalRecommendation / recommendationCount : 50;
 
-  // Average all three metrics together
+  // Average all standard metrics together
   let avgMetrics = 50; // Default
   const metricValues = [];
   if (metric1Count > 0) metricValues.push(totalMetric1 / metric1Count);
@@ -112,6 +121,9 @@ async function aggregatePowerCardsData(campaignId, partnerId) {
     avgMetrics = metricValues.reduce((sum, val) => sum + val, 0) / metricValues.length;
   }
 
+  // Calculate average custom metric (stored separately for historical tracking)
+  const avgCustomMetric = customMetricCount > 0 ? totalCustomMetric / customMetricCount : null;
+
   // Weighted formula: 40% satisfaction + 30% recommendation + 30% metrics
   const quarterlyScore = (avgSatisfaction * 0.40) + (avgRecommendation * 0.30) + (avgMetrics * 0.30);
 
@@ -119,6 +131,7 @@ async function aggregatePowerCardsData(campaignId, partnerId) {
     satisfaction: avgSatisfaction.toFixed(2),
     recommendation: avgRecommendation.toFixed(2),
     metrics: avgMetrics.toFixed(2),
+    customMetric: avgCustomMetric ? avgCustomMetric.toFixed(2) : 'N/A',
     finalScore: quarterlyScore.toFixed(2)
   });
 
@@ -127,6 +140,7 @@ async function aggregatePowerCardsData(campaignId, partnerId) {
     avgSatisfaction: Math.round(avgSatisfaction * 100) / 100,
     avgRecommendation: Math.round(avgRecommendation * 100) / 100,
     avgMetrics: Math.round(avgMetrics * 100) / 100,
+    avgCustomMetric: avgCustomMetric ? Math.round(avgCustomMetric * 100) / 100 : null,
     quarterlyScore: Math.round(quarterlyScore * 100) / 100
   };
 }
@@ -148,7 +162,9 @@ async function addQuarterlyDataFromPowerCards(partnerId, campaignId) {
       campaign_name,
       quarter,
       year,
-      end_date
+      end_date,
+      custom_metric_question,
+      custom_metric_label
     FROM power_card_campaigns
     WHERE id = $1
   `, [campaignId]);
@@ -192,6 +208,9 @@ async function addQuarterlyDataFromPowerCards(partnerId, campaignId) {
     avg_satisfaction: aggregatedData.avgSatisfaction,
     avg_recommendation: aggregatedData.avgRecommendation,
     avg_metrics: aggregatedData.avgMetrics,
+    avg_custom_metric: aggregatedData.avgCustomMetric, // Partner-specific custom metric score
+    custom_metric_question: campaign.custom_metric_question, // What question was asked
+    custom_metric_label: campaign.custom_metric_label, // Short label for this metric
     source: 'powercard',
     campaign_id: campaignId,
     created_at: new Date().toISOString()
