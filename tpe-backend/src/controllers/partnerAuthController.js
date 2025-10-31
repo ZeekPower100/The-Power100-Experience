@@ -58,8 +58,8 @@ const createPartnerUser = async (partnerId, partnerEmail) => {
 
     // Create partner user
     const result = await query(`
-      INSERT INTO partner_users (partner_id, email, password_hash, is_active)
-      VALUES ($1, $2, $3, 1)
+      INSERT INTO partner_users (partner_id, email, password, is_active)
+      VALUES ($1, $2, $3, true)
     `, [partnerId, partnerEmail, passwordHash]);
 
     console.log(`🔐 Created partner user account for partner ${partnerId}`);
@@ -97,16 +97,19 @@ const partnerLogin = async (req, res, next) => {
       );
 
       let partner;
+      let partnerId;
       if (partnerResult.rows.length === 0) {
         // Create demo partner if doesn't exist
         const insertResult = await query(`
           INSERT INTO strategic_partners (
             company_name, contact_email, website, is_active, power_confidence_score, score_trend
           ) VALUES ($1, $2, $3, $4, $5, $6)
+          RETURNING id
         `, ['TechFlow Solutions', email, 'https://techflow.com', 1, 87, 'up']);
-        
+
+        partnerId = insertResult.rows[0].id;
         partner = {
-          id: insertResult.lastInsertRowid,
+          id: partnerId,
           company_name: 'TechFlow Solutions',
           contact_email: email,
           power_confidence_score: 87,
@@ -115,10 +118,34 @@ const partnerLogin = async (req, res, next) => {
         };
       } else {
         partner = partnerResult.rows[0];
+        partnerId = partner.id;
       }
 
-      // Generate token
-      const token = signPartnerToken(partner.id, partner.id);
+      // Check if partner_users record exists, create if not
+      const partnerUserResult = await query(
+        'SELECT id FROM partner_users WHERE partner_id = $1',
+        [partnerId]
+      );
+
+      let partnerUserId;
+      if (partnerUserResult.rows.length === 0) {
+        // Create partner_users record for demo
+        const bcrypt = require('bcryptjs');
+        const passwordHash = await bcrypt.hash(password, 12);
+        const userInsertResult = await query(`
+          INSERT INTO partner_users (partner_id, email, password, is_active)
+          VALUES ($1, $2, $3, true)
+          RETURNING id
+        `, [partnerId, email, passwordHash]);
+
+        partnerUserId = userInsertResult.rows[0].id;
+        console.log(`🔐 Created partner_users record for demo partner ${partnerId}`);
+      } else {
+        partnerUserId = partnerUserResult.rows[0].id;
+      }
+
+      // Generate token with partner_users id
+      const token = signPartnerToken(partnerId, partnerUserId);
 
       console.log('🎉 Demo login successful for:', partner.company_name);
 
@@ -167,11 +194,16 @@ const getPartnerProfile = async (req, res, next) => {
     // Use PostgreSQL connection
     const { query } = require('../config/database');
     
-    // Get partner profile
+    // Get partner profile (including Phase 2 & 3 fields)
     const partnerResult = await query(`
       SELECT pu.email, pu.last_login, pu.created_at,
+             sp.id as partner_id,
              sp.company_name, sp.description, sp.website, sp.logo_url,
-             sp.power_confidence_score, sp.is_active
+             sp.power_confidence_score, sp.is_active,
+             sp.final_pcr_score, sp.base_pcr_score,
+             sp.earned_badges, sp.momentum_modifier, sp.performance_trend,
+             sp.quarterly_history, sp.quarters_tracked,
+             sp.has_quarterly_data, sp.quarterly_feedback_score
       FROM partner_users pu
       JOIN strategic_partners sp ON pu.partner_id = sp.id
       WHERE pu.id = $1
@@ -188,18 +220,23 @@ const getPartnerProfile = async (req, res, next) => {
       SELECT metric_type, metric_value, period_start, period_end
       FROM partner_analytics
       WHERE partner_id = $1
-      ORDER BY calculated_at DESC
+      ORDER BY created_at DESC
     `, [req.partnerUser.partnerId]);
 
     const analytics = analyticsResult.rows;
 
     // Get leads count for this month
-    const thisMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
     const leadsResult = await query(`
       SELECT COUNT(*) as count
       FROM partner_leads
-      WHERE partner_id = $1 AND created_at LIKE $2
-    `, [req.partnerUser.partnerId, `${thisMonth}%`]);
+      WHERE partner_id = $1
+        AND created_at >= $2
+        AND created_at < $3
+    `, [req.partnerUser.partnerId, startOfMonth, endOfMonth]);
 
     const leadsThisMonth = leadsResult.rows[0];
 
@@ -207,7 +244,7 @@ const getPartnerProfile = async (req, res, next) => {
     const demoResult = await query(`
       SELECT COUNT(*) as count
       FROM partner_leads
-      WHERE partner_id = $1 AND stage IN ('demo_requested', 'demo_scheduled')
+      WHERE partner_id = $1 AND lead_status IN ('demo_requested', 'demo_scheduled')
     `, [req.partnerUser.partnerId]);
 
     const demoRequests = demoResult.rows[0];
@@ -258,7 +295,7 @@ const changePartnerPassword = async (req, res, next) => {
 
     // Get current user with password
     const userResult = await query(
-      'SELECT password_hash FROM partner_users WHERE id = $1',
+      'SELECT password FROM partner_users WHERE id = $1',
       [req.partnerUser.id]
     );
 
@@ -269,7 +306,7 @@ const changePartnerPassword = async (req, res, next) => {
     }
 
     // Verify current password
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password_hash);
+    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.password);
 
     if (!isCurrentPasswordValid) {
       return next(new AppError('Current password is incorrect', 401));
@@ -280,7 +317,7 @@ const changePartnerPassword = async (req, res, next) => {
 
     // Update password
     await query(
-      'UPDATE partner_users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+      'UPDATE partner_users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
       [newPasswordHash, req.partnerUser.id]
     );
 

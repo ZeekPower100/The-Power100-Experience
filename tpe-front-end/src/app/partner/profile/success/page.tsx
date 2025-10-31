@@ -264,7 +264,7 @@ function PartnerProfileSuccessPageContent() {
                 </Button>
               )}
               <Button
-                onClick={() => router.push('/partner-portal')}
+                onClick={() => router.push('/partner')}
                 className="flex-1 bg-power100-green hover:bg-green-700 text-white font-semibold"
               >
                 Go to Partner Portal

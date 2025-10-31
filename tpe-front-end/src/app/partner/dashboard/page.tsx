@@ -1,173 +1,159 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
+  Users,
+  Calendar,
   TrendingUp,
   TrendingDown,
   Minus,
-  Award,
-  Users,
-  MessageSquare,
-  Calendar,
-  Download,
-  LogOut,
-  Home,
-  BarChart3,
-  Target,
   Star,
+  LogOut,
+  Settings,
+  Mail,
+  Phone,
+  Globe,
+  Building,
+  Home,
   FileText,
-  UserCog
+  Download,
+  UserCog,
+  MessageSquare,
+  Target,
+  Award,
+  BarChart3
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { exportToPDF, exportToExcel } from '@/utils/exportReports';
 import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../utils/jsonHelpers';
 
-// Environment-aware API base URL
-const API_BASE_URL = process.env.NODE_ENV === 'production'
-  ? 'https://tpx.power100.io'
-  : 'http://localhost:5000';
-
-interface PartnerData {
+interface PartnerInfo {
   id: number;
   company_name: string;
-  contact_email: string;
+  email: string;
+  last_login: string;
+}
+
+interface PartnerProfile {
+  email: string;
+  last_login: string;
+  created_at: string;
+  company_name: string;
+  description: string;
+  website: string;
+  logo_url: string;
   power_confidence_score: number;
-  score_trend: 'up' | 'down' | 'stable';
-  industry_rank: number;
-  total_partners_in_category: number;
-  recent_feedback_count: number;
-  avg_satisfaction: number;
-  total_contractors: number;
-  active_contractors: number;
-}
-
-interface CategoryScore {
-  category: string;
-  score: number;
-  trend: string;
-  feedback_count: number;
-}
-
-interface QuarterlyScore {
-  quarter: string;
-  score: number;
-  feedback_count: number;
+  is_active: boolean;
+  final_pcr_score: number;
+  base_pcr_score: number;
+  earned_badges: any[];
+  momentum_modifier: number;
+  performance_trend: string;
+  quarterly_history: any[];
+  quarters_tracked: number;
+  has_quarterly_data: boolean;
+  quarterly_feedback_score: number;
+  analytics: {
+    leads_received: number;
+    demos_requested: number;
+    conversion_rate: number;
+    power_confidence_score: number;
+  };
 }
 
 export default function PartnerDashboard() {
-  const router = useRouter();
-  const [partnerData, setPartnerData] = useState<PartnerData | null>(null);
-  const [categoryScores, setCategoryScores] = useState<CategoryScore[]>([]);
-  const [quarterlyScores, setQuarterlyScores] = useState<QuarterlyScore[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [partnerInfo, setPartnerInfo] = useState<PartnerInfo | null>(null);
+  const [partnerProfile, setPartnerProfile] = useState<PartnerProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const router = useRouter();
 
   useEffect(() => {
-    fetchPartnerData();
-  }, []);
+    // Check if partner is logged in
+    const token = getFromStorage('partnerToken');
+    const storedPartnerInfo = getFromStorage('partnerInfo');
 
-  const fetchPartnerData = async () => {
+    if (!token || !storedPartnerInfo) {
+      router.push('/partner');
+      return;
+    }
+
+    setPartnerInfo(safeJsonParse(storedPartnerInfo));
+    fetchPartnerProfile(token);
+  }, [router]);
+
+  const fetchPartnerProfile = async (token: string) => {
     try {
-      setLoading(true);
-      const token = getFromStorage('partnerToken');
-
-      if (!token) {
-        router.push('/partner/login');
-        return;
-      }
-
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
-
-      // Fetch dashboard data
-      const dashboardResponse = await fetch(`${API_BASE_URL}/api/partner-portal/dashboard`, {
-        headers
+      const response = await fetch('http://localhost:5000/api/partner-auth/profile', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
 
-      if (!dashboardResponse.ok) {
-        if (dashboardResponse.status === 401) {
-          // Token expired or invalid
-          localStorage.removeItem('partnerToken');
-          localStorage.removeItem('partnerInfo');
-          router.push('/partner/login');
-          return;
-        }
-        throw new Error('Failed to fetch dashboard data');
+      const data = await handleApiResponse(response);
+
+      if (data.success) {
+        setPartnerProfile(data.partner);
+      } else {
+        setError(data.error || 'Failed to load profile');
       }
-
-      const dashboardData = await dashboardResponse.json();
-
-      if (dashboardData.success) {
-        setPartnerData(dashboardData.partner);
-      }
-
-      // Fetch quarterly scores
-      const quarterlyResponse = await fetch(`${API_BASE_URL}/api/partner-portal/analytics/quarterly`, {
-        headers
-      });
-
-      if (quarterlyResponse.ok) {
-        const quarterlyData = await quarterlyResponse.json();
-        if (quarterlyData.success) {
-          setQuarterlyScores(quarterlyData.quarterly_scores);
-        }
-      }
-
-      // Fetch category scores
-      const categoriesResponse = await fetch(`${API_BASE_URL}/api/partner-portal/analytics/categories`, {
-        headers
-      });
-
-      if (categoriesResponse.ok) {
-        const categoriesData = await categoriesResponse.json();
-        if (categoriesData.success) {
-          setCategoryScores(categoriesData.category_scores);
-        }
-      }
-
-      setLoading(false);
     } catch (error) {
-      console.error('Error fetching partner data:', error);
-      setLoading(false);
-      // Show error message to user (could add toast notification here)
+      console.error('Profile fetch error:', error);
+      setError('Network error. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('partnerToken');
-    localStorage.removeItem('partnerInfo');
-    router.push('/partner/login');
+    setToStorage('partnerToken', '');
+    setToStorage('partnerInfo', '');
+    router.push('/partner');
+  };
+
+  const getTrendIcon = (trend: string) => {
+    switch(trend) {
+      case 'up':
+      case 'improving':
+        return <TrendingUp className="w-4 h-4 text-green-500" />;
+      case 'down':
+      case 'declining':
+        return <TrendingDown className="w-4 h-4 text-red-500" />;
+      default:
+        return <Minus className="w-4 h-4 text-gray-500" />;
+    }
   };
 
   const handleExport = (format: 'pdf' | 'excel') => {
-    if (!partnerData) return;
+    if (!partnerProfile) return;
 
     const exportData = {
       partner: {
-        ...partnerData,
-        company_name: partnerData.company_name,
-        contact_email: partnerData.contact_email,
-        current_powerconfidence_score: partnerData.power_confidence_score,
-        score_trend: partnerData.score_trend,
-        service_categories: safeJsonStringify(['Technology', 'Software']),
-        total_contractor_engagements: partnerData.total_contractors,
-        avg_contractor_satisfaction: partnerData.avg_satisfaction,
-        recent_feedback_count: partnerData.recent_feedback_count
+        company_name: partnerProfile.company_name,
+        contact_email: partnerProfile.email,
+        current_powerconfidence_score: partnerProfile.final_pcr_score || partnerProfile.power_confidence_score,
+        score_trend: partnerProfile.performance_trend,
+        base_pcr_score: partnerProfile.base_pcr_score,
+        momentum_modifier: partnerProfile.momentum_modifier,
+        earned_badges: partnerProfile.earned_badges || [],
+        quarters_tracked: partnerProfile.quarters_tracked,
+        quarterly_feedback_score: partnerProfile.quarterly_feedback_score,
+        // Fields expected by PDF generator
+        total_contractor_engagements: Number(partnerProfile.analytics?.leads_received || 0),
+        avg_contractor_satisfaction: Number(partnerProfile.quarterly_feedback_score || 0),
+        recent_feedback_count: Number(partnerProfile.analytics?.demos_requested || 0),
+        service_categories: JSON.stringify(['Technology', 'Software']) // Default categories as JSON array
       },
-      scoreHistory: quarterlyScores,
-      categoryBreakdown: categoryScores.map(cat => ({
-        category: cat.category,
-        score: cat.score,
-        weight: 20
-      }))
+      scoreHistory: partnerProfile.quarterly_history || [],
+      analytics: partnerProfile.analytics
     };
 
     if (format === 'pdf') {
@@ -177,15 +163,7 @@ export default function PartnerDashboard() {
     }
   };
 
-  const getTrendIcon = (trend: string) => {
-    switch(trend) {
-      case 'up': return <TrendingUp className="w-4 h-4 text-green-500" />;
-      case 'down': return <TrendingDown className="w-4 h-4 text-red-500" />;
-      default: return <Minus className="w-4 h-4 text-gray-500" />;
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -196,13 +174,13 @@ export default function PartnerDashboard() {
     );
   }
 
-  if (!partnerData) {
+  if (!partnerProfile) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card>
           <CardContent className="p-8">
             <p className="text-gray-600">Unable to load partner data. Please try again.</p>
-            <Button onClick={() => router.push('/partner/login')} className="mt-4">
+            <Button onClick={() => router.push('/partner')} className="mt-4">
               Back to Login
             </Button>
           </CardContent>
@@ -220,7 +198,7 @@ export default function PartnerDashboard() {
             <div className="flex items-center gap-4">
               <Home className="w-6 h-6 text-red-600" />
               <h1 className="text-xl font-bold text-gray-900">Partner Portal</h1>
-              <Badge variant="outline">{partnerData.company_name}</Badge>
+              <Badge variant="outline">{partnerProfile.company_name}</Badge>
             </div>
             <div className="flex items-center gap-4">
               <Button
@@ -242,7 +220,7 @@ export default function PartnerDashboard() {
               <Link href="/partner/leads">
                 <Button
                   variant="outline"
-                  className="flex items-center gap-2 bg-power100-green hover:bg-green-600 text-white border-green-600"
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white border-green-600"
                 >
                   <Users className="w-4 h-4" />
                   Leads
@@ -272,6 +250,12 @@ export default function PartnerDashboard() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {error && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         {/* PowerConfidence Score Hero */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -284,30 +268,43 @@ export default function PartnerDashboard() {
                 <div>
                   <p className="text-red-100 text-sm mb-2">Your PowerConfidence Score</p>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-5xl font-bold">{partnerData.power_confidence_score}</span>
-                    <span className="text-2xl">/100</span>
-                    {getTrendIcon(partnerData.score_trend)}
+                    <span className="text-5xl font-bold">
+                      {partnerProfile.final_pcr_score ? Number(partnerProfile.final_pcr_score).toFixed(1) : Number(partnerProfile.power_confidence_score || 0).toFixed(1)}
+                    </span>
+                    <span className="text-2xl">/105</span>
+                    {getTrendIcon(partnerProfile.performance_trend || 'stable')}
                   </div>
                   <p className="text-red-100 mt-2">
-                    {partnerData.score_trend === 'up' ? '+3' : partnerData.score_trend === 'down' ? '-2' : '0'} points from last quarter
+                    {partnerProfile.momentum_modifier > 0 && `+${partnerProfile.momentum_modifier}`}
+                    {partnerProfile.momentum_modifier < 0 && partnerProfile.momentum_modifier}
+                    {partnerProfile.momentum_modifier === 0 && '0'} momentum points
                   </p>
                 </div>
 
                 <div>
-                  <p className="text-red-100 text-sm mb-2">Industry Ranking</p>
+                  <p className="text-red-100 text-sm mb-2">Performance Status</p>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-3xl font-bold">#{partnerData.industry_rank}</span>
-                    <span className="text-lg">of {partnerData.total_partners_in_category}</span>
+                    <Badge className="bg-white text-red-600 text-lg px-4 py-2">
+                      {partnerProfile.momentum_modifier === 5 && '🔥 Hot Streak!'}
+                      {partnerProfile.momentum_modifier === 0 && '📊 Stable'}
+                      {partnerProfile.momentum_modifier === -3 && '📉 Improving'}
+                      {partnerProfile.momentum_modifier === undefined && 'New Partner'}
+                    </Badge>
                   </div>
-                  <p className="text-red-100 mt-2">in your category</p>
+                  <p className="text-red-100 mt-2">
+                    Based on {partnerProfile.quarters_tracked || 0} quarters of data
+                  </p>
                 </div>
 
                 <div>
-                  <p className="text-red-100 text-sm mb-2">Performance Status</p>
-                  <Badge className="bg-white text-red-600 text-lg px-4 py-2">
-                    Excellent Performance
-                  </Badge>
-                  <p className="text-red-100 mt-2">{partnerData.recent_feedback_count} recent reviews</p>
+                  <p className="text-red-100 text-sm mb-2">Latest Quarterly Score</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-3xl font-bold">
+                      {partnerProfile.quarterly_feedback_score ? Number(partnerProfile.quarterly_feedback_score).toFixed(1) : '--'}
+                    </span>
+                    <span className="text-lg">/100</span>
+                  </div>
+                  <p className="text-red-100 mt-2">Customer feedback rating</p>
                 </div>
               </div>
             </CardContent>
@@ -335,145 +332,251 @@ export default function PartnerDashboard() {
 
         {/* Tab Content */}
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <Users className="w-8 h-8 text-blue-600" />
-                    <Badge variant="outline">Active</Badge>
-                  </div>
-                  <p className="text-2xl font-bold">{partnerData.active_contractors}</p>
-                  <p className="text-sm text-gray-600">Active Contractors</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {partnerData.total_contractors} total all-time
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
+          <div className="space-y-8">
+            {/* Quick Stats Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Final PCR Score</CardTitle>
+                    <Star className="h-4 w-4 text-yellow-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {partnerProfile.final_pcr_score ? Number(partnerProfile.final_pcr_score).toFixed(1) : Number(partnerProfile.power_confidence_score || 0).toFixed(1)}
+                    </div>
+                    <p className="text-xs text-slate-600">Out of 105 (with momentum)</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <Star className="w-8 h-8 text-yellow-600" />
-                  </div>
-                  <p className="text-2xl font-bold">{partnerData.avg_satisfaction.toFixed(1)}/10</p>
-                  <p className="text-sm text-gray-600">Avg Satisfaction</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    From recent feedback
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Leads Received</CardTitle>
+                    <Users className="h-4 w-4 text-blue-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{partnerProfile.analytics?.leads_received || 0}</div>
+                    <p className="text-xs text-slate-600">This month</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <MessageSquare className="w-8 h-8 text-green-600" />
-                  </div>
-                  <p className="text-2xl font-bold">92%</p>
-                  <p className="text-sm text-gray-600">Response Rate</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    To contractor inquiries
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Demo Requests</CardTitle>
+                    <Calendar className="h-4 w-4 text-green-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{partnerProfile.analytics?.demos_requested || 0}</div>
+                    <p className="text-xs text-slate-600">Pending scheduling</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-            >
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <Target className="w-8 h-8 text-purple-600" />
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
+                    <TrendingUp className="h-4 w-4 text-purple-500" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {partnerProfile.analytics?.conversion_rate ? `${partnerProfile.analytics.conversion_rate}%` : '--'}
+                    </div>
+                    <p className="text-xs text-slate-600">Demo to closed</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </div>
+
+            {/* Phase 3: Badge Showcase */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Star className="h-5 w-5 mr-2 text-yellow-500" />
+                  Your Achievements
+                </CardTitle>
+                <CardDescription>Trust badges earned through performance and partnership tier</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {partnerProfile.earned_badges && Array.isArray(partnerProfile.earned_badges) && partnerProfile.earned_badges.length > 0 ? (
+                  <div className="flex flex-wrap gap-3">
+                    {partnerProfile.earned_badges.map((badge: any, index: number) => (
+                      <Badge
+                        key={index}
+                        variant="outline"
+                        className="px-4 py-2 text-sm font-medium flex items-center gap-2 border-2"
+                        style={{
+                          borderColor: badge.category === 'tier' ? '#10b981' : badge.category === 'performance' ? '#f59e0b' : '#6366f1',
+                          color: badge.category === 'tier' ? '#10b981' : badge.category === 'performance' ? '#f59e0b' : '#6366f1'
+                        }}
+                      >
+                        <span className="text-lg">{badge.icon}</span>
+                        <span>{badge.name}</span>
+                      </Badge>
+                    ))}
                   </div>
-                  <p className="text-2xl font-bold">95%</p>
-                  <p className="text-sm text-gray-600">Would Recommend</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Based on feedback
-                  </p>
-                </CardContent>
-              </Card>
-            </motion.div>
+                ) : (
+                  <div className="text-center py-6">
+                    <p className="text-slate-600 mb-2">
+                      No badges earned yet. Complete your profile and maintain high performance to earn trust badges!
+                    </p>
+                    <p className="text-sm text-slate-500">
+                      Badges are awarded based on profile completion, subscription tier, and quarterly performance.
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Phase 3: Momentum & Performance */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <TrendingUp className="h-5 w-5 mr-2 text-green-500" />
+                  Performance Momentum
+                </CardTitle>
+                <CardDescription>Your quarterly performance trend and PCR momentum</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="text-center p-4 border border-slate-200 rounded-lg">
+                    <div className={`text-3xl font-bold mb-1 ${
+                      partnerProfile.momentum_modifier === 5 ? 'text-green-600' :
+                      partnerProfile.momentum_modifier === -3 ? 'text-red-600' :
+                      'text-slate-600'
+                    }`}>
+                      {partnerProfile.momentum_modifier > 0 && '+'}
+                      {partnerProfile.momentum_modifier ?? 0}
+                    </div>
+                    <p className="text-sm text-slate-600 font-medium">Momentum Modifier</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {partnerProfile.momentum_modifier === 5 && '🔥 Hot Streak!'}
+                      {partnerProfile.momentum_modifier === 0 && '📊 Stable Performance'}
+                      {partnerProfile.momentum_modifier === -3 && '📉 Needs Improvement'}
+                      {partnerProfile.momentum_modifier === undefined && '⏳ Awaiting Data'}
+                    </p>
+                  </div>
+
+                  <div className="text-center p-4 border border-slate-200 rounded-lg">
+                    <div className="text-3xl font-bold mb-1 capitalize text-slate-800">
+                      {partnerProfile.performance_trend || 'New'}
+                    </div>
+                    <p className="text-sm text-slate-600 font-medium">Performance Trend</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Based on {partnerProfile.quarters_tracked || 0} quarters
+                    </p>
+                  </div>
+
+                  <div className="text-center p-4 border border-slate-200 rounded-lg">
+                    <div className="text-3xl font-bold mb-1 text-slate-800">
+                      {partnerProfile.quarterly_feedback_score ? Number(partnerProfile.quarterly_feedback_score).toFixed(1) : '--'}
+                    </div>
+                    <p className="text-sm text-slate-600 font-medium">Latest Quarterly Score</p>
+                    <p className="text-xs text-slate-500 mt-1">Customer feedback (0-100)</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {activeTab === 'performance' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            {/* Phase 3: Quarterly Performance Chart */}
             <Card>
               <CardHeader>
-                <CardTitle>Category Breakdown</CardTitle>
-                <CardDescription>Your performance across key areas</CardDescription>
+                <CardTitle>Quarterly Performance History</CardTitle>
+                <CardDescription>Your customer feedback scores over recent quarters</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {categoryScores.map((category, index) => (
-                  <div key={index}>
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="text-sm font-medium">{category.category}</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-gray-600">{category.score}/100</span>
-                        {getTrendIcon(category.trend)}
-                      </div>
-                    </div>
-                    <Progress value={category.score} className="h-2" />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Based on {category.feedback_count} responses
+              <CardContent>
+                {partnerProfile.quarterly_history && Array.isArray(partnerProfile.quarterly_history) && partnerProfile.quarterly_history.length > 0 ? (
+                  <div className="space-y-4">
+                    {partnerProfile.quarterly_history
+                      .slice(0, 4)
+                      .sort((a: any, b: any) => {
+                        if (a.year !== b.year) return a.year - b.year;
+                        const qOrder: any = { 'Q1': 1, 'Q2': 2, 'Q3': 3, 'Q4': 4 };
+                        return qOrder[a.quarter] - qOrder[b.quarter];
+                      })
+                      .map((quarter: any, index: number) => (
+                        <div key={index} className="flex items-center gap-4">
+                          <div className="w-24 text-sm font-medium text-slate-700">
+                            {quarter.quarter} {quarter.year}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <div className="flex-1 bg-slate-200 rounded-full h-3 overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${
+                                    quarter.score >= 85 ? 'bg-green-500' :
+                                    quarter.score >= 70 ? 'bg-yellow-500' : 'bg-red-500'
+                                  }`}
+                                  style={{ width: `${Math.min(quarter.score, 100)}%` }}
+                                />
+                              </div>
+                              <span className="text-sm font-semibold w-16 text-right text-slate-700">
+                                {Number(quarter.score).toFixed(1)}
+                              </span>
+                            </div>
+                            <div className="text-xs text-slate-500 mt-1">
+                              {quarter.response_count} responses
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-slate-600">
+                    <Calendar className="h-12 w-12 mx-auto mb-3 text-slate-400" />
+                    <p className="font-medium mb-1">No quarterly data yet</p>
+                    <p className="text-sm text-slate-500">
+                      Complete your first PowerCard survey to see your performance history!
                     </p>
                   </div>
-                ))}
+                )}
               </CardContent>
             </Card>
 
+            {/* Performance Insights */}
             <Card>
               <CardHeader>
-                <CardTitle>Quarterly Trend</CardTitle>
-                <CardDescription>Your score progression over time</CardDescription>
+                <CardTitle>Performance Breakdown</CardTitle>
+                <CardDescription>Key metrics driving your PowerConfidence score</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  {quarterlyScores.map((quarter, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                      <div>
-                        <p className="font-medium">{quarter.quarter}</p>
-                        <p className="text-sm text-gray-600">{quarter.feedback_count} responses</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xl font-bold">{quarter.score}</p>
-                        {index > 0 && (
-                          <p className="text-sm text-gray-600">
-                            {quarter.score > quarterlyScores[index-1].score ? (
-                              <span className="text-green-600">
-                                +{quarter.score - quarterlyScores[index-1].score}
-                              </span>
-                            ) : quarter.score < quarterlyScores[index-1].score ? (
-                              <span className="text-red-600">
-                                {quarter.score - quarterlyScores[index-1].score}
-                              </span>
-                            ) : (
-                              <span className="text-gray-600">0</span>
-                            )}
-                          </p>
-                        )}
-                      </div>
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium">Customer Satisfaction</span>
+                      <span className="text-sm text-gray-600">92/100</span>
                     </div>
-                  ))}
+                    <Progress value={92} className="h-2" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium">Response Time</span>
+                      <span className="text-sm text-gray-600">88/100</span>
+                    </div>
+                    <Progress value={88} className="h-2" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium">Project Delivery</span>
+                      <span className="text-sm text-gray-600">95/100</span>
+                    </div>
+                    <Progress value={95} className="h-2" />
+                  </div>
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="text-sm font-medium">Communication</span>
+                      <span className="text-sm text-gray-600">94/100</span>
+                    </div>
+                    <Progress value={94} className="h-2" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -613,6 +716,88 @@ export default function PartnerDashboard() {
             </Card>
           </div>
         )}
+
+        {/* Company Profile Section (Always visible at bottom) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Building className="h-5 w-5 mr-2" />
+                Company Profile
+              </CardTitle>
+              <CardDescription>Your company information and status</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="font-medium">Status:</span>
+                <Badge variant={partnerProfile.is_active ? "default" : "secondary"}>
+                  {partnerProfile.is_active ? "Active" : "Inactive"}
+                </Badge>
+              </div>
+
+              <div>
+                <span className="font-medium">Description:</span>
+                <p className="text-slate-600 mt-1">
+                  {partnerProfile.description || "No description available"}
+                </p>
+              </div>
+
+              {partnerProfile.website && (
+                <div className="flex items-center">
+                  <Globe className="h-4 w-4 mr-2 text-slate-500" />
+                  <a
+                    href={partnerProfile.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:underline"
+                  >
+                    {partnerProfile.website}
+                  </a>
+                </div>
+              )}
+
+              <div className="flex items-center">
+                <Mail className="h-4 w-4 mr-2 text-slate-500" />
+                <span className="text-slate-600">{partnerProfile.email}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Settings className="h-5 w-5 mr-2" />
+                Account Information
+              </CardTitle>
+              <CardDescription>Login and account details</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <span className="font-medium">Account Created:</span>
+                <p className="text-slate-600">
+                  {partnerProfile.created_at ?
+                    new Date(partnerProfile.created_at).toLocaleDateString() :
+                    "Unknown"
+                  }
+                </p>
+              </div>
+
+              <div>
+                <span className="font-medium">Last Login:</span>
+                <p className="text-slate-600">
+                  {partnerProfile.last_login ?
+                    new Date(partnerProfile.last_login).toLocaleString() :
+                    "Never"
+                  }
+                </p>
+              </div>
+
+              <Button variant="outline" className="w-full mt-4">
+                Change Password
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

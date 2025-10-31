@@ -44,9 +44,10 @@ const protectPartner = async (req, res, next) => {
     }
 
     // Add partner info to request
+    // decoded.id = partner_users.id, decoded.partnerId = strategic_partners.id
     req.partnerUser = {
-      id: partner.id,
-      partnerId: partner.id,
+      id: decoded.id,  // partner_users.id (needed for profile query)
+      partnerId: decoded.partnerId,  // strategic_partners.id
       email: partner.contact_email,
       companyName: partner.company_name
     };

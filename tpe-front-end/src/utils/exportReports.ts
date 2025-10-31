@@ -78,7 +78,7 @@ export const exportToPDF = async (data: ExportData, elementId?: string) => {
     pdf.setFont(undefined, 'bold');
     pdf.text(`${label}:`, 20, yPosition);
     pdf.setFont(undefined, 'normal');
-    pdf.text(String(value), 50, yPosition);
+    pdf.text(String(value), 80, yPosition); // Increased from 50 to 80 to prevent overlap
     yPosition += 7;
   });
 
@@ -99,9 +99,9 @@ export const exportToPDF = async (data: ExportData, elementId?: string) => {
   
   pdf.setFontSize(10);
   pdf.setTextColor(0, 0, 0);
-  const trendText = data.partner.score_trend === 'up' ? '↗ Trending Up' : 
-                   data.partner.score_trend === 'down' ? '↘ Trending Down' : 
-                   '→ Stable';
+  const trendText = data.partner.score_trend === 'up' ? 'Trending Up' :
+                   data.partner.score_trend === 'down' ? 'Trending Down' :
+                   'Stable';
   pdf.text(trendText, pageWidth / 2, yPosition + 12, { align: 'center' });
   
   yPosition += 30;

@@ -8,10 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Eye, EyeOff, LogIn, Shield, TrendingUp, Award } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { getApiUrl } from '@/utils/api';
-import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../../utils/jsonHelpers';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
 
-export default function PartnerLoginPage() {
+export default function PartnerPortalLogin() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -25,7 +24,7 @@ export default function PartnerLoginPage() {
     setLoading(true);
 
     try {
-      const response = await fetch(getApiUrl('api/partner-auth/login'), {
+      const response = await fetch('http://localhost:5000/api/partner-auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -41,7 +40,7 @@ export default function PartnerLoginPage() {
 
       // Store partner token and info
       setToStorage('partnerToken', data.token);
-      setToStorage('partnerInfo', data.partner);  // setToStorage will handle stringification
+      setToStorage('partnerInfo', data.partner);
 
       // Redirect to partner dashboard
       router.push('/partner/dashboard');

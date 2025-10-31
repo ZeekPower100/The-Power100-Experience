@@ -227,7 +227,7 @@ function PartnerProfileCompletionContent() {
       }
 
       // Redirect to success page
-      router.push(`/partner-portal/profile/success?partner=${partnerId}&event=${eventId || ''}`);
+      router.push(`/partner/profile/success?partner=${partnerId}&event=${eventId || ''}`);
     } catch (err: any) {
       console.error('Error updating profile:', err);
       setError(err.message || 'Failed to update profile. Please try again.');
@@ -254,7 +254,7 @@ function PartnerProfileCompletionContent() {
             <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h2 className="text-xl font-bold mb-2">Error Loading Profile</h2>
             <p className="text-power100-grey mb-4">{error}</p>
-            <Button onClick={() => router.push('/partner-portal')}>
+            <Button onClick={() => router.push('/partner')}>
               Go to Partner Portal
             </Button>
           </CardContent>
