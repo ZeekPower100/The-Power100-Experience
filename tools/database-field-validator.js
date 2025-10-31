@@ -80,7 +80,11 @@ class DatabaseFieldValidator {
         'books_recommended': 'books_read_recommended',
         'referral_partnerships': 'best_working_partnerships',
         'other_sponsored_events': 'sponsored_events',
-        'other_podcast_appearances': 'podcast_appearances'
+        'other_podcast_appearances': 'podcast_appearances',
+        // PCR API parameter mappings (camelCase → snake_case)
+        'tier': 'engagement_tier',
+        'subscriptionStart': 'subscription_start_date',
+        'subscriptionEnd': 'subscription_end_date'
         // client_count now maps directly to client_count column (no mapping needed)
       }
     };
@@ -412,7 +416,24 @@ set PGPASSWORD=TPXP0stgres!!
 
     // Check controller fields against database (including related tables)
     controllerFields.forEach(field => {
-      if (!allDbFields.includes(field) && !['is_active', 'status'].includes(field)) {
+      // Check if this is a legitimate mapping (same logic as form fields)
+      const globalMapping = this.legitimateMappings.global[field];
+      const entityMapping = this.legitimateMappings[entityName] && this.legitimateMappings[entityName][field];
+      const mappedField = entityMapping || globalMapping;
+
+      if (mappedField) {
+        // This is a legitimate mapping - check if the mapped field exists in DB
+        if (!allDbFields.includes(mappedField)) {
+          issues.push({
+            type: 'controller_mapped_field_missing',
+            field,
+            mappedTo: mappedField,
+            message: `Controller field "${field}" maps to "${mappedField}" but database field doesn't exist`
+          });
+        }
+        // If mapped field exists, this is OK - no issue
+      } else if (!allDbFields.includes(field) && !['is_active', 'status'].includes(field)) {
+        // Not a legitimate mapping and field doesn't exist
         issues.push({
           type: 'controller_no_db',
           field,
