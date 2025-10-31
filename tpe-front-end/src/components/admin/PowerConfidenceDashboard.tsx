@@ -45,10 +45,31 @@ interface PowerConfidenceAnalytics {
   }>;
 }
 
+interface MomentumDistribution {
+  positive: number;
+  neutral: number;
+  negative: number;
+  details: Array<{ momentum: number; count: number }>;
+}
+
+interface BadgeDistribution {
+  totalPartners: number;
+  badgeCounts: { [key: string]: number };
+  partnersByBadge: { [key: string]: string[] };
+}
+
+interface PerformanceTrends {
+  trends: Array<{ trend: string; count: number; avgScore: number }>;
+}
+
 const PowerConfidenceDashboard: React.FC = () => {
   const [analytics, setAnalytics] = useState<PowerConfidenceAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [momentumData, setMomentumData] = useState<MomentumDistribution | null>(null);
+  const [badgeData, setBadgeData] = useState<BadgeDistribution | null>(null);
+  const [trendsData, setTrendsData] = useState<PerformanceTrends | null>(null);
+  const [pcrLoading, setPcrLoading] = useState(false);
 
   const fetchAnalytics = async () => {
     try {
@@ -96,6 +117,34 @@ const PowerConfidenceDashboard: React.FC = () => {
       console.error('Error updating PowerConfidence scores:', error);
     } finally {
       setUpdating(false);
+    }
+  };
+
+  const fetchPCRAnalytics = async () => {
+    try {
+      setPcrLoading(true);
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+
+      // Fetch all three analytics in parallel
+      const [momentumRes, badgeRes, trendsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/admin/pcr/momentum-distribution`),
+        fetch(`${API_BASE_URL}/admin/pcr/badge-distribution`),
+        fetch(`${API_BASE_URL}/admin/pcr/performance-trends`)
+      ]);
+
+      const [momentum, badges, trends] = await Promise.all([
+        handleApiResponse(momentumRes),
+        handleApiResponse(badgeRes),
+        handleApiResponse(trendsRes)
+      ]);
+
+      setMomentumData(momentum);
+      setBadgeData(badges);
+      setTrendsData(trends);
+    } catch (error) {
+      console.error('Error fetching PCR analytics:', error);
+    } finally {
+      setPcrLoading(false);
     }
   };
 
@@ -220,7 +269,7 @@ const PowerConfidenceDashboard: React.FC = () => {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Avg Satisfaction</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {analytics.systemMetrics.avg_system_satisfaction?.toFixed(1) || 'N/A'}
+                  {analytics.systemMetrics.avg_system_satisfaction ? Number(analytics.systemMetrics.avg_system_satisfaction).toFixed(1) : 'N/A'}
                 </p>
               </div>
             </div>
@@ -232,6 +281,7 @@ const PowerConfidenceDashboard: React.FC = () => {
         <TabsList>
           <TabsTrigger value="partners">Partner Performance</TabsTrigger>
           <TabsTrigger value="trends">Quarterly Trends</TabsTrigger>
+          <TabsTrigger value="pcr" onClick={fetchPCRAnalytics}>PCR Analytics</TabsTrigger>
         </TabsList>
 
         <TabsContent value="partners">
@@ -274,7 +324,7 @@ const PowerConfidenceDashboard: React.FC = () => {
 
                       <div className="text-center">
                         <p className="text-lg font-bold text-blue-600">
-                          {partner.recent_satisfaction_avg?.toFixed(1) || 'N/A'}
+                          {partner.recent_satisfaction_avg ? Number(partner.recent_satisfaction_avg).toFixed(1) : 'N/A'}
                         </p>
                         <p className="text-xs text-gray-500">Satisfaction</p>
                       </div>
@@ -330,7 +380,7 @@ const PowerConfidenceDashboard: React.FC = () => {
 
                       <div className="text-center">
                         <p className="text-lg font-bold text-blue-600">
-                          {trend.avg_satisfaction?.toFixed(1) || 'N/A'}
+                          {trend.avg_satisfaction ? Number(trend.avg_satisfaction).toFixed(1) : 'N/A'}
                         </p>
                         <p className="text-xs text-gray-500">Avg Satisfaction</p>
                       </div>
@@ -340,6 +390,96 @@ const PowerConfidenceDashboard: React.FC = () => {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="pcr">
+          {pcrLoading ? (
+            <div className="flex items-center justify-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600" />
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Momentum Distribution */}
+              {momentumData && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Momentum Distribution</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="text-center p-6 bg-green-50 rounded-lg">
+                        <div className="text-3xl font-bold text-green-700">{momentumData.positive}</div>
+                        <div className="text-sm text-green-600 mt-2">Positive Momentum (+5)</div>
+                      </div>
+                      <div className="text-center p-6 bg-gray-50 rounded-lg">
+                        <div className="text-3xl font-bold text-gray-700">{momentumData.neutral}</div>
+                        <div className="text-sm text-gray-600 mt-2">Neutral (0)</div>
+                      </div>
+                      <div className="text-center p-6 bg-red-50 rounded-lg">
+                        <div className="text-3xl font-bold text-red-700">{momentumData.negative}</div>
+                        <div className="text-sm text-red-600 mt-2">Declining (-3)</div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Performance Trends */}
+              {trendsData && trendsData.trends && trendsData.trends.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Performance Trends</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {trendsData.trends.map((trend) => (
+                        <div
+                          key={trend.trend}
+                          className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                        >
+                          <div>
+                            <h3 className="font-semibold text-gray-900 capitalize">{trend.trend}</h3>
+                            <p className="text-sm text-gray-600">{trend.count} partners</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-2xl font-bold text-red-600">{Number(trend.avgScore).toFixed(1)}</div>
+                            <div className="text-xs text-gray-500">Avg PCR</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Badge Distribution */}
+              {badgeData && badgeData.badgeCounts && Object.keys(badgeData.badgeCounts).length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Badge Distribution</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      {Object.entries(badgeData.badgeCounts).map(([badge, count]) => (
+                        <div
+                          key={badge}
+                          className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 rounded-lg"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <h3 className="font-semibold text-gray-900">{badge}</h3>
+                              <p className="text-sm text-gray-600">{count} partners</p>
+                            </div>
+                            <div className="text-2xl">🏆</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>

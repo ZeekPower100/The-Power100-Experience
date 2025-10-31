@@ -303,7 +303,7 @@ const SmsCampaignManager: React.FC = () => {
       </div>
 
       {/* Analytics Overview */}
-      {analytics && (
+      {analytics && analytics.campaignPerformance && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <Card>
             <CardContent className="p-6">
@@ -340,7 +340,7 @@ const SmsCampaignManager: React.FC = () => {
                 <div className="ml-4">
                   <p className="text-sm font-medium text-gray-600">Delivery Rate</p>
                   <p className="text-2xl font-bold text-gray-900">
-                    {analytics.campaignPerformance.avg_delivery_rate?.toFixed(1) || '0'}%
+                    {analytics.campaignPerformance.avg_delivery_rate ? Number(analytics.campaignPerformance.avg_delivery_rate).toFixed(1) : '0'}%
                   </p>
                 </div>
               </div>
