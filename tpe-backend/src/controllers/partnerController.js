@@ -1,6 +1,8 @@
 const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const { processPartnerAI } = require('../services/aiProcessingService');
 const pcrService = require('../services/pcrCalculationService');
+const momentumService = require('../services/momentumCalculationService');
+const badgeService = require('../services/badgeEligibilityService');
 
 const { query } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
@@ -983,6 +985,168 @@ const updateEngagementTier = async (req, res, next) => {
   }
 };
 
+// ================================================================
+// Phase 2: Momentum & Badges Controller Methods
+// ================================================================
+
+/**
+ * POST /api/partners/:id/recalculate-momentum
+ * Recalculate momentum modifier for a single partner
+ */
+const recalculateMomentum = async (req, res, next) => {
+  try {
+    const partnerId = parseInt(req.params.id);
+
+    if (isNaN(partnerId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid partner ID'
+      });
+    }
+
+    const result = await momentumService.updatePartnerMomentum(partnerId);
+
+    res.json({
+      success: true,
+      message: 'Momentum recalculated successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('Error recalculating momentum:', error);
+    next(error);
+  }
+};
+
+/**
+ * POST /api/partners/momentum/recalculate-all
+ * Recalculate momentum for all active partners (bulk operation)
+ */
+const recalculateAllMomentum = async (req, res, next) => {
+  try {
+    // Get all active partners
+    const partnersResult = await query(`
+      SELECT id FROM strategic_partners WHERE is_active = true
+    `);
+
+    const results = {
+      total: partnersResult.rows.length,
+      succeeded: 0,
+      failed: 0,
+      errors: []
+    };
+
+    for (const partner of partnersResult.rows) {
+      try {
+        await momentumService.updatePartnerMomentum(partner.id);
+        results.succeeded++;
+      } catch (error) {
+        results.failed++;
+        results.errors.push({
+          partnerId: partner.id,
+          error: error.message
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Bulk momentum recalculation complete',
+      data: results
+    });
+  } catch (error) {
+    console.error('Error in bulk momentum recalculation:', error);
+    next(error);
+  }
+};
+
+/**
+ * POST /api/partners/:id/recalculate-badges
+ * Recalculate badges for a single partner
+ */
+const recalculateBadges = async (req, res, next) => {
+  try {
+    const partnerId = parseInt(req.params.id);
+
+    if (isNaN(partnerId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid partner ID'
+      });
+    }
+
+    const result = await badgeService.updatePartnerBadges(partnerId);
+
+    res.json({
+      success: true,
+      message: 'Badges recalculated successfully',
+      data: result
+    });
+  } catch (error) {
+    console.error('Error recalculating badges:', error);
+    next(error);
+  }
+};
+
+/**
+ * POST /api/partners/badges/recalculate-all
+ * Recalculate badges for all active partners (bulk operation)
+ */
+const recalculateAllBadges = async (req, res, next) => {
+  try {
+    const results = await badgeService.recalculateAllBadges();
+
+    res.json({
+      success: true,
+      message: 'Bulk badge recalculation complete',
+      data: results
+    });
+  } catch (error) {
+    console.error('Error in bulk badge recalculation:', error);
+    next(error);
+  }
+};
+
+/**
+ * GET /api/partners/:id/badges
+ * Get current badges for a partner
+ */
+const getBadges = async (req, res, next) => {
+  try {
+    const partnerId = parseInt(req.params.id);
+
+    if (isNaN(partnerId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid partner ID'
+      });
+    }
+
+    const result = await query(`
+      SELECT earned_badges, badge_last_updated
+      FROM strategic_partners
+      WHERE id = $1
+    `, [partnerId]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Partner not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        badges: result.rows[0].earned_badges || [],
+        lastUpdated: result.rows[0].badge_last_updated
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching badges:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   getActivePartners,
   getPartner,
@@ -997,5 +1161,11 @@ module.exports = {
   approvePartner,
   calculatePCR,
   recalculateAllPCR,
-  updateEngagementTier
+  updateEngagementTier,
+  // Phase 2: Momentum & Badges
+  recalculateMomentum,
+  recalculateAllMomentum,
+  recalculateBadges,
+  recalculateAllBadges,
+  getBadges
 };

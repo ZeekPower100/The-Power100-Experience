@@ -7,6 +7,7 @@
 // ================================================================
 
 const { query } = require('../config/database');
+const momentumService = require('./momentumCalculationService');
 
 /**
  * Profile Completion Weights (totals 100 points)
@@ -212,9 +213,22 @@ async function calculatePartnerPCR(partnerId) {
 
   // Step 4: Calculate Final PCR with multiplier
   const finalPCR = calculateFinalPCR(basePCR, partner.engagement_tier);
-  console.log(`[PCR Calculation] Final PCR: ${finalPCR}/105 (tier: ${partner.engagement_tier})`);
+  console.log(`[PCR Calculation] Final PCR (before momentum): ${finalPCR}/105 (tier: ${partner.engagement_tier})`);
 
-  // Update partner record
+  // ⭐ Phase 2: Momentum Integration
+  // Update momentum modifier based on quarterly history
+  const momentumData = await momentumService.updatePartnerMomentum(partnerId);
+
+  // Apply momentum to final PCR
+  const finalPCRWithMomentum = momentumService.applyMomentumToPCR(
+    finalPCR,
+    momentumData.momentumModifier
+  );
+
+  console.log(`[PCR Calculation] Momentum modifier: ${momentumData.momentumModifier > 0 ? '+' : ''}${momentumData.momentumModifier}`);
+  console.log(`[PCR Calculation] Final PCR (with momentum): ${finalPCRWithMomentum}/105`);
+
+  // Update partner record (use finalPCRWithMomentum instead of finalPCR)
   // DATABASE FIELDS: profile_completion_score, base_pcr_score, final_pcr_score, pcr_last_calculated
   await query(`
     UPDATE strategic_partners
@@ -225,7 +239,7 @@ async function calculatePartnerPCR(partnerId) {
       pcr_last_calculated = NOW(),
       updated_at = NOW()
     WHERE id = $4
-  `, [profileScore, basePCR, finalPCR, partnerId]);
+  `, [profileScore, basePCR, finalPCRWithMomentum, partnerId]);
 
   console.log(`[PCR Calculation] ✅ Scores updated for partner ${partnerId}`);
 
@@ -235,7 +249,9 @@ async function calculatePartnerPCR(partnerId) {
     profileScore,
     quarterlyScore,
     basePCR,
-    finalPCR,
+    finalPCR: finalPCRWithMomentum,  // Return momentum-adjusted score
+    momentumModifier: momentumData.momentumModifier,
+    performanceTrend: momentumData.performanceTrend,
     engagementTier: partner.engagement_tier,
     multiplier: PAYMENT_MULTIPLIERS[partner.engagement_tier]
   };
