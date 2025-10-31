@@ -112,19 +112,25 @@ function calculateMomentumModifier(quarterlyHistory, currentQuarterlyScore) {
   // Get last 3 quarters
   const recentQuarters = sorted.slice(0, THRESHOLDS.HOT_STREAK_QUARTERS);
 
-  // Check for HOT STREAK: 3+ consecutive quarters with 85+ scores
-  const hotStreakCount = recentQuarters.filter(q => {
-    const score = parseFloat(q.score || q.quarterly_score || 0);
-    return score >= THRESHOLDS.HOT_STREAK_SCORE;
-  }).length;
+  // Check for IMPROVING: 3+ consecutive quarters with increasing scores
+  // Per spec: "Base PCR improved for 3+ consecutive quarters" → +5
+  let improvingCount = 0;
+  for (let i = 0; i < recentQuarters.length - 1; i++) {
+    const current = parseFloat(recentQuarters[i].score || recentQuarters[i].quarterly_score || 0);
+    const previous = parseFloat(recentQuarters[i + 1].score || recentQuarters[i + 1].quarterly_score || 0);
 
-  if (hotStreakCount >= THRESHOLDS.HOT_STREAK_QUARTERS &&
-      currentQuarterlyScore >= THRESHOLDS.HOT_STREAK_SCORE) {
-    console.log(`[Momentum] 🔥 HOT STREAK detected: ${hotStreakCount} quarters above ${THRESHOLDS.HOT_STREAK_SCORE}`);
+    if (current > previous) {
+      improvingCount++;
+    }
+  }
+
+  if (improvingCount >= THRESHOLDS.HOT_STREAK_QUARTERS - 1) {  // -1 because we compare pairs
+    console.log(`[Momentum] 🔥 IMPROVING trend detected: ${improvingCount + 1} consecutive quarters increasing`);
     return MOMENTUM_MODIFIERS.HOT_STREAK;
   }
 
-  // Check for DECLINING: 3+ consecutive quarters of dropping scores
+  // Check for DECLINING: 2+ consecutive quarters of dropping scores
+  // Per spec: "Base PCR dropped for 2+ consecutive quarters" → -3
   let decliningCount = 0;
   for (let i = 0; i < recentQuarters.length - 1; i++) {
     const current = parseFloat(recentQuarters[i].score || recentQuarters[i].quarterly_score || 0);
@@ -136,7 +142,7 @@ function calculateMomentumModifier(quarterlyHistory, currentQuarterlyScore) {
   }
 
   if (decliningCount >= THRESHOLDS.DECLINING_QUARTERS - 1) {  // -1 because we compare pairs
-    console.log(`[Momentum] 📉 DECLINING trend detected: ${decliningCount + 1} quarters dropping`);
+    console.log(`[Momentum] 📉 DECLINING trend detected: ${decliningCount + 1} consecutive quarters dropping`);
     return MOMENTUM_MODIFIERS.DECLINING;
   }
 

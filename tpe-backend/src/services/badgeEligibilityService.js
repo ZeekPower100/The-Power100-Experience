@@ -184,8 +184,9 @@ function calculateEligibleBadges(partner) {
   const badgesToReplace = new Set();
 
   // First pass: Calculate all eligible badges
-  for (const [badgeId, badge] of Object.entries(BADGE_TYPES)) {
-    const rule = ELIGIBILITY_RULES[badgeId];
+  for (const [badgeKey, badge] of Object.entries(BADGE_TYPES)) {
+    // Use badge.id (lowercase) to look up rule, not badgeKey (uppercase property name)
+    const rule = ELIGIBILITY_RULES[badge.id];
 
     if (!rule) continue;
 
@@ -200,7 +201,7 @@ function calculateEligibleBadges(partner) {
 
     if (meetsEligibility && meetsTime) {
       earnedBadges.push({
-        type: badgeId,
+        type: badge.id,  // Use badge.id for consistency
         name: badge.name,
         description: badge.description,
         category: badge.category,
