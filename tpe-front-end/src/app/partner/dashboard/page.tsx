@@ -92,7 +92,8 @@ export default function PartnerDashboard() {
 
   const fetchPartnerProfile = async (token: string) => {
     try {
-      const response = await fetch('http://localhost:5000/api/partner-auth/profile', {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_BASE_URL}/partner-auth/profile`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

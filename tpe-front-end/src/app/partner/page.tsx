@@ -24,7 +24,8 @@ export default function PartnerPortalLogin() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/partner-auth/login', {
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_BASE_URL}/partner-auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
