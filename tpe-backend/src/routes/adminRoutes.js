@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
 const adminController = require('../controllers/adminController');
+const adminPcrAnalyticsController = require('../controllers/adminPcrAnalyticsController');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { getRealtimeMetrics, getHistoricalMetrics, resetMetricsCache } = require('../services/routingMetrics');
 
@@ -10,6 +11,14 @@ router.use(protect);
 
 // Dashboard stats
 router.get('/dashboard', asyncHandler(adminController.getDashboardStats));
+
+// PCR Analytics endpoints
+router.get('/pcr/dashboard', asyncHandler(adminPcrAnalyticsController.getDashboardAnalytics));
+router.get('/pcr/momentum-distribution', asyncHandler(adminPcrAnalyticsController.getMomentumDistribution));
+router.get('/pcr/performance-trends', asyncHandler(adminPcrAnalyticsController.getPerformanceTrends));
+router.get('/pcr/badge-distribution', asyncHandler(adminPcrAnalyticsController.getBadgeDistribution));
+router.get('/pcr/score-distribution', asyncHandler(adminPcrAnalyticsController.getScoreDistribution));
+router.get('/pcr/top-performers', asyncHandler(adminPcrAnalyticsController.getTopPerformers));
 
 // Routing metrics endpoints
 router.get('/routing-metrics/realtime', asyncHandler(async (req, res) => {
