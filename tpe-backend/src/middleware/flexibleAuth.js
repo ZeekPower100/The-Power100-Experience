@@ -24,7 +24,7 @@ const identifyAndValidateToken = async (token) => {
     // CONTRACTOR TOKEN - has contractorId field
     if (decoded.contractorId) {
       const result = await query(
-        'SELECT id, CONCAT(first_name, \' \', last_name) as name, email, phone, company_name, stage FROM contractors WHERE id = $1',
+        'SELECT id, CONCAT(first_name, \' \', last_name) as name, email, phone, company_name, current_stage as stage FROM contractors WHERE id = $1',
         [decoded.contractorId]
       );
 
