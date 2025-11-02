@@ -1,8 +1,11 @@
-// Initialize Twilio client only if credentials are provided
+const axios = require('axios');
+const { buildTags } = require('../utils/tagBuilder');
+
+// Initialize Twilio client only if credentials are provided (BACKUP ONLY - Not actively used)
 let twilioClient = null;
 
-if (process.env.TWILIO_ACCOUNT_SID && 
-    process.env.TWILIO_AUTH_TOKEN && 
+if (process.env.TWILIO_ACCOUNT_SID &&
+    process.env.TWILIO_AUTH_TOKEN &&
     process.env.TWILIO_ACCOUNT_SID.startsWith('AC')) {
   try {
     const twilio = require('twilio');
@@ -10,13 +13,40 @@ if (process.env.TWILIO_ACCOUNT_SID &&
       process.env.TWILIO_ACCOUNT_SID,
       process.env.TWILIO_AUTH_TOKEN
     );
-    console.log('✅ Twilio client initialized successfully');
+    console.log('✅ Twilio client initialized (backup only - all SMS via n8n)');
   } catch (error) {
     console.log('⚠️ Twilio initialization skipped:', error.message);
-    console.log('   SMS verification will use development mode (code: 123456)');
+    console.log('   All SMS will route through n8n → GHL');
   }
 } else {
-  console.log('ℹ️ Twilio credentials not configured - using development mode');
+  console.log('ℹ️ Twilio credentials not configured - all SMS via n8n → GHL');
+}
+
+/**
+ * Send SMS via n8n webhook (backend-to-ghl endpoint)
+ * Uses environment-aware webhook path
+ */
+async function sendViaWebhook(phone, message, tags = []) {
+  try {
+    const n8nWebhookUrl = process.env.NODE_ENV === 'production'
+      ? 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl'
+      : 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl-dev';
+
+    await axios.post(n8nWebhookUrl, {
+      send_via_ghl: {
+        phone,
+        message,
+        timestamp: new Date().toISOString(),
+        tags: tags
+      }
+    });
+
+    console.log('[SMS Service] SMS sent via n8n webhook:', { phone, tags, webhook: n8nWebhookUrl });
+    return { success: true, message: 'SMS sent via n8n' };
+  } catch (error) {
+    console.error('[SMS Service] Error sending via n8n webhook:', error.message);
+    throw new Error('Failed to send SMS via n8n');
+  }
 }
 
 const generateVerificationCode = () => {
@@ -27,55 +57,46 @@ const sendSMSVerification = async (phoneNumber, code) => {
   // Format phone number
   const formattedPhone = formatPhoneNumber(phoneNumber);
 
-  // In development mode, just log the code
-  if (process.env.NODE_ENV === 'development' && !twilioClient) {
+  // Build message
+  const message = `Your Power100 verification code is: ${code}. This code expires in 10 minutes.`;
+
+  // Build tags for GHL contact tagging
+  const tags = buildTags({
+    category: 'verification',
+    type: 'phone',
+    recipient: 'contractor',
+    channel: 'sms',
+    status: 'sent'
+  });
+
+  // In development mode, log but still send via n8n
+  if (process.env.NODE_ENV === 'development') {
     console.log(`📱 SMS Verification Code for ${formattedPhone}: ${code}`);
-    return { success: true, message: 'SMS logged (dev mode)' };
   }
 
-  // Send actual SMS in production
-  if (twilioClient) {
-    try {
-      const message = await twilioClient.messages.create({
-        body: `Your Power100 verification code is: ${code}. This code expires in 10 minutes.`,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: formattedPhone
-      });
-
-      return { success: true, messageId: message.sid };
-    } catch (error) {
-      console.error('Twilio error:', error);
-      throw new Error('Failed to send SMS verification');
-    }
-  }
-
-  throw new Error('SMS service not configured');
+  // Send via n8n webhook (routes to GHL)
+  return sendViaWebhook(formattedPhone, message, tags);
 };
 
-const sendSMSNotification = async (phoneNumber, message) => {
+const sendSMSNotification = async (phoneNumber, message, tags = []) => {
   const formattedPhone = formatPhoneNumber(phoneNumber);
 
-  if (process.env.NODE_ENV === 'development' && !twilioClient) {
+  // In development mode, log but still send via n8n
+  if (process.env.NODE_ENV === 'development') {
     console.log(`📱 SMS Notification to ${formattedPhone}: ${message}`);
-    return { success: true, message: 'SMS logged (dev mode)' };
   }
 
-  if (twilioClient) {
-    try {
-      const sms = await twilioClient.messages.create({
-        body: message,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: formattedPhone
-      });
+  // If no tags provided, use default notification tags
+  const finalTags = tags.length > 0 ? tags : buildTags({
+    category: 'notification',
+    type: 'general',
+    recipient: 'contractor',
+    channel: 'sms',
+    status: 'sent'
+  });
 
-      return { success: true, messageId: sms.sid };
-    } catch (error) {
-      console.error('Twilio error:', error);
-      throw new Error('Failed to send SMS notification');
-    }
-  }
-
-  throw new Error('SMS service not configured');
+  // Send via n8n webhook (routes to GHL)
+  return sendViaWebhook(formattedPhone, message, finalTags);
 };
 
 const formatPhoneNumber = (phone) => {
@@ -95,8 +116,18 @@ const formatPhoneNumber = (phone) => {
 
 const sendDemoReminder = async (contractor, partner, booking) => {
   const message = `Reminder: Your demo with ${partner.company_name} is scheduled for ${new Date(booking.scheduled_date).toLocaleString()}. They'll reach out with meeting details soon!`;
-  
-  return sendSMSNotification(contractor.phone, message);
+
+  // Build tags for demo reminder
+  const tags = buildTags({
+    category: 'booking',
+    type: 'demo-reminder',
+    recipient: 'contractor',
+    channel: 'sms',
+    status: 'sent',
+    entityId: partner.id
+  });
+
+  return sendSMSNotification(contractor.phone, message, tags);
 };
 
 const sendWeeklyCoachingMessage = async (contractor) => {
@@ -112,7 +143,16 @@ const sendWeeklyCoachingMessage = async (contractor) => {
     .replace('{name}', contractor.name.split(' ')[0])
     .replace('{partner}', contractor.matched_partner_name || 'your partner');
 
-  return sendSMSNotification(contractor.phone, personalizedMessage);
+  // Build tags for weekly coaching
+  const tags = buildTags({
+    category: 'coaching',
+    type: 'weekly-checkin',
+    recipient: 'contractor',
+    channel: 'sms',
+    status: 'sent'
+  });
+
+  return sendSMSNotification(contractor.phone, personalizedMessage, tags);
 };
 
 module.exports = {

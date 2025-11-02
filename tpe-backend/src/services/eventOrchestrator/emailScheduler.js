@@ -12,6 +12,7 @@
 const axios = require('axios');
 const { query } = require('../../config/database');
 const { safeJsonStringify } = require('../../utils/jsonHelpers');
+const { buildTags } = require('../../utils/tagBuilder');
 const {
   buildRegistrationConfirmationEmail,
   buildProfileCompletionReminderEmail,
@@ -120,6 +121,14 @@ async function sendRegistrationConfirmation(eventId, contractorId) {
       subject: emailSubject,
       body: emailBody,
       template: 'registration_confirmation',
+      tags: buildTags({
+        category: 'event',
+        type: 'registration',
+        recipient: 'contractor',
+        channel: 'email',
+        status: 'confirmed',
+        entityId: eventId
+      }),
       event_id: eventId,
       contractor_id: contractorId
     };
@@ -234,6 +243,14 @@ async function sendProfileCompletionRequest(eventId, contractorId) {
       subject: emailSubject,
       body: emailBody,
       template: 'profile_completion_request',
+      tags: buildTags({
+        category: 'event',
+        type: 'profile-request',
+        recipient: 'contractor',
+        channel: 'email',
+        status: 'sent',
+        entityId: eventId
+      }),
       event_id: eventId,
       contractor_id: contractorId
     };
@@ -380,6 +397,14 @@ async function sendProfileCompletionReminder(eventId, contractorId) {
       subject: emailSubject,
       body: emailBody,
       template: 'profile_completion_reminder',
+      tags: buildTags({
+        category: 'event',
+        type: 'profile-reminder',
+        recipient: 'contractor',
+        channel: 'email',
+        status: 'sent',
+        entityId: eventId
+      }),
       event_id: eventId,
       contractor_id: contractorId
     };
@@ -495,6 +520,14 @@ async function sendPersonalizedAgenda(eventId, contractorId, recommendations) {
       subject: emailSubject,
       body: emailBody,
       template: 'personalized_agenda',
+      tags: buildTags({
+        category: 'event',
+        type: 'agenda',
+        recipient: 'contractor',
+        channel: 'email',
+        status: 'sent',
+        entityId: eventId
+      }),
       event_id: eventId,
       contractor_id: contractorId
     };
@@ -605,6 +638,14 @@ async function sendEventSummary(eventId, contractorId, sessionData) {
       subject: emailSubject,
       body: emailBody,
       template: 'event_summary',
+      tags: buildTags({
+        category: 'event',
+        type: 'summary',
+        recipient: 'contractor',
+        channel: 'email',
+        status: 'sent',
+        entityId: eventId
+      }),
       event_id: eventId,
       contractor_id: contractorId
     };
@@ -718,6 +759,14 @@ async function sendAgendaReadyNotification(eventId, contractorId, recommendation
       subject: emailSubject,
       body: emailBody,
       template: 'agenda_ready',
+      tags: buildTags({
+        category: 'event',
+        type: 'agenda-ready',
+        recipient: 'contractor',
+        channel: 'email',
+        status: 'sent',
+        entityId: eventId
+      }),
       event_id: eventId,
       contractor_id: contractorId
     };
@@ -838,6 +887,14 @@ async function sendCheckInReminderNightBefore(eventId, contractorId, messageId =
       subject: emailSubject,
       body: emailBody,
       template: 'check_in_reminder_night_before',
+      tags: buildTags({
+        category: 'event',
+        type: 'checkin-reminder',
+        recipient: 'contractor',
+        channel: 'email',
+        status: 'sent',
+        entityId: eventId
+      }),
       event_id: eventId,
       contractor_id: contractorId
     };
@@ -951,6 +1008,14 @@ async function sendCheckInReminder1HourBefore(eventId, contractorId, messageId =
       subject: emailSubject,
       body: emailBody,
       template: 'check_in_reminder_1_hour',
+      tags: buildTags({
+        category: 'event',
+        type: 'checkin-reminder',
+        recipient: 'contractor',
+        channel: 'email',
+        status: 'sent',
+        entityId: eventId
+      }),
       event_id: eventId,
       contractor_id: contractorId
     };
@@ -1063,6 +1128,14 @@ async function sendCheckInReminderEventStart(eventId, contractorId, messageId = 
       subject: emailSubject,
       body: emailBody,
       template: 'check_in_reminder_event_start',
+      tags: buildTags({
+        category: 'event',
+        type: 'checkin-reminder',
+        recipient: 'contractor',
+        channel: 'email',
+        status: 'sent',
+        entityId: eventId
+      }),
       event_id: eventId,
       contractor_id: contractorId
     };
@@ -1181,6 +1254,14 @@ async function sendPartnerProfileCompletionRequest(eventId, partnerId) {
       subject: emailSubject,
       body: emailBody,
       template: 'partner_profile_completion_request',
+      tags: buildTags({
+        category: 'event',
+        type: 'partner-profile-request',
+        recipient: 'partner',
+        channel: 'email',
+        status: 'sent',
+        entityId: eventId
+      }),
       event_id: eventId,
       partner_id: partnerId  // Custom field for partner emails
     };

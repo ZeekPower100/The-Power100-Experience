@@ -5,6 +5,7 @@
 const { query } = require('../../config/database');
 const { safeJsonParse, safeJsonStringify } = require('../../utils/jsonHelpers');
 const { processMessageForSMS } = require('../../utils/smsHelpers');
+const { buildTags } = require('../../utils/tagBuilder');
 const axios = require('axios');
 
 /**
@@ -80,8 +81,18 @@ async function sendSpeakerAlert(eventId, contractorId, speakerRecommendations) {
       smsResult.messages.join(' ')
     ]);
 
+    // Build tags for GHL contact tagging
+    const tags = buildTags({
+      category: 'event',
+      type: 'speaker-alert',
+      recipient: 'contractor',
+      channel: 'sms',
+      status: 'sent',
+      entityId: eventId
+    });
+
     // Send via n8n webhook (outbound endpoint)
-    await sendViaWebhook(contractor.phone, smsResult.messages);
+    await sendViaWebhook(contractor.phone, smsResult.messages, tags);
 
     console.log('[OutboundScheduler] Speaker alert sent successfully:', messageResult.rows[0].id);
 
@@ -169,8 +180,18 @@ async function sendSponsorRecommendation(eventId, contractorId, sponsorRecommend
       smsResult.messages.join(' ')
     ]);
 
+    // Build tags for GHL contact tagging
+    const tags = buildTags({
+      category: 'event',
+      type: 'sponsor-recommendation',
+      recipient: 'contractor',
+      channel: 'sms',
+      status: 'sent',
+      entityId: eventId
+    });
+
     // Send via n8n webhook
-    await sendViaWebhook(contractor.phone, smsResult.messages);
+    await sendViaWebhook(contractor.phone, smsResult.messages, tags);
 
     console.log('[OutboundScheduler] Sponsor recommendation sent successfully:', messageResult.rows[0].id);
 
@@ -238,8 +259,18 @@ async function sendPCRRequest(eventId, contractorId, sessionInfo) {
       message
     ]);
 
+    // Build tags for GHL contact tagging
+    const tags = buildTags({
+      category: 'event',
+      type: 'pcr-request',
+      recipient: 'contractor',
+      channel: 'sms',
+      status: 'sent',
+      entityId: eventId
+    });
+
     // Send via n8n webhook
-    await sendViaWebhook(contractor.phone, [message]);
+    await sendViaWebhook(contractor.phone, [message], tags);
 
     console.log('[OutboundScheduler] PCR request sent successfully:', messageResult.rows[0].id);
 
@@ -258,8 +289,11 @@ async function sendPCRRequest(eventId, contractorId, sessionInfo) {
 /**
  * Send SMS via n8n webhook (outbound endpoint)
  * Uses environment-aware webhook path: backend-to-ghl (prod) or backend-to-ghl-dev (dev)
+ * @param {string} phone - Phone number to send to
+ * @param {Array} messages - Array of message strings
+ * @param {Array} tags - Optional tags array for GHL contact tagging
  */
-async function sendViaWebhook(phone, messages) {
+async function sendViaWebhook(phone, messages, tags = []) {
   try {
     const n8nWebhookUrl = process.env.NODE_ENV === 'production'
       ? 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl'
@@ -270,12 +304,13 @@ async function sendViaWebhook(phone, messages) {
         send_via_ghl: {
           phone,
           message,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          tags: tags  // Add tags to webhook payload
         }
       });
     }
 
-    console.log('[OutboundScheduler] SMS sent via webhook:', { phone, count: messages.length, webhook: n8nWebhookUrl });
+    console.log('[OutboundScheduler] SMS sent via webhook:', { phone, count: messages.length, tags, webhook: n8nWebhookUrl });
   } catch (error) {
     console.error('[OutboundScheduler] Error sending via webhook:', error.message);
     throw error; // Re-throw to allow worker retry
