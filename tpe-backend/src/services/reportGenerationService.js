@@ -1,365 +1,737 @@
-// Report Generation Service - Creates contractor, executive, and public reports
+// DATABASE-CHECKED: strategic_partners, power_card_analytics, power_card_templates,
+//                   power_card_campaigns, power_card_responses, contractors verified October 31, 2025
+// ================================================================
+// Quarterly Report Generation Service
+// ================================================================
+// Purpose: Generate partner executive reports and contractor comparison reports
+// Data Source: PowerCard campaigns and analytics aggregated by revenue tier
+// ================================================================
+
 const { query } = require('../config/database');
 
-class ReportGenerationService {
-  
-  // ===== CONTRACTOR REPORT (Variance-based comparison) =====
-  async generateContractorReport(contractorId, partnerId) {
-    try {
-      // Get contractor details
-      const contractorResult = await query(
-        'SELECT * FROM contractors WHERE id = $1',
-        [contractorId]
-      );
-      
-      if (contractorResult.rows.length === 0) {
-        throw new Error('Contractor not found');
-      }
-      
-      const contractor = contractorResult.rows[0];
-      const contractorRevenue = contractor.revenue_tier || '$1M-$5M';
-      
-      // Get partner details
-      const partnerResult = await query(
-        `SELECT
-          id, company_name, description, value_proposition, website, logo_url,
-          powerconfidence_score, is_active, status,
-          to_json(focus_areas) as focus_areas,
-          to_json(service_areas) as service_areas,
-          to_json(focus_areas_served) as focus_areas_served,
-          to_json(target_revenue_range) as target_revenue_range,
-          to_json(client_testimonials) as client_testimonials,
-          to_json(ai_tags) as ai_tags,
-          ai_summary, key_differentiators, testimonials,
-          client_count, established_year
-        FROM strategic_partners WHERE id = $1`,
-        [partnerId]
-      );
-      
-      const partner = partnerResult.rows[0];
-      
-      // Format report data with variance only (no actual numbers)
-      const report = {
-        contractor: {
-          name: contractor.name,
-          company: contractor.company_name,
-          revenue_tier: contractorRevenue
-        },
-        partner: {
-          name: partner.company_name,
-          powerconfidence_score: partner.powerconfidence_score
-        },
-        report_date: new Date().toISOString(),
-        quarter: 'Q1 2025',
-        
-        current_tier_performance: {
-          tier: contractorRevenue,
-          metrics: {
-            closing_percentage: {
-              variance: '+6.2%',
-              trend: 'up',
-              comparison: 'Above tier average'
-            },
-            cancellation_rate: {
-              variance: '-3.8%',
-              trend: 'down',
-              comparison: 'Better than 72% of peers'
-            },
-            customer_experience: {
-              variance: '+4.5%',
-              trend: 'up',
-              comparison: 'Top quartile performance'
-            }
-          },
-          peer_insights: [
-            'Companies in your tier using Destination Motivation saw average closing rate improvements of 5.8%',
-            '68% of contractors in your tier improved customer satisfaction scores',
-            'Team retention increased for 82% of similar-sized contractors'
-          ]
-        },
-        
-        next_tier_performance: {
-          tier: '$5M-$10M',
-          metrics: {
-            closing_percentage: {
-              variance: '+8.3%',
-              trend: 'up'
-            },
-            cancellation_rate: {
-              variance: '-5.2%',
-              trend: 'down'
-            },
-            customer_experience: {
-              variance: '+7.1%',
-              trend: 'up'
-            }
-          }
-        },
-        
-        best_practices: [
-          'Schedule monthly team culture assessments',
-          'Implement DM recognition program framework',
-          'Use quarterly pulse surveys',
-          'Apply 5-star recruitment methodology'
-        ]
-      };
-      
-      return report;
-    } catch (error) {
-      console.error('Error generating contractor report:', error);
-      throw error;
-    }
-  }
-  
-  // ===== EXECUTIVE REPORT =====
-  async generateExecutiveReport(partnerId) {
-    try {
-      const report = {
-        partner_name: 'Destination Motivation',
-        report_date: new Date().toISOString(),
-        executive_summary: {
-          powerconfidence_score: 99,
-          previous_score: 97,
-          score_change: '+2',
-          total_clients_served: 500,
-          active_clients: 89,
-          avg_client_satisfaction: 9.2,
-          nps_score: 87
-        },
-        
-                performance_by_tier: [
-          {
-            revenue_tier: '$0-$5M',
-            clients: 18,
-            metrics: {
-              closing_percentage: { current: 68, industry_avg: 65, difference: '+3%' },
-              cancellation_rate: { current: 20, industry_avg: 22, difference: '-2%' },
-              customer_experience: { current: 8.5, industry_avg: 7.5, difference: '+1.0' }
-            },
-            satisfaction: '8/10'
-          },
-          {
-            revenue_tier: '$5M-$10M',
-            clients: 38,
-            metrics: {
-              closing_percentage: { current: 74, industry_avg: 65, difference: '+9%' },
-              cancellation_rate: { current: 15, industry_avg: 22, difference: '-7%' },
-              customer_experience: { current: 8.9, industry_avg: 7.5, difference: '+1.4' }
-            },
-            satisfaction: '9/10'
-          },
-          {
-            revenue_tier: '$11M-$20M',
-            clients: 45,
-            metrics: {
-              closing_percentage: { current: 78, industry_avg: 65, difference: '+13%' },
-              cancellation_rate: { current: 12, industry_avg: 22, difference: '-10%' },
-              customer_experience: { current: 9.1, industry_avg: 7.5, difference: '+1.6' }
-            },
-            satisfaction: '9/10'
-          },
-          {
-            revenue_tier: '$21M-$30M',
-            clients: 22,
-            metrics: {
-              closing_percentage: { current: 82, industry_avg: 65, difference: '+17%' },
-              cancellation_rate: { current: 10, industry_avg: 22, difference: '-12%' },
-              customer_experience: { current: 9.3, industry_avg: 7.5, difference: '+1.8' }
-            },
-            satisfaction: '10/10'
-          },
-          {
-            revenue_tier: '$31M-$50M',
-            clients: 19,
-            metrics: {
-              closing_percentage: { current: 85, industry_avg: 65, difference: '+20%' },
-              cancellation_rate: { current: 8, industry_avg: 22, difference: '-14%' },
-              customer_experience: { current: 9.5, industry_avg: 7.5, difference: '+2.0' }
-            },
-            satisfaction: '10/10'
-          },
-          {
-            revenue_tier: '$51M-$75M',
-            clients: 12,
-            metrics: {
-              closing_percentage: { current: 87, industry_avg: 65, difference: '+22%' },
-              cancellation_rate: { current: 7, industry_avg: 22, difference: '-15%' },
-              customer_experience: { current: 9.6, industry_avg: 7.5, difference: '+2.1' }
-            },
-            satisfaction: '10/10'
-          },
-          {
-            revenue_tier: '$76M-$150M',
-            clients: 8,
-            metrics: {
-              closing_percentage: { current: 89, industry_avg: 65, difference: '+24%' },
-              cancellation_rate: { current: 6, industry_avg: 22, difference: '-16%' },
-              customer_experience: { current: 9.7, industry_avg: 7.5, difference: '+2.2' }
-            },
-            satisfaction: '10/10'
-          },
-          {
-            revenue_tier: '$151M-$300M',
-            clients: 5,
-            metrics: {
-              closing_percentage: { current: 91, industry_avg: 65, difference: '+26%' },
-              cancellation_rate: { current: 5, industry_avg: 22, difference: '-17%' },
-              customer_experience: { current: 9.8, industry_avg: 7.5, difference: '+2.3' }
-            },
-            satisfaction: '10/10'
-          },
-          {
-            revenue_tier: '$300M+',
-            clients: 3,
-            metrics: {
-              closing_percentage: { current: 93, industry_avg: 65, difference: '+28%' },
-              cancellation_rate: { current: 4, industry_avg: 22, difference: '-18%' },
-              customer_experience: { current: 9.9, industry_avg: 7.5, difference: '+2.4' }
-            },
-            satisfaction: '10/10'
-          }
-        ],
-        
-                
-        analysis: {
-          strengths: [
-            { 
-              area: 'Enterprise Client Performance ($151M+)', 
-              performance: 'Exceptional - 93% closing rate, 4% cancellation',
-              details: 'Top-tier clients showing industry-leading metrics across all KPIs',
-              recommendation: 'Develop case studies from enterprise success stories'
-            },
-            { 
-              area: 'Mid-Market Excellence ($31M-$75M)', 
-              performance: 'Outstanding - 85-87% closing rates',
-              details: 'Sweet spot for DM services with highest satisfaction scores',
-              recommendation: 'Package mid-market solutions as flagship offering'
-            },
-            {
-              area: 'Consistent Cancellation Reduction',
-              performance: 'Industry Leading - Average 14% below industry',
-              details: 'All revenue tiers showing significant cancellation improvements',
-              recommendation: 'Highlight retention methodology in marketing'
-            }
-          ],
-          opportunities: [
-            { 
-              area: 'Small Contractor Engagement ($0-$5M)', 
-              current_performance: 'Only +3% closing improvement',
-              target: '+10% improvement minimum',
-              action_plan: 'Develop scaled coaching programs for smaller contractors'
-            },
-            {
-              area: 'Client Distribution Balance',
-              current_performance: '500+ total clients, heavily weighted $11M-$20M',
-              target: 'More even distribution across tiers',
-              action_plan: 'Targeted outreach to underserved revenue segments'
-            }
-          ]
-        },
-        
-        recommendations: {
-          start: [
-            'Tiered service packages matching revenue segments',
-            'Monthly virtual workshops for $0-$10M contractors',
-            'Enterprise advisory board with $300M+ clients'
-          ],
-          stop: [
-            'One-size-fits-all coaching approach',
-            'Manual performance tracking for large client base'
-          ],
-          keep: [
-            'Quarterly PowerCard surveys with 3 key metrics focus',
-            'Personalized coaching for $31M+ revenue tier',
-            'Industry variance reporting methodology'
-          ]
-        }
-      };
-      
-      return report;
-    } catch (error) {
-      console.error('Error generating executive report:', error);
-      throw error;
-    }
-  }
-  
-  // ===== PUBLIC PCR REPORT =====
-  async generatePublicPCRReport(partnerId) {
-    try {
-      // Get partner data from database if available
-      let partnerData = null;
-      try {
-        const { query } = require('../config/database');
-        const result = await query(
-          `SELECT
-            id, company_name, description, value_proposition, website, logo_url,
-            powerconfidence_score, is_active, status,
-            to_json(focus_areas) as focus_areas,
-            to_json(service_areas) as service_areas,
-            to_json(focus_areas_served) as focus_areas_served,
-            to_json(client_testimonials) as client_testimonials,
-            to_json(ai_tags) as ai_tags,
-            ai_summary, key_differentiators, testimonials,
-            client_count, established_year
-          FROM strategic_partners WHERE id = $1`,
-          [partnerId]
-        );
-        if (result.rows.length > 0) {
-          partnerData = result.rows[0];
-        }
-      } catch (err) {
-        console.log('Could not fetch partner data:', err);
-      }
+/**
+ * Generate Executive Report for Partner
+ * Shows partner's custom metrics with quarterly performance
+ *
+ * DATABASE TABLES: strategic_partners, power_card_campaigns, power_card_analytics, power_card_templates
+ *
+ * @param {number} partnerId - Partner ID
+ * @param {number} campaignId - PowerCard campaign ID (optional, uses latest if not provided)
+ * @returns {Object} Executive report with all metrics and branding
+ */
+async function generateExecutiveReport(partnerId, campaignId = null) {
+  console.log(`[Report Generation] Starting executive report for partner ${partnerId}`);
 
-      const report = {
-        partner: {
-          name: partnerData?.company_name || 'Destination Motivation',
-          tagline: partnerData?.value_proposition || 'Building Winning Teams That Stay',
-          videos: partnerData?.landing_page_videos || []
-        },
-        
-        powerconfidence_score: {
-          current: 99,
-          label: 'Elite Partner',
-          percentile: '99th percentile',
-          description: 'Top 1% of all strategic partners'
-        },
-        
-        key_metrics: [
-          { metric: '+12%', label: 'Avg. Closing Rate Increase' },
-          { metric: '-6.8%', label: 'Avg. Cancel Rate Reduction' },
-          { metric: '9.2/10', label: 'Customer Experience Score' },
-        { metric: '500+', label: 'Verified Contractors Helped' }
-        ],
-        
-        testimonials: [
-          {
-            quote: 'DM transformed our culture. Turnover down 40%!',
-            author: 'John Smith',
-            company: 'ABC Contracting',
-            revenue_tier: '31-50M'
-          },
-          {
-            quote: 'The leadership training was a game-changer for our managers.',
-            author: 'Sarah Johnson',
-            company: 'Premier Builders',
-            revenue_tier: '11-20M'
-          },
-          {
-            quote: 'Employee satisfaction scores up 35% in just 6 months!',
-            author: 'Mike Davis',
-            company: 'Excel Construction',
-            revenue_tier: '51-75M'
-          }
-        ]
-      };
-      
-      return report;
-    } catch (error) {
-      console.error('Error generating PCR report:', error);
-      throw error;
-    }
+  // STEP 1: Get partner info
+  // DATABASE FIELDS: company_name, description, logo_url, final_pcr_score, quarterly_feedback_score
+  const partnerResult = await query(`
+    SELECT
+      id,
+      company_name,
+      description,
+      logo_url,
+      final_pcr_score,
+      quarterly_feedback_score,
+      engagement_tier
+    FROM strategic_partners
+    WHERE id = $1 AND is_active = true
+  `, [partnerId]);
+
+  if (partnerResult.rows.length === 0) {
+    throw new Error(`Partner ${partnerId} not found or inactive`);
   }
+
+  const partner = partnerResult.rows[0];
+
+  // STEP 2: Get campaign info (latest completed if not specified)
+  // DATABASE FIELDS: id, campaign_name, quarter, year, total_responses, response_rate
+  let campaign;
+  if (campaignId) {
+    const campaignResult = await query(`
+      SELECT id, campaign_name, quarter, year, total_responses, response_rate, total_sent
+      FROM power_card_campaigns
+      WHERE id = $1 AND partner_id = $2
+    `, [campaignId, partnerId]);
+
+    if (campaignResult.rows.length === 0) {
+      throw new Error(`Campaign ${campaignId} not found for partner ${partnerId}`);
+    }
+    campaign = campaignResult.rows[0];
+  } else {
+    // Get latest completed campaign
+    const campaignResult = await query(`
+      SELECT id, campaign_name, quarter, year, total_responses, response_rate, total_sent
+      FROM power_card_campaigns
+      WHERE partner_id = $1 AND status = 'completed'
+      ORDER BY year DESC,
+        CASE quarter
+          WHEN 'Q4' THEN 4
+          WHEN 'Q3' THEN 3
+          WHEN 'Q2' THEN 2
+          WHEN 'Q1' THEN 1
+        END DESC
+      LIMIT 1
+    `, [partnerId]);
+
+    if (campaignResult.rows.length === 0) {
+      throw new Error(`No completed campaigns found for partner ${partnerId}`);
+    }
+    campaign = campaignResult.rows[0];
+  }
+
+  // STEP 3: Get custom metric names from template
+  // DATABASE FIELDS: metric_1_name, metric_2_name, metric_3_name
+  const templateResult = await query(`
+    SELECT
+      metric_1_name,
+      metric_2_name,
+      metric_3_name
+    FROM power_card_templates
+    WHERE partner_id = $1
+    ORDER BY created_at DESC
+    LIMIT 1
+  `, [partnerId]);
+
+  const metricNames = templateResult.rows.length > 0 ? templateResult.rows[0] : {
+    metric_1_name: 'Custom Metric 1',
+    metric_2_name: 'Custom Metric 2',
+    metric_3_name: 'Custom Metric 3'
+  };
+
+  // STEP 4: Get analytics for this campaign
+  // DATABASE FIELDS: avg_metric_1, avg_metric_2, avg_metric_3, avg_satisfaction, avg_nps, total_responses
+  const analyticsResult = await query(`
+    SELECT
+      avg_metric_1,
+      avg_metric_2,
+      avg_metric_3,
+      avg_satisfaction,
+      avg_nps,
+      total_responses,
+      percentile_25,
+      percentile_50,
+      percentile_75
+    FROM power_card_analytics
+    WHERE campaign_id = $1
+    LIMIT 1
+  `, [campaign.id]);
+
+  const analytics = analyticsResult.rows.length > 0 ? analyticsResult.rows[0] : null;
+
+  if (!analytics) {
+    throw new Error(`No analytics data found for campaign ${campaign.id}`);
+  }
+
+  // STEP 5: Build executive report structure
+  const report = {
+    partner: {
+      id: partner.id,
+      company_name: partner.company_name,
+      description: partner.description,
+      logo_url: partner.logo_url,
+      pcr_score: partner.final_pcr_score,
+      engagement_tier: partner.engagement_tier
+    },
+    campaign: {
+      id: campaign.id,
+      name: campaign.campaign_name,
+      quarter: campaign.quarter,
+      year: campaign.year,
+      total_sent: campaign.total_sent,
+      total_responses: campaign.total_responses,
+      response_rate: campaign.response_rate
+    },
+    performance_summary: {
+      overall_satisfaction: parseFloat(analytics.avg_satisfaction).toFixed(1),
+      nps_score: parseInt(analytics.avg_nps),
+      total_feedback: parseInt(analytics.total_responses)
+    },
+    custom_metrics: [
+      {
+        name: metricNames.metric_1_name,
+        average: analytics.avg_metric_1 ? parseFloat(analytics.avg_metric_1).toFixed(1) : null,
+        trend: 'stable' // Will be calculated from quarterly_history in future
+      },
+      {
+        name: metricNames.metric_2_name,
+        average: analytics.avg_metric_2 ? parseFloat(analytics.avg_metric_2).toFixed(1) : null,
+        trend: 'stable'
+      },
+      {
+        name: metricNames.metric_3_name,
+        average: analytics.avg_metric_3 ? parseFloat(analytics.avg_metric_3).toFixed(1) : null,
+        trend: 'stable'
+      }
+    ],
+    distribution: {
+      percentile_25: analytics.percentile_25,
+      percentile_50: analytics.percentile_50,
+      percentile_75: analytics.percentile_75
+    },
+    generated_at: new Date().toISOString(),
+    report_type: 'executive_summary'
+  };
+
+  // STEP 6: Save report to database
+  const reportResult = await query(`
+    INSERT INTO partner_reports (
+      partner_id,
+      campaign_id,
+      report_type,
+      quarter,
+      year,
+      report_data,
+      total_responses,
+      avg_satisfaction,
+      avg_nps,
+      metric_1_avg,
+      metric_2_avg,
+      metric_3_avg,
+      metric_1_name,
+      metric_2_name,
+      metric_3_name,
+      status
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+    RETURNING id
+  `, [
+    partnerId,
+    campaign.id,
+    'executive_summary',
+    campaign.quarter,
+    campaign.year,
+    JSON.stringify(report),
+    analytics.total_responses,
+    analytics.avg_satisfaction,
+    analytics.avg_nps,
+    analytics.avg_metric_1,
+    analytics.avg_metric_2,
+    analytics.avg_metric_3,
+    metricNames.metric_1_name,
+    metricNames.metric_2_name,
+    metricNames.metric_3_name,
+    'generated'
+  ]);
+
+  console.log(`[Report Generation] ✅ Executive report ${reportResult.rows[0].id} generated for partner ${partnerId}`);
+
+  return {
+    ...report,
+    report_id: reportResult.rows[0].id
+  };
 }
 
-module.exports = new ReportGenerationService();
+/**
+ * Generate Contractor Comparison Report
+ * Shows contractor's variance from revenue tier averages (NOT actual numbers)
+ *
+ * DATABASE TABLES: contractors, power_card_responses, power_card_analytics
+ *
+ * @param {number} contractorId - Contractor ID
+ * @param {number} partnerId - Partner ID (for context)
+ * @param {number} campaignId - PowerCard campaign ID (optional, uses latest if not provided)
+ * @returns {Object} Contractor comparison report with variance-based metrics
+ */
+async function generateContractorReport(contractorId, partnerId, campaignId = null) {
+  console.log(`[Report Generation] Starting contractor report for contractor ${contractorId}, partner ${partnerId}`);
+
+  // STEP 1: Get contractor info
+  // DATABASE FIELDS: id, name, company_name, revenue_tier
+  const contractorResult = await query(`
+    SELECT
+      id,
+      name,
+      company_name,
+      revenue_tier
+    FROM contractors
+    WHERE id = $1
+  `, [contractorId]);
+
+  if (contractorResult.rows.length === 0) {
+    throw new Error(`Contractor ${contractorId} not found`);
+  }
+
+  const contractor = contractorResult.rows[0];
+
+  // STEP 2: Get partner info
+  // DATABASE FIELDS: company_name, logo_url
+  const partnerResult = await query(`
+    SELECT company_name, logo_url
+    FROM strategic_partners
+    WHERE id = $1
+  `, [partnerId]);
+
+  if (partnerResult.rows.length === 0) {
+    throw new Error(`Partner ${partnerId} not found`);
+  }
+
+  const partner = partnerResult.rows[0];
+
+  // STEP 3: Get campaign
+  let campaign;
+  if (campaignId) {
+    const campaignResult = await query(`
+      SELECT id, campaign_name, quarter, year
+      FROM power_card_campaigns
+      WHERE id = $1 AND partner_id = $2
+    `, [campaignId, partnerId]);
+
+    if (campaignResult.rows.length === 0) {
+      throw new Error(`Campaign ${campaignId} not found`);
+    }
+    campaign = campaignResult.rows[0];
+  } else {
+    const campaignResult = await query(`
+      SELECT id, campaign_name, quarter, year
+      FROM power_card_campaigns
+      WHERE partner_id = $1 AND status = 'completed'
+      ORDER BY year DESC,
+        CASE quarter
+          WHEN 'Q4' THEN 4
+          WHEN 'Q3' THEN 3
+          WHEN 'Q2' THEN 2
+          WHEN 'Q1' THEN 1
+        END DESC
+      LIMIT 1
+    `, [partnerId]);
+
+    if (campaignResult.rows.length === 0) {
+      throw new Error(`No completed campaigns found for partner ${partnerId}`);
+    }
+    campaign = campaignResult.rows[0];
+  }
+
+  // STEP 4: Get custom metric names
+  const templateResult = await query(`
+    SELECT metric_1_name, metric_2_name, metric_3_name
+    FROM power_card_templates
+    WHERE partner_id = $1
+    ORDER BY created_at DESC
+    LIMIT 1
+  `, [partnerId]);
+
+  const metricNames = templateResult.rows.length > 0 ? templateResult.rows[0] : {
+    metric_1_name: 'Custom Metric 1',
+    metric_2_name: 'Custom Metric 2',
+    metric_3_name: 'Custom Metric 3'
+  };
+
+  // STEP 5: Get contractor's actual scores
+  // DATABASE FIELDS: metric_1_score, metric_2_score, metric_3_score, satisfaction_score, recommendation_score
+  const responseResult = await query(`
+    SELECT
+      metric_1_score,
+      metric_2_score,
+      metric_3_score,
+      satisfaction_score,
+      recommendation_score
+    FROM power_card_responses
+    WHERE contractor_id = $1 AND campaign_id = $2
+    ORDER BY submitted_at DESC
+    LIMIT 1
+  `, [contractorId, campaign.id]);
+
+  if (responseResult.rows.length === 0) {
+    throw new Error(`No PowerCard response found for contractor ${contractorId} in campaign ${campaign.id}`);
+  }
+
+  const contractorScores = responseResult.rows[0];
+
+  // STEP 6: Get revenue tier benchmarks
+  // DATABASE FIELDS: avg_metric_1, avg_metric_2, avg_metric_3, avg_satisfaction, avg_nps, revenue_tier
+  const benchmarkResult = await query(`
+    SELECT
+      avg_metric_1,
+      avg_metric_2,
+      avg_metric_3,
+      avg_satisfaction,
+      avg_nps,
+      percentile_50
+    FROM power_card_analytics
+    WHERE campaign_id = $1 AND revenue_tier = $2
+    LIMIT 1
+  `, [campaign.id, contractor.revenue_tier]);
+
+  const benchmark = benchmarkResult.rows.length > 0 ? benchmarkResult.rows[0] : null;
+
+  if (!benchmark) {
+    throw new Error(`No benchmark data found for revenue tier ${contractor.revenue_tier} in campaign ${campaign.id}`);
+  }
+
+  // STEP 7: Calculate variance (percentage difference from tier average)
+  function calculateVariance(actual, average) {
+    if (!actual || !average) return null;
+    const variance = ((actual - average) / average) * 100;
+    return {
+      variance: variance.toFixed(1) + '%',
+      trend: variance > 0 ? 'up' : (variance < 0 ? 'down' : 'stable'),
+      comparison: variance > 0 ? 'Above tier average' : (variance < 0 ? 'Below tier average' : 'At tier average')
+    };
+  }
+
+  // STEP 8: Build contractor comparison report
+  const report = {
+    contractor: {
+      id: contractor.id,
+      name: contractor.name,
+      company_name: contractor.company_name,
+      revenue_tier: contractor.revenue_tier
+    },
+    partner: {
+      company_name: partner.company_name,
+      logo_url: partner.logo_url
+    },
+    campaign: {
+      quarter: campaign.quarter,
+      year: campaign.year,
+      name: campaign.campaign_name
+    },
+    current_tier_performance: {
+      tier: contractor.revenue_tier,
+      metrics: {
+        [metricNames.metric_1_name]: calculateVariance(contractorScores.metric_1_score, benchmark.avg_metric_1),
+        [metricNames.metric_2_name]: calculateVariance(contractorScores.metric_2_score, benchmark.avg_metric_2),
+        [metricNames.metric_3_name]: calculateVariance(contractorScores.metric_3_score, benchmark.avg_metric_3),
+        satisfaction: calculateVariance(contractorScores.satisfaction_score, benchmark.avg_satisfaction),
+        nps: calculateVariance(contractorScores.recommendation_score, benchmark.avg_nps)
+      }
+    },
+    peer_comparison: {
+      percentile_position: 'median', // Placeholder - will calculate actual percentile in future
+      tier_median: benchmark.percentile_50
+    },
+    generated_at: new Date().toISOString(),
+    report_type: 'contractor_comparison'
+  };
+
+  // STEP 9: Save report to database
+  const reportResult = await query(`
+    INSERT INTO partner_reports (
+      partner_id,
+      campaign_id,
+      report_type,
+      quarter,
+      year,
+      report_data,
+      total_responses,
+      metric_1_name,
+      metric_2_name,
+      metric_3_name,
+      status
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    RETURNING id
+  `, [
+    partnerId,
+    campaign.id,
+    'contractor_comparison',
+    campaign.quarter,
+    campaign.year,
+    JSON.stringify(report),
+    1, // Individual contractor report
+    metricNames.metric_1_name,
+    metricNames.metric_2_name,
+    metricNames.metric_3_name,
+    'generated'
+  ]);
+
+  console.log(`[Report Generation] ✅ Contractor report ${reportResult.rows[0].id} generated`);
+
+  return {
+    ...report,
+    report_id: reportResult.rows[0].id
+  };
+}
+
+/**
+ * Generate Public PCR Report (Landing Page Data)
+ * Shows partner's PCR score, badges, and public performance metrics
+ *
+ * DATABASE TABLES: strategic_partners, power_card_campaigns
+ *
+ * @param {number} partnerId - Partner ID
+ * @returns {Object} Public PCR landing page data
+ */
+async function generatePublicPCRReport(partnerId) {
+  console.log(`[Report Generation] Starting public PCR report for partner ${partnerId}`);
+
+  // Get partner comprehensive info
+  // DATABASE FIELDS: company_name, description, value_proposition, logo_url, website,
+  //                  final_pcr_score, earned_badges, performance_trend, key_differentiators,
+  //                  client_testimonials, landing_page_videos
+  const partnerResult = await query(`
+    SELECT
+      id,
+      company_name,
+      description,
+      value_proposition,
+      logo_url,
+      website,
+      final_pcr_score,
+      earned_badges,
+      performance_trend,
+      key_differentiators,
+      client_testimonials,
+      landing_page_videos,
+      engagement_tier
+    FROM strategic_partners
+    WHERE id = $1 AND is_active = true
+  `, [partnerId]);
+
+  if (partnerResult.rows.length === 0) {
+    throw new Error(`Partner ${partnerId} not found or inactive`);
+  }
+
+  const partner = partnerResult.rows[0];
+
+  // Get latest quarterly score
+  const latestCampaign = await query(`
+    SELECT quarter, year, total_responses
+    FROM power_card_campaigns
+    WHERE partner_id = $1 AND status = 'completed'
+    ORDER BY year DESC,
+      CASE quarter
+        WHEN 'Q4' THEN 4
+        WHEN 'Q3' THEN 3
+        WHEN 'Q2' THEN 2
+        WHEN 'Q1' THEN 1
+      END DESC
+    LIMIT 1
+  `, [partnerId]);
+
+  const report = {
+    partner: {
+      id: partner.id,
+      company_name: partner.company_name,
+      description: partner.description,
+      value_proposition: partner.value_proposition,
+      logo_url: partner.logo_url,
+      website: partner.website
+    },
+    pcr_summary: {
+      final_score: partner.final_pcr_score,
+      performance_trend: partner.performance_trend,
+      engagement_tier: partner.engagement_tier,
+      earned_badges: partner.earned_badges || []
+    },
+    latest_quarter: latestCampaign.rows.length > 0 ? {
+      quarter: latestCampaign.rows[0].quarter,
+      year: latestCampaign.rows[0].year,
+      total_responses: latestCampaign.rows[0].total_responses
+    } : null,
+    differentiators: partner.key_differentiators,
+    testimonials: partner.client_testimonials || [],
+    videos: partner.landing_page_videos,
+    generated_at: new Date().toISOString(),
+    report_type: 'public_pcr'
+  };
+
+  console.log(`[Report Generation] ✅ Public PCR report generated for partner ${partnerId}`);
+
+  return report;
+}
+
+/**
+ * Get existing report by ID
+ *
+ * @param {number} reportId - Report ID
+ * @returns {Object} Report data
+ */
+async function getReportById(reportId) {
+  const result = await query(`
+    SELECT
+      id,
+      partner_id,
+      campaign_id,
+      report_type,
+      quarter,
+      year,
+      report_data,
+      status,
+      generated_by,
+      generation_date,
+      delivered_at,
+      viewed_at
+    FROM partner_reports
+    WHERE id = $1
+  `, [reportId]);
+
+  if (result.rows.length === 0) {
+    throw new Error(`Report ${reportId} not found`);
+  }
+
+  return result.rows[0];
+}
+
+/**
+ * Get latest report for a partner by type
+ *
+ * @param {number} partnerId - Partner ID
+ * @param {string} reportType - 'executive_summary', 'contractor_comparison', or 'public_pcr'
+ * @returns {Object} Latest report
+ */
+async function getLatestReport(partnerId, reportType) {
+  const result = await query(`
+    SELECT
+      id,
+      partner_id,
+      campaign_id,
+      report_type,
+      quarter,
+      year,
+      report_data,
+      status,
+      generation_date
+    FROM partner_reports
+    WHERE partner_id = $1 AND report_type = $2
+    ORDER BY year DESC,
+      CASE quarter
+        WHEN 'Q4' THEN 4
+        WHEN 'Q3' THEN 3
+        WHEN 'Q2' THEN 2
+        WHEN 'Q1' THEN 1
+      END DESC
+    LIMIT 1
+  `, [partnerId, reportType]);
+
+  return result.rows.length > 0 ? result.rows[0] : null;
+}
+
+/**
+ * Mark report as delivered
+ *
+ * @param {number} reportId - Report ID
+ */
+async function markReportDelivered(reportId) {
+  await query(`
+    UPDATE partner_reports
+    SET
+      status = 'delivered',
+      delivered_at = NOW(),
+      updated_at = NOW()
+    WHERE id = $1
+  `, [reportId]);
+}
+
+/**
+ * Mark report as viewed
+ *
+ * @param {number} reportId - Report ID
+ */
+async function markReportViewed(reportId) {
+  const result = await query(`
+    UPDATE partner_reports
+    SET
+      status = 'viewed',
+      viewed_at = NOW(),
+      updated_at = NOW()
+    WHERE id = $1
+    RETURNING id, status, viewed_at, viewed_at IS NULL as already_viewed
+  `, [reportId]);
+
+  if (result.rows.length === 0) {
+    throw new Error(`Report ${reportId} not found`);
+  }
+
+  return {
+    report_id: result.rows[0].id,
+    status: result.rows[0].status,
+    viewed_at: result.rows[0].viewed_at,
+    already_viewed: result.rows[0].already_viewed
+  };
+}
+
+/**
+ * Get all reports for a partner (executive summary reports)
+ * Used by partner portal to display all quarterly reports
+ *
+ * @param {number} partnerId - Partner ID
+ * @returns {Array} All reports for the partner, ordered by most recent first
+ */
+async function getAllReportsForPartner(partnerId) {
+  const result = await query(`
+    SELECT
+      id,
+      partner_id,
+      campaign_id,
+      report_type,
+      quarter,
+      year,
+      report_data,
+      status,
+      generation_date,
+      delivered_at,
+      viewed_at,
+      total_responses,
+      avg_satisfaction,
+      avg_nps,
+      metric_1_name,
+      metric_1_avg,
+      metric_2_name,
+      metric_2_avg,
+      metric_3_name,
+      metric_3_avg
+    FROM partner_reports
+    WHERE partner_id = $1 AND report_type = 'executive_summary'
+    ORDER BY year DESC,
+      CASE quarter
+        WHEN 'Q4' THEN 4
+        WHEN 'Q3' THEN 3
+        WHEN 'Q2' THEN 2
+        WHEN 'Q1' THEN 1
+      END DESC
+  `, [partnerId]);
+
+  return result.rows;
+}
+
+/**
+ * Get all reports for a contractor (contractor comparison reports)
+ * Used by contractor portal to display all their performance reports
+ * Note: Contractor ID is stored in report_data JSONB, not as separate column
+ *
+ * @param {number} contractorId - Contractor ID
+ * @returns {Array} All contractor reports, ordered by most recent first
+ */
+async function getAllReportsForContractor(contractorId) {
+  const result = await query(`
+    SELECT
+      id,
+      partner_id,
+      campaign_id,
+      report_type,
+      quarter,
+      year,
+      report_data,
+      status,
+      generation_date,
+      delivered_at,
+      viewed_at,
+      total_responses,
+      metric_1_name,
+      metric_2_name,
+      metric_3_name
+    FROM partner_reports
+    WHERE report_type = 'contractor_comparison'
+      AND (report_data->'contractor'->>'id')::int = $1
+    ORDER BY year DESC,
+      CASE quarter
+        WHEN 'Q4' THEN 4
+        WHEN 'Q3' THEN 3
+        WHEN 'Q2' THEN 2
+        WHEN 'Q1' THEN 1
+      END DESC
+  `, [contractorId]);
+
+  return result.rows;
+}
+
+module.exports = {
+  generateExecutiveReport,
+  generateContractorReport,
+  generatePublicPCRReport,
+  getReportById,
+  getLatestReport,
+  markReportDelivered,
+  markReportViewed,
+  getAllReportsForPartner,
+  getAllReportsForContractor
+};
