@@ -191,6 +191,235 @@ class OpenAIService {
   }
 
   /**
+   * Generate compelling tagline for partner landing pages
+   * @param {Object} partnerData - Partner information (company_name, description, value_proposition, key_differentiators)
+   * @returns {Promise<string>} - Generated tagline
+   */
+  async generateTagline(partnerData) {
+    // Initialize on first use
+    this.initializeClient();
+
+    if (!this.isConfigured) {
+      throw new Error('OpenAI service not configured');
+    }
+
+    const prompt = `Generate a compelling, concise tagline for a strategic partner landing page.
+
+Partner Information:
+- Company: ${partnerData.company_name}
+- Description: ${partnerData.description || 'N/A'}
+- Value Proposition: ${partnerData.value_proposition || 'N/A'}
+- Key Differentiators: ${partnerData.key_differentiators || 'N/A'}
+
+Requirements:
+- 8-12 words maximum
+- Action-oriented and benefit-focused
+- Professional tone for B2B contractor audience
+- Highlight unique value or transformation
+- No generic phrases like "leader in" or "trusted partner"
+
+Examples of good taglines:
+- "Transforming Company Culture Through Measurable Team Building"
+- "Data-Driven Marketing That Drives Revenue Growth"
+- "Building High-Performance Teams That Deliver Results"
+
+Respond with ONLY the tagline text, no quotes, no additional text.`;
+
+    try {
+      const startTime = Date.now();
+
+      const completion = await this.client.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert copywriter specializing in B2B marketing taglines. You create compelling, concise taglines that communicate unique value propositions.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 50
+      });
+
+      const processingTime = Date.now() - startTime;
+      const tagline = completion.choices[0].message.content.trim();
+
+      console.log(`[OpenAI] Generated tagline for ${partnerData.company_name}: "${tagline}" (${processingTime}ms)`);
+
+      return tagline;
+
+    } catch (error) {
+      console.error('Error generating tagline:', error);
+      // Return a fallback tagline if AI fails
+      return `Delivering Excellence in ${partnerData.company_name} Services`;
+    }
+  }
+
+  /**
+   * Generate AI Summary Title for Partner Landing Page
+   * Creates an engaging, relevant section title based on partner's unique value
+   */
+  async generateSummaryTitle(partnerData) {
+    // Initialize on first use
+    this.initializeClient();
+
+    if (!this.isConfigured) {
+      throw new Error('OpenAI service not configured');
+    }
+
+    const focusAreasText = Array.isArray(partnerData.focus_areas_served) && partnerData.focus_areas_served.length > 0
+      ? partnerData.focus_areas_served.map(area => area.replace(/_/g, ' ')).join(', ')
+      : 'N/A';
+
+    const prompt = `Generate a compelling, italicized section title for a strategic partner summary section on their landing page.
+
+Partner Information:
+- Company: ${partnerData.company_name}
+- Tagline: ${partnerData.tagline || 'N/A'}
+- Description: ${partnerData.description || 'N/A'}
+- Value Proposition: ${partnerData.value_proposition || 'N/A'}
+- Key Differentiators: ${partnerData.key_differentiators || 'N/A'}
+- Focus Areas: ${focusAreasText}
+
+Requirements:
+- 8-15 words that capture their unique value
+- Start with an action verb (Elevate, Transform, Accelerate, Revolutionize, etc.)
+- Include specific benefit or outcome related to their focus areas
+- Professional tone for B2B contractor audience
+- Match the style: "Elevate Your Business Growth With [Specific Service/Benefit]"
+- No generic phrases - make it SPECIFIC to what this partner does
+- Natural language that flows well when italicized
+
+Examples of good summary titles:
+- "Elevate Your Business Growth With Innovative & Irresistible Sales Incentives"
+- "Transform Your Team Culture Through Data-Driven Leadership Development"
+- "Accelerate Revenue Growth With Strategic Marketing That Converts"
+- "Build High-Performance Teams Through Proven Engagement Strategies"
+
+Respond with ONLY the title text, no quotes, no additional text.`;
+
+    try {
+      const startTime = Date.now();
+
+      const completion = await this.client.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert copywriter specializing in B2B landing page content. You create compelling, specific section titles that communicate unique value propositions and capture attention.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.8,
+        max_tokens: 60
+      });
+
+      const processingTime = Date.now() - startTime;
+      const summaryTitle = completion.choices[0].message.content.trim();
+
+      console.log(`[OpenAI] Generated summary title for ${partnerData.company_name}: "${summaryTitle}" (${processingTime}ms)`);
+
+      return summaryTitle;
+
+    } catch (error) {
+      console.error('Error generating summary title:', error);
+      // Return a fallback summary title if AI fails
+      const firstFocusArea = Array.isArray(partnerData.focus_areas_served) && partnerData.focus_areas_served.length > 0
+        ? partnerData.focus_areas_served[0].replace(/_/g, ' ')
+        : 'Business Growth';
+      return `Transform Your ${firstFocusArea} With ${partnerData.company_name}`;
+    }
+  }
+
+  /**
+   * Generate Extended Summary for Partner Landing Page
+   * Creates 2-3 detailed paragraphs explaining partner's value and impact
+   */
+  async generateExtendedSummary(partnerData) {
+    // Initialize on first use
+    this.initializeClient();
+
+    if (!this.isConfigured) {
+      throw new Error('OpenAI service not configured');
+    }
+
+    const focusAreasText = Array.isArray(partnerData.focus_areas_served) && partnerData.focus_areas_served.length > 0
+      ? partnerData.focus_areas_served.map(area => area.replace(/_/g, ' ')).join(', ')
+      : 'business growth';
+
+    const testimonialContext = Array.isArray(partnerData.client_testimonials) && partnerData.client_testimonials.length > 0
+      ? `Client feedback: ${partnerData.client_testimonials.slice(0, 2).map(t => t.quote).join('; ')}`
+      : '';
+
+    const prompt = `Generate a compelling 2-3 paragraph extended summary for a strategic partner's landing page.
+
+Partner Information:
+- Company: ${partnerData.company_name}
+- Tagline: ${partnerData.tagline || 'N/A'}
+- Description: ${partnerData.description || 'N/A'}
+- Value Proposition: ${partnerData.value_proposition || 'N/A'}
+- Key Differentiators: ${partnerData.key_differentiators || 'N/A'}
+- Focus Areas: ${focusAreasText}
+${testimonialContext ? `- ${testimonialContext}` : ''}
+
+Requirements:
+- Write 2-3 substantial paragraphs (150-200 words total)
+- First paragraph: Explain what makes ${partnerData.company_name} unique and how they help contractors
+- Second paragraph: Detail the specific benefits, results, and strategic approach
+- Third paragraph (optional): Explain why this matters for contractor businesses and industry impact
+- Use the company name naturally throughout (like the Destination Motivation example)
+- Professional B2B tone, focus on outcomes and transformation
+- Mention specific focus areas naturally in the content
+- NO generic marketing speak - be SPECIFIC to what they do
+- Write as continuous paragraphs separated by double newlines (\\n\\n)
+
+Example style (from Destination Motivation):
+"Destination Motivation stands out as an innovative leader in boosting sales and customer engagement for the nation's top exterior home remodeling companies. Their unique vacation voucher program is not just a sales incentive; it's a transformative tool that fosters long-term customer loyalty and drives business growth.
+
+By offering these enticing rewards, Destination Motivation helps businesses increase sales effectiveness, enhances the customer buying experience, and builds a lasting brand connection. This strategic approach not only elevates sales performance but also solidifies Destination Motivation's role as a key player in advancing industry practices."
+
+Respond with ONLY the paragraphs, no additional formatting or labels.`;
+
+    try {
+      const startTime = Date.now();
+
+      const completion = await this.client.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are an expert B2B copywriter specializing in strategic partner content. You create detailed, compelling summaries that explain value propositions with specific details and outcomes.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 350
+      });
+
+      const processingTime = Date.now() - startTime;
+      const extendedSummary = completion.choices[0].message.content.trim();
+
+      console.log(`[OpenAI] Generated extended summary for ${partnerData.company_name} (${extendedSummary.length} chars, ${processingTime}ms)`);
+
+      return extendedSummary;
+
+    } catch (error) {
+      console.error('Error generating extended summary:', error);
+      // Return expanded version of value_proposition if AI fails
+      return partnerData.value_proposition || `${partnerData.company_name} provides comprehensive solutions for contractor businesses in ${focusAreasText}. Our proven approach helps contractors achieve measurable results and sustainable growth.`;
+    }
+  }
+
+  /**
    * Get prompt template based on entity type
    */
   getPromptTemplate(entityType, revenueRange) {

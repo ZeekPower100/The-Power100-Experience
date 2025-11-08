@@ -214,6 +214,72 @@ the-power100-experience/          # Project root
 - Lucide React for icons
 - Tailwind CSS for styling
 
+## 🎨 MODERN DESIGN SYSTEM (DEFAULT STANDARD)
+**📚 MANDATORY READING**: `docs/MODERN-DESIGN-SYSTEM.md`
+
+**CRITICAL**: These design patterns are THE DEFAULT for ALL new development (frontend AND backend).
+Just like brand colors are non-negotiable, these modern design elements are our standard.
+
+### Quick Reference Card
+
+#### ✅ ALWAYS Use These Patterns:
+
+**1. Section Headers with Pill Badges**
+```tsx
+<div className="text-center mb-16">
+  <div className="inline-block bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-semibold mb-4">
+    Section Label
+  </div>
+  <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Main Heading</h2>
+  <p className="text-xl text-gray-600 max-w-3xl mx-auto">Supporting text</p>
+</div>
+```
+
+**2. Modern Cards with Hover Effects**
+```tsx
+<div className="group bg-white rounded-2xl p-8 shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100">
+  {/* Card content */}
+</div>
+```
+
+**3. CTA Buttons**
+```tsx
+<button className="group bg-green-500 text-white px-8 py-4 rounded-full hover:bg-green-600 transition-all duration-300 flex items-center justify-center gap-2 text-lg font-semibold shadow-xl">
+  <Icon className="w-5 h-5" />
+  Button Text
+  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+</button>
+```
+
+**4. Gradient Cards (Metrics/Stats)**
+```tsx
+<div className="group relative bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+  <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-emerald-600 opacity-0 group-hover:opacity-5 rounded-2xl transition-opacity duration-300"></div>
+  <div className="relative">
+    <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl mb-4">
+      <TrendingUp className="w-6 h-6 text-white" />
+    </div>
+    <div className="text-5xl font-bold bg-gradient-to-r from-green-500 to-emerald-600 bg-clip-text text-transparent mb-2">
+      +12%
+    </div>
+    <h3 className="text-lg font-semibold text-gray-900">Metric Label</h3>
+  </div>
+</div>
+```
+
+**5. Section Spacing**
+- Use `py-20` for section padding (not py-16 or py-12)
+- Use `mb-16` for header spacing
+- Use `gap-8` for grid gaps
+
+**Reference Implementation**: `tpe-front-end/src/components/reports/PublicPCRLandingV2.tsx`
+
+❌ **NEVER** use flat designs without shadows or hover effects
+❌ **NEVER** skip the pill badge for section headers
+❌ **NEVER** use simple text buttons - always use modern rounded-full buttons
+
+See full documentation: `docs/MODERN-DESIGN-SYSTEM.md`
+
 ### UI Component Standards
 
 #### Dropdown Menus (Select Components)
@@ -326,6 +392,7 @@ This provides automatic error prevention that catches JSON and array rendering e
 - Component-based architecture
 - Responsive design (mobile-first)
 - **ALWAYS use error prevention helpers**: `safeJsonParse()` and `SafeList` components
+- **ALWAYS follow Modern Design System**: `docs/MODERN-DESIGN-SYSTEM.md` for ALL UI development
 
 ## 🚨 Critical Business Logic
 
@@ -535,10 +602,11 @@ tail -50 tpe-backend/server.log | grep -i error
 
 ### Always Do
 - Create new branch for ANY code changes
-- Write tests before implementing features  
+- Write tests before implementing features
 - Follow component-based architecture
 - Maintain TypeScript strict mode
-- Use existing design system and colors
+- **FOLLOW Modern Design System** (`docs/MODERN-DESIGN-SYSTEM.md`) for ALL UI development
+- Use existing design system and colors (pill badges, rounded-2xl cards, hover effects)
 - Implement responsive design
 - Add proper error handling
 - Include loading states
@@ -556,15 +624,20 @@ tail -50 tpe-backend/server.log | grep -i error
 - **USE raw `JSON.parse()` or `JSON.stringify()`**
 - **USE `localStorage` directly**
 - **DOUBLE-STRINGIFY data** (calling stringify before setToStorage)
+- **CREATE flat designs** without shadows or hover effects
+- **SKIP pill badges** for section headers
+- **USE simple borders** instead of shadow-based cards
+- **CREATE buttons** without rounded-full styling
 
 ### When Making Changes
 1. Analyze impact on contractor flow
-2. Consider partner integration effects  
-3. Test responsive behavior
-4. Verify brand consistency
-5. Check TypeScript compilation
-6. Run existing tests
-7. Create new tests as needed
+2. Consider partner integration effects
+3. **Verify Modern Design System compliance** (`docs/MODERN-DESIGN-SYSTEM.md`)
+4. Test responsive behavior
+5. Verify brand consistency (colors AND modern design patterns)
+6. Check TypeScript compilation
+7. Run existing tests
+8. Create new tests as needed
 
 ## 🎯 Current System Capabilities (August 2025)
 

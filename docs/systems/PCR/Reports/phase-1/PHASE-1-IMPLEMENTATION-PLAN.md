@@ -1,3 +1,171 @@
+# Phase 1: Quarterly Reports Foundation - Implementation Plan
+
+**Document Version:** 1.0
+**Date:** October 31, 2025
+**Status:** READY FOR IMPLEMENTATION
+**Database Schema:** Verified against 6 tables (October 31, 2025)
+
+---
+
+## 📋 Executive Summary
+
+**Goal:** Build the foundation of the quarterly reports system that generates partner executive reports and contractor comparison reports with real PowerCard data.
+
+### What Phase 1 Delivers
+- ✅ Database schema for partner_reports table (tracking and history)
+- ✅ Real data integration from PowerCard campaigns and analytics
+- ✅ Partner Executive Report generation (3 custom metrics)
+- ✅ Contractor Comparison Report generation (variance-based peer benchmarks)
+- ✅ Report generation service layer connected to real data
+- ✅ API endpoints for report access and management
+- ✅ Report tracking and metadata storage
+- ✅ Data aggregation logic for peer benchmarking
+
+---
+
+## 🗄️ Database Schema Changes
+
+### Prerequisites Verification ✅
+
+**CRITICAL: Run Pre-Flight Checklist BEFORE implementing**
+
+**Existing Tables Verified (October 31, 2025):**
+- `strategic_partners` - 18 required fields verified
+- `power_card_analytics` - 17 fields with percentiles
+- `power_card_templates` - 11 metric fields
+- `power_card_campaigns` - 12 fields with quarter/year tracking
+- `power_card_responses` - 13 fields with metric scores
+- `contractors` - 6 key fields including revenue_tier
+- `admin_users` - 3 fields for tracking
+
+---
+
+### Migration SQL: Create partner_reports Table
+
+**File:** `tpe-database/migrations/20251031_create_partner_reports.sql`
+
+**DATABASE-CHECKED: All field names verified against schema October 31, 2025**
+
+```sql
+-- ================================================================
+-- Migration: Create Quarterly Reports System Tables
+-- Date: October 31, 2025
+-- Purpose: Track and store quarterly report generation for partners and contractors
+-- ================================================================
+
+-- Partner Reports Table
+CREATE TABLE IF NOT EXISTS partner_reports (
+  id SERIAL PRIMARY KEY,
+
+  -- Report Identification
+  partner_id INTEGER NOT NULL REFERENCES strategic_partners(id) ON DELETE CASCADE,
+  campaign_id INTEGER REFERENCES power_card_campaigns(id) ON DELETE SET NULL,
+  report_type VARCHAR(50) NOT NULL CHECK (report_type IN ('executive_summary', 'contractor_comparison', 'public_pcr')),
+
+  -- Temporal Tracking
+  quarter VARCHAR(2) NOT NULL CHECK (quarter IN ('Q1', 'Q2', 'Q3', 'Q4')),
+  year INTEGER NOT NULL,
+  generation_date TIMESTAMP DEFAULT NOW(),
+
+  -- Report Data (JSONB for flexible structure)
+  report_data JSONB NOT NULL,
+
+  -- Metrics Summary (for quick access without parsing JSONB)
+  total_responses INTEGER DEFAULT 0,
+  avg_satisfaction NUMERIC(5,2),
+  avg_nps INTEGER,
+  metric_1_avg NUMERIC(5,2),
+  metric_2_avg NUMERIC(5,2),
+  metric_3_avg NUMERIC(5,2),
+
+  -- Custom Metric Names (denormalized for convenience)
+  metric_1_name VARCHAR(100),
+  metric_2_name VARCHAR(100),
+  metric_3_name VARCHAR(100),
+
+  -- Report Status & Delivery
+  status VARCHAR(50) DEFAULT 'draft' CHECK (status IN ('draft', 'generated', 'delivered', 'viewed')),
+  delivered_at TIMESTAMP,
+  viewed_at TIMESTAMP,
+  generated_by INTEGER REFERENCES admin_users(id) ON DELETE SET NULL,
+
+  -- Metadata
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- ================================================================
+-- Indexes for Performance
+-- ================================================================
+
+-- Primary lookups
+CREATE INDEX IF NOT EXISTS idx_partner_reports_partner_id
+  ON partner_reports(partner_id);
+
+CREATE INDEX IF NOT EXISTS idx_partner_reports_campaign_id
+  ON partner_reports(campaign_id);
+
+-- Report type filtering
+CREATE INDEX IF NOT EXISTS idx_partner_reports_type
+  ON partner_reports(report_type);
+
+-- Temporal queries (most common: get latest report for partner)
+CREATE INDEX IF NOT EXISTS idx_partner_reports_partner_quarter_year
+  ON partner_reports(partner_id, year DESC, quarter DESC);
+
+-- Status filtering
+CREATE INDEX IF NOT EXISTS idx_partner_reports_status
+  ON partner_reports(status)
+  WHERE status IN ('draft', 'generated');
+
+-- Composite index for quarter/year lookups across all partners
+CREATE INDEX IF NOT EXISTS idx_partner_reports_quarter_year
+  ON partner_reports(year DESC, quarter DESC);
+
+-- ================================================================
+-- Comments for Documentation
+-- ================================================================
+
+COMMENT ON TABLE partner_reports IS
+  'Tracks quarterly reports generated for partners (executive summary) and contractors (comparison reports)';
+
+COMMENT ON COLUMN partner_reports.report_type IS
+  'Type of report: executive_summary (for partners), contractor_comparison (for contractors), public_pcr (landing page)';
+
+COMMENT ON COLUMN partner_reports.report_data IS
+  'Full report data in JSONB format including all metrics, charts, and comparison data';
+
+COMMENT ON COLUMN partner_reports.metric_1_name IS
+  'Denormalized custom metric 1 name from power_card_templates for quick filtering';
+
+COMMENT ON COLUMN partner_reports.quarter IS
+  'Quarter when report was generated: Q1, Q2, Q3, or Q4';
+
+COMMENT ON COLUMN partner_reports.status IS
+  'Report lifecycle: draft → generated → delivered → viewed';
+
+-- ================================================================
+-- Verification Query
+-- ================================================================
+
+SELECT
+  COUNT(*) as total_reports,
+  COUNT(DISTINCT partner_id) as partners_with_reports,
+  COUNT(*) FILTER (WHERE report_type = 'executive_summary') as executive_reports,
+  COUNT(*) FILTER (WHERE report_type = 'contractor_comparison') as contractor_reports,
+  COUNT(*) FILTER (WHERE status = 'delivered') as delivered_reports
+FROM partner_reports;
+```
+
+---
+
+## 🛠️ Service Layer: Report Generation Service
+
+**File:** `tpe-backend/src/services/reportGenerationService.js` (UPDATE EXISTING)
+
+**DATABASE-CHECKED: All field names match verified schema October 31, 2025**
+
+```javascript
 // DATABASE-CHECKED: strategic_partners, power_card_analytics, power_card_templates,
 //                   power_card_campaigns, power_card_responses, contractors verified October 31, 2025
 // ================================================================
@@ -8,7 +176,6 @@
 // ================================================================
 
 const { query } = require('../config/database');
-const { safeJsonParse } = require('../utils/jsonHelpers');
 
 /**
  * Generate Executive Report for Partner
@@ -455,15 +622,13 @@ async function generatePublicPCRReport(partnerId) {
   console.log(`[Report Generation] Starting public PCR report for partner ${partnerId}`);
 
   // Get partner comprehensive info
-  // DATABASE FIELDS: company_name, tagline, description, value_proposition, logo_url, website,
+  // DATABASE FIELDS: company_name, description, value_proposition, logo_url, website,
   //                  final_pcr_score, earned_badges, performance_trend, key_differentiators,
-  //                  client_testimonials, landing_page_videos, key_metrics, success_stories,
-  //                  cta_primary_text, cta_secondary_text, engagement_tier
+  //                  client_testimonials, landing_page_videos
   const partnerResult = await query(`
     SELECT
       id,
       company_name,
-      tagline,
       description,
       value_proposition,
       logo_url,
@@ -474,14 +639,7 @@ async function generatePublicPCRReport(partnerId) {
       key_differentiators,
       client_testimonials,
       landing_page_videos,
-      engagement_tier,
-      key_metrics,
-      to_json(success_stories) as success_stories,
-      cta_primary_text,
-      cta_secondary_text,
-      to_json(focus_areas_served) as focus_areas_served,
-      ai_summary_title,
-      ai_extended_summary
+      engagement_tier
     FROM strategic_partners
     WHERE id = $1 AND is_active = true
   `, [partnerId]);
@@ -490,105 +648,7 @@ async function generatePublicPCRReport(partnerId) {
     throw new Error(`Partner ${partnerId} not found or inactive`);
   }
 
-  // Apply safety parsing for TEXT JSON fields (matching established pattern)
-  const partner = {
-    ...partnerResult.rows[0],
-    focus_areas_served: typeof partnerResult.rows[0].focus_areas_served === 'string' && partnerResult.rows[0].focus_areas_served !== '[object Object]'
-      ? safeJsonParse(partnerResult.rows[0].focus_areas_served || '[]')
-      : Array.isArray(partnerResult.rows[0].focus_areas_served) ? partnerResult.rows[0].focus_areas_served : [],
-    success_stories: typeof partnerResult.rows[0].success_stories === 'string' && partnerResult.rows[0].success_stories !== '[object Object]'
-      ? safeJsonParse(partnerResult.rows[0].success_stories || '[]')
-      : Array.isArray(partnerResult.rows[0].success_stories) ? partnerResult.rows[0].success_stories : []
-  };
-
-  // Generate tagline if missing using AI
-  if (!partner.tagline) {
-    console.log(`[Report Generation] Generating AI tagline for partner ${partnerId}...`);
-    try {
-      const openAIService = require('./openAIService');
-
-      const tagline = await openAIService.generateTagline({
-        company_name: partner.company_name,
-        description: partner.description,
-        value_proposition: partner.value_proposition,
-        key_differentiators: partner.key_differentiators
-      });
-
-      // Save tagline to database
-      await query(
-        'UPDATE strategic_partners SET tagline = $1 WHERE id = $2',
-        [tagline, partnerId]
-      );
-
-      partner.tagline = tagline;
-      console.log(`[Report Generation] ✅ AI tagline generated and saved: "${tagline}"`);
-    } catch (error) {
-      console.error('[Report Generation] ⚠️  Failed to generate tagline:', error.message);
-      // Continue without tagline rather than failing the whole report
-      partner.tagline = null;
-    }
-  }
-
-  // Generate summary title if missing using AI
-  if (!partner.ai_summary_title && partner.value_proposition) {
-    console.log(`[Report Generation] Generating AI summary title for partner ${partnerId}...`);
-    try {
-      const openAIService = require('./openAIService');
-
-      const summaryTitle = await openAIService.generateSummaryTitle({
-        company_name: partner.company_name,
-        tagline: partner.tagline,
-        description: partner.description,
-        value_proposition: partner.value_proposition,
-        key_differentiators: partner.key_differentiators,
-        focus_areas_served: partner.focus_areas_served
-      });
-
-      // Save summary title to database
-      await query(
-        'UPDATE strategic_partners SET ai_summary_title = $1 WHERE id = $2',
-        [summaryTitle, partnerId]
-      );
-
-      partner.ai_summary_title = summaryTitle;
-      console.log(`[Report Generation] ✅ AI summary title generated and saved: "${summaryTitle}"`);
-    } catch (error) {
-      console.error('[Report Generation] ⚠️  Failed to generate summary title:', error.message);
-      // Continue without summary title rather than failing the whole report
-      partner.ai_summary_title = null;
-    }
-  }
-
-  // Generate extended summary if missing using AI
-  if (!partner.ai_extended_summary && partner.value_proposition) {
-    console.log(`[Report Generation] Generating AI extended summary for partner ${partnerId}...`);
-    try {
-      const openAIService = require('./openAIService');
-
-      const extendedSummary = await openAIService.generateExtendedSummary({
-        company_name: partner.company_name,
-        tagline: partner.tagline,
-        description: partner.description,
-        value_proposition: partner.value_proposition,
-        key_differentiators: partner.key_differentiators,
-        focus_areas_served: partner.focus_areas_served,
-        client_testimonials: partner.client_testimonials
-      });
-
-      // Save extended summary to database
-      await query(
-        'UPDATE strategic_partners SET ai_extended_summary = $1 WHERE id = $2',
-        [extendedSummary, partnerId]
-      );
-
-      partner.ai_extended_summary = extendedSummary;
-      console.log(`[Report Generation] ✅ AI extended summary generated and saved (${extendedSummary.length} characters)`);
-    } catch (error) {
-      console.error('[Report Generation] ⚠️  Failed to generate extended summary:', error.message);
-      // Fallback to existing value_proposition if AI fails
-      partner.ai_extended_summary = partner.value_proposition;
-    }
-  }
+  const partner = partnerResult.rows[0];
 
   // Get latest quarterly score
   const latestCampaign = await query(`
@@ -605,78 +665,29 @@ async function generatePublicPCRReport(partnerId) {
     LIMIT 1
   `, [partnerId]);
 
-  // Calculate percentile from final_pcr_score (assuming 0-100 scale)
-  const calculatePercentile = (score) => {
-    if (!score) return 0;
-    // Map score to percentile (scores are typically 0-100)
-    return Math.min(Math.max(Math.round(score), 0), 100);
-  };
-
-  // Derive label and description from engagement_tier
-  const getScoreLabel = (tier) => {
-    const labels = {
-      'platinum': 'Platinum Partner',
-      'gold': 'Gold Partner',
-      'silver': 'Silver Partner',
-      'bronze': 'Bronze Partner'
-    };
-    return labels[tier?.toLowerCase()] || 'Verified Partner';
-  };
-
-  const getScoreDescription = (tier) => {
-    const descriptions = {
-      'platinum': 'Top-tier performance with exceptional customer satisfaction',
-      'gold': 'High-performing partner with excellent customer feedback',
-      'silver': 'Reliable partner with strong customer satisfaction',
-      'bronze': 'Quality partner with good customer satisfaction'
-    };
-    return descriptions[tier?.toLowerCase()] || 'Verified strategic partner of The Power100 Experience';
-  };
-
   const report = {
     partner: {
       id: partner.id,
       company_name: partner.company_name,
-      name: partner.company_name, // Alias for compatibility
-      tagline: partner.tagline,
       description: partner.description,
       value_proposition: partner.value_proposition,
-      ai_summary_title: partner.ai_summary_title,
-      ai_extended_summary: partner.ai_extended_summary,
       logo_url: partner.logo_url,
-      website: partner.website,
-      videos: partner.landing_page_videos || [],
-      focus_areas_served: partner.focus_areas_served || []
+      website: partner.website
     },
-    powerconfidence_score: {
-      current: partner.final_pcr_score,
-      percentile: calculatePercentile(partner.final_pcr_score),
-      label: getScoreLabel(partner.engagement_tier),
-      description: getScoreDescription(partner.engagement_tier),
+    pcr_summary: {
+      final_score: partner.final_pcr_score,
       performance_trend: partner.performance_trend,
-      engagement_tier: partner.engagement_tier
-    },
-    trust_badges: partner.earned_badges || [],
-    key_metrics: partner.key_metrics || [],
-    score_breakdown: null, // Can be calculated from PCR components if needed
-    differentiators: partner.key_differentiators,
-    testimonials: partner.client_testimonials || [],
-    case_studies: partner.success_stories ? (Array.isArray(partner.success_stories) ? partner.success_stories : [partner.success_stories]) : [],
-    cta: {
-      primary: {
-        text: partner.cta_primary_text || 'Schedule Introduction',
-        action: 'schedule'
-      },
-      secondary: {
-        text: partner.cta_secondary_text || 'Download Report',
-        action: 'download'
-      }
+      engagement_tier: partner.engagement_tier,
+      earned_badges: partner.earned_badges || []
     },
     latest_quarter: latestCampaign.rows.length > 0 ? {
       quarter: latestCampaign.rows[0].quarter,
       year: latestCampaign.rows[0].year,
       total_responses: latestCampaign.rows[0].total_responses
     } : null,
+    differentiators: partner.key_differentiators,
+    testimonials: partner.client_testimonials || [],
+    videos: partner.landing_page_videos,
     generated_at: new Date().toISOString(),
     report_type: 'public_pcr'
   };
@@ -774,111 +785,14 @@ async function markReportDelivered(reportId) {
  * @param {number} reportId - Report ID
  */
 async function markReportViewed(reportId) {
-  const result = await query(`
+  await query(`
     UPDATE partner_reports
     SET
       status = 'viewed',
       viewed_at = NOW(),
       updated_at = NOW()
-    WHERE id = $1
-    RETURNING id, status, viewed_at, viewed_at IS NULL as already_viewed
+    WHERE id = $1 AND viewed_at IS NULL
   `, [reportId]);
-
-  if (result.rows.length === 0) {
-    throw new Error(`Report ${reportId} not found`);
-  }
-
-  return {
-    report_id: result.rows[0].id,
-    status: result.rows[0].status,
-    viewed_at: result.rows[0].viewed_at,
-    already_viewed: result.rows[0].already_viewed
-  };
-}
-
-/**
- * Get all reports for a partner (executive summary reports)
- * Used by partner portal to display all quarterly reports
- *
- * @param {number} partnerId - Partner ID
- * @returns {Array} All reports for the partner, ordered by most recent first
- */
-async function getAllReportsForPartner(partnerId) {
-  const result = await query(`
-    SELECT
-      id,
-      partner_id,
-      campaign_id,
-      report_type,
-      quarter,
-      year,
-      report_data,
-      status,
-      generation_date,
-      delivered_at,
-      viewed_at,
-      total_responses,
-      avg_satisfaction,
-      avg_nps,
-      metric_1_name,
-      metric_1_avg,
-      metric_2_name,
-      metric_2_avg,
-      metric_3_name,
-      metric_3_avg
-    FROM partner_reports
-    WHERE partner_id = $1 AND report_type = 'executive_summary'
-    ORDER BY year DESC,
-      CASE quarter
-        WHEN 'Q4' THEN 4
-        WHEN 'Q3' THEN 3
-        WHEN 'Q2' THEN 2
-        WHEN 'Q1' THEN 1
-      END DESC
-  `, [partnerId]);
-
-  return result.rows;
-}
-
-/**
- * Get all reports for a contractor (contractor comparison reports)
- * Used by contractor portal to display all their performance reports
- * Note: Contractor ID is stored in report_data JSONB, not as separate column
- *
- * @param {number} contractorId - Contractor ID
- * @returns {Array} All contractor reports, ordered by most recent first
- */
-async function getAllReportsForContractor(contractorId) {
-  const result = await query(`
-    SELECT
-      id,
-      partner_id,
-      campaign_id,
-      report_type,
-      quarter,
-      year,
-      report_data,
-      status,
-      generation_date,
-      delivered_at,
-      viewed_at,
-      total_responses,
-      metric_1_name,
-      metric_2_name,
-      metric_3_name
-    FROM partner_reports
-    WHERE report_type = 'contractor_comparison'
-      AND (report_data->'contractor'->>'id')::int = $1
-    ORDER BY year DESC,
-      CASE quarter
-        WHEN 'Q4' THEN 4
-        WHEN 'Q3' THEN 3
-        WHEN 'Q2' THEN 2
-        WHEN 'Q1' THEN 1
-      END DESC
-  `, [contractorId]);
-
-  return result.rows;
 }
 
 module.exports = {
@@ -888,7 +802,270 @@ module.exports = {
   getReportById,
   getLatestReport,
   markReportDelivered,
-  markReportViewed,
-  getAllReportsForPartner,
-  getAllReportsForContractor
+  markReportViewed
 };
+```
+
+---
+
+## 📡 API Endpoints
+
+**File:** `tpe-backend/src/routes/reports.js` (UPDATE EXISTING)
+
+**DATABASE-CHECKED: All endpoints use verified field names**
+
+```javascript
+// DATABASE-CHECKED: Routes verified against schema October 31, 2025
+const express = require('express');
+const router = express.Router();
+const { asyncHandler } = require('../middleware/errorHandler');
+const reportService = require('../services/reportGenerationService');
+const { protect } = require('../middleware/auth');
+
+/**
+ * POST /api/reports/executive/:partnerId
+ * Generate executive report for a partner
+ * Optional: ?campaignId=123 to specify campaign
+ */
+router.post('/executive/:partnerId', protect, asyncHandler(async (req, res) => {
+  const { partnerId } = req.params;
+  const { campaignId } = req.query;
+
+  const report = await reportService.generateExecutiveReport(
+    parseInt(partnerId),
+    campaignId ? parseInt(campaignId) : null
+  );
+
+  res.json({
+    success: true,
+    report_type: 'executive_summary',
+    report
+  });
+}));
+
+/**
+ * POST /api/reports/contractor/:contractorId/partner/:partnerId
+ * Generate contractor comparison report
+ * Optional: ?campaignId=123 to specify campaign
+ */
+router.post('/contractor/:contractorId/partner/:partnerId', protect, asyncHandler(async (req, res) => {
+  const { contractorId, partnerId } = req.params;
+  const { campaignId } = req.query;
+
+  const report = await reportService.generateContractorReport(
+    parseInt(contractorId),
+    parseInt(partnerId),
+    campaignId ? parseInt(campaignId) : null
+  );
+
+  res.json({
+    success: true,
+    report_type: 'contractor_comparison',
+    report
+  });
+}));
+
+/**
+ * GET /api/reports/pcr/:partnerId
+ * Get public PCR report (landing page data)
+ * This endpoint is PUBLIC - no auth required
+ */
+router.get('/pcr/:partnerId', asyncHandler(async (req, res) => {
+  const { partnerId } = req.params;
+
+  const report = await reportService.generatePublicPCRReport(parseInt(partnerId));
+
+  res.json({
+    success: true,
+    report_type: 'public_pcr',
+    report
+  });
+}));
+
+/**
+ * GET /api/reports/:reportId
+ * Get existing report by ID
+ */
+router.get('/:reportId', protect, asyncHandler(async (req, res) => {
+  const { reportId } = req.params;
+
+  const report = await reportService.getReportById(parseInt(reportId));
+
+  res.json({
+    success: true,
+    report
+  });
+}));
+
+/**
+ * GET /api/reports/partner/:partnerId/latest/:reportType
+ * Get latest report for a partner by type
+ * reportType: executive_summary | contractor_comparison | public_pcr
+ */
+router.get('/partner/:partnerId/latest/:reportType', protect, asyncHandler(async (req, res) => {
+  const { partnerId, reportType } = req.params;
+
+  const report = await reportService.getLatestReport(parseInt(partnerId), reportType);
+
+  if (!report) {
+    return res.status(404).json({
+      success: false,
+      message: `No ${reportType} report found for partner ${partnerId}`
+    });
+  }
+
+  res.json({
+    success: true,
+    report
+  });
+}));
+
+/**
+ * PATCH /api/reports/:reportId/delivered
+ * Mark report as delivered
+ */
+router.patch('/:reportId/delivered', protect, asyncHandler(async (req, res) => {
+  const { reportId } = req.params;
+
+  await reportService.markReportDelivered(parseInt(reportId));
+
+  res.json({
+    success: true,
+    message: 'Report marked as delivered'
+  });
+}));
+
+/**
+ * PATCH /api/reports/:reportId/viewed
+ * Mark report as viewed
+ */
+router.patch('/:reportId/viewed', asyncHandler(async (req, res) => {
+  const { reportId } = req.params;
+
+  await reportService.markReportViewed(parseInt(reportId));
+
+  res.json({
+    success: true,
+    message: 'Report marked as viewed'
+  });
+}));
+
+module.exports = router;
+```
+
+---
+
+## 📅 Implementation Timeline (5-7 Days)
+
+### Day 1: Database Migration & Verification ✅
+**Tasks:**
+1. ✅ Complete Pre-Flight Checklist (verify all 6 required tables)
+2. ✅ Create migration SQL file for partner_reports table
+3. ✅ Test migration on local development database
+4. ✅ Verify table creation with `\d partner_reports`
+5. ✅ Verify indexes created
+6. ✅ Apply to production database
+
+**Deliverable:** Database ready with partner_reports table and all foreign keys
+
+---
+
+### Day 2: Report Generation Service - Executive Reports
+**Tasks:**
+1. ✅ Update `reportGenerationService.js` with database field verification
+2. ✅ Implement `generateExecutiveReport()` function
+3. ✅ Test with real PowerCard campaign data
+4. ✅ Verify custom metric names from power_card_templates
+5. ✅ Test JSONB report_data storage
+6. ✅ Verify report saved to partner_reports table
+
+**Deliverable:** Working executive report generation with real data
+
+---
+
+### Day 3: Report Generation Service - Contractor Reports
+**Tasks:**
+1. ✅ Implement `generateContractorReport()` function
+2. ✅ Implement variance calculation logic
+3. ✅ Test revenue tier benchmark matching
+4. ✅ Verify contractor responses from power_card_responses
+5. ✅ Test comparison calculations (variance percentages)
+6. ✅ Unit tests for variance calculation
+
+**Deliverable:** Working contractor comparison reports with variance-based metrics
+
+---
+
+### Day 4: API Endpoints & Integration
+**Tasks:**
+1. ✅ Update reports.js routes with new endpoints
+2. ✅ Test POST /api/reports/executive/:partnerId
+3. ✅ Test POST /api/reports/contractor/:contractorId/partner/:partnerId
+4. ✅ Test GET /api/reports/pcr/:partnerId (public endpoint)
+5. ✅ Test report retrieval endpoints
+6. ✅ Test mark delivered/viewed endpoints
+7. ✅ End-to-end API testing
+
+**Deliverable:** All report API endpoints working and tested
+
+---
+
+### Day 5: Public PCR Report & Testing
+**Tasks:**
+1. ✅ Implement `generatePublicPCRReport()` function
+2. ✅ Test public PCR landing page data
+3. ✅ Verify all database field references
+4. ✅ Performance testing (generation time < 500ms)
+5. ✅ Test error handling for missing data
+6. ✅ Documentation updates
+
+**Deliverable:** Complete report generation system tested and documented
+
+---
+
+## 🎯 Success Metrics
+
+| Metric | Target | How to Measure |
+|--------|--------|----------------|
+| **Generation Speed** | < 500ms | Time to generate any report type |
+| **Data Accuracy** | 100% | Report data matches PowerCard analytics |
+| **Database Integrity** | 100% | All foreign keys valid, no orphaned records |
+| **Variance Calculation** | Accurate | Contractor variance matches manual calculation |
+| **Custom Metrics** | Dynamic | Report shows correct metric names from template |
+| **Report Storage** | 100% | All reports saved to partner_reports table |
+
+---
+
+## 📚 Related Documents
+
+- **Overview:** [PCR Reports System Overview](../PCR-REPORTS-OVERVIEW.md)
+- **Pre-Flight Checklist:** [Phase 1 Pre-Flight Checklist](./PHASE-1-PRE-FLIGHT-CHECKLIST.md)
+- **Database Schema:** Check `quick-db.bat` before implementation
+- **Demo Reference:** `/tpe-front-end/public/dm-reports-demo.html`
+
+---
+
+## 🎉 Phase 1 Deliverables
+
+**When Phase 1 is Complete:**
+1. ✅ partner_reports table created with all fields and indexes
+2. ✅ Executive reports generated from real PowerCard data
+3. ✅ Contractor comparison reports with variance calculations
+4. ✅ Public PCR reports for landing pages
+5. ✅ All reports stored in database with metadata
+6. ✅ API endpoints for report generation and retrieval
+7. ✅ Custom metric names dynamically included in reports
+
+**What's NOT in Phase 1:**
+- ❌ Email delivery system (Phase 2)
+- ❌ Partner portal UI for viewing reports (Phase 2)
+- ❌ Contractor portal UI for viewing reports (Phase 2)
+- ❌ Automated report generation on campaign completion (Phase 2)
+- ❌ Report templates and styling (Phase 3)
+- ❌ PDF export functionality (Phase 3)
+
+---
+
+**Last Updated:** October 31, 2025
+**Status:** Ready for Day 1 (Pre-Flight Checklist)
+**Next Step:** Complete Phase 1 Pre-Flight Checklist
