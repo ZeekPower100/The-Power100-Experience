@@ -4,7 +4,7 @@
   "description": "Backend API for The Power100 Experience",
   "main": "src/server.js",
   "scripts": {
-    "start": "node src/server.js 2>&1 | tee -a backend-live.log",
+    "start": "node src/server.js 2>&1 | tee -a backend.log",
     "dev": "nodemon src/server.js",
     "worker": "node src/workers/startAll.js",
     "worker:dev": "nodemon src/workers/startAll.js",
@@ -47,6 +47,7 @@
     "multer": "^2.0.2",
     "openai": "^5.20.2",
     "pg": "^8.11.3",
+    "puppeteer": "^24.27.0",
     "rss-parser": "^3.13.0",
     "twilio": "^4.19.3",
     "uuid": "^11.1.0",

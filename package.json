@@ -28,6 +28,7 @@
         "dev:safe": "node dev-manager-with-safety.js start",
         "safe": "node dev-manager-with-safety.js start",
         "safe:restart": "node dev-manager-with-safety.js restart",
+        "safe:monitors": "node dev-manager-with-safety.js monitors",
         "restart:safe": "node dev-manager-with-safety.js restart",
         "claude:setup": "node scripts/claude-setup.js",
         "claude:verify": "node scripts/claude-verify.js",
