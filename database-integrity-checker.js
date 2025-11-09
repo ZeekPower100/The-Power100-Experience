@@ -63,7 +63,7 @@ const JSON_FIELD_DEFINITIONS = {
     focus_areas: { type: 'array', required: false },
     speaker_topics: { type: 'array', required: false }
   },
-  partners: {
+  strategic_partners: {
     focus_areas_served: { type: 'array', required: false },
     target_revenue_range: { type: 'array', required: false },
     key_differentiators: { type: 'array', required: false },
