@@ -1,11 +1,13 @@
 // ================================================================
-// Report Routes - Phase 1 & 2: Quarterly Report Generation & Email Delivery
-// DATABASE-CHECKED: All field names verified November 1, 2025
+// Report Routes - Phase 1, 2 & 3: Quarterly Report Generation, Email Delivery & PDF Generation
+// DATABASE-CHECKED: All field names verified November 2, 2025
 // ================================================================
 const express = require('express');
 const router = express.Router();
 const reportService = require('../services/reportGenerationService');
 const emailDeliveryService = require('../services/emailDeliveryService');
+const pdfService = require('../services/pdfGenerationService');
+const publicPCRService = require('../services/publicPCRService');
 const { asyncHandler } = require('../middleware/errorHandler');
 const { adminOnly, optionalFlexibleAuth, partnerOnly, contractorOnly } = require('../middleware/auth');
 
@@ -125,8 +127,9 @@ router.get('/pcr/:partnerId', asyncHandler(async (req, res) => {
 /**
  * GET /api/reports/:reportId
  * Get a specific report by ID
+ * Authentication: Admin, Partner (own reports), or Contractor (own reports)
  */
-router.get('/:reportId', adminOnly, asyncHandler(async (req, res) => {
+router.get('/:reportId', optionalFlexibleAuth, asyncHandler(async (req, res) => {
   const { reportId } = req.params;
 
   // Validate reportId
@@ -146,6 +149,27 @@ router.get('/:reportId', adminOnly, asyncHandler(async (req, res) => {
       error: 'Report not found'
     });
   }
+
+  // Authorization: Check if user can access this report
+  if (req.userType === 'partner') {
+    // Partners can only view their own executive summary reports
+    if (report.partner_id !== req.partnerId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied: You can only view your own reports'
+      });
+    }
+  } else if (req.userType === 'contractor') {
+    // Contractors can only view their own contractor comparison reports
+    const reportContractorId = report.report_data?.contractor?.id;
+    if (!reportContractorId || reportContractorId !== req.contractorId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied: You can only view your own reports'
+      });
+    }
+  }
+  // Admins can view all reports (no authorization check needed)
 
   res.json({
     success: true,
@@ -429,6 +453,254 @@ router.get('/demo/destination-motivation', asyncHandler(async (req, res) => {
       executive_summary: executive,
       public_pcr: pcr
     }
+  });
+}));
+
+// ================================================================
+// PDF GENERATION ENDPOINTS (Phase 3 - Authenticated)
+// ================================================================
+
+/**
+ * POST /api/reports/:reportId/generate-pdf
+ * Generate PDF for a specific report
+ * Authenticated: Partner or Admin
+ */
+router.post('/:reportId/generate-pdf', optionalFlexibleAuth, asyncHandler(async (req, res) => {
+  const { reportId } = req.params;
+
+  // Validate reportId
+  if (!reportId || isNaN(parseInt(reportId))) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid report ID'
+    });
+  }
+
+  // Get report to check ownership
+  const report = await reportService.getReportById(parseInt(reportId));
+
+  if (!report) {
+    return res.status(404).json({
+      success: false,
+      error: 'Report not found'
+    });
+  }
+
+  // Authorization: Partners can only generate PDFs for their own reports
+  if (req.userType === 'partner' && report.partner_id !== req.partnerId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied: You can only generate PDFs for your own reports'
+    });
+  }
+
+  // Generate PDF
+  const result = await pdfService.generateReportPDF(parseInt(reportId));
+
+  res.status(200).json({
+    success: true,
+    message: 'PDF generated successfully',
+    pdf: result
+  });
+}));
+
+/**
+ * GET /api/reports/:reportId/pdf/download
+ * Get signed URL for PDF download
+ * Authenticated: Partner or Admin
+ */
+router.get('/:reportId/pdf/download', optionalFlexibleAuth, asyncHandler(async (req, res) => {
+  const { reportId } = req.params;
+
+  // Validate reportId
+  if (!reportId || isNaN(parseInt(reportId))) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid report ID'
+    });
+  }
+
+  // Get report to check ownership
+  const report = await reportService.getReportById(parseInt(reportId));
+
+  if (!report) {
+    return res.status(404).json({
+      success: false,
+      error: 'Report not found'
+    });
+  }
+
+  // Authorization: Partners can only download their own PDFs
+  if (req.userType === 'partner' && report.partner_id !== req.partnerId) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied: You can only download your own reports'
+    });
+  }
+
+  // Get signed download URL (expires in 1 hour)
+  const signedUrl = await pdfService.getPDFDownloadUrl(parseInt(reportId), 3600);
+
+  res.status(200).json({
+    success: true,
+    downloadUrl: signedUrl,
+    expiresIn: 3600
+  });
+}));
+
+/**
+ * POST /api/reports/:reportId/share
+ * Generate share token for public access
+ * Authenticated: Admin only
+ */
+router.post('/:reportId/share', adminOnly, asyncHandler(async (req, res) => {
+  const { reportId } = req.params;
+  const { expiresInDays } = req.body;
+
+  // Validate reportId
+  if (!reportId || isNaN(parseInt(reportId))) {
+    return res.status(400).json({
+      success: false,
+      error: 'Invalid report ID'
+    });
+  }
+
+  // Generate share token (default 30 days)
+  const result = await pdfService.generateShareToken(
+    parseInt(reportId),
+    expiresInDays || 30
+  );
+
+  res.status(200).json({
+    success: true,
+    message: 'Share link generated successfully',
+    share: result
+  });
+}));
+
+/**
+ * GET /api/reports/share/:token
+ * View shared report (PUBLIC - No auth required)
+ */
+router.get('/share/:token', asyncHandler(async (req, res) => {
+  const { token } = req.params;
+
+  if (!token) {
+    return res.status(400).json({
+      success: false,
+      error: 'Share token required'
+    });
+  }
+
+  try {
+    const report = await pdfService.getReportByShareToken(token);
+
+    res.status(200).json({
+      success: true,
+      report
+    });
+  } catch (error) {
+    res.status(404).json({
+      success: false,
+      error: error.message
+    });
+  }
+}));
+
+/**
+ * POST /api/reports/pdf/generate-all
+ * Generate PDFs for all reports missing them
+ * Authenticated: Admin only
+ */
+router.post('/pdf/generate-all', adminOnly, asyncHandler(async (req, res) => {
+  console.log('[PDF Batch] Starting batch PDF generation');
+
+  const result = await pdfService.generateAllMissingPDFs();
+
+  res.status(200).json({
+    success: true,
+    message: 'Batch PDF generation complete',
+    summary: result
+  });
+}));
+
+// ================================================================
+// PUBLIC PCR ENDPOINTS (No Authentication Required - Phase 3 Day 3)
+// ================================================================
+
+/**
+ * GET /api/reports/public/pcr/:publicUrl
+ * Get public PCR data by URL slug
+ * NO AUTHENTICATION REQUIRED
+ */
+router.get('/public/pcr/:publicUrl', asyncHandler(async (req, res) => {
+  const { publicUrl } = req.params;
+
+  console.log(`[Public PCR] GET request for slug: ${publicUrl}`);
+
+  const pcrData = await publicPCRService.getPublicPCRBySlug(publicUrl);
+
+  res.status(200).json({
+    success: true,
+    pcr: pcrData
+  });
+}));
+
+/**
+ * POST /api/reports/partner/:partnerId/public-url
+ * Set public URL for a partner
+ * Authenticated: Admin or Partner
+ */
+router.post('/partner/:partnerId/public-url', optionalFlexibleAuth, asyncHandler(async (req, res) => {
+  const { partnerId } = req.params;
+  const { publicUrl } = req.body;
+
+  // Authorization: Admins can set for any partner, Partners can only set for themselves
+  if (req.userType === 'partner' && req.partnerId !== parseInt(partnerId)) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied: You can only set your own public URL'
+    });
+  }
+
+  if (!publicUrl) {
+    return res.status(400).json({
+      success: false,
+      error: 'publicUrl is required'
+    });
+  }
+
+  const result = await publicPCRService.setPublicURL(parseInt(partnerId), publicUrl);
+
+  res.status(200).json({
+    success: true,
+    message: 'Public URL set successfully',
+    result
+  });
+}));
+
+/**
+ * GET /api/reports/partner/:partnerId/public-url
+ * Get public URL for a partner
+ * Authenticated: Admin or Partner
+ */
+router.get('/partner/:partnerId/public-url', optionalFlexibleAuth, asyncHandler(async (req, res) => {
+  const { partnerId } = req.params;
+
+  // Authorization: Admins can view any partner, Partners can only view their own
+  if (req.userType === 'partner' && req.partnerId !== parseInt(partnerId)) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied'
+    });
+  }
+
+  const publicUrl = await publicPCRService.getPublicURL(parseInt(partnerId));
+
+  res.status(200).json({
+    success: true,
+    publicUrl,
+    fullUrl: publicUrl ? `${process.env.FRONTEND_URL || 'http://localhost:3002'}/pcr/${publicUrl}` : null
   });
 }));
 

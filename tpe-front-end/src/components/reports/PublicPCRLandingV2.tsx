@@ -22,6 +22,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
+import FocusAreaIcon from '@/components/icons/FocusAreaIcon';
 
 interface PublicPCRProps {
   partnerId: string;
@@ -159,8 +160,168 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Hero Section */}
-      <div className="bg-gradient-to-br from-black via-gray-900 to-black text-white py-20">
-        <div className="max-w-7xl mx-auto px-4">
+      <div className="relative bg-gradient-to-br from-black via-gray-900 to-black text-white py-20 overflow-hidden">
+        {/* Logo Swarm Effect - Floating mini logos that converge and splat */}
+        <div className="absolute inset-0 overflow-hidden">
+          {/* 25 floating mini logos */}
+          {Array.from({ length: 25 }).map((_, i) => (
+            <div
+              key={i}
+              className="logo-particle"
+              style={{
+                '--start-x': `${Math.random() * 100}%`,
+                '--start-y': `${Math.random() * 100}%`,
+                '--float-x': `${(Math.random() - 0.5) * 30}%`,
+                '--float-y': `${(Math.random() - 0.5) * 30}%`,
+                '--delay': `${i * 0.8}s`
+              } as React.CSSProperties}
+            >
+              {/* Partner Logo */}
+              <img
+                src={report.partner?.logo_url || '/power100-logo.png'}
+                alt={report.partner?.company_name || 'Partner'}
+                className="logo-image"
+              />
+            </div>
+          ))}
+        </div>
+
+        {/* Remove old text particles */}
+        <div className="hidden">
+          {/* Particles that spell "DESTINATION MOTIVATION" */}
+          {/* D */}
+          <div className="particle-text particle-red" style={{ '--text-x': '8%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '10%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '8%', '--text-y': '45%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '8%', '--text-y': '50%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '10%', '--text-y': '50%' } as React.CSSProperties}></div>
+
+          {/* E */}
+          <div className="particle-text particle-red" style={{ '--text-x': '13%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '15%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '13%', '--text-y': '45%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '15%', '--text-y': '45%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '13%', '--text-y': '50%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '15%', '--text-y': '50%' } as React.CSSProperties}></div>
+
+          {/* S */}
+          <div className="particle-text particle-red" style={{ '--text-x': '18%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '20%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '18%', '--text-y': '45%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '20%', '--text-y': '50%' } as React.CSSProperties}></div>
+
+          {/* T */}
+          <div className="particle-text particle-red" style={{ '--text-x': '23%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '25%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '27%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '25%', '--text-y': '45%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '25%', '--text-y': '50%' } as React.CSSProperties}></div>
+
+          {/* I */}
+          <div className="particle-text particle-white" style={{ '--text-x': '30%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '30%', '--text-y': '45%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '30%', '--text-y': '50%' } as React.CSSProperties}></div>
+
+          {/* N */}
+          <div className="particle-text particle-red" style={{ '--text-x': '33%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '35%', '--text-y': '45%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '37%', '--text-y': '50%' } as React.CSSProperties}></div>
+
+          {/* A */}
+          <div className="particle-text particle-red" style={{ '--text-x': '40%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '42%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '40%', '--text-y': '45%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '42%', '--text-y': '45%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '40%', '--text-y': '50%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '42%', '--text-y': '50%' } as React.CSSProperties}></div>
+
+          {/* T */}
+          <div className="particle-text particle-red" style={{ '--text-x': '45%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '47%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '49%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '47%', '--text-y': '45%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '47%', '--text-y': '50%' } as React.CSSProperties}></div>
+
+          {/* I */}
+          <div className="particle-text particle-white" style={{ '--text-x': '52%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '52%', '--text-y': '45%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '52%', '--text-y': '50%' } as React.CSSProperties}></div>
+
+          {/* O */}
+          <div className="particle-text particle-red" style={{ '--text-x': '55%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '57%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '55%', '--text-y': '50%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '57%', '--text-y': '50%' } as React.CSSProperties}></div>
+
+          {/* N */}
+          <div className="particle-text particle-red" style={{ '--text-x': '60%', '--text-y': '40%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '62%', '--text-y': '45%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '64%', '--text-y': '50%' } as React.CSSProperties}></div>
+
+          {/* M */}
+          <div className="particle-text particle-red" style={{ '--text-x': '8%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '10%', '--text-y': '57%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '12%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '8%', '--text-y': '60%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '12%', '--text-y': '60%' } as React.CSSProperties}></div>
+
+          {/* O */}
+          <div className="particle-text particle-red" style={{ '--text-x': '15%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '17%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '15%', '--text-y': '60%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '17%', '--text-y': '60%' } as React.CSSProperties}></div>
+
+          {/* T */}
+          <div className="particle-text particle-red" style={{ '--text-x': '20%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '22%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '24%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '22%', '--text-y': '57%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '22%', '--text-y': '60%' } as React.CSSProperties}></div>
+
+          {/* I */}
+          <div className="particle-text particle-white" style={{ '--text-x': '27%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '27%', '--text-y': '57%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '27%', '--text-y': '60%' } as React.CSSProperties}></div>
+
+          {/* V */}
+          <div className="particle-text particle-red" style={{ '--text-x': '30%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '32%', '--text-y': '57%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '34%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '32%', '--text-y': '60%' } as React.CSSProperties}></div>
+
+          {/* A */}
+          <div className="particle-text particle-red" style={{ '--text-x': '37%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '39%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '37%', '--text-y': '57%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '39%', '--text-y': '57%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '37%', '--text-y': '60%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '39%', '--text-y': '60%' } as React.CSSProperties}></div>
+
+          {/* T */}
+          <div className="particle-text particle-red" style={{ '--text-x': '42%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '44%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '46%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '44%', '--text-y': '57%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '44%', '--text-y': '60%' } as React.CSSProperties}></div>
+
+          {/* I */}
+          <div className="particle-text particle-white" style={{ '--text-x': '49%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '49%', '--text-y': '57%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '49%', '--text-y': '60%' } as React.CSSProperties}></div>
+
+          {/* O */}
+          <div className="particle-text particle-red" style={{ '--text-x': '52%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '54%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '52%', '--text-y': '60%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '54%', '--text-y': '60%' } as React.CSSProperties}></div>
+
+          {/* N */}
+          <div className="particle-text particle-red" style={{ '--text-x': '57%', '--text-y': '55%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-white" style={{ '--text-x': '59%', '--text-y': '57%' } as React.CSSProperties}></div>
+          <div className="particle-text particle-red" style={{ '--text-x': '61%', '--text-y': '60%' } as React.CSSProperties}></div>
+        </div>
+
+        <div className="relative max-w-7xl mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
               <Badge className="mb-4 bg-yellow-400 text-black">
@@ -168,16 +329,7 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
                 {report.powerconfidence_score?.percentile || '99th percentile'}
               </Badge>
 
-              {/* Power100 Logo */}
-              <div className="mb-6">
-                <img
-                  src="/power100-logo.png"
-                  alt="Power100"
-                  className="h-16 w-auto"
-                />
-              </div>
-
-              <h1 className="text-5xl font-bold mb-4">{report.partner?.name || 'Partner'}</h1>
+              <h1 className="text-7xl font-bold mb-4">{report.partner?.name || 'Partner'}</h1>
               <p className="text-2xl mb-6 text-white/90">{report.partner?.tagline || ''}</p>
               
               {/* Trust Badges */}
@@ -217,7 +369,7 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
 
                     <p className="text-sm text-gray-600 uppercase tracking-wider mb-2 font-semibold">PowerConfidence Rating</p>
 
-                    <div className="text-8xl font-bold text-red-600 mb-2">{report.powerconfidence_score?.current || 99}</div>
+                    <div className="text-8xl font-bold text-red-600 mb-2">{Math.round(report.powerconfidence_score?.current || 99)}</div>
 
                     <p className="text-xl font-semibold text-gray-800">{report.powerconfidence_score?.label || 'Elite Partner'}</p>
 
@@ -244,41 +396,9 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
         </div>
       </div>
 
-      {/* Summary Section */}
-      {(report.partner?.ai_extended_summary || report.partner?.value_proposition) && (
-        <div className="py-20 bg-white">
-          <div className="max-w-5xl mx-auto px-4">
-            {/* AI-Generated Section Title */}
-            {report.partner?.ai_summary_title && (
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 text-center mb-8 italic leading-relaxed">
-                {report.partner.ai_summary_title}
-              </h2>
-            )}
-
-            {/* Extended Summary - Support multiple paragraphs */}
-            <div className="text-left space-y-6 text-gray-700 text-lg leading-relaxed">
-              {(() => {
-                // Prefer ai_extended_summary, fallback to value_proposition
-                const content = report.partner.ai_extended_summary || report.partner.value_proposition;
-
-                if (typeof content === 'string' && content.includes('\n\n')) {
-                  // Split into paragraphs if double newlines exist
-                  return content.split('\n\n').map((paragraph: string, idx: number) => (
-                    <p key={idx}>{paragraph}</p>
-                  ));
-                } else {
-                  // Render as single paragraph
-                  return <p>{content}</p>;
-                }
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Focus Areas Section */}
+      {/* Focus Areas Section - Moved up to attach to hero */}
       {report.partner?.focus_areas_served && report.partner.focus_areas_served.length > 0 && (
-        <div className="py-20 bg-white">
+        <div className="py-20 bg-gray-50">
           <div className="max-w-7xl mx-auto px-4">
             <div className="text-center mb-16">
               <div className="inline-block bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-semibold mb-4">Growth Areas</div>
@@ -288,8 +408,11 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
               {report.partner.focus_areas_served.map((area: string, idx: number) => (
                 <div key={idx} className="group bg-white rounded-2xl p-6 shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 text-center">
                   <div className="flex justify-center mb-4">
-                    <div className="w-14 h-14 rounded-xl bg-green-100 flex items-center justify-center group-hover:bg-green-600 transition-colors">
-                      <TrendingUp className="h-7 w-7 text-green-600 group-hover:text-white transition-colors" />
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl">
+                      <FocusAreaIcon
+                        focusArea={area}
+                        className="w-8 h-8 text-white"
+                      />
                     </div>
                   </div>
                   <p className="font-semibold text-gray-900 capitalize">
@@ -297,6 +420,54 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
                   </p>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Summary Section - 2 Column Layout with Partner Logo */}
+      {(report.partner?.ai_extended_summary || report.partner?.value_proposition) && (
+        <div className="py-20 bg-white shadow-lg">
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="grid md:grid-cols-2 gap-12 items-center">
+              {/* Left Column: Partner Logo */}
+              <div className="flex items-center justify-center">
+                <div className="relative">
+                  <img
+                    src={report.partner.logo_url || '/power100-logo.png'}
+                    alt={report.partner.partner_name || 'Partner'}
+                    className="w-full max-w-md h-auto"
+                  />
+                </div>
+              </div>
+
+              {/* Right Column: Title and Summary */}
+              <div>
+                {/* AI-Generated Section Title */}
+                {report.partner?.ai_summary_title && (
+                  <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6 italic leading-relaxed">
+                    {report.partner.ai_summary_title.replace(/\*\*/g, '').replace(/\*/g, '')}
+                  </h2>
+                )}
+
+                {/* Extended Summary - Support multiple paragraphs */}
+                <div className="text-left space-y-6 text-gray-700 text-lg leading-relaxed">
+                  {(() => {
+                    // Prefer ai_extended_summary, fallback to value_proposition
+                    const content = report.partner.ai_extended_summary || report.partner.value_proposition;
+
+                    if (typeof content === 'string' && content.includes('\n\n')) {
+                      // Split into paragraphs if double newlines exist
+                      return content.split('\n\n').map((paragraph: string, idx: number) => (
+                        <p key={idx}>{paragraph}</p>
+                      ));
+                    } else {
+                      // Render as single paragraph
+                      return <p>{content}</p>;
+                    }
+                  })()}
+                </div>
+              </div>
             </div>
           </div>
         </div>

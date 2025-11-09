@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import ContractorComparisonReport from '@/components/reports/ContractorComparisonReport';
 import ExecutiveReport from '@/components/reports/ExecutiveReport';
-import PublicPCRLanding from '@/components/reports/PublicPCRLanding';
+import PublicPCRLandingV2 from '@/components/reports/PublicPCRLandingV2';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FileText, Lock, Globe, ChevronRight } from 'lucide-react';
@@ -99,7 +99,7 @@ function DMReportsDemoContent() {
         )}
         
         {activeReport === 'public' && (
-          <PublicPCRLanding partnerId="1" />
+          <PublicPCRLandingV2 partnerId="1" />
         )}
       </div>
 

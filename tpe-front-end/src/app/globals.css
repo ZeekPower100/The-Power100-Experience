@@ -191,4 +191,276 @@
   .text-shadow-soft {
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), 0 0 2px rgba(0, 0, 0, 0.1);
   }
+
+  /* Hero Background Animations */
+  .animate-blob {
+    animation: blob 7s infinite;
+  }
+
+  .animation-delay-2000 {
+    animation-delay: 2s;
+  }
+
+  .animation-delay-4000 {
+    animation-delay: 4s;
+  }
+
+  @keyframes blob {
+    0%, 100% {
+      transform: translate(0px, 0px) scale(1);
+    }
+    33% {
+      transform: translate(30px, -50px) scale(1.1);
+    }
+    66% {
+      transform: translate(-20px, 20px) scale(0.9);
+    }
+  }
+
+  /* Logo Swarm Effect */
+  .logo-particle {
+    position: absolute;
+    left: var(--start-x);
+    top: var(--start-y);
+    animation: logo-swarm 20s ease-in-out infinite;
+    animation-delay: var(--delay);
+  }
+
+  .logo-image {
+    width: 20px;
+    height: 20px;
+    opacity: 0.4;
+    filter: brightness(1.2);
+  }
+
+  .logo-placeholder {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(251, 4, 1, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: bold;
+    color: white;
+  }
+
+  /* Floating Particles - Text Formation */
+  .particle-text {
+    position: absolute;
+    border-radius: 50%;
+    width: 8px;
+    height: 8px;
+    left: var(--text-x);
+    top: var(--text-y);
+    animation: text-particle-cycle 20s ease-in-out infinite;
+  }
+
+  .particle-white {
+    background: rgba(255, 255, 255, 0.7);
+  }
+
+  .particle-red {
+    background: rgba(251, 4, 1, 0.8);
+    box-shadow: 0 0 15px rgba(251, 4, 1, 0.5);
+  }
+
+  .particle-1 { width: 7px; height: 7px; left: 10%; animation-delay: 0s; }
+  .particle-2 { width: 9px; height: 9px; left: 20%; animation-delay: 2s; }
+  .particle-3 { width: 5px; height: 5px; left: 30%; animation-delay: 4s; }
+  .particle-4 { width: 8px; height: 8px; left: 40%; animation-delay: 1s; }
+  .particle-5 { width: 7px; height: 7px; left: 50%; animation-delay: 3s; }
+  .particle-6 { width: 9px; height: 9px; left: 60%; animation-delay: 5s; }
+  .particle-7 { width: 5px; height: 5px; left: 70%; animation-delay: 2.5s; }
+  .particle-8 { width: 8px; height: 8px; left: 80%; animation-delay: 4.5s; }
+  .particle-9 { width: 7px; height: 7px; left: 90%; animation-delay: 1.5s; }
+  .particle-10 { width: 9px; height: 9px; left: 15%; animation-delay: 3.5s; }
+  .particle-11 { width: 5px; height: 5px; left: 25%; animation-delay: 5.5s; }
+  .particle-12 { width: 8px; height: 8px; left: 45%; animation-delay: 0.5s; }
+  .particle-13 { width: 7px; height: 7px; left: 65%; animation-delay: 2.8s; }
+  .particle-14 { width: 9px; height: 9px; left: 75%; animation-delay: 4.2s; }
+  .particle-15 { width: 5px; height: 5px; left: 85%; animation-delay: 1.8s; }
+
+  @keyframes logo-swarm {
+    /* Phase 1: Float randomly (0-6s) */
+    0%, 30% {
+      transform: translate(var(--float-x), var(--float-y)) scale(1);
+      opacity: 0.4;
+    }
+    /* Phase 2: Converge to center (6-9s) */
+    40% {
+      transform: translate(calc(50vw - var(--start-x)), calc(45vh - var(--start-y))) scale(3);
+      opacity: 1;
+    }
+    /* Phase 3: Hold as big logo (9-12s) */
+    45%, 60% {
+      transform: translate(calc(50vw - var(--start-x)), calc(45vh - var(--start-y))) scale(3);
+      opacity: 1;
+    }
+    /* Phase 4: Disperse back (12-15s) */
+    75% {
+      transform: translate(var(--float-x), var(--float-y)) scale(1.5);
+      opacity: 0.6;
+    }
+    /* Phase 5: Resume floating (15-20s) */
+    85%, 100% {
+      transform: translate(var(--float-x), var(--float-y)) scale(1);
+      opacity: 0.4;
+    }
+  }
+
+  @keyframes text-particle-cycle {
+    /* Phase 1: Start in text formation (0-5s) */
+    0%, 25% {
+      transform: translate(0, 0) scale(1);
+      opacity: 1;
+    }
+    /* Phase 2: Disperse dramatically (5-12s) */
+    40% {
+      transform: translate(calc(20vw - 40vw * var(--text-x) / 100%), -50vh) scale(1.2);
+      opacity: 0.3;
+    }
+    /* Phase 3: Float around (12-15s) */
+    60% {
+      transform: translate(calc(-15vw + 30vw * var(--text-x) / 100%), 40vh) scale(0.8);
+      opacity: 0.2;
+    }
+    /* Phase 4: Start reforming (15-18s) */
+    75% {
+      transform: translate(0, 20px) scale(1);
+      opacity: 0.6;
+    }
+    /* Phase 5: Fully reformed (18-20s) */
+    90%, 100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes float-up {
+    0% {
+      transform: translateY(100vh) translateX(0);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.6;
+    }
+    90% {
+      opacity: 0.6;
+    }
+    100% {
+      transform: translateY(-100px) translateX(20px);
+      opacity: 0;
+    }
+  }
+
+  /* Geometric Grid Animation */
+  .grid-background {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+    background-size: 50px 50px;
+    animation: grid-shift 20s linear infinite;
+  }
+
+  .grid-background::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(251, 4, 1, 0.2) 2px, transparent 2px),
+      linear-gradient(90deg, rgba(251, 4, 1, 0.2) 2px, transparent 2px);
+    background-size: 100px 100px;
+    animation: grid-pulse 8s ease-in-out infinite;
+  }
+
+  @keyframes grid-shift {
+    0% {
+      transform: translate(0, 0);
+    }
+    100% {
+      transform: translate(50px, 50px);
+    }
+  }
+
+  @keyframes grid-pulse {
+    0%, 100% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 0.8;
+    }
+  }
+
+  /* Light Beams */
+  .light-beam {
+    position: absolute;
+    width: 200px;
+    height: 200%;
+    top: -50%;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.1) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    transform: rotate(25deg);
+    animation: beam-sweep 12s ease-in-out infinite;
+  }
+
+  .light-beam-1 {
+    left: -200px;
+    animation-delay: 0s;
+  }
+
+  .light-beam-2 {
+    left: -200px;
+    animation-delay: 4s;
+    background: linear-gradient(
+      90deg,
+      rgba(251, 4, 1, 0) 0%,
+      rgba(251, 4, 1, 0.15) 50%,
+      rgba(251, 4, 1, 0) 100%
+    );
+  }
+
+  .light-beam-3 {
+    left: -200px;
+    animation-delay: 8s;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 215, 0, 0) 0%,
+      rgba(255, 215, 0, 0.1) 50%,
+      rgba(255, 215, 0, 0) 100%
+    );
+  }
+
+  @keyframes beam-sweep {
+    0% {
+      transform: translateX(0) rotate(25deg);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(calc(100vw + 200px)) rotate(25deg);
+      opacity: 0;
+    }
+  }
+
+  /* Parallax Logo Background Effect */
+  .fixed-parallax-logo {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    will-change: transform;
+  }
 }

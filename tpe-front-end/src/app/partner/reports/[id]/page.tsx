@@ -15,7 +15,7 @@
 // ================================================================
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -62,9 +62,9 @@ interface Report {
 }
 
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function PartnerReportDetailPage({ params }: PageProps) {
@@ -72,7 +72,8 @@ export default function PartnerReportDetailPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const router = useRouter();
-  const reportId = params.id;
+  const resolvedParams = use(params);
+  const reportId = resolvedParams.id;
 
   useEffect(() => {
     loadReport();
@@ -172,22 +173,28 @@ export default function PartnerReportDetailPage({ params }: PageProps) {
   const customMetrics = report.report_data?.custom_metrics || [];
 
   return (
-    <div className="min-h-screen bg-power100-bg-grey">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <div className="min-h-screen bg-white">
+      {/* Header - Clean with Purple Accent */}
+      <div className="bg-white border-b-2 border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex justify-between items-start">
             <div>
               <Link href="/partner/reports">
-                <Button variant="ghost" className="mb-2 -ml-2">
+                <Button variant="ghost" className="mb-4 -ml-2 hover:bg-gray-100">
                   <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Reports
                 </Button>
               </Link>
-              <h1 className="text-3xl font-bold text-power100-black flex items-center gap-2">
+              <div className="inline-block bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-semibold mb-4">
+                Quarterly Report
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold text-black mb-3 flex items-center gap-3">
+                <div className="w-14 h-14 bg-purple-600 rounded-2xl flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-7 w-7 text-white" />
+                </div>
                 {report.quarter} {report.year} Executive Report
               </h1>
-              <p className="text-power100-grey mt-1 flex items-center gap-2">
+              <p className="text-gray-600 text-lg flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
                 Generated {new Date(report.generation_date).toLocaleDateString('en-US', {
                   year: 'numeric',
@@ -197,206 +204,272 @@ export default function PartnerReportDetailPage({ params }: PageProps) {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <Badge variant="outline" className={`${
+              <span className={`${
                 report.status === 'viewed' ? 'bg-green-100 text-green-800 border-green-200' :
                 report.status === 'delivered' ? 'bg-blue-100 text-blue-800 border-blue-200' :
                 'bg-gray-100 text-gray-800 border-gray-200'
-              } border text-sm px-3 py-1`}>
+              } border-2 text-sm px-4 py-2 rounded-full font-semibold`}>
                 {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
-              </Badge>
+              </span>
+              <Button
+                onClick={async () => {
+                  try {
+                    const token = getFromStorage('partnerToken');
+                    const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+                    const response = await fetch(`${API_BASE_URL}/reports/${reportId}/pdf/download`, {
+                      headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                      window.open(data.downloadUrl, '_blank');
+                    } else {
+                      alert('Failed to generate download link');
+                    }
+                  } catch (error) {
+                    console.error('Error downloading PDF:', error);
+                    alert('Failed to download PDF');
+                  }
+                }}
+                className="bg-black hover:bg-gray-900 text-white font-semibold px-6 py-3 rounded-xl shadow-lg"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download PDF
+              </Button>
             </div>
           </div>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid gap-6">
-          {/* Performance Summary */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="grid gap-12">
+          {/* Performance Summary - Modern Design with Effects */}
           {performanceSummary && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <Card className="bg-white shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-2xl flex items-center gap-2">
-                    <Star className="h-6 w-6 text-power100-red" />
-                    Performance Summary
-                  </CardTitle>
-                  <CardDescription>
+              <div className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden">
+                <div className="p-10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+                    <h2 className="text-3xl font-bold text-black">Performance Summary</h2>
+                  </div>
+                  <p className="text-gray-600 mb-10 text-lg">
                     Overall customer satisfaction metrics for {report.quarter} {report.year}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {/* Overall Satisfaction */}
-                    <div className="bg-power100-bg-grey rounded-lg p-6 text-center">
-                      <p className="text-sm font-medium text-power100-grey mb-2">Overall Satisfaction</p>
-                      <p className="text-5xl font-bold text-power100-black mb-2">
-                        {performanceSummary.overall_satisfaction}
-                        <span className="text-2xl text-power100-grey">/100</span>
-                      </p>
-                      {performanceSummary.satisfaction_trend && getTrendIcon(performanceSummary.satisfaction_trend)}
+                    <div className="group/card relative bg-white rounded-2xl p-8 text-center shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100">
+                      <div className="absolute inset-0 bg-gradient-to-br from-green-500 to-emerald-600 opacity-0 group-hover/card:opacity-5 rounded-2xl transition-opacity duration-300"></div>
+                      <div className="relative">
+                        <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Overall Satisfaction</p>
+                        <p className="text-5xl font-bold text-black mb-3">
+                          {performanceSummary.overall_satisfaction}
+                          <span className="text-2xl text-gray-400">/100</span>
+                        </p>
+                        {performanceSummary.satisfaction_trend && (
+                          <div className="flex justify-center">
+                            {getTrendIcon(performanceSummary.satisfaction_trend)}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* NPS Score */}
-                    <div className="bg-power100-bg-grey rounded-lg p-6 text-center">
-                      <p className="text-sm font-medium text-power100-grey mb-2">Net Promoter Score</p>
-                      <p className="text-5xl font-bold text-power100-black mb-2">
-                        {performanceSummary.nps_score}
-                      </p>
-                      {performanceSummary.nps_trend && getTrendIcon(performanceSummary.nps_trend)}
+                    <div className="group/card relative bg-white rounded-2xl p-8 text-center shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100">
+                      <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-cyan-600 opacity-0 group-hover/card:opacity-5 rounded-2xl transition-opacity duration-300"></div>
+                      <div className="relative">
+                        <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Net Promoter Score</p>
+                        <p className="text-5xl font-bold text-black mb-3">
+                          {performanceSummary.nps_score}
+                        </p>
+                        {performanceSummary.nps_trend && (
+                          <div className="flex justify-center">
+                            {getTrendIcon(performanceSummary.nps_trend)}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     {/* Total Feedback */}
-                    <div className="bg-power100-bg-grey rounded-lg p-6 text-center">
-                      <p className="text-sm font-medium text-power100-grey mb-2">Total Responses</p>
-                      <p className="text-5xl font-bold text-power100-black mb-2">
-                        {performanceSummary.total_feedback}
-                      </p>
-                      <div className="flex items-center justify-center gap-1 text-sm text-power100-grey">
-                        <Users className="h-4 w-4" />
-                        Customers surveyed
+                    <div className="group/card relative bg-white rounded-2xl p-8 text-center shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100">
+                      <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-violet-600 opacity-0 group-hover/card:opacity-5 rounded-2xl transition-opacity duration-300"></div>
+                      <div className="relative">
+                        <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Total Responses</p>
+                        <p className="text-5xl font-bold text-black mb-3">
+                          {performanceSummary.total_feedback}
+                        </p>
+                        <div className="flex items-center justify-center gap-2 text-sm text-gray-600">
+                          <Users className="h-4 w-4" />
+                          Customers surveyed
+                        </div>
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
           )}
 
-          {/* Custom Metrics */}
+          {/* Custom Metrics - Modern Design with Effects */}
           {customMetrics.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
-              <Card className="bg-white shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-2xl flex items-center gap-2">
-                    <TrendingUp className="h-6 w-6 text-power100-green" />
-                    Your Custom Metrics
-                  </CardTitle>
-                  <CardDescription>
+              <div className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden">
+                <div className="p-10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+                    <h2 className="text-3xl font-bold text-black">Your Custom Metrics</h2>
+                  </div>
+                  <p className="text-gray-600 mb-10 text-lg">
                     Performance across your unique business metrics
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     {customMetrics.map((metric: any, index: number) => (
-                      <div
+                      <motion.div
                         key={index}
-                        className={`rounded-lg border-l-4 p-6 ${
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 + index * 0.1 }}
+                        className={`group/metric rounded-2xl border-l-4 p-8 shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 ${
                           metric.trend === 'up' ? 'border-green-500 bg-green-50' :
                           metric.trend === 'down' ? 'border-red-500 bg-red-50' :
                           'border-gray-400 bg-gray-50'
                         }`}
                       >
-                        <div className="flex items-start justify-between mb-3">
-                          <h3 className="font-semibold text-power100-black">{metric.name}</h3>
+                        <div className="flex items-start justify-between mb-4">
+                          <h3 className="font-bold text-black text-lg">{metric.name}</h3>
                           {getTrendIcon(metric.trend)}
                         </div>
-                        <p className="text-3xl font-bold text-power100-black mb-2">
+                        <p className="text-5xl font-bold text-black mb-4">
                           {metric.average !== null && metric.average !== undefined ? metric.average : 'N/A'}
                         </p>
-                        <p className={`text-sm ${getTrendColor(metric.trend)} px-2 py-1 rounded-md inline-block`}>
+                        <p className={`text-sm ${getTrendColor(metric.trend)} px-4 py-2 rounded-full inline-block font-semibold`}>
                           {metric.trend_description || metric.trend}
                         </p>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
           )}
 
-          {/* Feedback Highlights */}
+          {/* Feedback Highlights - Modern Design with Effects */}
           {report.report_data?.feedback_highlights && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <Card className="bg-white shadow-lg">
-                <CardHeader>
-                  <CardTitle className="text-2xl flex items-center gap-2">
-                    <MessageSquare className="h-6 w-6 text-blue-600" />
-                    Customer Feedback Highlights
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
+              <div className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 overflow-hidden">
+                <div className="p-10">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+                    <h2 className="text-3xl font-bold text-black">Customer Feedback Highlights</h2>
+                  </div>
+                  <p className="text-gray-600 mb-10 text-lg">Key insights from customer responses</p>
+
+                  <div className="space-y-8">
                     {report.report_data.feedback_highlights.positive?.length > 0 && (
-                      <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                        <h4 className="font-semibold text-green-800 mb-2">✓ Top Strengths</h4>
-                        <ul className="list-disc list-inside space-y-1 text-green-700">
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.3 }}
+                        className="group/feedback bg-green-50 border-2 border-green-200 rounded-2xl p-8 hover:shadow-xl transition-all duration-300"
+                      >
+                        <h4 className="font-bold text-green-900 mb-6 text-xl flex items-center gap-2">
+                          ✓ Top Strengths
+                        </h4>
+                        <ul className="space-y-4">
                           {report.report_data.feedback_highlights.positive.map((item: string, index: number) => (
-                            <li key={index}>{item}</li>
+                            <li key={index} className="flex items-start gap-3 text-green-800 text-base">
+                              <span className="text-green-500 font-bold flex-shrink-0 text-lg">•</span>
+                              <span>{item}</span>
+                            </li>
                           ))}
                         </ul>
-                      </div>
+                      </motion.div>
                     )}
 
                     {report.report_data.feedback_highlights.improvement?.length > 0 && (
-                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <h4 className="font-semibold text-yellow-800 mb-2">⚡ Areas for Improvement</h4>
-                        <ul className="list-disc list-inside space-y-1 text-yellow-700">
+                      <motion.div
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.4 }}
+                        className="group/feedback bg-yellow-50 border-2 border-yellow-200 rounded-2xl p-8 hover:shadow-xl transition-all duration-300"
+                      >
+                        <h4 className="font-bold text-yellow-900 mb-6 text-xl flex items-center gap-2">
+                          ⚡ Areas for Improvement
+                        </h4>
+                        <ul className="space-y-4">
                           {report.report_data.feedback_highlights.improvement.map((item: string, index: number) => (
-                            <li key={index}>{item}</li>
+                            <li key={index} className="flex items-start gap-3 text-yellow-800 text-base">
+                              <span className="text-yellow-500 font-bold flex-shrink-0 text-lg">•</span>
+                              <span>{item}</span>
+                            </li>
                           ))}
                         </ul>
-                      </div>
+                      </motion.div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
           )}
 
-          {/* Report Metadata */}
-          <Card className="bg-white shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Report Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          {/* Report Metadata - Modern Design with Effects */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="bg-gray-50 border-2 border-gray-200 rounded-2xl p-10 shadow-md hover:shadow-lg transition-all duration-300"
+          >
+            <h3 className="text-xl font-bold text-black mb-8 flex items-center gap-2">
+              <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+              Report Information
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              <div>
+                <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Generated</p>
+                <p className="font-bold text-black text-lg">
+                  {new Date(report.generation_date).toLocaleDateString()}
+                </p>
+              </div>
+              {report.delivered_at && (
                 <div>
-                  <p className="text-power100-grey">Generated</p>
-                  <p className="font-semibold text-power100-black">
-                    {new Date(report.generation_date).toLocaleDateString()}
+                  <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide flex items-center gap-1">
+                    <Mail className="h-3 w-3" />
+                    Delivered
+                  </p>
+                  <p className="font-bold text-black text-lg">
+                    {new Date(report.delivered_at).toLocaleDateString()}
                   </p>
                 </div>
-                {report.delivered_at && (
-                  <div>
-                    <p className="text-power100-grey flex items-center gap-1">
-                      <Mail className="h-3 w-3" />
-                      Delivered
-                    </p>
-                    <p className="font-semibold text-power100-black">
-                      {new Date(report.delivered_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
-                {report.viewed_at && (
-                  <div>
-                    <p className="text-power100-grey flex items-center gap-1">
-                      <Eye className="h-3 w-3" />
-                      First Viewed
-                    </p>
-                    <p className="font-semibold text-power100-black">
-                      {new Date(report.viewed_at).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
+              )}
+              {report.viewed_at && (
                 <div>
-                  <p className="text-power100-grey">Total Responses</p>
-                  <p className="font-semibold text-power100-black">{report.total_responses}</p>
+                  <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide flex items-center gap-1">
+                    <Eye className="h-3 w-3" />
+                    First Viewed
+                  </p>
+                  <p className="font-bold text-black text-lg">
+                    {new Date(report.viewed_at).toLocaleDateString()}
+                  </p>
                 </div>
+              )}
+              <div>
+                <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Total Responses</p>
+                <p className="font-bold text-black text-lg">{report.total_responses}</p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </motion.div>
         </div>
       </div>
     </div>

@@ -168,22 +168,24 @@ export default function PartnerReportsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-power100-bg-grey">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-power100-black flex items-center gap-2">
-                <FileText className="h-8 w-8 text-power100-red" />
-                Quarterly Performance Reports
-              </h1>
-              <p className="text-power100-grey mt-1">
-                View your executive performance reports and customer feedback analytics
-              </p>
+    <div className="min-h-screen bg-white">
+      {/* Header - Clean Black/White with Red Accent */}
+      <div className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="text-center mb-6">
+            <div className="inline-block bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-semibold mb-4">
+              Quarterly Reports
             </div>
+            <h1 className="text-4xl md:text-5xl font-bold text-black mb-4">
+              Performance Reports
+            </h1>
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+              View your executive performance reports and customer feedback analytics
+            </p>
+          </div>
+          <div className="flex justify-center">
             <Link href="/partner/dashboard">
-              <Button variant="outline" className="border-2 border-gray-200">
+              <Button variant="outline" className="border-2 border-gray-900 hover:bg-gray-50 rounded-xl px-6 py-3 font-semibold text-black">
                 Back to Dashboard
               </Button>
             </Link>
@@ -199,81 +201,76 @@ export default function PartnerReportsPage() {
           </Alert>
         )}
 
-        {/* Filters */}
+        {/* Filters - Clean with Subtle Purple Accent */}
         {reports.length > 0 && (
-          <Card className="mb-6 bg-white shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Filter className="h-5 w-5 text-power100-red" />
-                Filter Reports
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-4">
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-power100-grey">Quarter</label>
-                  <select
-                    value={selectedQuarter}
-                    onChange={(e) => setSelectedQuarter(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-power100-red"
-                  >
-                    <option value="all">All Quarters</option>
-                    {quarters.map(q => (
-                      <option key={q} value={q}>{q}</option>
-                    ))}
-                  </select>
-                </div>
+          <div className="bg-gray-50 rounded-2xl p-8 mb-12 border border-gray-200">
+            <div className="flex items-center gap-3 mb-6">
+              <Filter className="h-5 w-5 text-gray-700" />
+              <h2 className="text-xl font-bold text-black">Filter Reports</h2>
+            </div>
 
-                <div className="flex flex-col gap-2">
-                  <label className="text-sm font-medium text-power100-grey">Year</label>
-                  <select
-                    value={selectedYear}
-                    onChange={(e) => setSelectedYear(e.target.value)}
-                    className="px-3 py-2 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-power100-red"
-                  >
-                    <option value="all">All Years</option>
-                    {years.map(y => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {(selectedQuarter !== 'all' || selectedYear !== 'all') && (
-                  <div className="flex items-end">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        setSelectedQuarter('all');
-                        setSelectedYear('all');
-                      }}
-                      className="border-2 border-gray-200"
-                    >
-                      Clear Filters
-                    </Button>
-                  </div>
-                )}
+            <div className="flex flex-wrap gap-6">
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-black uppercase tracking-wide">Quarter</label>
+                <select
+                  value={selectedQuarter}
+                  onChange={(e) => setSelectedQuarter(e.target.value)}
+                  className="px-6 py-3 border-2 border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 font-medium text-base transition-all duration-300"
+                >
+                  <option value="all">All Quarters</option>
+                  {quarters.map(q => (
+                    <option key={q} value={q}>{q}</option>
+                  ))}
+                </select>
               </div>
-            </CardContent>
-          </Card>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-black uppercase tracking-wide">Year</label>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="px-6 py-3 border-2 border-gray-300 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-red-500 font-medium text-base transition-all duration-300"
+                >
+                  <option value="all">All Years</option>
+                  {years.map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+              </div>
+
+              {(selectedQuarter !== 'all' || selectedYear !== 'all') && (
+                <div className="flex items-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedQuarter('all');
+                      setSelectedYear('all');
+                    }}
+                    className="border-2 border-gray-900 hover:bg-gray-50 rounded-xl px-6 py-3 font-semibold transition-all duration-300"
+                  >
+                    Clear Filters
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
-        {/* Reports List */}
+        {/* Reports List - Modern Design */}
         {filteredReports.length === 0 ? (
-          <Card className="bg-white shadow-sm">
-            <CardContent className="p-12 text-center">
-              <FileText className="h-16 w-16 text-power100-grey mx-auto mb-4 opacity-50" />
-              <h3 className="text-xl font-semibold text-power100-black mb-2">
-                {reports.length === 0 ? 'No reports available yet' : 'No reports match your filters'}
-              </h3>
-              <p className="text-power100-grey">
-                {reports.length === 0
-                  ? 'Reports are generated after each quarterly feedback cycle completes.'
-                  : 'Try adjusting your filters to see more reports.'}
-              </p>
-            </CardContent>
-          </Card>
+          <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
+            <FileText className="h-20 w-20 text-gray-300 mx-auto mb-6" />
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">
+              {reports.length === 0 ? 'No reports available yet' : 'No reports match your filters'}
+            </h3>
+            <p className="text-lg text-gray-600 max-w-md mx-auto">
+              {reports.length === 0
+                ? 'Reports are generated after each quarterly feedback cycle completes.'
+                : 'Try adjusting your filters to see more reports.'}
+            </p>
+          </div>
         ) : (
-          <div className="grid gap-6">
+          <div className="grid gap-8">
             {filteredReports.map((report, index) => (
               <motion.div
                 key={report.id}
@@ -281,57 +278,64 @@ export default function PartnerReportsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
-                <Card
-                  className="bg-white hover:shadow-lg transition-all cursor-pointer border-2 hover:border-power100-red"
+                <div
+                  className="group bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer border-2 border-gray-200 overflow-hidden"
                   onClick={() => viewReport(report)}
                 >
-                  <CardHeader>
+                  {/* Card Header */}
+                  <div className="p-8 border-b-2 border-gray-100">
                     <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-power100-red rounded-full flex items-center justify-center">
-                          <FileText className="h-6 w-6 text-white" />
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-purple-600 rounded-2xl flex items-center justify-center flex-shrink-0">
+                          <FileText className="h-8 w-8 text-white" />
                         </div>
                         <div>
-                          <CardTitle className="text-xl text-power100-black">
+                          <h3 className="text-2xl font-bold text-black mb-2">
                             {report.quarter} {report.year} Executive Report
-                          </CardTitle>
-                          <CardDescription className="flex items-center gap-2 mt-1">
+                          </h3>
+                          <div className="flex items-center gap-2 text-gray-600">
                             <Calendar className="h-4 w-4" />
-                            Generated: {new Date(report.generation_date).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'long',
-                              day: 'numeric'
-                            })}
-                          </CardDescription>
+                            <span className="text-base">
+                              Generated: {new Date(report.generation_date).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                      <Badge variant="outline" className={`${getStatusBadgeColor(report.status)} border`}>
+                      <span className={`px-4 py-2 text-sm font-semibold rounded-full border-2 ${getStatusBadgeColor(report.status)}`}>
                         {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
-                      </Badge>
+                      </span>
                     </div>
-                  </CardHeader>
+                  </div>
 
-                  <CardContent>
+                  {/* Card Content */}
+                  <div className="p-8 bg-gray-50">
                     {/* Performance Summary (if report_data available) */}
                     {report.report_data?.performance_summary && (
-                      <div className="bg-power100-bg-grey rounded-lg p-4 mb-4">
-                        <h4 className="font-semibold text-power100-black mb-3">Performance Summary</h4>
-                        <div className="grid grid-cols-3 gap-4">
-                          <div>
-                            <p className="text-sm text-power100-grey">Overall Satisfaction</p>
-                            <p className="text-2xl font-bold text-power100-black">
-                              {report.report_data.performance_summary.overall_satisfaction}/100
+                      <div className="bg-white rounded-2xl p-6 mb-6 border-2 border-gray-200">
+                        <h4 className="text-lg font-bold text-black mb-6 flex items-center gap-2">
+                          <div className="w-2 h-2 bg-purple-600 rounded-full"></div>
+                          Performance Summary
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          <div className="text-center">
+                            <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Overall Satisfaction</p>
+                            <p className="text-4xl font-bold text-black">
+                              {report.report_data.performance_summary.overall_satisfaction}<span className="text-2xl text-gray-400">/100</span>
                             </p>
                           </div>
-                          <div>
-                            <p className="text-sm text-power100-grey">NPS Score</p>
-                            <p className="text-2xl font-bold text-power100-black">
+                          <div className="text-center">
+                            <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">NPS Score</p>
+                            <p className="text-4xl font-bold text-black">
                               {report.report_data.performance_summary.nps_score}
                             </p>
                           </div>
-                          <div>
-                            <p className="text-sm text-power100-grey">Total Feedback</p>
-                            <p className="text-2xl font-bold text-power100-black">
+                          <div className="text-center">
+                            <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Total Feedback</p>
+                            <p className="text-4xl font-bold text-black">
                               {report.report_data.performance_summary.total_feedback}
                             </p>
                           </div>
@@ -340,42 +344,40 @@ export default function PartnerReportsPage() {
                     )}
 
                     {/* Delivery Status */}
-                    <div className="flex flex-wrap gap-4 text-sm text-power100-grey">
+                    <div className="flex flex-wrap gap-6 text-base text-gray-700 mb-6">
                       {report.delivered_at && (
-                        <div className="flex items-center gap-1">
-                          <Mail className="h-4 w-4 text-green-600" />
-                          Delivered: {new Date(report.delivered_at).toLocaleDateString()}
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-4 w-4 text-gray-600" />
+                          <span>Delivered: {new Date(report.delivered_at).toLocaleDateString()}</span>
                         </div>
                       )}
                       {report.viewed_at && (
-                        <div className="flex items-center gap-1">
-                          <Eye className="h-4 w-4 text-blue-600" />
-                          Viewed: {new Date(report.viewed_at).toLocaleDateString()}
+                        <div className="flex items-center gap-2">
+                          <Eye className="h-4 w-4 text-gray-600" />
+                          <span>Viewed: {new Date(report.viewed_at).toLocaleDateString()}</span>
                         </div>
                       )}
                       {!report.delivered_at && report.status === 'generated' && (
-                        <div className="flex items-center gap-1 text-purple-600">
-                          <TrendingUp className="h-4 w-4" />
-                          Ready to send
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="h-4 w-4 text-gray-600" />
+                          <span className="font-semibold">Ready to send</span>
                         </div>
                       )}
                     </div>
 
-                    {/* View Report Button */}
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <Button
-                        className="w-full bg-power100-green hover:bg-green-600 text-white font-semibold"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          viewReport(report);
-                        }}
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Full Report
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                    {/* View Report Button - Black */}
+                    <Button
+                      className="w-full bg-black hover:bg-gray-900 text-white font-semibold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 text-lg"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        viewReport(report);
+                      }}
+                    >
+                      <Eye className="h-5 w-5 mr-2" />
+                      View Full Report
+                    </Button>
+                  </div>
+                </div>
               </motion.div>
             ))}
           </div>

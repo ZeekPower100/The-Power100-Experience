@@ -271,55 +271,58 @@ function PartnerProfileCompletionContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-power100-bg-grey">
-      {/* Progress Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-6 py-8">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-power100-black">
-                Complete Your Profile
-              </h1>
-              {event && (
-                <p className="text-power100-grey mt-2">
-                  for <strong>{event.name}</strong>
-                </p>
-              )}
+    <div className="min-h-screen bg-gray-50">
+      {/* Progress Header - Modern Design */}
+      <div className="bg-gradient-to-br from-white via-gray-50 to-white shadow-lg border-b border-gray-200">
+        <div className="max-w-4xl mx-auto px-6 py-12">
+          <div className="text-center mb-8">
+            <div className="inline-block bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-semibold mb-4">
+              Profile Setup
             </div>
-            <div className="text-sm text-power100-grey">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Complete Your Profile
+            </h1>
+            {event && (
+              <p className="text-xl text-gray-600">
+                for <strong className="text-gray-900">{event.name}</strong>
+              </p>
+            )}
+            <div className="inline-block mt-4 bg-gray-100 text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">
               Step {currentStep} of {totalSteps}
             </div>
           </div>
 
           {/* Progress Bar */}
-          <div className="w-full bg-gray-300 rounded-full h-2 mb-4">
+          <div className="w-full bg-gray-200 rounded-full h-3 mb-8 overflow-hidden">
             <motion.div
-              className="bg-power100-red h-2 rounded-full"
+              className="bg-gradient-to-r from-red-600 to-red-500 h-3 rounded-full shadow-lg"
               initial={{ width: "0%" }}
               animate={{ width: `${(currentStep / totalSteps) * 100}%` }}
               transition={{ duration: 0.5 }}
             />
           </div>
 
-          {/* Step Indicators */}
-          <div className="flex justify-between">
+          {/* Step Indicators - Modern Design */}
+          <div className="flex justify-between max-w-2xl mx-auto">
             {steps.map((step) => (
-              <div key={step.number} className="flex flex-col items-center">
+              <div key={step.number} className="flex flex-col items-center gap-3">
                 <motion.div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center text-lg font-bold shadow-lg ${
                     currentStep > step.number
-                      ? "bg-power100-green text-white"
+                      ? "bg-gradient-to-br from-green-500 to-emerald-600 text-white"
                       : currentStep === step.number
-                      ? "bg-power100-red text-white"
-                      : "bg-gray-400 text-white"
+                      ? "bg-gradient-to-br from-red-600 to-red-500 text-white"
+                      : "bg-gray-300 text-gray-600"
                   }`}
                   initial={{ scale: 0.8 }}
-                  animate={{ scale: currentStep === step.number ? 1.1 : 1 }}
+                  animate={{ scale: currentStep === step.number ? 1.05 : 1 }}
                   transition={{ duration: 0.3 }}
                 >
-                  {currentStep > step.number ? "✓" : step.number}
+                  {currentStep > step.number ? <CheckCircle className="w-7 h-7" /> : step.number}
                 </motion.div>
-                <span className="text-xs mt-2 text-center max-w-20 text-power100-black">
+                <span className={`text-sm font-semibold text-center max-w-24 ${
+                  currentStep === step.number ? "text-red-600" : "text-gray-700"
+                }`}>
                   {step.title}
                 </span>
               </div>
@@ -332,58 +335,64 @@ function PartnerProfileCompletionContent() {
       <div className="max-w-2xl mx-auto px-6 py-12">
         <form onSubmit={(e) => e.preventDefault()} className="space-y-8">
 
-          {/* Step 1: Company Info */}
+          {/* Step 1: Company Info - Modern Design */}
           {currentStep === 1 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <Card className="w-full bg-white shadow-lg border-0">
-                <CardContent className="p-8">
+              <div className="w-full bg-white shadow-2xl rounded-2xl border border-gray-100">
+                <div className="p-10">
                   <div className="flex justify-center mb-8">
-                    <div className="w-16 h-16 bg-power100-red rounded-full flex items-center justify-center">
-                      <Building2 className="h-8 w-8 text-white" />
+                    <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-2xl flex items-center justify-center shadow-lg">
+                      <Building2 className="h-10 w-10 text-white" />
                     </div>
                   </div>
 
-                  <div className="text-center mb-8">
-                    <h2 className="text-2xl font-bold text-power100-black mb-2">
+                  <div className="text-center mb-10">
+                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
                       Company Information
                     </h2>
-                    <p className="text-power100-grey">
-                      Help us know more about {formData.company_name}
+                    <p className="text-lg text-gray-600">
+                      Help us know more about <span className="font-semibold text-gray-900">{formData.company_name}</span>
                     </p>
                   </div>
 
-                  <div className="space-y-6">
+                  <div className="space-y-8">
                     <div>
-                      <Label htmlFor="company_description">Company Description *</Label>
+                      <Label htmlFor="company_description" className="text-base font-semibold text-gray-900 mb-2 block">
+                        Company Description *
+                      </Label>
                       <Textarea
                         id="company_description"
                         value={formData.company_description}
                         onChange={(e) => handleInputChange('company_description', e.target.value)}
                         placeholder="Briefly describe what your company does..."
                         required
-                        className="mt-1"
-                        rows={4}
+                        className="mt-2 border-2 border-gray-200 rounded-xl p-4 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 text-base"
+                        rows={5}
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div>
-                        <Label htmlFor="primary_contact">Contact Name *</Label>
+                        <Label htmlFor="primary_contact" className="text-base font-semibold text-gray-900 mb-2 block">
+                          Contact Name *
+                        </Label>
                         <Input
                           id="primary_contact"
                           value={formData.primary_contact}
                           onChange={(e) => handleInputChange('primary_contact', e.target.value)}
                           placeholder="John Smith"
                           required
-                          className="mt-1"
+                          className="mt-2 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 text-base"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="primary_email">Email *</Label>
+                        <Label htmlFor="primary_email" className="text-base font-semibold text-gray-900 mb-2 block">
+                          Email *
+                        </Label>
                         <Input
                           id="primary_email"
                           type="email"
@@ -391,11 +400,13 @@ function PartnerProfileCompletionContent() {
                           onChange={(e) => handleInputChange('primary_email', e.target.value)}
                           placeholder="john@company.com"
                           required
-                          className="mt-1"
+                          className="mt-2 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 text-base"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="primary_phone">Phone *</Label>
+                        <Label htmlFor="primary_phone" className="text-base font-semibold text-gray-900 mb-2 block">
+                          Phone *
+                        </Label>
                         <Input
                           id="primary_phone"
                           type="tel"
@@ -403,13 +414,13 @@ function PartnerProfileCompletionContent() {
                           onChange={(e) => handleInputChange('primary_phone', e.target.value)}
                           placeholder="(555) 123-4567"
                           required
-                          className="mt-1"
+                          className="mt-2 border-2 border-gray-200 rounded-xl p-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all duration-300 text-base"
                         />
                       </div>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </motion.div>
           )}
 

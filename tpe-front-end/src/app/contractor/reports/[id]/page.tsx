@@ -15,7 +15,7 @@
 // ================================================================
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,7 +32,8 @@ import {
   Eye,
   Users,
   Trophy,
-  BarChart3
+  BarChart3,
+  Download
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getApiUrl } from '@/utils/api';
@@ -53,9 +54,9 @@ interface Report {
 }
 
 interface PageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function ContractorReportDetailPage({ params }: PageProps) {
@@ -63,7 +64,8 @@ export default function ContractorReportDetailPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const router = useRouter();
-  const reportId = params.id;
+  const resolvedParams = use(params);
+  const reportId = resolvedParams.id;
 
   useEffect(() => {
     loadReport();
@@ -187,13 +189,39 @@ export default function ContractorReportDetailPage({ params }: PageProps) {
                 })}
               </p>
             </div>
-            <Badge variant="outline" className={`${
-              report.status === 'viewed' ? 'bg-green-100 text-green-800 border-green-200' :
-              report.status === 'delivered' ? 'bg-blue-100 text-blue-800 border-blue-200' :
-              'bg-gray-100 text-gray-800 border-gray-200'
-            } border text-sm px-3 py-1`}>
-              {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
-            </Badge>
+            <div className="flex items-center gap-4">
+              <Badge variant="outline" className={`${
+                report.status === 'viewed' ? 'bg-green-100 text-green-800 border-green-200' :
+                report.status === 'delivered' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                'bg-gray-100 text-gray-800 border-gray-200'
+              } border text-sm px-3 py-1`}>
+                {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
+              </Badge>
+              <Button
+                onClick={async () => {
+                  try {
+                    const token = getFromStorage('contractorToken');
+                    const API_BASE_URL = getApiUrl();
+                    const response = await fetch(`${API_BASE_URL}/reports/${reportId}/pdf/download`, {
+                      headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                      window.open(data.downloadUrl, '_blank');
+                    } else {
+                      alert('Failed to generate download link');
+                    }
+                  } catch (error) {
+                    console.error('Error downloading PDF:', error);
+                    alert('Failed to download PDF');
+                  }
+                }}
+                className="bg-power100-green hover:bg-green-600 text-white font-semibold"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download PDF
+              </Button>
+            </div>
           </div>
         </div>
       </div>

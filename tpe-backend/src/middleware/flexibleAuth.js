@@ -14,22 +14,23 @@ const identifyAndValidateToken = async (token) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     // Debug logging (can be removed in production)
-    console.log('🔍 Token decoded:', { 
-      hasId: !!decoded.id, 
+    console.log('🔍 Token decoded:', {
+      hasId: !!decoded.id,
       hasPartnerId: !!decoded.partnerId,
-      hasContractorId: !!decoded.contractorId,
-      type: decoded.type 
+      hasContractorId: !!(decoded.contractorId || decoded.contractor_id),
+      type: decoded.type
     });
 
-    // CONTRACTOR TOKEN - has contractorId field
-    if (decoded.contractorId) {
+    // CONTRACTOR TOKEN - has contractorId or contractor_id field (support both formats)
+    const contractorId = decoded.contractorId || decoded.contractor_id;
+    if (contractorId) {
       const result = await query(
         'SELECT id, CONCAT(first_name, \' \', last_name) as name, email, phone, company_name, current_stage as stage FROM contractors WHERE id = $1',
-        [decoded.contractorId]
+        [contractorId]
       );
 
       if (result.rows.length === 0) {
-        console.log('❌ Contractor not found:', decoded.contractorId);
+        console.log('❌ Contractor not found:', contractorId);
         return null;
       }
 
@@ -341,6 +342,13 @@ const optionalFlexibleAuth = async (req, res, next) => {
   if (validationResult) {
     req.user = validationResult.user;
     req.userType = validationResult.type;
+
+    // Set context-specific properties for backward compatibility
+    if (validationResult.type === 'contractor') {
+      req.contractorId = validationResult.user.contractorId;
+    } else if (validationResult.type === 'partner') {
+      req.partnerId = validationResult.user.partnerId;
+    }
   }
 
   next();

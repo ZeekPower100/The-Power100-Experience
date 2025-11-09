@@ -44,15 +44,19 @@ export default function AdminSearchPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  
+
   // Modal states for enhanced view functionality
   const [selectedContractor, setSelectedContractor] = useState<any>(null);
   const [selectedPartner, setSelectedPartner] = useState<any>(null);
   const [isContractorModalOpen, setIsContractorModalOpen] = useState(false);
   const [isPartnerModalOpen, setIsPartnerModalOpen] = useState(false);
-  
+
   // Partner editing state (matching Enhanced Partners pattern)
   const [editPartner, setEditPartner] = useState<any>(null);
+
+  // Pagination state (controlled by parent)
+  const [contractorPage, setContractorPage] = useState(1);
+  const [partnerPage, setPartnerPage] = useState(1);
 
   const handleContractorResults = (results: SearchResult) => {
     setContractorResults(results);
@@ -354,6 +358,8 @@ export default function AdminSearchPage() {
             searchType="contractors"
             onResults={handleContractorResults}
             onError={handleError}
+            currentPage={contractorPage}
+            onPageChange={setContractorPage}
           />
 
           {/* Bulk Operations for Contractors */}
@@ -366,14 +372,11 @@ export default function AdminSearchPage() {
               onSuccess={handleSuccess}
             />
           )}
-          
+
           <SearchResults
             results={contractorResults}
             searchType="contractors"
-            onPageChange={(page) => {
-              // This will be handled by the AdvancedSearch component
-              console.log('Page change:', page);
-            }}
+            onPageChange={setContractorPage}
             onViewDetail={handleViewContractorDetail}
             onEdit={handleEditContractor}
             onDelete={handleDeleteContractor}
@@ -387,6 +390,8 @@ export default function AdminSearchPage() {
             searchType="partners"
             onResults={handlePartnerResults}
             onError={handleError}
+            currentPage={partnerPage}
+            onPageChange={setPartnerPage}
           />
 
           {/* Bulk Operations for Partners */}
@@ -399,14 +404,11 @@ export default function AdminSearchPage() {
               onSuccess={handleSuccess}
             />
           )}
-          
+
           <SearchResults
             results={partnerResults}
             searchType="partners"
-            onPageChange={(page) => {
-              // This will be handled by the AdvancedSearch component
-              console.log('Page change:', page);
-            }}
+            onPageChange={setPartnerPage}
             onViewDetail={handleViewPartnerDetail}
             onEdit={handleEditPartner}
             onDelete={handleDeletePartner}

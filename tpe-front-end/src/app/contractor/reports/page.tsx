@@ -34,7 +34,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getApiUrl } from '@/utils/api';
-import { getFromStorage, handleApiResponse } from '../../../utils/jsonHelpers';
+import { getFromStorage, handleApiResponse, safeJsonParse } from '../../../utils/jsonHelpers';
 
 interface Report {
   id: number;
@@ -157,7 +157,7 @@ export default function ContractorReportsPage() {
     // Get contractor ID from profile (stored in session)
     const contractorInfoStr = getFromStorage('contractorInfo');
     if (contractorInfoStr) {
-      const contractorInfo = JSON.parse(contractorInfoStr);
+      const contractorInfo = safeJsonParse(contractorInfoStr);
       markReportViewed(report.id, contractorInfo.contractorId);
     }
     router.push(`/contractor/reports/${report.id}`);

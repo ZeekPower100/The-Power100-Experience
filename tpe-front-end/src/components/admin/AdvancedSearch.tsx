@@ -57,6 +57,8 @@ interface AdvancedSearchProps {
   searchType: 'contractors' | 'partners';
   onResults: (results: SearchResult) => void;
   onError: (error: string) => void;
+  currentPage?: number;
+  onPageChange?: (page: number) => void;
 }
 
 // Contractor focus areas (matching database values)
@@ -119,7 +121,13 @@ const GEOGRAPHIC_REGIONS = [
   'North America', 'South America', 'Europe', 'Asia', 'Africa', 'Australia'
 ];
 
-export default function AdvancedSearch({ searchType, onResults, onError }: AdvancedSearchProps) {
+export default function AdvancedSearch({
+  searchType,
+  onResults,
+  onError,
+  currentPage = 1,
+  onPageChange
+}: AdvancedSearchProps) {
   const [filters, setFilters] = useState<SearchFilters>({
     query: '',
     focusAreas: [],
@@ -132,7 +140,6 @@ export default function AdvancedSearch({ searchType, onResults, onError }: Advan
 
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [currentPage, setCurrentPage] = useState(1);
   const [limit] = useState(20);
 
   const handleFilterChange = (key: keyof SearchFilters, value: any) => {
@@ -140,7 +147,7 @@ export default function AdvancedSearch({ searchType, onResults, onError }: Advan
       ...prev,
       [key]: value
     }));
-    setCurrentPage(1); // Reset to first page when filters change
+    onPageChange?.(1); // Reset to first page when filters change
   };
 
   const handleArrayFilterToggle = (key: keyof SearchFilters, value: string) => {
@@ -149,13 +156,13 @@ export default function AdvancedSearch({ searchType, onResults, onError }: Advan
       const newArray = currentArray.includes(value)
         ? currentArray.filter(item => item !== value)
         : [...currentArray, value];
-      
+
       return {
         ...prev,
         [key]: newArray
       };
     });
-    setCurrentPage(1);
+    onPageChange?.(1);
   };
 
   const clearFilters = () => {
@@ -168,16 +175,16 @@ export default function AdvancedSearch({ searchType, onResults, onError }: Advan
       sortBy: 'created_at',
       sortOrder: 'DESC'
     });
-    setCurrentPage(1);
+    onPageChange?.(1);
   };
 
-  const performSearch = async (page: number = 1) => {
+  const performSearch = async () => {
     setIsSearching(true);
     try {
       const searchParams = {
         ...filters,
         limit,
-        offset: (page - 1) * limit
+        offset: (currentPage - 1) * limit
       };
 
       // Transform revenue ranges to database values
@@ -199,7 +206,7 @@ export default function AdvancedSearch({ searchType, onResults, onError }: Advan
       // Remove empty values
       Object.keys(searchParams).forEach(key => {
         const value = searchParams[key as keyof typeof searchParams];
-        if (value === '' || value === undefined || value === null || 
+        if (value === '' || value === undefined || value === null ||
             (Array.isArray(value) && value.length === 0)) {
           delete searchParams[key as keyof typeof searchParams];
         }
@@ -222,23 +229,17 @@ export default function AdvancedSearch({ searchType, onResults, onError }: Advan
   };
 
   const handleSearch = () => {
-    setCurrentPage(1);
-    performSearch(1);
+    onPageChange?.(1);
   };
 
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    performSearch(page);
-  };
-
-  // Auto-search when filters change (debounced)
+  // Auto-search when filters or currentPage change (debounced for filters only)
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      performSearch(1); // Always go to first page when filters change
+      performSearch();
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [filters]); // Watch all filter changes
+  }, [filters, currentPage]); // Watch filter and page changes
 
   const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
     if (key === 'query' || key === 'sortBy' || key === 'sortOrder') return false;

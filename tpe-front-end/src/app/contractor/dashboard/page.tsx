@@ -15,7 +15,8 @@ import {
   Home,
   UserCog,
   Calendar,
-  TrendingUp
+  TrendingUp,
+  FileText
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getApiUrl } from '@/utils/api';
@@ -286,7 +287,7 @@ export default function ContractorDashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Button
                   variant="outline"
                   className="h-auto py-4 flex flex-col items-center gap-2"
@@ -308,6 +309,18 @@ export default function ContractorDashboard() {
                   <div className="text-center">
                     <p className="font-semibold">Partner Matches</p>
                     <p className="text-xs text-gray-500">View strategic partners</p>
+                  </div>
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="h-auto py-4 flex flex-col items-center gap-2"
+                  onClick={() => router.push('/contractor/reports')}
+                >
+                  <FileText className="w-6 h-6 text-power100-red" />
+                  <div className="text-center">
+                    <p className="font-semibold">Reports</p>
+                    <p className="text-xs text-gray-500">View performance reports</p>
                   </div>
                 </Button>
 

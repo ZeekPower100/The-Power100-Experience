@@ -77,7 +77,7 @@ const createPartnerUser = async (partnerId, partnerEmail) => {
   }
 };
 
-// Partner login (simplified for demo - uses partners directly)
+// Partner login (matches contractor auth pattern)
 const partnerLogin = async (req, res, next) => {
   const { email, password } = req.body;
 
@@ -87,83 +87,70 @@ const partnerLogin = async (req, res, next) => {
 
   try {
     console.log('🔐 Partner login attempt for:', email);
-    
-    // Demo credentials check
-    if (email === 'demo@techflow.com' && password === 'Demo123!') {
-      // Find the partner in partners table
-      const partnerResult = await query(
-        'SELECT * FROM strategic_partners WHERE contact_email = $1',
-        [email]
-      );
 
-      let partner;
-      let partnerId;
-      if (partnerResult.rows.length === 0) {
-        // Create demo partner if doesn't exist
-        const insertResult = await query(`
-          INSERT INTO strategic_partners (
-            company_name, contact_email, website, is_active, power_confidence_score, score_trend
-          ) VALUES ($1, $2, $3, $4, $5, $6)
-          RETURNING id
-        `, ['TechFlow Solutions', email, 'https://techflow.com', 1, 87, 'up']);
+    // Find partner user by email (using VERIFIED field name: password)
+    const userResult = await query(
+      'SELECT id, partner_id, email, password, first_name, last_name, is_active FROM partner_users WHERE email = $1',
+      [email]
+    );
 
-        partnerId = insertResult.rows[0].id;
-        partner = {
-          id: partnerId,
-          company_name: 'TechFlow Solutions',
-          contact_email: email,
-          power_confidence_score: 87,
-          score_trend: 'up',
-          is_active: 1
-        };
-      } else {
-        partner = partnerResult.rows[0];
-        partnerId = partner.id;
-      }
-
-      // Check if partner_users record exists, create if not
-      const partnerUserResult = await query(
-        'SELECT id FROM partner_users WHERE partner_id = $1',
-        [partnerId]
-      );
-
-      let partnerUserId;
-      if (partnerUserResult.rows.length === 0) {
-        // Create partner_users record for demo
-        const bcrypt = require('bcryptjs');
-        const passwordHash = await bcrypt.hash(password, 12);
-        const userInsertResult = await query(`
-          INSERT INTO partner_users (partner_id, email, password, is_active)
-          VALUES ($1, $2, $3, true)
-          RETURNING id
-        `, [partnerId, email, passwordHash]);
-
-        partnerUserId = userInsertResult.rows[0].id;
-        console.log(`🔐 Created partner_users record for demo partner ${partnerId}`);
-      } else {
-        partnerUserId = partnerUserResult.rows[0].id;
-      }
-
-      // Generate token with partner_users id
-      const token = signPartnerToken(partnerId, partnerUserId);
-
-      console.log('🎉 Demo login successful for:', partner.company_name);
-
-      res.status(200).json({
-        success: true,
-        token,
-        partner: {
-          id: partner.id,
-          company_name: partner.company_name,
-          email: partner.contact_email
-        }
-      });
-      return;
+    if (userResult.rows.length === 0) {
+      console.log('❌ No partner user found for email:', email);
+      return next(new AppError('Invalid email or password', 401));
     }
 
-    // For non-demo logins, return error
-    console.log('❌ Invalid credentials provided');
-    return next(new AppError('Invalid email or password', 401));
+    const user = userResult.rows[0];
+
+    // Check if account is active (using BOOLEAN comparison)
+    if (!user.is_active) {
+      console.log('❌ Partner account is inactive:', email);
+      return next(new AppError('Account is inactive. Please contact support.', 401));
+    }
+
+    // Verify password (field name is 'password', not 'password_hash')
+    const isPasswordValid = await bcrypt.compare(password, user.password);
+
+    if (!isPasswordValid) {
+      console.log('❌ Invalid password for email:', email);
+      return next(new AppError('Invalid email or password', 401));
+    }
+
+    // Get partner details from strategic_partners table
+    const partnerResult = await query(
+      'SELECT id, company_name FROM strategic_partners WHERE id = $1 AND is_active = true',
+      [user.partner_id]
+    );
+
+    if (partnerResult.rows.length === 0) {
+      console.log('❌ Partner not found or inactive for partner_id:', user.partner_id);
+      return next(new AppError('Partner account not found or inactive', 401));
+    }
+
+    const partner = partnerResult.rows[0];
+
+    // Update last_login timestamp (using VERIFIED field name: last_login)
+    await query(
+      'UPDATE partner_users SET last_login = NOW() WHERE id = $1',
+      [user.id]
+    );
+
+    // Generate token
+    const token = signPartnerToken(user.partner_id, user.id);
+
+    console.log('✅ Partner login successful for:', email);
+
+    res.status(200).json({
+      success: true,
+      token,
+      partner: {
+        id: user.partner_id,
+        userId: user.id,
+        email: user.email,
+        company_name: partner.company_name,
+        first_name: user.first_name,
+        last_name: user.last_name
+      }
+    });
 
   } catch (error) {
     console.error('❌ Partner login error:', error);

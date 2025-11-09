@@ -281,10 +281,10 @@ export default function PublicPCRLanding({ partnerId }: PublicPCRProps) {
         </div>
       )}
 
-      {/* Video Section - Get To Know More About Destination Motivation */}
+      {/* Video Section - Get To Know More About Partner */}
       <div className="py-16 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">Get To Know More About Destination Motivation</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">Get To Know More About {report.partner?.name || 'Our Partner'}</h2>
           <div className="grid md:grid-cols-2 gap-8">
             {videos.map((video, idx) => {
               const videoId = extractYouTubeId(video.url);
