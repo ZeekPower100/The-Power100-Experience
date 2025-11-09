@@ -14,10 +14,11 @@ const CONFIG = {
   frontend: {
     port: 3002,
     dir: 'tpe-front-end',
-    startCmd: 'npm',
-    startArgs: ['run', 'dev'],
+    startCmd: 'node',
+    startArgs: ['../node_modules/next/dist/bin/next', 'dev', '--port', '3002'],
     name: 'Frontend Dev Server',
-    pidFile: '.frontend.pid'
+    pidFile: '.frontend.pid',
+    logFile: 'frontend.log'
   },
   backend: {
     port: 5000,
@@ -25,7 +26,8 @@ const CONFIG = {
     startCmd: 'npm',
     startArgs: ['start'],
     name: 'Backend Server',
-    pidFile: '.backend.pid'
+    pidFile: '.backend.pid',
+    logFile: 'backend.log'
   },
   worker: {
     port: null, // Worker doesn't listen on a port
@@ -34,7 +36,8 @@ const CONFIG = {
     startArgs: ['run', 'worker:dev'],
     name: 'Bull Worker',
     pidFile: '.worker.pid',
-    noPortCheck: true // Skip port checking for worker
+    noPortCheck: true, // Skip port checking for worker
+    logFile: 'worker.log'
   }
 };
 
@@ -159,7 +162,7 @@ class DevManager {
 
     // Create log file streams
     const logDir = config.dir;
-    const logFile = path.join(logDir, `${config.name.toLowerCase().replace(/\s+/g, '-')}.log`);
+    const logFile = path.join(logDir, config.logFile);
     const logStream = fs.createWriteStream(logFile, { flags: 'a' }); // Append mode
 
     const child = spawn(config.startCmd, config.startArgs, {

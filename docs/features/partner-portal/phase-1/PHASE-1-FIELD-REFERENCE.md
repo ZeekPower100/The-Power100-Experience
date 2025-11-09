@@ -258,7 +258,7 @@ WHERE fs.partner_id = $1
 
 ## CRITICAL FIELD NAMING NOTES
 
-### ⚠️ PowerConfidence Score Field Name
+### ⚠️ PowerConfidence Rating Field Name
 **CORRECT**: `power_confidence_score` (with underscores)
 **INCORRECT**: `powerconfidence_score` (no underscores)
 

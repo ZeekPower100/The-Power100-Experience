@@ -131,7 +131,7 @@ class DynamicPromptBuilder {
 
     // Add PowerConfidence score for partners
     if (entityName === 'strategic_partners' && item.powerconfidence_score) {
-      context = context + `\n   PowerConfidence Score: ${item.powerconfidence_score}`;
+      context = context + `\n   PowerConfidence Rating: ${item.powerconfidence_score}`;
     }
 
     // Add event details (speakers and sponsors) for events with details

@@ -589,7 +589,7 @@ function buildPartnerProfileCompletionEmail(data) {
       </h3>
       <ul style="margin: 0; padding-left: 20px; font-size: 15px; line-height: 1.8; color: #495057;">
         <li style="margin: 0 0 10px 0;"><strong>Ongoing Leads:</strong> Continuous matching with contractors in our ecosystem</li>
-        <li style="margin: 0 0 10px 0;"><strong>PowerConfidence Score:</strong> Build your reputation with verified ratings</li>
+        <li style="margin: 0 0 10px 0;"><strong>PowerConfidence Rating:</strong> Build your reputation with verified ratings</li>
         <li style="margin: 0 0 10px 0;"><strong>Industry Insights:</strong> Gain visibility into contractor needs and trends</li>
         <li style="margin: 0;"><strong>Long-term Partnerships:</strong> Opportunities beyond single events</li>
       </ul>

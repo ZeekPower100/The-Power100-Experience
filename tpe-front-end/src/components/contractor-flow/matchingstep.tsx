@@ -304,7 +304,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                     <div className="space-y-3 mt-6 text-center text-gray-600">
                         <div className="flex items-center justify-center space-x-2"><div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div><span>Analyzing focus areas</span></div>
                         <div className="flex items-center justify-center space-x-2"><div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce [animation-delay:0.15s]"></div><span>Matching revenue & size</span></div>
-                        <div className="flex items-center justify-center space-x-2"><div className="w-2 h-2 bg-power100-green rounded-full animate-bounce [animation-delay:0.3s]"></div><span>Calculating PowerConfidence Scores</span></div>
+                        <div className="flex items-center justify-center space-x-2"><div className="w-2 h-2 bg-power100-green rounded-full animate-bounce [animation-delay:0.3s]"></div><span>Calculating PowerConfidence Ratings</span></div>
                     </div>
                 </CardContent>
             </Card>

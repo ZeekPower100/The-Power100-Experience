@@ -82,11 +82,11 @@ export const exportToPDF = async (data: ExportData, elementId?: string) => {
     yPosition += 7;
   });
 
-  // PowerConfidence Score Section
+  // PowerConfidence Rating Section
   yPosition += 10;
   pdf.setFontSize(14);
   pdf.setFont(undefined, 'bold');
-  pdf.text('PowerConfidence Score', 20, yPosition);
+  pdf.text('PowerConfidence Rating', 20, yPosition);
   yPosition += 10;
 
   // Score box
@@ -235,7 +235,7 @@ export const exportToExcel = async (data: ExportData | ExportData[]) => {
       { header: 'Email', key: 'email', width: 30 },
       { header: 'Phone', key: 'phone', width: 15 },
       { header: 'Website', key: 'website', width: 30 },
-      { header: 'PowerConfidence Score', key: 'score', width: 20 },
+      { header: 'PowerConfidence Rating', key: 'score', width: 20 },
       { header: 'Trend', key: 'trend', width: 10 },
       { header: 'Status', key: 'status', width: 10 },
       { header: 'Service Categories', key: 'categories', width: 40 },
@@ -284,7 +284,7 @@ export const exportToExcel = async (data: ExportData | ExportData[]) => {
       { field: 'Email', value: partner.contact_email },
       { field: 'Phone', value: partner.contact_phone || 'N/A' },
       { field: 'Website', value: partner.website || 'N/A' },
-      { field: 'PowerConfidence Score', value: partner.current_powerconfidence_score },
+      { field: 'PowerConfidence Rating', value: partner.current_powerconfidence_score },
       { field: 'Trend', value: partner.score_trend },
       { field: 'Status', value: partner.status || 'Active' },
       { field: 'Service Categories', value: parseServiceCategories(partner.service_categories) },
@@ -370,7 +370,7 @@ export const exportToCSV = (data: ExportData | ExportData[]) => {
   
   if (Array.isArray(data)) {
     // Headers
-    csvContent = 'Company Name,Email,Phone,Website,PowerConfidence Score,Trend,Status,Service Categories,Total Engagements,Avg Satisfaction,Recent Feedback\n';
+    csvContent = 'Company Name,Email,Phone,Website,PowerConfidence Rating,Trend,Status,Service Categories,Total Engagements,Avg Satisfaction,Recent Feedback\n';
     
     // Data rows
     data.forEach(item => {
@@ -384,7 +384,7 @@ export const exportToCSV = (data: ExportData | ExportData[]) => {
     csvContent += `"Email","${partner.contact_email}"\n`;
     csvContent += `"Phone","${partner.contact_phone || 'N/A'}"\n`;
     csvContent += `"Website","${partner.website || 'N/A'}"\n`;
-    csvContent += `"PowerConfidence Score",${partner.current_powerconfidence_score}\n`;
+    csvContent += `"PowerConfidence Rating",${partner.current_powerconfidence_score}\n`;
     csvContent += `"Trend","${partner.score_trend}"\n`;
     csvContent += `"Status","${partner.status || 'Active'}"\n`;
     csvContent += `"Service Categories","${parseServiceCategories(partner.service_categories)}"\n`;

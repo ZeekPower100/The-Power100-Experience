@@ -444,7 +444,7 @@ export default function PowerCardDemo() {
             </div>
             
             <Badge className="bg-gold-100 text-gold-800">
-              PowerConfidence Score Contributing to 99
+              PowerConfidence Rating Contributing to 99
             </Badge>
           </div>
         );

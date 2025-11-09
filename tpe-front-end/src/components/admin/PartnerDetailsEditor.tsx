@@ -216,7 +216,7 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
                       />
                     </div>
                     <div>
-                      <Label htmlFor="power_confidence_score">PowerConfidence Score</Label>
+                      <Label htmlFor="power_confidence_score">PowerConfidence Rating</Label>
                       <Input
                         id="power_confidence_score"
                         type="number"

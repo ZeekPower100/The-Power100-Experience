@@ -325,7 +325,7 @@ export default function BulkOperations({
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2">PowerConfidence Score</label>
+            <label className="block text-sm font-medium mb-2">PowerConfidence Rating</label>
             <Input
               type="number"
               min="0"

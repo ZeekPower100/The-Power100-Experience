@@ -236,7 +236,7 @@ export default function AdminSearchPage() {
     // Basic CSV generation
     const headers = activeTab === 'contractors' 
       ? ['Name', 'Email', 'Company', 'Stage', 'Phone', 'Service Area', 'Revenue']
-      : ['Company Name', 'Email', 'Website', 'Status', 'PowerConfidence Score', 'Pricing Model'];
+      : ['Company Name', 'Email', 'Website', 'Status', 'PowerConfidence Rating', 'Pricing Model'];
 
     const csvContent = [
       headers.join(','),

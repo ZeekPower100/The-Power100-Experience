@@ -91,7 +91,7 @@ const sendContractorWelcomeEmail = async (contractor, partner) => {
             <h3 style="color: #FB0401; margin-top: 0;">Your Matched Partner</h3>
             <h4 style="margin: 10px 0;">${partner.company_name}</h4>
             <p>${partner.description}</p>
-            <p><strong>PowerConfidence Score:</strong> ${partner.power_confidence_score}/100</p>
+            <p><strong>PowerConfidence Rating:</strong> ${partner.power_confidence_score}/100</p>
             <p><strong>Website:</strong> <a href="${partner.website}" style="color: #FB0401;">${partner.website}</a></p>
           </div>
           

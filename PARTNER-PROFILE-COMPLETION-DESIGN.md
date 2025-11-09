@@ -207,7 +207,7 @@ function buildPartnerProfileCompletionEmail({
       <h3 style="color: #1c7ed6; font-size: 16px; margin-bottom: 10px;">For TPX Platform Overall:</h3>
       <ul style="color: #495057; margin: 0;">
         <li><strong>Ongoing Leads:</strong> Continuous matching with contractors in our ecosystem</li>
-        <li><strong>PowerConfidence Score:</strong> Build your reputation with verified ratings</li>
+        <li><strong>PowerConfidence Rating:</strong> Build your reputation with verified ratings</li>
         <li><strong>Industry Insights:</strong> Gain visibility into contractor needs and trends</li>
         <li><strong>Long-term Partnerships:</strong> Opportunities beyond single events</li>
       </ul>

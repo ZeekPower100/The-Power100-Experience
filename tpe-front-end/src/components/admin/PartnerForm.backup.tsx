@@ -489,7 +489,7 @@ function PartnerForm({ partner, onSuccess, onCancel }: PartnerFormProps) {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <Label htmlFor="power_confidence_score">PowerConfidence Score (0-100)</Label>
+                  <Label htmlFor="power_confidence_score">PowerConfidence Rating (0-100)</Label>
                   <Input
                     id="power_confidence_score"
                     type="number"

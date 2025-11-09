@@ -1,22 +1,12 @@
 {
-  "timestamp": "2025-10-23T17:39:05.670Z",
+  "timestamp": "2025-11-09T07:47:30.722Z",
   "mode": "check",
   "stats": {
     "tablesChecked": 7,
-    "recordsChecked": 196,
-    "issuesFound": 0,
+    "recordsChecked": 264,
+    "issuesFound": 2,
     "issuesFixed": 0,
-    "errors": [
-      {
-        "table": "partners",
-        "error": "relation \"partners\" does not exist"
-      }
-    ]
+    "errors": []
   },
-  "errors": [
-    {
-      "table": "partners",
-      "error": "relation \"partners\" does not exist"
-    }
-  ]
+  "errors": []
 }

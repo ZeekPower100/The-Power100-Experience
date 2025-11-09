@@ -172,7 +172,7 @@ export default function PublicPCRPage({ params }: PageProps) {
 
   // Calculate key metrics from recent reports
   const keyMetrics = [
-    { metric: `${partner.pcrScore?.toFixed(0) || 'N/A'}`, label: 'PowerConfidence Score' },
+    { metric: `${partner.pcrScore?.toFixed(0) || 'N/A'}`, label: 'PowerConfidence Rating' },
     { metric: `${recentReports?.length || 0}`, label: 'Quarterly Reports' },
     { metric: `${partner.badges?.length || 0}`, label: 'Achievements' },
     { metric: `${partner.testimonials?.length || 0}`, label: 'Client Reviews' }
@@ -221,7 +221,7 @@ export default function PublicPCRPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* PowerConfidence Score Display */}
+            {/* PowerConfidence Rating Display */}
             <div className="flex justify-center">
               <div className="relative">
                 <div className="w-64 h-64 rounded-full bg-white/10 flex items-center justify-center">

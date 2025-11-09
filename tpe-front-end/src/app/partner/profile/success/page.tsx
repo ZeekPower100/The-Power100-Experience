@@ -219,13 +219,13 @@ function PartnerProfileSuccessPageContent() {
                   </div>
                 </div>
 
-                {/* PowerConfidence Score */}
+                {/* PowerConfidence Rating */}
                 <div className="flex items-start gap-4 p-4 bg-blue-50 rounded-lg mb-3">
                   <div className="w-10 h-10 bg-power100-green rounded-full flex items-center justify-center flex-shrink-0">
                     <TrendingUp className="h-5 w-5 text-white" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-power100-black mb-1">PowerConfidence Score</h4>
+                    <h4 className="font-semibold text-power100-black mb-1">PowerConfidence Rating</h4>
                     <p className="text-sm text-gray-600">
                       Build your reputation through verified customer ratings and testimonials from contractors who work with you.
                     </p>

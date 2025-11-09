@@ -150,7 +150,7 @@ const processValidation = async (partnerId) => {
     demoContent: validationPoints.demos
   });
   
-  // Generate PowerConfidence Score
+  // Generate PowerConfidence Rating
   return calculatePowerConfidence({
     ...validationPoints,
     consistency

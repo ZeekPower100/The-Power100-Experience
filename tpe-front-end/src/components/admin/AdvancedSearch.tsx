@@ -488,9 +488,9 @@ export default function AdvancedSearch({
                     </select>
                   </div>
 
-                  {/* PowerConfidence Score Range */}
+                  {/* PowerConfidence Rating Range */}
                   <div>
-                    <label className="block text-sm font-medium mb-2">PowerConfidence Score</label>
+                    <label className="block text-sm font-medium mb-2">PowerConfidence Rating</label>
                     <div className="flex gap-2">
                       <Input
                         type="number"

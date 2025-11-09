@@ -22,7 +22,7 @@ Partner Portal Phase 4 has successfully delivered a production-ready analytics a
 **Location**: `tpe-front-end/src/app/partner/dashboard/page.tsx`
 
 **Features Implemented**:
-- **PowerConfidence Score Hero**: Real-time score display with trend indicators (up/down/stable)
+- **PowerConfidence Rating Hero**: Real-time score display with trend indicators (up/down/stable)
 - **Industry Ranking**: Comparative ranking within partner category
 - **Performance Status**: Dynamic status badges based on recent reviews
 - **4 Comprehensive Tabs**:

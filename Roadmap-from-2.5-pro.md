@@ -21,7 +21,7 @@ The core of TPE will be an orchestration engine (n8n) that manages a suite of sp
 *   **AI Agents (Leveraging Google Gemini or similar LLMs):** We will develop distinct AI agents with specific roles:
     *   **Onboarding Agent:** Manages the initial user interaction, information capture (name, URL, etc.), and crucial SMS verification/opt-in.
     *   **Discovery & Matching Agent:** Conducts the conversational deep-dive into a contractor's focus areas, analyzes responses, identifies the primary objective, and executes the proprietary algorithm to match the contractor with the best-fit Partner.
-    *   **Data-Gathering Agent:** An automated agent responsible for the quarterly outreach (Call, Text, Email) to our Partners' clients and employees to collect feedback for the PowerConfidence Score. This may utilize advanced voice AI for the call component.
+    *   **Data-Gathering Agent:** An automated agent responsible for the quarterly outreach (Call, Text, Email) to our Partners' clients and employees to collect feedback for the PowerConfidence Rating. This may utilize advanced voice AI for the call component.
     *   **Concierge Agent:** Handles ongoing support, including opt-in weekly calls and the "Open Line Support" for ad-hoc contractor requests.
 *   **Core Database (e.g., PostgreSQL):** Securely stores all data, including contractor profiles, detailed partner profiles, conversation logs, feedback, and journey tracking.
 *   **Third-Party APIs:**
@@ -39,7 +39,7 @@ Based on the "Must-Have Capabilities," the initial build will focus on deliverin
     2.  **Profile Formulation:** The AI agent asks about the "top three focus areas" via checkboxes.
     3.  **Deep-Dive Analysis:** The AI engages in a more profound conversation to understand revenue, team size, and current activities related to the chosen focus areas.
     4.  **Primary Objective Agreement:** The AI presents a summary and suggests a primary focus, seeking the contractor's confirmation (the "trial close").
-    5.  **Partner Pairing & Due Diligence:** The system showcases the best-fit partner, including their PowerConfidence Score and other supporting materials hosted within the TPE platform.
+    5.  **Partner Pairing & Due Diligence:** The system showcases the best-fit partner, including their PowerConfidence Rating and other supporting materials hosted within the TPE platform.
 
 **Module 2: Demo Booking System**
 *   **Functionality:** Seamlessly books a demonstration between the contractor and the matched Partner.
@@ -81,7 +81,7 @@ Based on the "Must-Have Capabilities," the initial build will focus on deliverin
     *   Onboard the first cohort of Strategic Partners, populating their profiles.
 
 **Phase 2: The Trust Layer (Months 4-6)**
-*   **Goal:** Activate the PowerConfidence Score and deliver initial partner reports.
+*   **Goal:** Activate the PowerConfidence Rating and deliver initial partner reports.
 *   **Actions:**
     *   Build and deploy the **Data-Gathering Agent**.
     *   Implement the call/text/email automation engine for quarterly outreach.

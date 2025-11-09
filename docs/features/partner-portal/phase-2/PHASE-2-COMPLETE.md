@@ -144,7 +144,7 @@ curl http://localhost:5000/api/partner-portal/options \
 13. ✅ compliance_certifications (text input)
 
 **Read-Only Display**:
-- PowerConfidence Score badge in header
+- PowerConfidence Rating badge in header
 - Score trend indicator (up/down/stable)
 - Last updated timestamp
 

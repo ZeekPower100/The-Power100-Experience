@@ -440,7 +440,7 @@ class EventAIRecommendationService {
         }
       }
 
-      // PCR Score or PowerConfidence Score rating (20 points max)
+      // PCR Score or PowerConfidence Rating rating (20 points max)
       const ratingScore = sponsor.pcr_score || sponsor.powerconfidence_score;  // CORRECT column name
       if (ratingScore) {
         score += (parseFloat(ratingScore) / 100) * 20;

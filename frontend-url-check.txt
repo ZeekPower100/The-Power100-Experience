@@ -1,0 +1,377 @@
+[1mChecking Frontend...[0m
+[36m[1m
+🔍 Scanning for hardcoded URLs and production compatibility issues...[0m
+[2mTarget: tpe-front-end[0m
+
+[2mFound 156 files to check[0m
+
+
+[1m================================================================================[0m
+[31m[1m⚠️  Found 74 hardcoded URL issues:[0m
+[31mErrors: 8[0m
+[33mWarnings: 4[0m
+[36mInfo: 62[0m
+
+[33m[1m
+📄 tpe-front-end\src\app\admindashboard\bookings\page.tsx[0m
+[2m   Line 32: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: const response = await fetch('/api/bookings');[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\admindashboard\books\page.tsx[0m
+[2m   Line 38: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: const response = await fetch('/api/books', {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 64: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/books/${id}`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\admindashboard\events\[id]\agenda\page.tsx[0m
+[2m   Line 108: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/event-agenda/event/${params.id}`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 145: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/events/${params.id}/speakers`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 162: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/events/${params.id}/sponsors`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 211: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/event-agenda/item/${id}`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 231: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/event-agenda/confirm/${params.id}`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\admindashboard\events\[id]\check-in\page.tsx[0m
+[2m   Line 102: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/event-check-in/event/${params.id}/attendees`,...[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 141: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: const response = await fetch('/api/event-check-in/register', {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 174: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: const response = await fetch('/api/event-check-in/check-in', {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 212: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: const response = await fetch('/api/event-check-in/mass-check-in', {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 242: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/event-messaging/event/${params.id}/queue`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 263: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const speakersResponse = await fetch(`/api/events/${params.id}/speakers`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 274: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const sponsorsResponse = await fetch(`/api/events/${params.id}/sponsors`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 299: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: const response = await fetch('/api/event-orchestrator/speaker-alert', {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 340: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: const response = await fetch('/api/event-orchestrator/sponsor-engagement', {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 379: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: const response = await fetch('/api/event-orchestrator/auto-match-peers', {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 762: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/event-messaging/delay-override`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\admindashboard\events\page.tsx[0m
+[2m   Line 41: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: const response = await fetch('/api/events', {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 75: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/events/${id}`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\admindashboard\ige-monitor\analytics\page.tsx[0m
+[2m   Line 102: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: fetch('/api/ige-monitor/analytics/overview'),[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 103: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: fetch('/api/ige-monitor/analytics/segments/by-trust'),[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 104: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: fetch('/api/ige-monitor/analytics/segments/by-engagement')[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 123: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/ige-monitor/analytics/trends/${selectedMetric...[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\admindashboard\ige-monitor\contractor\[id]\page.tsx[0m
+[2m   Line 125: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/ige-monitor/contractor/${contractorId}`);[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\admindashboard\ige-monitor\page.tsx[0m
+[2m   Line 76: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: fetch('/api/ige-monitor/system-health'),[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 77: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: fetch('/api/ige-monitor/recent-activity'),[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 78: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: fetch('/api/ige-monitor/system-alerts')[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\admindashboard\podcasts\page.tsx[0m
+[2m   Line 40: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: const response = await fetch('/api/podcasts', {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 66: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/podcasts/${id}`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\ai-concierge\page.tsx[0m
+[2m   Line 850: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: const res = await fetch('/api/ai-concierge/message', {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 1010: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: const res = await fetch('/api/ai-concierge/message', {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\events\[eventId]\check-in\page.tsx[0m
+[2m   Line 39: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const eventResponse = await fetch(`/api/events/${eventId}`);[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 45: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const contractorResponse = await fetch(`/api/contractors/${contractorId}`);[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 51: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const attendeeResponse = await fetch(`/api/event-check-in/attendee?eventId=${eve...[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 73: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: const response = await fetch('/api/event-check-in/check-in', {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\events\[eventId]\dashboard\page.tsx[0m
+[2m   Line 46: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const eventResponse = await fetch(`/api/events/${eventId}`);[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 54: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const pcrResponse = await fetch(`/api/events/${eventId}/pcr/breakdown`);[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 90: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const attendeesResponse = await fetch(`/api/event-check-in/event/${eventId}/atte...[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\events\[eventId]\profile\page.tsx[0m
+[2m   Line 51: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const eventResponse = await fetch(`/api/events/${eventId}`);[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 58: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const contractorResponse = await fetch(`/api/contractors/${id}`);[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 64: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const attendeeResponse = await fetch(`/api/event-check-in/attendee?eventId=${eve...[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 103: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: await fetch(`/api/contractors/${contractorId}`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 118: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: await fetch(`/api/event-check-in/complete-profile`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\events\[eventId]\success\page.tsx[0m
+[2m   Line 25: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const eventResponse = await fetch(`/api/events/${eventId}`);[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 33: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const contractorResponse = await fetch(`/api/contractors/${contractorId}`);[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\feedback\survey\page.tsx[0m
+[2m   Line 42: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/feedback/surveys?id=${surveyId}`);[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\app\partner\dashboard\page.tsx[0m
+[2m   Line 86: [0m[31mHardcoded localhost URL[0m
+[2m   Match: "http://localhost:5000"[0m
+[2m   Code: const dashboardResponse = await fetch('http://localhost:5000/api/partner-portal/...[0m
+[32m   Fix: Use environment-based URL configuration[0m
+[2m   Line 86: [0m[31mHardcoded localhost API endpoint[0m
+[2m   Match: "localhost:5000/api"[0m
+[2m   Code: const dashboardResponse = await fetch('http://localhost:5000/api/partner-portal/...[0m
+[32m   Fix: Use dynamic base URL with process.env.NODE_ENV[0m
+[2m   Line 86: [0m[33mHardcoded port 5000[0m
+[2m   Match: ":5000"[0m
+[2m   Code: const dashboardResponse = await fetch('http://localhost:5000/api/partner-portal/...[0m
+[32m   Fix: Use process.env.API_PORT or dynamic port configuration[0m
+[2m   Line 108: [0m[31mHardcoded localhost URL[0m
+[2m   Match: "http://localhost:5000"[0m
+[2m   Code: const quarterlyResponse = await fetch('http://localhost:5000/api/partner-portal/...[0m
+[32m   Fix: Use environment-based URL configuration[0m
+[2m   Line 108: [0m[31mHardcoded localhost API endpoint[0m
+[2m   Match: "localhost:5000/api"[0m
+[2m   Code: const quarterlyResponse = await fetch('http://localhost:5000/api/partner-portal/...[0m
+[32m   Fix: Use dynamic base URL with process.env.NODE_ENV[0m
+[2m   Line 108: [0m[33mHardcoded port 5000[0m
+[2m   Match: ":5000"[0m
+[2m   Code: const quarterlyResponse = await fetch('http://localhost:5000/api/partner-portal/...[0m
+[32m   Fix: Use process.env.API_PORT or dynamic port configuration[0m
+[2m   Line 120: [0m[31mHardcoded localhost URL[0m
+[2m   Match: "http://localhost:5000"[0m
+[2m   Code: const categoriesResponse = await fetch('http://localhost:5000/api/partner-portal...[0m
+[32m   Fix: Use environment-based URL configuration[0m
+[2m   Line 120: [0m[31mHardcoded localhost API endpoint[0m
+[2m   Match: "localhost:5000/api"[0m
+[2m   Code: const categoriesResponse = await fetch('http://localhost:5000/api/partner-portal...[0m
+[32m   Fix: Use dynamic base URL with process.env.NODE_ENV[0m
+[2m   Line 120: [0m[33mHardcoded port 5000[0m
+[2m   Match: ":5000"[0m
+[2m   Code: const categoriesResponse = await fetch('http://localhost:5000/api/partner-portal...[0m
+[32m   Fix: Use process.env.API_PORT or dynamic port configuration[0m
+[33m[1m
+📄 tpe-front-end\src\app\partner\profile\edit\page.tsx[0m
+[2m   Line 30: [0m[31mHardcoded localhost URL[0m
+[2m   Match: "http://localhost:5000"[0m
+[2m   Code: const response = await fetch('http://localhost:5000/api/partner-portal/profile',...[0m
+[32m   Fix: Use environment-based URL configuration[0m
+[2m   Line 30: [0m[31mHardcoded localhost API endpoint[0m
+[2m   Match: "localhost:5000/api"[0m
+[2m   Code: const response = await fetch('http://localhost:5000/api/partner-portal/profile',...[0m
+[32m   Fix: Use dynamic base URL with process.env.NODE_ENV[0m
+[2m   Line 30: [0m[33mHardcoded port 5000[0m
+[2m   Match: ":5000"[0m
+[2m   Code: const response = await fetch('http://localhost:5000/api/partner-portal/profile',...[0m
+[32m   Fix: Use process.env.API_PORT or dynamic port configuration[0m
+[33m[1m
+📄 tpe-front-end\src\components\admin\BookForm.tsx[0m
+[2m   Line 200: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/books${book?.id ? `/${book.id}` : ''}`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\components\admin\EventForm.tsx[0m
+[2m   Line 313: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/events${event?.id ? `/${event.id}` : ''}`, {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\components\admin\GuardMonitoringDashboard.tsx[0m
+[2m   Line 78: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: fetch(`/api/analytics/guards/stats?hours=${timeWindow}`),[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 79: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: fetch(`/api/analytics/guards/violations?hours=${timeWindow}&limit=50`),[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 80: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: fetch(`/api/analytics/guards/activity-over-time?hours=${timeWindow}`),[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 81: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: fetch(`/api/analytics/guards/top-violators?hours=${timeWindow}&limit=10`),[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 82: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: fetch(`/api/analytics/guards/type-breakdown?hours=${timeWindow}`)[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\components\admin\IGEContractorSearch.tsx[0m
+[2m   Line 111: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/ige-monitor/contractors/search?${params}`);[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\components\admin\IGEManualActions.tsx[0m
+[2m   Line 85: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/ige-monitor/contractor/${contractorId}/goal`,...[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 117: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/ige-monitor/contractor/${contractorId}/action...[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 149: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/ige-monitor/contractor/${contractorId}/messag...[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[2m   Line 181: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/ige-monitor/contractor/${contractorId}/trust-...[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\components\admin\PodcastForm.tsx[0m
+[2m   Line 193: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch(`/api"[0m
+[2m   Code: const response = await fetch(`/api/podcasts${podcast?.id ? `/${podcast.id}` : ''...[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+[33m[1m
+📄 tpe-front-end\src\components\feedback\FeedbackForm.tsx[0m
+[2m   Line 115: [0m[36mRelative API path without base URL[0m
+[2m   Match: "fetch('/api"[0m
+[2m   Code: const response = await fetch('/api/feedback/submit-response', {[0m
+[32m   Fix: Ensure base URL is properly configured for production[0m
+
+[1m================================================================================[0m
+[36m[1mRECOMMENDED FIX PATTERN:[0m
+
+[2m// Instead of:[0m
+[31mconst url = 'http://localhost:5000/api/endpoint';[0m
+
+[2m// Use:[0m
+[32mconst baseUrl = process.env.NODE_ENV === 'production'[0m
+[32m  ? 'https://tpx.power100.io'[0m
+[32m  : 'http://localhost:5000';[0m
+[32mconst url = `${baseUrl}/api/endpoint`;[0m
+
+[2m// Or better yet, use environment variables:[0m
+[32mconst baseUrl = process.env.API_BASE_URL || 'http://localhost:5000';[0m
+[32mconst url = `${baseUrl}/api/endpoint`;[0m
+
+[1m================================================================================[0m
+[31m[1m❌ Production URL check failed with 8 errors[0m

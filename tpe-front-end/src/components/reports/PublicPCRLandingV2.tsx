@@ -357,7 +357,7 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
               </div>
             </div>
 
-            {/* PowerConfidence Score Display */}
+            {/* PowerConfidence Rating Display */}
             <div className="flex justify-center">
               <div className="relative">
                 <div className="absolute inset-0 bg-yellow-400 rounded-3xl blur-2xl opacity-30 animate-pulse"></div>

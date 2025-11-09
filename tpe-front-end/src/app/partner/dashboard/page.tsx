@@ -257,7 +257,7 @@ export default function PartnerDashboard() {
           </Alert>
         )}
 
-        {/* PowerConfidence Score Hero - Modern Design */}
+        {/* PowerConfidence Rating Hero - Modern Design */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -269,7 +269,7 @@ export default function PartnerDashboard() {
                 <div className="inline-block bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-semibold mb-4">
                   Your Performance Dashboard
                 </div>
-                <h2 className="text-4xl md:text-5xl font-bold mb-2">PowerConfidence Score</h2>
+                <h2 className="text-4xl md:text-5xl font-bold mb-2">PowerConfidence Rating</h2>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8">

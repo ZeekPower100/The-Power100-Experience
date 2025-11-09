@@ -190,7 +190,7 @@ export default function PublicPCRLanding({ partnerId }: PublicPCRProps) {
               </div>
             </div>
 
-            {/* PowerConfidence Score Display */}
+            {/* PowerConfidence Rating Display */}
             <div className="flex justify-center">
               <div className="relative">
                 <div className="w-64 h-64 rounded-full bg-white/10 flex items-center justify-center">

@@ -361,7 +361,7 @@ Response: {
 - **Insights Tab**: View personalized recommendations
 
 ### Test Data
-- PowerConfidence Score: 87 (real from database)
+- PowerConfidence Rating: 87 (real from database)
 - Score Trend: Up (real from database)
 - Company Name: TechFlow Solutions (real from database)
 - Total Partners: 24 (real count from database)

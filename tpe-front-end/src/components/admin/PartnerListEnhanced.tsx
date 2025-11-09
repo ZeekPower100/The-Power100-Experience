@@ -290,7 +290,7 @@ const PartnerListEnhanced: React.FC<PartnerListEnhancedProps> = ({ onPartnerSele
                       </div>
                     </div>
 
-                    {/* PowerConfidence Score */}
+                    {/* PowerConfidence Rating */}
                     <div className="flex flex-col items-center gap-2">
                       <div className="text-center">
                         <div className="text-xs text-power100-grey mb-1">PowerConfidence</div>

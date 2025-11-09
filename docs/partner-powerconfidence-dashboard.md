@@ -10,7 +10,7 @@ Enhanced PowerConfidence visibility for both partners (self-service) and adminis
 
 #### Current Score Display
 ```
-PowerConfidence Score: 87/100
+PowerConfidence Rating: 87/100
 Trend: ↗ +3 points (last quarter)
 Rank: #4 of 16 partners in your category
 Status: Excellent Performance
@@ -72,7 +72,7 @@ Partner Management Dashboard
 #### Header Section
 ```
 TechFlow Solutions - Comprehensive Profile
-PowerConfidence Score: 89/100 (↗ +5 from last quarter)
+PowerConfidence Rating: 89/100 (↗ +5 from last quarter)
 Industry Rank: #2 of 16 Software Partners
 Last Updated: March 15, 2025
 ```

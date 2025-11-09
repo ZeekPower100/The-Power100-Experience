@@ -5,7 +5,7 @@
  * Starts servers AND watches for errors in real-time
  */
 
-const { spawn } = require('child_process');
+const { spawn, exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const colors = require('colors');
@@ -18,16 +18,18 @@ const CONFIG = {
     args: ['tpe-backend/src/server.js'],
     port: 5000,
     pidFile: '.backend.pid',
-    color: 'yellow'
+    color: 'yellow',
+    logFile: 'tpe-backend/backend.log'
   },
   frontend: {
     name: 'Frontend Dev Server',
     command: 'node',
-    args: ['node_modules/next/dist/bin/next', 'dev', '--port', '3002'],
+    args: ['../node_modules/next/dist/bin/next', 'dev', '--port', '3002'],
     cwd: 'tpe-front-end',
     port: 3002,
     pidFile: '.frontend.pid',
-    color: 'cyan'
+    color: 'cyan',
+    logFile: 'tpe-front-end/frontend.log'
   },
   errorWatcher: {
     name: 'Error Prevention Watcher',
@@ -35,14 +37,31 @@ const CONFIG = {
     args: ['tools/dev-watcher.js'],
     pidFile: '.watcher.pid',
     color: 'green',
-    optional: true
+    optional: true,
+    logFile: 'tools/error-watcher.log'
   }
 };
 
 class SafeDevManager {
   constructor() {
     this.processes = {};
+    this.monitorWindows = {};
     this.isWindows = process.platform === 'win32';
+  }
+
+  // Open monitoring window for a log file
+  openMonitorWindow(config) {
+    const logPath = path.resolve(config.logFile);
+    const title = `${config.name} - Live Output`;
+
+    // Launch PowerShell window with UTF-8 encoding and proper font
+    const monitorCmd = `start powershell -NoExit -Command "& { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8; $PSDefaultParameterValues['Out-File:Encoding'] = 'utf8'; chcp 65001 | Out-Null; $host.UI.RawUI.ForegroundColor = 'White'; $host.UI.RawUI.BackgroundColor = 'Black'; Clear-Host; $host.UI.RawUI.WindowTitle='${title}'; Write-Host '${config.name} - Monitoring ${logPath}' -ForegroundColor Cyan; Write-Host 'Close this window anytime - server will keep running' -ForegroundColor Gray; Write-Host ''; Get-Content -Path '${logPath}' -Encoding UTF8 -Wait -Tail 50 }"`;
+
+    exec(monitorCmd, (error) => {
+      if (error) {
+        console.log(colors.yellow(`⚠️  Could not open monitoring window for ${config.name}`));
+      }
+    });
   }
 
   // Enhanced start with error watching
@@ -79,79 +98,102 @@ class SafeDevManager {
 
   // Start error watcher
   async startWatcher() {
-    const watcherProcess = spawn(CONFIG.errorWatcher.command, CONFIG.errorWatcher.args, {
-      stdio: 'pipe',
-      shell: false,
-      detached: false
+    const config = CONFIG.errorWatcher;
+
+    // Ensure log file exists
+    if (config.logFile) {
+      const logDir = path.dirname(config.logFile);
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
+      }
+      // Clear old log file
+      fs.writeFileSync(config.logFile, '');
+    }
+
+    // Open log file for appending
+    const logPath = path.resolve(config.logFile);
+    const logFd = fs.openSync(logPath, 'a');
+
+    const watcherProcess = spawn(config.command, config.args, {
+      stdio: ['ignore', logFd, logFd], // stdin ignored, stdout and stderr to log file
+      detached: true,
+      windowsHide: true
     });
 
     this.processes.errorWatcher = watcherProcess;
 
-    // Handle watcher output specially
-    watcherProcess.stdout.on('data', (data) => {
-      const output = data.toString();
-      
-      // Color code based on content
-      if (output.includes('✅')) {
-        console.log(colors.green(output.trim()));
-      } else if (output.includes('❌') || output.includes('⚠️')) {
-        console.log(colors.red.bold(output.trim()));
-      } else if (output.includes('🔍')) {
-        console.log(colors.yellow(output.trim()));
-      } else {
-        console.log(colors.gray(output.trim()));
-      }
+    // Fully detach
+    watcherProcess.unref();
+
+    // Close our reference to the log file descriptor
+    watcherProcess.on('spawn', () => {
+      fs.close(logFd, () => {});
     });
 
-    watcherProcess.stderr.on('data', (data) => {
-      console.error(colors.red(`Watcher Error: ${data}`));
-    });
+    // Wait a moment for watcher to start
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Open monitoring window
+    console.log(colors.gray(`📺 Opening monitoring window for ${config.name}...`));
+    this.openMonitorWindow(config);
 
     return true;
   }
 
   // Start a server
   async startServer(config) {
+    // Ensure log file exists
+    if (config.logFile) {
+      const logDir = path.dirname(config.logFile);
+      if (!fs.existsSync(logDir)) {
+        fs.mkdirSync(logDir, { recursive: true });
+      }
+      // Clear old log file
+      fs.writeFileSync(config.logFile, '');
+    }
+
+    // Open log file for appending
+    const logPath = path.resolve(config.logFile);
+    const logFd = fs.openSync(logPath, 'a');
+
     const options = {
-      stdio: 'pipe',
-      shell: false,
-      detached: false
+      stdio: ['ignore', logFd, logFd], // stdin ignored, stdout and stderr to log file
+      detached: true,
+      windowsHide: true
     };
 
     if (config.cwd) {
       options.cwd = config.cwd;
     }
 
+    // Spawn directly without shell to avoid visible windows
     const child = spawn(config.command, config.args, options);
-    
+
     // Save process
     this.processes[config.name] = child;
-    
+
     // Save PID
     if (config.pidFile) {
       fs.writeFileSync(config.pidFile, child.pid.toString());
     }
 
-    // Handle output
-    child.stdout.on('data', (data) => {
-      const output = data.toString().trim();
-      if (output) {
-        const prefix = config.color ? colors[config.color](`[${config.name}]`) : `[${config.name}]`;
-        console.log(`${prefix} ${output}`);
-      }
-    });
+    // Fully detach - closing parent won't kill child
+    child.unref();
 
-    child.stderr.on('data', (data) => {
-      const output = data.toString().trim();
-      if (output && !output.includes('DeprecationWarning')) {
-        console.error(colors.red(`[${config.name} Error] ${output}`));
-      }
+    // Close our reference to the log file descriptor
+    // The child process still has it open
+    child.on('spawn', () => {
+      fs.close(logFd, () => {});
     });
 
     // Wait for server to be ready
     if (config.port) {
       await this.waitForPort(config.port, config.name);
     }
+
+    // Open monitoring window AFTER server starts
+    console.log(colors.gray(`📺 Opening monitoring window for ${config.name}...`));
+    this.openMonitorWindow(config);
 
     return child;
   }
@@ -225,33 +267,55 @@ class SafeDevManager {
   showStatus() {
     console.log(colors.cyan.bold('\n📊 Development Environment Status\n'));
     console.log(colors.gray('─'.repeat(60)));
-    
+
     // Check each service
     const statuses = [];
-    
+
     // Check backend
     if (this.processes.backend && !this.processes.backend.killed) {
       statuses.push(colors.green('✅ Backend: Running on port 5000'));
     } else {
       statuses.push(colors.red('❌ Backend: Not running'));
     }
-    
+
     // Check frontend
     if (this.processes.frontend && !this.processes.frontend.killed) {
       statuses.push(colors.green('✅ Frontend: Running on port 3002'));
     } else {
       statuses.push(colors.red('❌ Frontend: Not running'));
     }
-    
+
     // Check watcher
     if (this.processes.errorWatcher && !this.processes.errorWatcher.killed) {
       statuses.push(colors.green('✅ Error Watcher: Active'));
     } else {
       statuses.push(colors.yellow('⚠️  Error Watcher: Not running'));
     }
-    
+
     statuses.forEach(status => console.log(status));
     console.log(colors.gray('─'.repeat(60)));
+  }
+
+  // Reopen all monitoring windows
+  reopenMonitors() {
+    console.log(colors.cyan.bold('\n📺 Reopening Monitoring Windows\n'));
+
+    if (this.processes['Backend Server']) {
+      console.log(colors.gray('Opening Backend monitor...'));
+      this.openMonitorWindow(CONFIG.backend);
+    }
+
+    if (this.processes['Frontend Dev Server']) {
+      console.log(colors.gray('Opening Frontend monitor...'));
+      this.openMonitorWindow(CONFIG.frontend);
+    }
+
+    if (this.processes.errorWatcher) {
+      console.log(colors.gray('Opening Error Watcher monitor...'));
+      this.openMonitorWindow(CONFIG.errorWatcher);
+    }
+
+    console.log(colors.green('\n✅ Monitoring windows reopened!'));
   }
 
   // Restart all with safety
@@ -288,21 +352,30 @@ async function main() {
     case 'start':
       await manager.startAllWithSafety();
       break;
-      
+
     case 'restart':
       await manager.restartAllWithSafety();
       break;
-      
+
     case 'status':
       manager.showStatus();
       break;
-      
+
+    case 'monitors':
+      manager.reopenMonitors();
+      break;
+
     default:
       console.log(colors.cyan.bold('🛡️  Safe Development Manager\n'));
       console.log('Usage:');
-      console.log('  node dev-manager-with-safety.js start   - Start servers with error watching');
-      console.log('  node dev-manager-with-safety.js restart - Restart with error watching');
-      console.log('  node dev-manager-with-safety.js status  - Check status');
+      console.log('  node dev-manager-with-safety.js start    - Start servers with error watching');
+      console.log('  node dev-manager-with-safety.js restart  - Restart with error watching');
+      console.log('  node dev-manager-with-safety.js status   - Check status');
+      console.log('  node dev-manager-with-safety.js monitors - Reopen monitoring windows');
+      console.log('\nMonitoring Windows:');
+      console.log('  • Each server gets its own PowerShell window with live output');
+      console.log('  • Close windows anytime - servers keep running');
+      console.log('  • Reopen windows with "monitors" command');
       console.log('\nThe error watcher will automatically check your code for:');
       console.log('  • JSON parsing errors');
       console.log('  • React array rendering errors');

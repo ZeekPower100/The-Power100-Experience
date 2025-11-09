@@ -28,7 +28,7 @@ export default function HomePage() {
     {
       icon: Shield,
       title: "Verified Trust",
-      description: "All partners are ranked using our PowerConfidence Score built from real client feedback"
+      description: "All partners are ranked using our PowerConfidence Rating built from real client feedback"
     },
     {
       icon: Zap,

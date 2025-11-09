@@ -161,11 +161,11 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
             </button>
           </div>
 
-          {/* PowerConfidence Score Hero */}
+          {/* PowerConfidence Rating Hero */}
           <div className="mt-6 bg-white bg-opacity-10 rounded-lg p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm opacity-90">PowerConfidence Score</p>
+                <p className="text-sm opacity-90">PowerConfidence Rating</p>
                 <div className="flex items-center gap-2">
                   <span className="text-4xl font-bold">{partnerData.current_powerconfidence_score || 87}</span>
                   <span className="text-2xl">/100</span>
@@ -649,7 +649,7 @@ const PartnerDetailModal: React.FC<PartnerDetailModalProps> = ({ partner, isOpen
             <div>
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">PowerConfidence Score History</CardTitle>
+                  <CardTitle className="text-lg">PowerConfidence Rating History</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">

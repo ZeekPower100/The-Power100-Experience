@@ -48,7 +48,7 @@ tpe-data-lake-production-nyfkdkpp
 ## 📊 Demo Data Loaded
 
 ### Destination Motivation Partner
-- **PowerConfidence Score**: 99
+- **PowerConfidence Rating**: 99
 - **Custom Power Card Metrics**: 
   - Revenue per mile driven
   - Driver satisfaction score  

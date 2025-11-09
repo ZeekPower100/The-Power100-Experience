@@ -45,7 +45,7 @@ WHERE pu.id = $1
 **File:** `tpe-front-end/src/app/partner-portal/dashboard/page.tsx`
 
 #### A. Updated PCR Score Card
-- Changed from "PowerConfidence Score" to "Final PCR Score"
+- Changed from "PowerConfidence Rating" to "Final PCR Score"
 - Displays momentum-adjusted final_pcr_score
 - Shows "Out of 105 (with momentum)" label
 

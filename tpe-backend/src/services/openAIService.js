@@ -945,7 +945,7 @@ Provide a JSON response with exactly 5 actionable insights:
           ? p.focus_areas_served
           : safeJsonParse(p.focus_areas_served || '[]');
 
-        return `- **${p.company_name}**: Specializes in ${focusAreas.join(', ')} (PowerConfidence Score: ${p.powerconfidence_score || 'N/A'})`;
+        return `- **${p.company_name}**: Specializes in ${focusAreas.join(', ')} (PowerConfidence Rating: ${p.powerconfidence_score || 'N/A'})`;
       }).join('\n');
 
       partnerContext = `\n\n=== STRATEGIC PARTNERS IN TPX NETWORK ===\nTHESE ARE THE ONLY PARTNERS WE WORK WITH - DO NOT MENTION ANY OTHERS:\n${partnerList}\n\nCRITICAL: You MUST ONLY recommend partners from the list above. NEVER invent partner names like CoConstruct, ServiceTitan, or Buildertrend unless they appear above.\n=== END OF PARTNER LIST ===`;
@@ -1334,7 +1334,7 @@ CRITICAL PARTNER RULES:
 - If asked about a partner not in the list, say "That partner is not currently in our network"
 
 When discussing partners:
-- ALWAYS use specific partner names from the list above (e.g., "I recommend Destination Motivation (PowerConfidence Score: 85) for...")
+- ALWAYS use specific partner names from the list above (e.g., "I recommend Destination Motivation (PowerConfidence Rating: 85) for...")
 - Include their website, contact email, and pricing model when available
 - Explain why THIS SPECIFIC partner matches their needs
 - Share their unique value proposition and success stories
