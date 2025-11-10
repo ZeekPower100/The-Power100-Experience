@@ -255,6 +255,15 @@ async function setPublicURL(partnerId, publicUrl) {
     throw new Error(`Public URL '${publicUrl}' is already in use by another partner`);
   }
 
+  // Check if partner has any reports
+  const reportsCheck = await query(`
+    SELECT id FROM partner_reports WHERE partner_id = $1 LIMIT 1
+  `, [partnerId]);
+
+  if (reportsCheck.rows.length === 0) {
+    throw new Error(`Partner ${partnerId} has no reports yet. Landing page cannot be created until first report is generated.`);
+  }
+
   // Clear public_url from all reports for this partner first
   await query(`
     UPDATE partner_reports
@@ -264,7 +273,7 @@ async function setPublicURL(partnerId, publicUrl) {
 
   // Set public_url on the most recent report for this partner
   // (public_url has UNIQUE constraint, so only ONE report can have it)
-  await query(`
+  const updateResult = await query(`
     UPDATE partner_reports
     SET public_url = $1, updated_at = NOW()
     WHERE id = (
@@ -279,7 +288,12 @@ async function setPublicURL(partnerId, publicUrl) {
                END DESC
       LIMIT 1
     )
+    RETURNING id
   `, [publicUrl, partnerId]);
+
+  if (updateResult.rows.length === 0) {
+    throw new Error(`Failed to set public URL for partner ${partnerId}. No reports found.`);
+  }
 
   console.log(`[Public PCR] ✅ Public URL set successfully`);
 

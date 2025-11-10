@@ -3,6 +3,7 @@ const { processPartnerAI } = require('../services/aiProcessingService');
 const pcrService = require('../services/pcrCalculationService');
 const momentumService = require('../services/momentumCalculationService');
 const badgeService = require('../services/badgeEligibilityService');
+const publicPCRService = require('../services/publicPCRService');
 
 const { query } = require('../config/database');
 const { AppError } = require('../middleware/errorHandler');
@@ -43,6 +44,56 @@ const triggerAIProcessing = async (partnerId, action, updates = {}) => {
   } catch (error) {
     console.error(`⚠️ Failed to process partner AI for partner ${partnerId}:`, error.message);
     // Don't throw error to prevent blocking the main operation
+  }
+};
+
+// Helper function to generate URL-safe slug from company name
+const generateSlug = (companyName) => {
+  return companyName
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/\s+/g, '-')      // Replace spaces with hyphens
+    .replace(/-+/g, '-')       // Replace multiple hyphens with single hyphen
+    .replace(/^-+|-+$/g, '');  // Remove leading/trailing hyphens
+};
+
+// Helper function to auto-generate public landing page when partner is approved
+const autoGenerateLandingPage = async (partnerId, companyName) => {
+  try {
+    console.log(`🌐 Auto-generating landing page for partner ${partnerId}: ${companyName}`);
+
+    // Generate base slug from company name
+    let slug = generateSlug(companyName);
+    let finalSlug = slug;
+    let attempt = 1;
+
+    // Check if slug is already taken and add number suffix if needed
+    while (true) {
+      try {
+        // Try to set the public URL
+        await publicPCRService.setPublicURL(partnerId, finalSlug);
+        console.log(`✅ Landing page URL generated: /pcr/${finalSlug}`);
+        return finalSlug;
+      } catch (error) {
+        if (error.message.includes('already in use')) {
+          // Slug is taken, try with a number suffix
+          attempt++;
+          finalSlug = `${slug}-${attempt}`;
+          console.log(`⚠️ Slug '${slug}' taken, trying '${finalSlug}'`);
+        } else if (error.message.includes('has no reports yet') || error.message.includes('No reports found')) {
+          // No reports exist yet - this is OK, we'll set it later when reports are generated
+          console.log(`ℹ️ No reports exist yet for partner ${partnerId}, landing page will be created when first report is generated`);
+          return null;
+        } else {
+          // Other error - log but don't fail the approval
+          throw error;
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`⚠️ Failed to auto-generate landing page for partner ${partnerId}:`, error.message);
+    // Don't throw error to prevent blocking the approval process
+    return null;
   }
 };
 
@@ -873,18 +924,27 @@ const approvePartner = async (req, res, next) => {
     `;
     
     const result = await query(queryText, [id]);
-    
+
     if (result.rows.length === 0) {
       return res.status(404).json({
         success: false,
         error: 'Partner not found'
       });
     }
-    
+
+    const approvedPartner = result.rows[0];
+
+    // Auto-generate public landing page URL
+    const landingPageSlug = await autoGenerateLandingPage(approvedPartner.id, approvedPartner.company_name);
+
     res.json({
       success: true,
       message: 'Partner approved successfully',
-      partner: result.rows[0]
+      partner: approvedPartner,
+      landingPageUrl: landingPageSlug ? `/pcr/${landingPageSlug}` : null,
+      landingPageStatus: landingPageSlug
+        ? 'Landing page created and accessible'
+        : 'Landing page will be created when first report is generated'
     });
   } catch (error) {
     console.error('Error approving partner:', error);
