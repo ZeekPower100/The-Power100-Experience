@@ -2,6 +2,9 @@
 const { query, transaction } = require('../config/database');
 const crypto = require('crypto');
 const powerCardsIntegrationService = require('./powerCardsIntegrationService');
+const axios = require('axios');
+const { safeJsonStringify } = require('../utils/jsonHelpers');
+const { buildTags } = require('../utils/tagBuilder');
 
 class PowerCardService {
   
@@ -450,7 +453,7 @@ class PowerCardService {
   // Get partner performance comparison
   async getPartnerPerformanceComparison(revenueTier, campaignId) {
     const result = await query(`
-      SELECT 
+      SELECT
         pt.partner_id,
         sp.company_name,
         AVG(pr.satisfaction_score) as avg_satisfaction,
@@ -467,6 +470,272 @@ class PowerCardService {
     `, [revenueTier, campaignId]);
 
     return result.rows;
+  }
+
+  // ===== COMMUNICATIONS =====
+
+  /**
+   * Send EMAIL + SMS notifications for a PowerCard campaign
+   *
+   * Architecture: Backend → Database Log → n8n Webhook → GHL Delivery
+   *
+   * @param {number} campaignId - The campaign ID to send notifications for
+   * @param {number} partnerId - The partner ID (for getting partner name)
+   * @returns {Object} Results with counts of emails/SMS sent
+   */
+  async sendCampaignNotifications(campaignId, partnerId) {
+    console.log(`[PowerCard Communications] Sending notifications for campaign ${campaignId}...`);
+
+    try {
+      // Get campaign info
+      const campaign = await this.getCampaignById(campaignId);
+      if (!campaign) {
+        throw new Error(`Campaign ${campaignId} not found`);
+      }
+
+      // Get partner info
+      const partnerResult = await query(`
+        SELECT id, company_name, logo_url
+        FROM strategic_partners
+        WHERE id = $1
+      `, [partnerId]);
+
+      if (partnerResult.rows.length === 0) {
+        throw new Error(`Partner ${partnerId} not found`);
+      }
+
+      const partner = partnerResult.rows[0];
+
+      // Get all recipients for this campaign
+      const recipientsResult = await query(`
+        SELECT id, recipient_name, recipient_email, recipient_phone, survey_link
+        FROM power_card_recipients
+        WHERE campaign_id = $1 AND status = 'pending'
+      `, [campaignId]);
+
+      const recipients = recipientsResult.rows;
+
+      if (recipients.length === 0) {
+        console.log(`[PowerCard Communications] ⚠️  No pending recipients for campaign ${campaignId}`);
+        return {
+          success: true,
+          emailsSent: 0,
+          smsSent: 0,
+          message: 'No pending recipients'
+        };
+      }
+
+      console.log(`[PowerCard Communications] Found ${recipients.length} pending recipients`);
+
+      // Setup n8n webhooks
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3002';
+      const n8nWebhookBase = process.env.N8N_WEBHOOK_BASE || 'https://n8n.srv918843.hstgr.cloud';
+      const n8nEnv = process.env.NODE_ENV === 'production' ? '' : '-dev';
+
+      let emailsSent = 0;
+      let smsSent = 0;
+      const communicationErrors = [];
+
+      // Send notifications to each recipient
+      for (const recipientData of recipients) {
+        try {
+          const surveyUrl = `${frontendUrl}/power-cards/survey/${recipientData.survey_link}`;
+          const firstName = recipientData.recipient_name.split(' ')[0];
+
+          // Build email HTML content
+          const emailSubject = `${partner.company_name} wants your feedback`;
+          const emailBody = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #333;">Your Feedback Matters!</h2>
+              <p>Hi ${firstName},</p>
+              <p>${partner.company_name} values your opinion and would appreciate your honest feedback about your experience.</p>
+              <p>This brief survey takes just 3-5 minutes to complete and your responses are completely anonymous.</p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${surveyUrl}"
+                   style="background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; font-weight: bold; display: inline-block;">
+                  Take Survey Now
+                </a>
+              </div>
+              <p style="color: #666; font-size: 14px;">
+                Your feedback helps ${partner.company_name} continue improving their services and delivering exceptional value.
+              </p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+              <p style="color: #999; font-size: 12px;">
+                This survey is powered by The Power100 Experience. If you have questions, please contact us.
+              </p>
+            </div>
+          `;
+
+          // Build SMS message
+          const smsMessage = `Hi ${firstName}! ${partner.company_name} wants your feedback. Take a quick 3-min survey: ${surveyUrl}`;
+
+          // Save EMAIL message to database
+          const emailMessageResult = await query(`
+            INSERT INTO power_card_messages (
+              campaign_id, recipient_id, message_type, direction, channel,
+              scheduled_time, actual_send_time, personalization_data,
+              recipient_email, message_content, status
+            ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $6, $7, $8, $9)
+            RETURNING id
+          `, [
+            campaignId,
+            recipientData.id,
+            'survey_invitation',
+            'outbound',
+            'email',
+            safeJsonStringify({
+              email_subject: emailSubject,
+              partner_name: partner.company_name,
+              survey_url: surveyUrl
+            }),
+            recipientData.recipient_email,
+            emailBody,
+            'pending'
+          ]);
+
+          const emailMessageId = emailMessageResult.rows[0].id;
+
+          // Send EMAIL via n8n webhook
+          const emailWebhook = `${n8nWebhookBase}/webhook/email-outbound${n8nEnv}`;
+          const emailTags = buildTags({
+            category: 'powercard',
+            type: 'survey-invitation',
+            recipient: 'external',
+            channel: 'email',
+            status: 'sent',
+            entityId: campaignId
+          });
+
+          try {
+            await axios.post(emailWebhook, {
+              message_id: emailMessageId,
+              to_email: recipientData.recipient_email,
+              to_name: recipientData.recipient_name,
+              subject: emailSubject,
+              body: emailBody,
+              template: 'powercard_survey_invitation',
+              tags: emailTags,
+              campaign_id: campaignId,
+              partner_id: partnerId
+            }, { timeout: 10000 });
+
+            // Update email message status
+            await query(`
+              UPDATE power_card_messages
+              SET status = 'sent', sent_at = NOW()
+              WHERE id = $1
+            `, [emailMessageId]);
+
+            emailsSent++;
+            console.log(`[PowerCard Communications] ✅ Email sent to ${recipientData.recipient_email}`);
+          } catch (emailError) {
+            // Dev-friendly: Don't fail if n8n webhook not set up yet
+            if (emailError.response?.status === 404) {
+              console.log(`[PowerCard Communications] ⚠️  n8n email webhook not found (dev mode - this is ok)`);
+            } else {
+              console.warn(`[PowerCard Communications] ⚠️  Email webhook error:`, emailError.message);
+            }
+          }
+
+          // Save SMS message to database
+          const smsMessageResult = await query(`
+            INSERT INTO power_card_messages (
+              campaign_id, recipient_id, message_type, direction, channel,
+              scheduled_time, actual_send_time, personalization_data,
+              recipient_phone, message_content, status
+            ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $6, $7, $8, $9)
+            RETURNING id
+          `, [
+            campaignId,
+            recipientData.id,
+            'survey_invitation',
+            'outbound',
+            'sms',
+            safeJsonStringify({
+              partner_name: partner.company_name,
+              survey_url: surveyUrl
+            }),
+            recipientData.recipient_phone || recipientData.recipient_email, // Fallback to email if no phone
+            smsMessage,
+            'pending'
+          ]);
+
+          const smsMessageId = smsMessageResult.rows[0].id;
+
+          // Send SMS via n8n webhook (if phone exists)
+          if (recipientData.recipient_phone) {
+            const smsWebhook = process.env.NODE_ENV === 'production'
+              ? `${n8nWebhookBase}/webhook/backend-to-ghl`
+              : `${n8nWebhookBase}/webhook/backend-to-ghl-dev`;
+
+            const smsTags = buildTags({
+              category: 'powercard',
+              type: 'survey-invitation',
+              recipient: 'external',
+              channel: 'sms',
+              status: 'sent',
+              entityId: campaignId
+            });
+
+            try {
+              await axios.post(smsWebhook, {
+                send_via_ghl: {
+                  phone: recipientData.recipient_phone,
+                  message: smsMessage,
+                  timestamp: new Date().toISOString(),
+                  tags: smsTags
+                }
+              }, { timeout: 10000 });
+
+              // Update SMS message status
+              await query(`
+                UPDATE power_card_messages
+                SET status = 'sent', sent_at = NOW()
+                WHERE id = $1
+              `, [smsMessageId]);
+
+              smsSent++;
+              console.log(`[PowerCard Communications] ✅ SMS sent to ${recipientData.recipient_phone}`);
+            } catch (smsError) {
+              // Dev-friendly: Don't fail if n8n webhook not set up yet
+              if (smsError.response?.status === 404) {
+                console.log(`[PowerCard Communications] ⚠️  n8n SMS webhook not found (dev mode - this is ok)`);
+              } else {
+                console.warn(`[PowerCard Communications] ⚠️  SMS webhook error:`, smsError.message);
+              }
+            }
+          }
+
+          // Update recipient status to 'sent'
+          await query(`
+            UPDATE power_card_recipients
+            SET status = 'sent', sent_at = NOW()
+            WHERE id = $1
+          `, [recipientData.id]);
+
+        } catch (error) {
+          console.error(`[PowerCard Communications] ❌ Failed to send notifications to ${recipientData.recipient_email}:`, error.message);
+          communicationErrors.push({
+            recipient: recipientData.recipient_email,
+            error: error.message
+          });
+        }
+      }
+
+      console.log(`[PowerCard Communications] ✅ Complete! ${emailsSent} emails + ${smsSent} SMS sent to ${recipients.length} recipients`);
+
+      return {
+        success: true,
+        emailsSent,
+        smsSent,
+        totalRecipients: recipients.length,
+        communicationErrors: communicationErrors.length > 0 ? communicationErrors : undefined
+      };
+
+    } catch (error) {
+      console.error(`[PowerCard Communications] ❌ Failed:`, error);
+      throw error;
+    }
   }
 }
 
