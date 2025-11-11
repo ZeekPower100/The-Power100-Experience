@@ -33,6 +33,7 @@ class PowerCardService {
         metric_3_name, metric_3_question, metric_3_type,
         include_satisfaction_score, include_recommendation_score, include_culture_questions
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING id
     `, [
       partner_id, partner_type,
       metric_1_name, metric_1_question, metric_1_type,
@@ -88,6 +89,7 @@ class PowerCardService {
       INSERT INTO power_card_campaigns (
         campaign_name, quarter, year, start_date, end_date, reminder_date, status
       ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING id
     `, [campaign_name, quarter, year, start_date, end_date, reminder_date, status]);
 
     if (result.rowCount > 0) {
@@ -131,6 +133,7 @@ class PowerCardService {
           recipient_email, recipient_name, company_id, company_type,
           revenue_tier, survey_link
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id
       `, [
         campaignId, templateId, recipient.recipient_type, recipient.recipient_id,
         recipient.recipient_email, recipient.recipient_name,

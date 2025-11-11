@@ -3,6 +3,7 @@ const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const express = require('express');
 const router = express.Router();
 const { query } = require('../config/database.postgresql');
+const preOnboardingPowerCardService = require('../services/preOnboardingPowerCardService');
 
 // Search partners for autocomplete (no auth required)
 router.get('/search', async (req, res) => {
@@ -236,7 +237,27 @@ router.post('/update-portfolio/:partnerId', async (req, res) => {
     }
     
     console.log(`Pre-onboarding updated for partner: ${result.rows[0].company_name} (ID: ${result.rows[0].id})`);
-    
+
+    // HOOK: Generate Pre-Onboarding PowerCard Campaign (Step 8 completion)
+    // Run asynchronously - don't block the response
+    const partnerIdForCampaign = result.rows[0].id;
+    setImmediate(async () => {
+      try {
+        console.log(`[Pre-Onboarding Hook] Triggering PowerCard campaign for partner ${partnerIdForCampaign}`);
+        const campaignResult = await preOnboardingPowerCardService.generatePreOnboardingCampaign(partnerIdForCampaign);
+
+        if (campaignResult.success) {
+          console.log(`[Pre-Onboarding Hook] ✅ Campaign generated: ${campaignResult.campaignName}`);
+          console.log(`[Pre-Onboarding Hook] Sent ${campaignResult.emailsSent} emails to ${campaignResult.totalRecipients} recipients`);
+        } else {
+          console.log(`[Pre-Onboarding Hook] ⚠️ Campaign not generated: ${campaignResult.reason}`);
+        }
+      } catch (error) {
+        console.error(`[Pre-Onboarding Hook] ❌ Failed to generate campaign for partner ${partnerIdForCampaign}:`, error.message);
+        // Don't fail the request - campaign generation is a background task
+      }
+    });
+
     res.json({
       success: true,
       message: 'Pre-onboarding data updated successfully',
