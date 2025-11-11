@@ -8,7 +8,9 @@
 
 const { query } = require('../config/database');
 const powerCardService = require('./powerCardService');
-const emailService = require('./emailService');
+const axios = require('axios');
+const { safeJsonStringify } = require('../utils/jsonHelpers');
+const { buildTags } = require('../utils/tagBuilder');
 
 /**
  * Parse reference text field into structured array
@@ -230,45 +232,184 @@ async function generatePreOnboardingCampaign(partnerId) {
       WHERE id = $2
     `, [recipientResults.length, campaign.id]);
 
-    // STEP 6: Send emails with unique survey links
+    // STEP 6: Send EMAIL + SMS notifications with unique survey links
+    // Architecture: Backend → n8n → GHL (following event orchestration pattern)
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3002';
+    const n8nWebhookBase = process.env.N8N_WEBHOOK_BASE || 'https://n8n.srv918843.hstgr.cloud';
+    const n8nEnv = process.env.NODE_ENV === 'production' ? '' : '-dev';
+
     let emailsSent = 0;
-    const emailErrors = [];
+    let smsSent = 0;
+    const communicationErrors = [];
 
     for (const recipientData of recipientResults) {
       try {
         const surveyUrl = `${frontendUrl}/power-cards/survey/${recipientData.survey_link}`;
+        const firstName = recipientData.recipient_name.split(' ')[0];
 
-        // Prepare email content
-        const emailContent = {
-          to: recipientData.recipient_email,
-          subject: `${partner.company_name} wants your feedback`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #333;">Your Feedback Matters!</h2>
-              <p>Hi ${recipientData.recipient_name},</p>
-              <p>${partner.company_name} values your opinion and would appreciate your honest feedback about your experience.</p>
-              <p>This brief survey takes just 3-5 minutes to complete and your responses are completely anonymous.</p>
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="${surveyUrl}"
-                   style="background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; font-weight: bold; display: inline-block;">
-                  Take Survey Now
-                </a>
-              </div>
-              <p style="color: #666; font-size: 14px;">
-                Your feedback helps ${partner.company_name} continue improving their services and delivering exceptional value.
-              </p>
-              <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-              <p style="color: #999; font-size: 12px;">
-                This survey is powered by The Power100 Experience. If you have questions, please contact us.
-              </p>
+        // Build email HTML content
+        const emailSubject = `${partner.company_name} wants your feedback`;
+        const emailBody = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #333;">Your Feedback Matters!</h2>
+            <p>Hi ${firstName},</p>
+            <p>${partner.company_name} values your opinion and would appreciate your honest feedback about your experience.</p>
+            <p>This brief survey takes just 3-5 minutes to complete and your responses are completely anonymous.</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${surveyUrl}"
+                 style="background-color: #28a745; color: white; padding: 15px 30px; text-decoration: none; border-radius: 25px; font-weight: bold; display: inline-block;">
+                Take Survey Now
+              </a>
             </div>
-          `
-        };
+            <p style="color: #666; font-size: 14px;">
+              Your feedback helps ${partner.company_name} continue improving their services and delivering exceptional value.
+            </p>
+            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+            <p style="color: #999; font-size: 12px;">
+              This survey is powered by The Power100 Experience. If you have questions, please contact us.
+            </p>
+          </div>
+        `;
 
-        // Send email using existing email service
-        await emailService.sendEmail(emailContent);
-        emailsSent++;
+        // Build SMS message
+        const smsMessage = `Hi ${firstName}! ${partner.company_name} wants your feedback. Take a quick 3-min survey: ${surveyUrl}`;
+
+        // Save EMAIL message to database
+        const emailMessageResult = await query(`
+          INSERT INTO power_card_messages (
+            campaign_id, recipient_id, message_type, direction, channel,
+            scheduled_time, actual_send_time, personalization_data,
+            recipient_email, message_content, status
+          ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $6, $7, $8, $9)
+          RETURNING id
+        `, [
+          campaign.id,
+          recipientData.id,
+          'survey_invitation',
+          'outbound',
+          'email',
+          safeJsonStringify({
+            email_subject: emailSubject,
+            partner_name: partner.company_name,
+            survey_url: surveyUrl
+          }),
+          recipientData.recipient_email,
+          emailBody,
+          'pending'
+        ]);
+
+        const emailMessageId = emailMessageResult.rows[0].id;
+
+        // Send EMAIL via n8n webhook
+        const emailWebhook = `${n8nWebhookBase}/webhook/email-outbound${n8nEnv}`;
+        const emailTags = buildTags({
+          category: 'powercard',
+          type: 'survey-invitation',
+          recipient: 'external',
+          channel: 'email',
+          status: 'sent',
+          entityId: campaign.id
+        });
+
+        try {
+          await axios.post(emailWebhook, {
+            message_id: emailMessageId,
+            to_email: recipientData.recipient_email,
+            to_name: recipientData.recipient_name,
+            subject: emailSubject,
+            body: emailBody,
+            template: 'powercard_survey_invitation',
+            tags: emailTags,
+            campaign_id: campaign.id,
+            partner_id: partnerId
+          }, { timeout: 10000 });
+
+          // Update email message status
+          await query(`
+            UPDATE power_card_messages
+            SET status = 'sent', sent_at = NOW()
+            WHERE id = $1
+          `, [emailMessageId]);
+
+          emailsSent++;
+          console.log(`[Pre-Onboarding PowerCard] ✅ Email sent to ${recipientData.recipient_email}`);
+        } catch (emailError) {
+          // Dev-friendly: Don't fail if n8n webhook not set up yet
+          if (emailError.response?.status === 404) {
+            console.log(`[Pre-Onboarding PowerCard] ⚠️  n8n email webhook not found (dev mode - this is ok)`);
+          } else {
+            console.warn(`[Pre-Onboarding PowerCard] ⚠️  Email webhook error:`, emailError.message);
+          }
+        }
+
+        // Save SMS message to database
+        const smsMessageResult = await query(`
+          INSERT INTO power_card_messages (
+            campaign_id, recipient_id, message_type, direction, channel,
+            scheduled_time, actual_send_time, personalization_data,
+            recipient_phone, message_content, status
+          ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, $6, $7, $8, $9)
+          RETURNING id
+        `, [
+          campaign.id,
+          recipientData.id,
+          'survey_invitation',
+          'outbound',
+          'sms',
+          safeJsonStringify({
+            partner_name: partner.company_name,
+            survey_url: surveyUrl
+          }),
+          recipientData.recipient_phone || recipientData.recipient_email, // Fallback to email if no phone
+          smsMessage,
+          'pending'
+        ]);
+
+        const smsMessageId = smsMessageResult.rows[0].id;
+
+        // Send SMS via n8n webhook (if phone exists)
+        if (recipientData.recipient_phone) {
+          const smsWebhook = process.env.NODE_ENV === 'production'
+            ? `${n8nWebhookBase}/webhook/backend-to-ghl`
+            : `${n8nWebhookBase}/webhook/backend-to-ghl-dev`;
+
+          const smsTags = buildTags({
+            category: 'powercard',
+            type: 'survey-invitation',
+            recipient: 'external',
+            channel: 'sms',
+            status: 'sent',
+            entityId: campaign.id
+          });
+
+          try {
+            await axios.post(smsWebhook, {
+              send_via_ghl: {
+                phone: recipientData.recipient_phone,
+                message: smsMessage,
+                timestamp: new Date().toISOString(),
+                tags: smsTags
+              }
+            }, { timeout: 10000 });
+
+            // Update SMS message status
+            await query(`
+              UPDATE power_card_messages
+              SET status = 'sent', sent_at = NOW()
+              WHERE id = $1
+            `, [smsMessageId]);
+
+            smsSent++;
+            console.log(`[Pre-Onboarding PowerCard] ✅ SMS sent to ${recipientData.recipient_phone}`);
+          } catch (smsError) {
+            // Dev-friendly: Don't fail if n8n webhook not set up yet
+            if (smsError.response?.status === 404) {
+              console.log(`[Pre-Onboarding PowerCard] ⚠️  n8n SMS webhook not found (dev mode - this is ok)`);
+            } else {
+              console.warn(`[Pre-Onboarding PowerCard] ⚠️  SMS webhook error:`, smsError.message);
+            }
+          }
+        }
 
         // Update recipient status to 'sent'
         await query(`
@@ -277,18 +418,17 @@ async function generatePreOnboardingCampaign(partnerId) {
           WHERE id = $1
         `, [recipientData.id]);
 
-        console.log(`[Pre-Onboarding PowerCard] ✅ Email sent to ${recipientData.recipient_email}`);
-      } catch (emailError) {
-        console.error(`[Pre-Onboarding PowerCard] ❌ Failed to send email to ${recipientData.recipient_email}:`, emailError.message);
-        emailErrors.push({
-          email: recipientData.recipient_email,
-          error: emailError.message
+      } catch (error) {
+        console.error(`[Pre-Onboarding PowerCard] ❌ Failed to send notifications to ${recipientData.recipient_email}:`, error.message);
+        communicationErrors.push({
+          recipient: recipientData.recipient_email,
+          error: error.message
         });
       }
     }
 
     console.log(`[Pre-Onboarding PowerCard] ✅ Campaign generation complete!`);
-    console.log(`[Pre-Onboarding PowerCard] Summary: ${emailsSent}/${recipientResults.length} emails sent`);
+    console.log(`[Pre-Onboarding PowerCard] Summary: ${emailsSent} emails + ${smsSent} SMS sent to ${recipientResults.length} recipients`);
 
     return {
       success: true,
@@ -299,7 +439,8 @@ async function generatePreOnboardingCampaign(partnerId) {
       customerCount: customerRefs.length,
       employeeCount: employeeRefs.length,
       emailsSent,
-      emailErrors: emailErrors.length > 0 ? emailErrors : undefined
+      smsSent,
+      communicationErrors: communicationErrors.length > 0 ? communicationErrors : undefined
     };
 
   } catch (error) {
