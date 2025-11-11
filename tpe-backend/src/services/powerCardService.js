@@ -1,6 +1,7 @@
 // Power Cards Service - Manages quarterly feedback surveys and PowerConfidence scoring
 const { query, transaction } = require('../config/database');
 const crypto = require('crypto');
+const powerCardsIntegrationService = require('./powerCardsIntegrationService');
 
 class PowerCardService {
   
@@ -185,7 +186,11 @@ class PowerCardService {
 
   // Submit a survey response
   async submitResponse(surveyLink, responseData) {
-    return transaction(async (client) => {
+    // Store campaign ID for post-transaction processing
+    let campaignId = null;
+
+    // Execute transaction for response submission
+    const result = await transaction(async (client) => {
       // First, get the recipient info from survey link
       const recipientResult = await client.query(`
         SELECT * FROM power_card_recipients WHERE survey_link = $1
@@ -196,6 +201,7 @@ class PowerCardService {
       }
 
       const recipient = recipientResult.rows[0];
+      campaignId = recipient.campaign_id; // Store for later
 
       // Check if already completed
       if (recipient.status === 'completed') {
@@ -227,14 +233,14 @@ class PowerCardService {
 
       // Update recipient status to completed
       await client.query(`
-        UPDATE power_card_recipients 
+        UPDATE power_card_recipients
         SET status = 'completed', completed_at = CURRENT_TIMESTAMP
         WHERE id = $1
       `, [recipient.id]);
 
       // Update campaign stats
       await client.query(`
-        UPDATE power_card_campaigns 
+        UPDATE power_card_campaigns
         SET total_responses = total_responses + 1,
             response_rate = (total_responses + 1) * 100.0 / NULLIF(total_sent, 0)
         WHERE id = $1
@@ -245,6 +251,63 @@ class PowerCardService {
         response_id: responseResult.rows[0]?.id || responseResult.lastID
       };
     });
+
+    // ================================================================
+    // PHASE 2: EVENT-DRIVEN AUTO-TRIGGER FOR CAMPAIGN COMPLETION
+    // ================================================================
+    // After transaction commits successfully, check if campaign reached threshold
+    // This runs asynchronously and does NOT block the response to the user
+
+    if (campaignId) {
+      setImmediate(async () => {
+        try {
+          // Get updated campaign stats
+          const campaignResult = await query(`
+            SELECT id, campaign_name, total_responses, status
+            FROM power_card_campaigns
+            WHERE id = $1
+          `, [campaignId]);
+
+          if (campaignResult.rows.length === 0) {
+            console.log(`[Auto-Processing] Campaign ${campaignId} not found`);
+            return;
+          }
+
+          const campaign = campaignResult.rows[0];
+          const RESPONSE_THRESHOLD = 5; // Minimum responses to trigger processing
+
+          console.log(`[Auto-Processing] Campaign ${campaign.id} (${campaign.campaign_name}): ${campaign.total_responses}/${RESPONSE_THRESHOLD} responses`);
+
+          // Check if threshold reached AND campaign is still active
+          if (campaign.total_responses >= RESPONSE_THRESHOLD && campaign.status === 'active') {
+            console.log(`[Auto-Processing] ✅ Threshold reached! Processing campaign ${campaign.id}...`);
+
+            // Trigger existing integration service (PowerConfidence calculation)
+            const processingResult = await powerCardsIntegrationService.processCampaignCompletion(campaignId);
+
+            // Update campaign status to completed
+            await query(`
+              UPDATE power_card_campaigns
+              SET status = 'completed', updated_at = NOW()
+              WHERE id = $1
+            `, [campaignId]);
+
+            console.log(`[Auto-Processing] ✅ Campaign ${campaign.id} completed successfully!`);
+            console.log(`[Auto-Processing] Results: ${processingResult.totalPartners} partners processed, ${processingResult.succeeded} succeeded, ${processingResult.failed} failed`);
+          } else if (campaign.status === 'completed') {
+            console.log(`[Auto-Processing] Campaign ${campaign.id} already completed, skipping`);
+          } else {
+            console.log(`[Auto-Processing] Campaign ${campaign.id} at ${campaign.total_responses}/${RESPONSE_THRESHOLD} responses, waiting for more`);
+          }
+        } catch (error) {
+          console.error(`[Auto-Processing] ❌ Failed to process campaign ${campaignId}:`, error.message);
+          // Don't throw - this is a background task, shouldn't affect response submission
+        }
+      });
+    }
+
+    // Return result immediately (don't wait for auto-processing)
+    return result;
   }
 
   // ===== POWERCONFIDENCE SCORE CALCULATION =====
