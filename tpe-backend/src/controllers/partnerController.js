@@ -69,26 +69,27 @@ const autoGenerateLandingPage = async (partnerId, companyName) => {
 
     // Check if slug is already taken and add number suffix if needed
     while (true) {
-      try {
-        // Try to set the public URL
-        await publicPCRService.setPublicURL(partnerId, finalSlug);
+      const existingResult = await query(`
+        SELECT id FROM strategic_partners
+        WHERE public_url = $1 AND id != $2
+      `, [finalSlug, partnerId]);
+
+      if (existingResult.rows.length === 0) {
+        // Slug is unique, set it on the partner
+        await query(`
+          UPDATE strategic_partners
+          SET public_url = $1, updated_at = NOW()
+          WHERE id = $2
+        `, [finalSlug, partnerId]);
+
         console.log(`✅ Landing page URL generated: /pcr/${finalSlug}`);
         return finalSlug;
-      } catch (error) {
-        if (error.message.includes('already in use')) {
-          // Slug is taken, try with a number suffix
-          attempt++;
-          finalSlug = `${slug}-${attempt}`;
-          console.log(`⚠️ Slug '${slug}' taken, trying '${finalSlug}'`);
-        } else if (error.message.includes('has no reports yet') || error.message.includes('No reports found')) {
-          // No reports exist yet - this is OK, we'll set it later when reports are generated
-          console.log(`ℹ️ No reports exist yet for partner ${partnerId}, landing page will be created when first report is generated`);
-          return null;
-        } else {
-          // Other error - log but don't fail the approval
-          throw error;
-        }
       }
+
+      // Slug is taken, try with a number suffix
+      attempt++;
+      finalSlug = `${slug}-${attempt}`;
+      console.log(`⚠️ Slug '${slug}' taken, trying '${finalSlug}'`);
     }
   } catch (error) {
     console.error(`⚠️ Failed to auto-generate landing page for partner ${partnerId}:`, error.message);
@@ -943,8 +944,8 @@ const approvePartner = async (req, res, next) => {
       partner: approvedPartner,
       landingPageUrl: landingPageSlug ? `/pcr/${landingPageSlug}` : null,
       landingPageStatus: landingPageSlug
-        ? 'Landing page created and accessible'
-        : 'Landing page will be created when first report is generated'
+        ? 'Landing page URL created and ready (will populate with data as reports are generated)'
+        : 'Unable to generate landing page URL'
     });
   } catch (error) {
     console.error('Error approving partner:', error);

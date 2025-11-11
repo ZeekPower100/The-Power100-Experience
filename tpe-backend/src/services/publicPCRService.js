@@ -49,8 +49,8 @@ const { query } = require('../config/database');
 async function getPublicPCRBySlug(publicUrl) {
   console.log(`[Public PCR] Getting PCR data for slug: ${publicUrl}`);
 
-  // STEP 1: Get partner by public_url
-  // Only return data for active partners
+  // STEP 1: Get partner by public_url (directly from strategic_partners)
+  // Landing pages exist as soon as partner is approved, regardless of reports
   const partnerResult = await query(`
     SELECT
       sp.id,
@@ -65,10 +65,10 @@ async function getPublicPCRBySlug(publicUrl) {
       sp.engagement_tier,
       sp.key_differentiators,
       sp.client_testimonials,
-      sp.landing_page_videos
+      sp.landing_page_videos,
+      sp.focus_areas_served
     FROM strategic_partners sp
-    JOIN partner_reports pr ON pr.partner_id = sp.id
-    WHERE pr.public_url = $1
+    WHERE sp.public_url = $1
       AND sp.is_active = true
     LIMIT 1
   `, [publicUrl]);
@@ -128,7 +128,8 @@ async function getPublicPCRBySlug(publicUrl) {
       engagementTier: partner.engagement_tier,
       differentiators: partner.key_differentiators,
       testimonials: partner.client_testimonials || [],
-      videos: partner.landing_page_videos || []
+      videos: partner.landing_page_videos || [],
+      focus_areas_served: partner.focus_areas_served || []
     },
     recentReports: reportsResult.rows.map(r => ({
       id: r.id,
@@ -219,7 +220,8 @@ async function getPublicPCRById(partnerId) {
       engagementTier: partner.engagement_tier,
       differentiators: partner.key_differentiators,
       testimonials: partner.client_testimonials || [],
-      videos: partner.landing_page_videos || []
+      videos: partner.landing_page_videos || [],
+      focus_areas_served: partner.focus_areas_served || []
     },
     recentReports: reportsResult.rows.map(r => ({
       id: r.id,

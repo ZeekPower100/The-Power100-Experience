@@ -25,10 +25,11 @@ import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, se
 import FocusAreaIcon from '@/components/icons/FocusAreaIcon';
 
 interface PublicPCRProps {
-  partnerId: string;
+  partnerId?: string;
+  slug?: string;
 }
 
-export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
+export default function PublicPCRLandingV2({ partnerId, slug }: PublicPCRProps) {
   const [report, setReport] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -57,42 +58,12 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
     return url; // Return original if no match
   };
 
-  // Video configuration - use from API if available, otherwise use defaults
-  const defaultVideos = [
-    {
-      url: 'https://www.youtube.com/watch?v=SI-q7Cwqut8',
-      title: 'Introduction to Destination Motivation',
-      duration: '2:45',
-      thumbnail: null
-    },
-    {
-      url: 'https://www.youtube.com/watch?v=Z3VoZ0V_H8k',
-      title: 'Success Stories & Case Studies',
-      duration: '4:12',
-      thumbnail: null
-    },
-    {
-      url: 'https://www.youtube.com/watch?v=Zj7QnujoHiA',
-      title: 'Team Building Strategies That Work',
-      duration: '3:28',
-      thumbnail: null
-    },
-    {
-      url: 'https://www.youtube.com/watch?v=y1Ry6gRKf10',
-      title: 'What Our Clients Say',
-      duration: '5:15',
-      thumbnail: null
-    }
-  ];
-  
-  // Use videos from API if available, otherwise use defaults
-  const videos = report?.partner?.videos && report.partner.videos.length > 0 
-    ? report.partner.videos 
-    : defaultVideos;
+  // Only show videos if partner has them - don't use fallback videos
+  const videos = report?.partner?.videos || [];
 
   useEffect(() => {
     fetchReport();
-  }, [partnerId]);
+  }, [partnerId, slug]);
 
   // Handle ESC key to close video modal
   useEffect(() => {
@@ -101,13 +72,13 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
         setActiveVideo(null);
       }
     };
-    
+
     if (activeVideo) {
       document.addEventListener('keydown', handleEsc);
       // Prevent body scroll when modal is open
       document.body.style.overflow = 'hidden';
     }
-    
+
     return () => {
       document.removeEventListener('keydown', handleEsc);
       document.body.style.overflow = 'unset';
@@ -117,14 +88,21 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
   const fetchReport = async () => {
     try {
       setError(null);
-      const url = getApiUrl(`api/reports/pcr/${partnerId}`);
+
+      // Use slug-based public endpoint if slug is provided, otherwise use partnerId endpoint
+      const endpoint = slug
+        ? `api/reports/public/pcr/${slug}`
+        : `api/reports/pcr/${partnerId}`;
+
+      const url = getApiUrl(endpoint);
       console.log('Fetching PCR report from:', url);
-      
+
       const response = await fetch(url);
       const data = await handleApiResponse(response);
-      
-      if (data.success) {
-        setReport(data.report);
+
+      if (data.success || data.pcr) {
+        // Handle both response formats
+        setReport(data.report || data.pcr);
       } else {
         setError('Failed to load report');
       }
@@ -324,23 +302,27 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
         <div className="relative max-w-7xl mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <div>
-              <Badge className="mb-4 bg-yellow-400 text-black">
-                <Trophy className="h-4 w-4 mr-1" />
-                {report.powerconfidence_score?.percentile || '99th percentile'}
-              </Badge>
+              {report.partner?.engagementTier && (
+                <Badge className="mb-4 bg-yellow-400 text-black">
+                  <Trophy className="h-4 w-4 mr-1" />
+                  {report.partner.engagementTier}
+                </Badge>
+              )}
 
-              <h1 className="text-7xl font-bold mb-4">{report.partner?.name || 'Partner'}</h1>
-              <p className="text-2xl mb-6 text-white/90">{report.partner?.tagline || ''}</p>
-              
+              <h1 className="text-7xl font-bold mb-4">{report.partner?.companyName || 'Partner'}</h1>
+              <p className="text-2xl mb-6 text-white/90">{report.partner?.valueProposition || report.partner?.description || ''}</p>
+
               {/* Trust Badges */}
-              <div className="flex flex-wrap gap-3 mb-8">
-                {report.trust_badges?.map((badge: string, idx: number) => (
-                  <Badge key={idx} className="bg-white/10 text-white border-white/20">
-                    <CheckCircle className="h-3 w-3 mr-1" />
-                    {badge}
-                  </Badge>
-                ))}
-              </div>
+              {report.partner?.badges && report.partner.badges.length > 0 && (
+                <div className="flex flex-wrap gap-3 mb-8">
+                  {report.partner.badges.map((badge: string, idx: number) => (
+                    <Badge key={idx} className="bg-white/10 text-white border-white/20">
+                      <CheckCircle className="h-3 w-3 mr-1" />
+                      {badge}
+                    </Badge>
+                  ))}
+                </div>
+              )}
 
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4">
@@ -369,9 +351,13 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
 
                     <p className="text-sm text-gray-600 uppercase tracking-wider mb-2 font-semibold">PowerConfidence Rating</p>
 
-                    <div className="text-8xl font-bold text-red-600 mb-2">{Math.round(report.powerconfidence_score?.current || 99)}</div>
+                    <div className="text-8xl font-bold text-red-600 mb-2">
+                      {report.partner?.pcrScore ? Math.round(report.partner.pcrScore) : 'N/A'}
+                    </div>
 
-                    <p className="text-xl font-semibold text-gray-800">{report.powerconfidence_score?.label || 'Elite Partner'}</p>
+                    <p className="text-xl font-semibold text-gray-800">
+                      {report.partner?.engagementTier || 'Partner'}
+                    </p>
 
                     <div className="mt-6 pt-6 border-t border-gray-200">
                       <p className="text-xs text-gray-500 uppercase tracking-wider mb-2">Performance Metrics</p>
@@ -390,20 +376,22 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
             </div>
           </div>
 
-          <p className="text-center mt-8 text-white/80 max-w-3xl mx-auto">
-            {report.powerconfidence_score?.description || 'Top 1% of all strategic partners'}
-          </p>
+          {report.partner?.description && (
+            <p className="text-center mt-8 text-white/80 max-w-3xl mx-auto">
+              {report.partner.description}
+            </p>
+          )}
         </div>
       </div>
 
       {/* Focus Areas Section - Moved up to attach to hero */}
-      {report.partner?.focus_areas_served && report.partner.focus_areas_served.length > 0 && (
-        <div className="py-20 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4">
-            <div className="text-center mb-16">
-              <div className="inline-block bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-semibold mb-4">Growth Areas</div>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Areas We Help Contractors Grow</h2>
-            </div>
+      <div className="py-20 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-16">
+            <div className="inline-block bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-semibold mb-4">Growth Areas</div>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Areas We Help Contractors Grow</h2>
+          </div>
+          {report.partner?.focus_areas_served && report.partner.focus_areas_served.length > 0 ? (
             <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {report.partner.focus_areas_served.map((area: string, idx: number) => (
                 <div key={idx} className="group bg-white rounded-2xl p-6 shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 text-center">
@@ -421,9 +409,15 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
                 </div>
               ))}
             </div>
-          </div>
+          ) : (
+            <div className="max-w-3xl mx-auto bg-white rounded-2xl p-12 shadow-md border border-gray-200 text-center">
+              <p className="text-lg text-gray-600">
+                This partner doesn't have enough data in their profile to display growth areas yet.
+              </p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Summary Section - 2 Column Layout with Partner Logo */}
       {(report.partner?.ai_extended_summary || report.partner?.value_proposition) && (
@@ -532,14 +526,14 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
       )}
 
       {/* Testimonials */}
-      {report.testimonials && report.testimonials.length > 0 && (
-        <div className="py-20 bg-gradient-to-b from-gray-50 to-white">
-          <div className="max-w-6xl mx-auto px-4">
-            <div className="text-center mb-16">
-              <div className="inline-block bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-semibold mb-4">Client Success Stories</div>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">What Contractors Say</h2>
-            </div>
+      <div className="py-20 bg-gradient-to-b from-gray-50 to-white">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-16">
+            <div className="inline-block bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-semibold mb-4">Client Success Stories</div>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">What Contractors Say</h2>
+          </div>
 
+          {report.testimonials && report.testimonials.length > 0 ? (
             <div className="grid md:grid-cols-3 gap-6 mb-12">
               {report.testimonials.map((testimonial: any, idx: number) => (
                 <div key={idx} className="group bg-white rounded-2xl p-8 shadow-md hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 border border-gray-100 relative">
@@ -563,19 +557,26 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
                 </div>
               ))}
             </div>
-          </div>
+          ) : (
+            <div className="max-w-3xl mx-auto bg-white rounded-2xl p-12 shadow-md border border-gray-200 text-center">
+              <p className="text-lg text-gray-600">
+                This partner doesn't have enough data in their profile to display testimonials yet.
+              </p>
+            </div>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Video Section - Get To Know More About Partner */}
       <div className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-16">
             <div className="inline-block bg-red-100 text-red-600 px-4 py-2 rounded-full text-sm font-semibold mb-4">See It In Action</div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Get To Know More About {report.partner?.name || 'Our Partner'}</h2>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Get To Know More About {report.partner?.companyName || 'Our Partner'}</h2>
           </div>
-          <div className="grid md:grid-cols-2 gap-8">
-            {videos.map((video, idx) => {
+          {videos && videos.length > 0 ? (
+            <div className="grid md:grid-cols-2 gap-8">
+              {videos.map((video, idx) => {
               const videoId = extractYouTubeId(video.url);
               return (
                 <div 
@@ -626,7 +627,14 @@ export default function PublicPCRLandingV2({ partnerId }: PublicPCRProps) {
                 </div>
               );
             })}
-          </div>
+            </div>
+          ) : (
+            <div className="max-w-3xl mx-auto bg-white rounded-2xl p-12 shadow-md border border-gray-200 text-center">
+              <p className="text-lg text-gray-600">
+                This partner doesn't have enough data in their profile to display videos yet.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
