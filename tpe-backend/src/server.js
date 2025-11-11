@@ -28,6 +28,7 @@ const { registerAllHandlers } = require('./services/eventOrchestrator/messageHan
 const { initializeScheduledMessageProcessor } = require('./queues/eventOrchestrationQueue');
 const { initializeIGEScheduler } = require('./queues/igeQueue');
 const { initializeProactiveMessageScheduler } = require('./queues/proactiveMessageQueue');
+const { initializeQuarterlyPowerCardScheduler } = require('./queues/powerCardQueue');
 
 // Import routes
 const contractorRoutes = require('./routes/contractorRoutes');
@@ -287,6 +288,16 @@ initializeProactiveMessageScheduler()
   })
   .catch((err) => {
     console.error('❌ Failed to initialize proactive message delivery scheduler:', err);
+  });
+
+// 🔥 CRITICAL: Initialize Quarterly PowerCard scheduler (runs quarterly on 1st at 9 AM)
+// This automatically generates PowerCard campaigns for all active partners every quarter!
+initializeQuarterlyPowerCardScheduler()
+  .then(() => {
+    console.log('✅ Quarterly PowerCard scheduler initialized successfully - runs quarterly at 9 AM');
+  })
+  .catch((err) => {
+    console.error('❌ Failed to initialize quarterly PowerCard scheduler:', err);
   });
 
 // Start server

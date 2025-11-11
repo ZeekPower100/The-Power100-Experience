@@ -11,7 +11,8 @@ const workers = [
   { name: 'Event Message Worker', path: './eventMessageWorker.js' },
   { name: 'Event Orchestration Worker', path: './eventOrchestrationWorker.js' },
   { name: 'Proactive IGE Worker', path: './igeWorker.js' },
-  { name: 'Proactive Message Delivery Worker', path: './proactiveMessageWorker.js' }
+  { name: 'Proactive Message Delivery Worker', path: './proactiveMessageWorker.js' },
+  { name: 'PowerCard Worker', path: './powerCardWorker.js' }
 ];
 
 const childProcesses = [];
