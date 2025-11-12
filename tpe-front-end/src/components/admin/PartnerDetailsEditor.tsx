@@ -112,29 +112,49 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
   if (!partner) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 overflow-y-auto z-50">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm overflow-y-auto z-50">
       <div className="min-h-screen py-8 px-4">
         <div className="max-w-6xl mx-auto">
-          <Card className="bg-white">
-            {/* Header */}
-            <div className="border-b px-6 py-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Building2 className="h-6 w-6 text-power100-red" />
-                  <h2 className="text-2xl font-bold">Edit Partner: {partner.company_name}</h2>
+          <Card className="bg-white shadow-2xl rounded-2xl overflow-hidden">
+            {/* Modern Header with Gradient */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-red-50 via-white to-gray-50 px-8 py-6 border-b-2 border-gray-100">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-power100-red opacity-5 rounded-full -mr-48 -mt-48"></div>
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-gradient-to-br from-power100-red to-red-600 rounded-2xl flex items-center justify-center shadow-xl transform transition-transform hover:scale-105">
+                    <Building2 className="h-7 w-7 text-white" />
+                  </div>
+                  <div>
+                    <div className="inline-block bg-red-100 text-power100-red px-3 py-1 rounded-full text-xs font-semibold mb-1">
+                      ADMIN EDITOR
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-900">{partner.company_name}</h2>
+                    <p className="text-sm text-gray-600">Partner Profile Management</p>
+                  </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                   <Button
                     onClick={handleSave}
                     disabled={saving}
-                    className="bg-power100-green hover:bg-green-600 text-white"
+                    className="group bg-gradient-to-r from-power100-green to-green-600 hover:from-green-600 hover:to-green-700 text-white px-8 py-3 rounded-full font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2"
                   >
-                    <Save className="h-4 w-4 mr-2" />
-                    {saving ? 'Saving...' : 'Save Changes'}
+                    {saving ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        Save Changes
+                        <CheckCircle className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
                   </Button>
                   <Button
                     onClick={onClose}
                     variant="outline"
+                    className="px-6 py-3 rounded-full border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 font-semibold transition-all duration-300 shadow-md hover:shadow-lg"
                   >
                     <X className="h-4 w-4 mr-2" />
                     Close
@@ -143,11 +163,17 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
               </div>
             </div>
 
-            {/* Alert */}
+            {/* Modern Alert */}
             {alert && (
-              <div className="px-6 pt-4">
-                <Alert className={alert.type === 'error' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50'}>
-                  <AlertDescription className={alert.type === 'error' ? 'text-red-800' : 'text-green-800'}>
+              <div className="px-8 pt-6">
+                <Alert className={`${
+                  alert.type === 'error'
+                    ? 'border-red-200 bg-gradient-to-r from-red-50 to-rose-50'
+                    : 'border-green-200 bg-gradient-to-r from-green-50 to-emerald-50'
+                } shadow-md rounded-xl`}>
+                  <AlertDescription className={`${
+                    alert.type === 'error' ? 'text-red-800' : 'text-green-800'
+                  } font-medium`}>
                     {alert.message}
                   </AlertDescription>
                 </Alert>
@@ -155,15 +181,45 @@ export default function PartnerDetailsEditor({ partnerId, onClose, onSave }: Par
             )}
 
             {/* Content */}
-            <div className="p-6">
+            <div className="p-8">
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="grid grid-cols-6 w-full">
-                  <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                  <TabsTrigger value="landing">Landing Page</TabsTrigger>
-                  <TabsTrigger value="videos">Videos</TabsTrigger>
-                  <TabsTrigger value="capabilities">Capabilities</TabsTrigger>
-                  <TabsTrigger value="testimonials">Testimonials</TabsTrigger>
-                  <TabsTrigger value="analytics">Analytics</TabsTrigger>
+                <TabsList className="grid grid-cols-6 w-full bg-gradient-to-r from-gray-50 to-gray-100 p-2 rounded-xl shadow-inner border border-gray-200">
+                  <TabsTrigger
+                    value="basic"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-power100-red data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 font-semibold"
+                  >
+                    Basic Info
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="landing"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-power100-red data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 font-semibold"
+                  >
+                    Landing Page
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="videos"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-power100-red data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 font-semibold"
+                  >
+                    Videos
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="capabilities"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-power100-red data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 font-semibold"
+                  >
+                    Capabilities
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="testimonials"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-power100-red data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 font-semibold"
+                  >
+                    Testimonials
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="analytics"
+                    className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-power100-red data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 font-semibold"
+                  >
+                    Analytics
+                  </TabsTrigger>
                 </TabsList>
 
                 {/* Basic Information Tab */}

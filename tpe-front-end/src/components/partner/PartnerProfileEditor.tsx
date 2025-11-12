@@ -132,47 +132,85 @@ export default function PartnerProfileEditor({ onClose, onSave }: PartnerProfile
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-power100-red rounded-full flex items-center justify-center">
-            <Building2 className="h-6 w-6 text-white" />
+    <div className="space-y-8">
+      {/* Modern Header with Gradient */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-red-50 to-white rounded-2xl shadow-lg border border-red-100 p-8">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-power100-red opacity-5 rounded-full -mr-32 -mt-32"></div>
+        <div className="relative flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-power100-red to-red-600 rounded-2xl flex items-center justify-center shadow-xl transform transition-transform hover:scale-105">
+              <Building2 className="h-8 w-8 text-white" />
+            </div>
+            <div>
+              <div className="inline-block bg-red-100 text-power100-red px-4 py-1 rounded-full text-xs font-semibold mb-2">
+                PARTNER PROFILE
+              </div>
+              <h2 className="text-3xl font-bold text-gray-900">Edit Your Profile</h2>
+              <p className="text-gray-600 mt-1">Manage your company information and public landing page</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">Edit Profile</h2>
-            <p className="text-gray-600">Manage your company information and landing page</p>
-          </div>
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="hover:bg-red-100 hover:text-power100-red transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          )}
         </div>
-        {onClose && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onClose}
-          >
-            <X className="h-5 w-5" />
-          </Button>
-        )}
       </div>
 
-      {/* Alert */}
+      {/* Alert with Modern Styling */}
       {alert && (
-        <Alert className={alert.type === 'success' ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}>
-          <AlertDescription className={alert.type === 'success' ? 'text-green-800' : 'text-red-800'}>
+        <Alert className={`${
+          alert.type === 'success'
+            ? 'border-green-200 bg-gradient-to-r from-green-50 to-emerald-50'
+            : 'border-red-200 bg-gradient-to-r from-red-50 to-rose-50'
+        } shadow-md rounded-xl`}>
+          <AlertDescription className={`${
+            alert.type === 'success' ? 'text-green-800' : 'text-red-800'
+          } font-medium`}>
             {alert.message}
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Editor Card */}
-      <Card className="p-6">
+      {/* Modern Editor Card */}
+      <Card className="p-8 shadow-2xl rounded-2xl border border-gray-100 bg-white hover:shadow-3xl transition-shadow duration-300">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-5 bg-gray-100">
-            <TabsTrigger value="basic">Basic Info</TabsTrigger>
-            <TabsTrigger value="landing">Landing Page</TabsTrigger>
-            <TabsTrigger value="videos">Videos</TabsTrigger>
-            <TabsTrigger value="capabilities">Capabilities</TabsTrigger>
-            <TabsTrigger value="testimonials">Testimonials</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-5 bg-gradient-to-r from-gray-50 to-gray-100 p-2 rounded-xl shadow-inner border border-gray-200">
+            <TabsTrigger
+              value="basic"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-power100-red data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 font-semibold"
+            >
+              Basic Info
+            </TabsTrigger>
+            <TabsTrigger
+              value="landing"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-power100-red data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 font-semibold"
+            >
+              Landing Page
+            </TabsTrigger>
+            <TabsTrigger
+              value="videos"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-power100-red data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 font-semibold"
+            >
+              Videos
+            </TabsTrigger>
+            <TabsTrigger
+              value="capabilities"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-power100-red data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 font-semibold"
+            >
+              Capabilities
+            </TabsTrigger>
+            <TabsTrigger
+              value="testimonials"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-power100-red data-[state=active]:to-red-600 data-[state=active]:text-white data-[state=active]:shadow-lg rounded-lg transition-all duration-300 font-semibold"
+            >
+              Testimonials
+            </TabsTrigger>
           </TabsList>
 
           {/* Basic Info Tab */}
@@ -458,13 +496,14 @@ export default function PartnerProfileEditor({ onClose, onSave }: PartnerProfile
           </TabsContent>
         </Tabs>
 
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3 mt-8 pt-6 border-t">
+        {/* Modern Action Buttons */}
+        <div className="flex justify-end gap-4 mt-10 pt-8 border-t-2 border-gray-100">
           {onClose && (
             <Button
               variant="outline"
               onClick={onClose}
               disabled={saving}
+              className="px-8 py-6 rounded-full border-2 border-gray-300 hover:border-gray-400 hover:bg-gray-50 font-semibold transition-all duration-300 shadow-md hover:shadow-lg"
             >
               Cancel
             </Button>
@@ -472,17 +511,18 @@ export default function PartnerProfileEditor({ onClose, onSave }: PartnerProfile
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-power100-green hover:bg-green-600 text-white"
+            className="group bg-gradient-to-r from-power100-green to-green-600 hover:from-green-600 hover:to-green-700 text-white px-10 py-6 rounded-full font-semibold shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:scale-105 flex items-center gap-2"
           >
             {saving ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                 Saving...
               </>
             ) : (
               <>
-                <Save className="h-4 w-4 mr-2" />
+                <Save className="h-5 w-5" />
                 Save Changes
+                <CheckCircle className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
               </>
             )}
           </Button>
