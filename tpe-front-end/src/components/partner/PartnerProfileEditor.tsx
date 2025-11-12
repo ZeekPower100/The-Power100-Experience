@@ -1,4 +1,5 @@
 'use client';
+// DATABASE-CHECKED: strategic_partners columns verified on 2025-11-11
 
 import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
@@ -289,22 +290,22 @@ export default function PartnerProfileEditor({ onClose, onSave }: PartnerProfile
             </div>
 
             <div>
-              <Label htmlFor="landing_page_headline">Landing Page Headline</Label>
+              <Label htmlFor="tagline">Landing Page Headline</Label>
               <Input
-                id="landing_page_headline"
-                value={partner.landing_page_headline || ''}
-                onChange={(e) => updateField('landing_page_headline', e.target.value)}
+                id="tagline"
+                value={partner.tagline || ''}
+                onChange={(e) => updateField('tagline', e.target.value)}
                 className="mt-1"
                 placeholder="Catchy headline for your landing page"
               />
             </div>
 
             <div>
-              <Label htmlFor="landing_page_subheadline">Subheadline</Label>
+              <Label htmlFor="company_description">Subheadline</Label>
               <Textarea
-                id="landing_page_subheadline"
-                value={partner.landing_page_subheadline || ''}
-                onChange={(e) => updateField('landing_page_subheadline', e.target.value)}
+                id="company_description"
+                value={partner.company_description || ''}
+                onChange={(e) => updateField('company_description', e.target.value)}
                 className="mt-1"
                 rows={2}
                 placeholder="Supporting text that appears under the headline"
@@ -348,11 +349,11 @@ export default function PartnerProfileEditor({ onClose, onSave }: PartnerProfile
           {/* Capabilities Tab */}
           <TabsContent value="capabilities" className="space-y-6 mt-6">
             <div>
-              <Label htmlFor="service_capabilities">Service Capabilities</Label>
+              <Label htmlFor="services_offered">Service Capabilities</Label>
               <Textarea
-                id="service_capabilities"
-                value={partner.service_capabilities || ''}
-                onChange={(e) => updateField('service_capabilities', e.target.value)}
+                id="services_offered"
+                value={Array.isArray(partner.services_offered) ? partner.services_offered.join('\n') : (partner.services_offered || '')}
+                onChange={(e) => updateField('services_offered', e.target.value.split('\n').filter(s => s.trim()))}
                 className="mt-1"
                 rows={4}
                 placeholder="What services do you offer? (One per line)"
@@ -386,19 +387,6 @@ export default function PartnerProfileEditor({ onClose, onSave }: PartnerProfile
               <p className="text-xs text-gray-500 mt-1">Examples: Midwest, National, Texas, etc.</p>
             </div>
 
-            <div>
-              <Label htmlFor="industry_focus">Industry Focus</Label>
-              <Textarea
-                id="industry_focus"
-                value={partner.industry_focus || ''}
-                onChange={(e) => updateField('industry_focus', e.target.value)}
-                className="mt-1"
-                rows={3}
-                placeholder="What industries do you specialize in? (One per line)"
-              />
-              <p className="text-xs text-gray-500 mt-1">Examples: Construction, HVAC, Plumbing, Roofing, etc.</p>
-            </div>
-
             <div className="grid grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="revenue_tiers">Revenue Tiers Served</Label>
@@ -411,11 +399,11 @@ export default function PartnerProfileEditor({ onClose, onSave }: PartnerProfile
                 />
               </div>
               <div>
-                <Label htmlFor="team_size">Your Team Size</Label>
+                <Label htmlFor="employee_count">Your Team Size</Label>
                 <Input
-                  id="team_size"
-                  value={partner.team_size || ''}
-                  onChange={(e) => updateField('team_size', e.target.value)}
+                  id="employee_count"
+                  value={partner.employee_count || ''}
+                  onChange={(e) => updateField('employee_count', e.target.value)}
                   className="mt-1"
                   placeholder="e.g., 10-50 employees"
                 />
