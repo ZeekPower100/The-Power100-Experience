@@ -6,6 +6,7 @@ import { partnerApi } from '@/lib/api';
 import { getFromStorage } from '@/utils/jsonHelpers';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import AddNoteModal from '@/components/partner/AddNoteModal';
 import {
   Users, TrendingUp, Star, Clock, Search, Filter,
   Mail, Phone, Building2, Calendar, MessageSquare,
@@ -31,6 +32,7 @@ export default function PartnerLeadsPage() {
   const [leads, setLeads] = useState<any[]>([]);
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showAddNoteModal, setShowAddNoteModal] = useState(false);
   const [filters, setFilters] = useState({
     search: '',
     engagement_stage: '',
@@ -108,6 +110,20 @@ export default function PartnerLeadsPage() {
     } catch (error) {
       console.error('Error updating stage:', error);
     }
+  };
+
+  const handleNoteSuccess = async () => {
+    setShowAddNoteModal(false);
+    // Refresh the selected lead details to show the new note
+    if (selectedLead) {
+      const response = await partnerApi.getLeadDetails(selectedLead.id);
+      if (response.success) {
+        setSelectedLead(response.lead);
+      }
+    }
+    // Refresh the leads list and stats
+    await fetchLeads();
+    await fetchStats();
   };
 
   if (loading && leads.length === 0) {
@@ -470,8 +486,7 @@ export default function PartnerLeadsPage() {
                   </Button>
                   <Button
                     onClick={() => {
-                      setShowDetailsModal(false);
-                      // Future: Open add note modal
+                      setShowAddNoteModal(true);
                     }}
                     className="flex-1 bg-gradient-to-r from-green-600 to-emerald-700 hover:from-green-700 hover:to-emerald-800 text-white py-3 rounded-xl text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
                   >
@@ -482,6 +497,16 @@ export default function PartnerLeadsPage() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* Add Note Modal */}
+        {showAddNoteModal && selectedLead && (
+          <AddNoteModal
+            leadId={selectedLead.id}
+            leadName={selectedLead.company_name || 'Lead'}
+            onClose={() => setShowAddNoteModal(false)}
+            onSuccess={handleNoteSuccess}
+          />
         )}
       </div>
     </div>
