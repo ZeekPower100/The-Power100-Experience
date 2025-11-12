@@ -715,3 +715,35 @@ export const adminControlsApi = {
   getFailedMessages: (eventId: number) =>
     apiRequest(`/admin-controls/event/${eventId}/failed`)
 };
+
+// Partner Portal API - Partner Self-Service
+// DATABASE-CHECKED: strategic_partners columns verified on 2025-11-11
+export const partnerPortalApi = {
+  // Get own profile
+  getProfile: () =>
+    apiRequest('/partner-portal/profile'),
+
+  // Update own profile
+  updateProfile: (profileData: any) =>
+    apiRequest('/partner-portal/profile', {
+      method: 'PUT',
+      body: JSON.stringify(profileData)
+    }),
+
+  // Get dashboard data (already exists)
+  getDashboard: () =>
+    apiRequest('/partner-portal/dashboard'),
+
+  // Analytics endpoints (already exist)
+  getQuarterlyAnalytics: () =>
+    apiRequest('/partner-portal/analytics/quarterly'),
+
+  getCategoryPerformance: () =>
+    apiRequest('/partner-portal/analytics/categories'),
+
+  getFeedbackSummary: () =>
+    apiRequest('/partner-portal/analytics/feedback'),
+
+  getContractorStats: () =>
+    apiRequest('/partner-portal/analytics/contractor-stats')
+};
