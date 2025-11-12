@@ -49,14 +49,33 @@ export default function PartnerProfileEditor({ onClose, onSave }: PartnerProfile
 
   const fetchPartner = async () => {
     try {
+      // Check if partner is logged in
+      const token = localStorage.getItem('partnerToken');
+      if (!token) {
+        setAlert({ type: 'error', message: 'Not authenticated. Please log in.' });
+        setLoading(false);
+        return;
+      }
+
       // Use partner portal API to get own profile
-      const response = await partnerPortalApi.getProfile();
-      if (response.success) {
-        setPartner(response.partner);
+      const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const response = await fetch(`${API_BASE_URL}/partner-portal/profile`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success && data.profile) {
+        setPartner(data.profile);
+      } else {
+        setAlert({ type: 'error', message: data.message || 'Failed to load profile' });
       }
     } catch (error) {
       console.error('Error fetching partner profile:', error);
-      setAlert({ type: 'error', message: 'Failed to load profile' });
+      setAlert({ type: 'error', message: 'Failed to load profile. Please try again.' });
     } finally {
       setLoading(false);
     }
