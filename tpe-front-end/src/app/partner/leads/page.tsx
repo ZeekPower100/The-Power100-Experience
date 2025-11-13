@@ -7,6 +7,7 @@ import { getFromStorage } from '@/utils/jsonHelpers';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import AddNoteModal from '@/components/partner/AddNoteModal';
+import BulkActionsToolbar from '@/components/partner/BulkActionsToolbar';
 import {
   Users, TrendingUp, Star, Clock, Search, Filter,
   Mail, Phone, Building2, Calendar, MessageSquare,
@@ -33,6 +34,7 @@ export default function PartnerLeadsPage() {
   const [selectedLead, setSelectedLead] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showAddNoteModal, setShowAddNoteModal] = useState(false);
+  const [selectedLeads, setSelectedLeads] = useState<number[]>([]);
   const [filters, setFilters] = useState({
     search: '',
     engagement_stage: '',
@@ -126,6 +128,67 @@ export default function PartnerLeadsPage() {
     await fetchStats();
   };
 
+  // Bulk Operations Handlers
+  const handleToggleSelect = (leadId: number) => {
+    setSelectedLeads(prev =>
+      prev.includes(leadId)
+        ? prev.filter(id => id !== leadId)
+        : [...prev, leadId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedLeads.length === leads.length) {
+      setSelectedLeads([]);
+    } else {
+      setSelectedLeads(leads.map(lead => lead.id));
+    }
+  };
+
+  const handleClearSelection = () => {
+    setSelectedLeads([]);
+  };
+
+  const handleBulkStatusUpdate = async (newStatus: string) => {
+    if (selectedLeads.length === 0) return;
+
+    try {
+      const response = await partnerApi.bulkUpdateLeadStatus({
+        leadIds: selectedLeads,
+        engagement_stage: newStatus
+      });
+
+      if (response.success) {
+        await fetchLeads();
+        await fetchStats();
+        setSelectedLeads([]);
+      }
+    } catch (error) {
+      console.error('Error updating leads in bulk:', error);
+    }
+  };
+
+  const handleExport = async () => {
+    if (selectedLeads.length === 0) return;
+
+    try {
+      const response = await partnerApi.exportLeads({ leadIds: selectedLeads });
+
+      // Create CSV file and download
+      const blob = new Blob([response.csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `leads-export-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error exporting leads:', error);
+    }
+  };
+
   if (loading && leads.length === 0) {
     return (
       <div className="min-h-screen bg-power100-bg-grey flex items-center justify-center">
@@ -208,7 +271,22 @@ export default function PartnerLeadsPage() {
 
         {/* Filters - Modern Design */}
         <div className="bg-white rounded-2xl shadow-lg p-8 mb-12">
-          <div className="flex flex-col md:flex-row gap-6">
+          <div className="flex flex-col md:flex-row gap-6 items-center">
+            {/* Select All Checkbox */}
+            {leads.length > 0 && (
+              <label className="flex items-center gap-3 px-6 py-3 border-2 border-gray-200 rounded-xl bg-white cursor-pointer hover:border-power100-red transition-all duration-300">
+                <input
+                  type="checkbox"
+                  checked={selectedLeads.length === leads.length && leads.length > 0}
+                  onChange={handleSelectAll}
+                  className="rounded w-5 h-5 border-gray-300 text-power100-red focus:ring-power100-red"
+                />
+                <span className="text-base font-medium text-gray-700 whitespace-nowrap">
+                  Select All ({leads.length})
+                </span>
+              </label>
+            )}
+
             {/* Search */}
             <div className="flex-1">
               <div className="relative">
@@ -262,11 +340,26 @@ export default function PartnerLeadsPage() {
               return (
                 <div
                   key={lead.id}
-                  className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-100"
+                  className={`group bg-white rounded-2xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border-2 ${
+                    selectedLeads.includes(lead.id) ? 'border-power100-red' : 'border-gray-100'
+                  }`}
                 >
-                  <div className="flex items-start justify-between">
-                    {/* Lead Info */}
-                    <div className="flex-1">
+                  <div className="flex items-start gap-4">
+                    {/* Checkbox */}
+                    <div className="flex-shrink-0 pt-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedLeads.includes(lead.id)}
+                        onChange={() => handleToggleSelect(lead.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="rounded w-6 h-6 border-gray-300 text-power100-red focus:ring-power100-red cursor-pointer"
+                      />
+                    </div>
+
+                    {/* Lead Content */}
+                    <div className="flex-1 flex items-start justify-between">
+                      {/* Lead Info */}
+                      <div className="flex-1">
                       <div className="flex items-center gap-4 mb-4">
                         <h3 className="text-2xl font-bold text-gray-900">
                           {lead.company_name || 'Unknown Company'}
@@ -335,15 +428,16 @@ export default function PartnerLeadsPage() {
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex flex-col gap-3 ml-6">
-                      <Button
-                        onClick={() => handleViewDetails(lead)}
-                        className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
-                      >
-                        View Details
-                        <ChevronRight className="h-5 w-5 ml-2" />
-                      </Button>
+                      {/* Actions */}
+                      <div className="flex flex-col gap-3 ml-6">
+                        <Button
+                          onClick={() => handleViewDetails(lead)}
+                          className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-6 py-3 rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                        >
+                          View Details
+                          <ChevronRight className="h-5 w-5 ml-2" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -508,6 +602,15 @@ export default function PartnerLeadsPage() {
             onSuccess={handleNoteSuccess}
           />
         )}
+
+        {/* Bulk Actions Toolbar */}
+        <BulkActionsToolbar
+          selectedCount={selectedLeads.length}
+          totalCount={leads.length}
+          onClearSelection={handleClearSelection}
+          onBulkStatusUpdate={handleBulkStatusUpdate}
+          onExport={handleExport}
+        />
       </div>
     </div>
   );

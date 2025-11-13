@@ -1327,6 +1327,202 @@ const getLeadStats = async (req, res) => {
   }
 };
 
+/**
+ * Bulk update lead status/engagement stage
+ * Phase 4: Bulk Operations
+ * DATABASE-CHECKED: contractor_partner_matches columns verified on 2025-11-12
+ */
+const bulkUpdateLeadStatus = async (req, res) => {
+  try {
+    // Handle both partner and admin authentication
+    const partnerId = req.partnerId || req.body.partnerId;
+    const { leadIds, engagement_stage } = req.body;
+
+    if (!partnerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Partner ID is required'
+      });
+    }
+
+    if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Lead IDs array is required'
+      });
+    }
+
+    if (!engagement_stage) {
+      return res.status(400).json({
+        success: false,
+        message: 'Engagement stage is required'
+      });
+    }
+
+    console.log(`[Partner Portal] Bulk updating ${leadIds.length} leads for partner ${partnerId} to stage: ${engagement_stage}`);
+
+    // Update all leads that belong to this partner
+    const updateQuery = `
+      UPDATE contractor_partner_matches
+      SET
+        engagement_stage = $1,
+        last_contact_date = NOW(),
+        updated_at = NOW()
+      WHERE
+        id = ANY($2::int[])
+        AND partner_id = $3
+      RETURNING id, engagement_stage, updated_at
+    `;
+
+    const updateResult = await query(updateQuery, [
+      engagement_stage,
+      leadIds,
+      partnerId
+    ]);
+
+    const updatedCount = updateResult.rows.length;
+
+    if (updatedCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No leads found or access denied'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully updated ${updatedCount} lead(s)`,
+      updated_count: updatedCount,
+      leads: updateResult.rows
+    });
+
+  } catch (error) {
+    console.error('[Partner Portal] Error bulk updating lead status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update leads',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Export selected leads to CSV
+ * Phase 4: Bulk Operations
+ * DATABASE-CHECKED: contractor_partner_matches, contractors columns verified on 2025-11-12
+ */
+const exportLeads = async (req, res) => {
+  try {
+    // Handle both partner and admin authentication
+    const partnerId = req.partnerId || req.body.partnerId;
+    const { leadIds } = req.body;
+
+    if (!partnerId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Partner ID is required'
+      });
+    }
+
+    if (!leadIds || !Array.isArray(leadIds) || leadIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Lead IDs array is required'
+      });
+    }
+
+    console.log(`[Partner Portal] Exporting ${leadIds.length} leads for partner ${partnerId}`);
+
+    // Fetch lead data with contractor information
+    const exportQuery = `
+      SELECT
+        cpm.id,
+        c.company_name,
+        c.email,
+        c.phone,
+        c.revenue_tier,
+        c.team_size,
+        cpm.match_score,
+        cpm.match_reasons,
+        cpm.engagement_stage,
+        cpm.is_primary_match,
+        cpm.last_contact_date,
+        cpm.next_follow_up_date,
+        cpm.created_at
+      FROM contractor_partner_matches cpm
+      LEFT JOIN contractors c ON c.id = cpm.contractor_id
+      WHERE
+        cpm.id = ANY($1::int[])
+        AND cpm.partner_id = $2
+      ORDER BY cpm.created_at DESC
+    `;
+
+    const exportResult = await query(exportQuery, [leadIds, partnerId]);
+
+    if (exportResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'No leads found or access denied'
+      });
+    }
+
+    // Generate CSV content
+    const headers = [
+      'ID',
+      'Company Name',
+      'Email',
+      'Phone',
+      'Revenue Tier',
+      'Team Size',
+      'Match Score',
+      'Match Reasons',
+      'Engagement Stage',
+      'Primary Match',
+      'Last Contact',
+      'Next Follow-up',
+      'Created Date'
+    ];
+
+    const csvRows = [headers.join(',')];
+
+    exportResult.rows.forEach(lead => {
+      const row = [
+        lead.id,
+        `"${(lead.company_name || '').replace(/"/g, '""')}"`,
+        `"${(lead.email || '').replace(/"/g, '""')}"`,
+        `"${(lead.phone || '').replace(/"/g, '""')}"`,
+        `"${(lead.revenue_tier || '').replace(/"/g, '""')}"`,
+        `"${(lead.team_size || '').replace(/"/g, '""')}"`,
+        lead.match_score || '',
+        `"${(lead.match_reasons || '').replace(/"/g, '""')}"`,
+        `"${(lead.engagement_stage || '').replace(/"/g, '""')}"`,
+        lead.is_primary_match ? 'Yes' : 'No',
+        lead.last_contact_date ? new Date(lead.last_contact_date).toLocaleDateString() : '',
+        lead.next_follow_up_date ? new Date(lead.next_follow_up_date).toLocaleDateString() : '',
+        new Date(lead.created_at).toLocaleDateString()
+      ];
+      csvRows.push(row.join(','));
+    });
+
+    const csv = csvRows.join('\n');
+
+    res.json({
+      success: true,
+      message: `Exported ${exportResult.rows.length} lead(s)`,
+      count: exportResult.rows.length,
+      csv: csv
+    });
+
+  } catch (error) {
+    console.error('[Partner Portal] Error exporting leads:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to export leads',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getPartnerDashboard,
   getQuarterlyScores,
@@ -1343,5 +1539,8 @@ module.exports = {
   getLeadDetails,
   updateLeadStatus,
   addLeadNote,
-  getLeadStats
+  getLeadStats,
+  // Phase 4: Bulk Operations
+  bulkUpdateLeadStatus,
+  exportLeads
 };

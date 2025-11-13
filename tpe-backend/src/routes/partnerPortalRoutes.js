@@ -19,7 +19,10 @@ const {
   getLeadDetails,
   updateLeadStatus,
   addLeadNote,
-  getLeadStats
+  getLeadStats,
+  // Phase 4: Bulk Operations
+  bulkUpdateLeadStatus,
+  exportLeads
 } = require('../controllers/partnerPortalController');
 const { uploadLogoMiddleware } = require('../middleware/fileUpload');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -45,6 +48,12 @@ router.post('/profile/upload-logo', protectPartnerOrAdmin, uploadLogoMiddleware.
 // Lead management routes (Phase 3) - Accept both partner AND admin tokens
 router.get('/leads', protectPartnerOrAdmin, asyncHandler(getPartnerLeads));
 router.get('/leads/stats', protectPartnerOrAdmin, asyncHandler(getLeadStats));
+
+// Bulk operations routes (Phase 4) - Must come BEFORE parameterized routes
+router.put('/leads/bulk/status', protectPartnerOrAdmin, asyncHandler(bulkUpdateLeadStatus));
+router.post('/leads/export', protectPartnerOrAdmin, asyncHandler(exportLeads));
+
+// Parameterized lead routes - Must come AFTER specific routes like /leads/export
 router.get('/leads/:leadId', protectPartnerOrAdmin, asyncHandler(getLeadDetails));
 router.put('/leads/:leadId/status', protectPartnerOrAdmin, asyncHandler(updateLeadStatus));
 router.post('/leads/:leadId/notes', protectPartnerOrAdmin, asyncHandler(addLeadNote));

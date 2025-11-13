@@ -352,6 +352,24 @@ export const partnerApi = {
     method: 'POST',
     body: safeJsonStringify(data)
   }),
+
+  // Bulk update lead status
+  bulkUpdateLeadStatus: (data: {
+    leadIds: number[];
+    engagement_stage: string;
+  }) => apiRequest('/partner-portal/leads/bulk/status', {
+    method: 'PUT',
+    body: safeJsonStringify(data)
+  }),
+
+  // Export leads to CSV
+  exportLeads: async (data: { leadIds: number[] }) => {
+    const response = await apiRequest('/partner-portal/leads/export', {
+      method: 'POST',
+      body: safeJsonStringify(data)
+    });
+    return response;
+  },
 };
 
 // Booking API
