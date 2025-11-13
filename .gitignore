@@ -231,3 +231,4 @@ test-*.js
 create-test-*.js
 tpe-backend/test-*.js
 tpe-backend/create-test-*.js
+production-migration-*.sql
