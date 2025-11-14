@@ -34,6 +34,7 @@ const { initializeQuarterlyPowerCardScheduler } = require('./queues/powerCardQue
 const contractorRoutes = require('./routes/contractorRoutes');
 const partnerRoutes = require('./routes/partnerRoutes');
 const publicPartnerRoutes = require('./routes/publicPartnerRoutes');
+const livePCRRoutes = require('./routes/livePCRRoutes');
 const bookingRoutes = require('./routes/bookingRoutes');
 const authRoutes = require('./routes/authRoutes');
 const adminRoutes = require('./routes/adminRoutes');
@@ -160,6 +161,7 @@ app.use((req, res, next) => {
 
 // API Routes
 app.use('/api/partners/public', publicPartnerRoutes);
+app.use('/api/public/live-pcrs', livePCRRoutes);
 app.use('/api/contractors', contractorRoutes);
 app.use('/api/partners', partnerRoutes);
 app.use('/api/bookings', bookingRoutes);
