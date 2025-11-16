@@ -70,6 +70,9 @@ const aiRoutes = require('./routes/aiRoutes');
 const schedulerRoutes = require('./routes/schedulerRoutes');
 const stateMachineRoutes = require('./routes/stateMachineRoutes');
 const igeMonitorRoutes = require('./routes/igeMonitorRoutes');
+const employeeRoutes = require('./routes/employeeRoutes');
+const ceoPcrRoutes = require('./routes/ceoPcrRoutes');
+const ceoDashboardRoutes = require('./routes/ceoDashboardRoutes');
 
 const app = express();
 
@@ -164,6 +167,9 @@ app.use('/api/partners/public', publicPartnerRoutes);
 app.use('/api/public/live-pcrs', livePCRRoutes);
 app.use('/api/contractors', contractorRoutes);
 app.use('/api/partners', partnerRoutes);
+app.use('/api/employees', employeeRoutes);
+app.use('/api/ceo-pcr', ceoPcrRoutes);
+app.use('/api/ceo-dashboard', ceoDashboardRoutes);
 app.use('/api/bookings', bookingRoutes);
 // Auth routes with stricter rate limiting (prevent brute force)
 app.use('/api/auth', authRateLimiter, authRoutes);
