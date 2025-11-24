@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { getApiUrl } from '@/utils/api';
 import {
   TrendingUp,
   TrendingDown,
@@ -115,19 +116,19 @@ export default function CeoDashboardPage() {
       setLoading(true);
 
       // Fetch dashboard data
-      const dashboardResponse = await fetch(`http://localhost:5000/api/ceo-dashboard/${contractorId}`);
+      const dashboardResponse = await fetch(getApiUrl(`api/ceo-dashboard/${contractorId}`));
       if (!dashboardResponse.ok) throw new Error('Failed to fetch dashboard data');
       const dashboardJson = await dashboardResponse.json();
       setDashboardData(dashboardJson.data);
 
       // Fetch alerts
-      const alertsResponse = await fetch(`http://localhost:5000/api/ceo-dashboard/${contractorId}/alerts`);
+      const alertsResponse = await fetch(getApiUrl(`api/ceo-dashboard/${contractorId}/alerts`));
       if (!alertsResponse.ok) throw new Error('Failed to fetch alerts');
       const alertsJson = await alertsResponse.json();
       setAlerts(alertsJson.alerts);
 
       // Fetch AI recommendations
-      const recommendationsResponse = await fetch(`http://localhost:5000/api/ceo-dashboard/${contractorId}/recommendations`);
+      const recommendationsResponse = await fetch(getApiUrl(`api/ceo-dashboard/${contractorId}/recommendations`));
       if (!recommendationsResponse.ok) throw new Error('Failed to fetch recommendations');
       const recommendationsJson = await recommendationsResponse.json();
       setRecommendations(recommendationsJson.data);
