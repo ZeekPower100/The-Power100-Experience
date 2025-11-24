@@ -3,10 +3,14 @@ const express = require('express');
 const router = express.Router();
 const ceoPcrService = require('../services/ceoPcrService');
 const { query } = require('../config/database');
+const { checkCeoPcrAccess, checkCeoPcrAccessFromBody } = require('../middleware/ceoPcrAccess');
 
 /**
  * CEO PCR Calculation Routes
  * Base path: /api/ceo-pcr
+ *
+ * PROTECTED: Most routes require active CEO PCR subscription
+ * ADMIN ONLY: /recalculate-all is unprotected for admin use
  */
 
 /**
@@ -14,7 +18,7 @@ const { query } = require('../config/database');
  * POST /api/ceo-pcr/calculate
  * Body: { contractor_id, campaign_id, quarter, year }
  */
-router.post('/calculate', async (req, res, next) => {
+router.post('/calculate', checkCeoPcrAccessFromBody, async (req, res, next) => {
   try {
     const { contractor_id, campaign_id, quarter, year } = req.body;
 
@@ -58,7 +62,7 @@ router.post('/calculate', async (req, res, next) => {
  * Get CEO PCR history for a contractor
  * GET /api/ceo-pcr/contractor/:contractorId/history
  */
-router.get('/contractor/:contractorId/history', async (req, res, next) => {
+router.get('/contractor/:contractorId/history', checkCeoPcrAccess, async (req, res, next) => {
   try {
     const { contractorId } = req.params;
 
@@ -103,7 +107,7 @@ router.get('/contractor/:contractorId/history', async (req, res, next) => {
  * Get CEO PCR score for specific quarter
  * GET /api/ceo-pcr/contractor/:contractorId/:quarter/:year
  */
-router.get('/contractor/:contractorId/:quarter/:year', async (req, res, next) => {
+router.get('/contractor/:contractorId/:quarter/:year', checkCeoPcrAccess, async (req, res, next) => {
   try {
     const { contractorId, quarter, year } = req.params;
 
@@ -153,7 +157,7 @@ router.get('/contractor/:contractorId/:quarter/:year', async (req, res, next) =>
  * Get current CEO PCR for a contractor
  * GET /api/ceo-pcr/contractor/:contractorId/current
  */
-router.get('/contractor/:contractorId/current', async (req, res, next) => {
+router.get('/contractor/:contractorId/current', checkCeoPcrAccess, async (req, res, next) => {
   try {
     const { contractorId } = req.params;
 

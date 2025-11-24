@@ -16,7 +16,11 @@ import {
   UserCog,
   Calendar,
   TrendingUp,
-  FileText
+  FileText,
+  Crown,
+  Lock,
+  ArrowRight,
+  BarChart3
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getApiUrl } from '@/utils/api';
@@ -36,6 +40,11 @@ interface ContractorProfile {
   lifecycleStage: string | null;
   lastLogin: string;
   createdAt: string;
+  // CEO PCR Premium Access
+  hasCeoPcrAccess: boolean;
+  ceoPcrSubscriptionTier: string | null;
+  ceoPcrSubscriptionStatus: string | null;
+  ceoPcrSubscriptionStart: string | null;
 }
 
 export default function ContractorDashboard() {
@@ -277,6 +286,99 @@ export default function ContractorDashboard() {
               </CardContent>
             </Card>
           </div>
+
+          {/* CEO Culture Card - Premium Feature */}
+          <Card className={`mb-6 ${profile.hasCeoPcrAccess && profile.ceoPcrSubscriptionStatus === 'active' ? 'border-2 border-amber-400' : 'border border-gray-200'}`}>
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-4">
+                <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${
+                  profile.hasCeoPcrAccess && profile.ceoPcrSubscriptionStatus === 'active'
+                    ? 'bg-gradient-to-br from-amber-400 to-amber-600'
+                    : 'bg-gray-100'
+                }`}>
+                  {profile.hasCeoPcrAccess && profile.ceoPcrSubscriptionStatus === 'active' ? (
+                    <Crown className="w-7 h-7 text-white" />
+                  ) : (
+                    <Lock className="w-7 h-7 text-gray-400" />
+                  )}
+                </div>
+
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h3 className="text-lg font-bold text-gray-900">CEO Culture Feedback System</h3>
+                    {profile.hasCeoPcrAccess && profile.ceoPcrSubscriptionStatus === 'active' ? (
+                      <Badge className="bg-amber-100 text-amber-700 border-amber-300">Premium Active</Badge>
+                    ) : profile.hasCeoPcrAccess && profile.ceoPcrSubscriptionStatus === 'inactive' ? (
+                      <Badge variant="outline" className="border-orange-300 text-orange-600">Subscription Inactive</Badge>
+                    ) : (
+                      <Badge variant="outline" className="border-gray-300 text-gray-500">Premium Feature</Badge>
+                    )}
+                  </div>
+
+                  <p className="text-gray-600 mb-4">
+                    {profile.hasCeoPcrAccess && profile.ceoPcrSubscriptionStatus === 'active'
+                      ? 'Access your CEO PowerConfidence Rating dashboard. Collect anonymous employee feedback and track your leadership scores.'
+                      : profile.hasCeoPcrAccess && profile.ceoPcrSubscriptionStatus === 'inactive'
+                        ? 'Your subscription has expired. Reactivate to continue using the CEO culture feedback system.'
+                        : 'Unlock anonymous employee surveys, CEO PowerConfidence Ratings (0-105), and AI-powered leadership recommendations.'}
+                  </p>
+
+                  <div className="flex items-center gap-3">
+                    {profile.hasCeoPcrAccess && profile.ceoPcrSubscriptionStatus === 'active' ? (
+                      <>
+                        <Button
+                          onClick={() => router.push(`/ceo-dashboard/${profile.contractorId}`)}
+                          className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white"
+                        >
+                          <BarChart3 className="w-4 h-4 mr-2" />
+                          Open CEO Dashboard
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Button>
+                        <span className="text-sm text-gray-500">
+                          Tier: <span className="font-medium capitalize">{profile.ceoPcrSubscriptionTier?.replace('culture_', '')}</span>
+                        </span>
+                      </>
+                    ) : (
+                      <Button
+                        onClick={() => router.push('/contractor/upgrade/ceo-pcr')}
+                        variant="outline"
+                        className="border-amber-400 text-amber-600 hover:bg-amber-50"
+                      >
+                        <Crown className="w-4 h-4 mr-2" />
+                        {profile.hasCeoPcrAccess ? 'Reactivate Subscription' : 'Upgrade to Premium'}
+                        <ArrowRight className="w-4 h-4 ml-2" />
+                      </Button>
+                    )}
+                  </div>
+
+                  {/* Feature List for Non-Premium */}
+                  {!profile.hasCeoPcrAccess && (
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <p className="text-sm font-medium text-gray-700 mb-2">What&apos;s included:</p>
+                      <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600">
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
+                          Anonymous employee feedback surveys
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
+                          CEO PowerConfidence Rating (0-105)
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
+                          Quarterly culture trend reports
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-amber-400"></div>
+                          AI-powered leadership recommendations
+                        </li>
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Quick Actions */}
           <Card>

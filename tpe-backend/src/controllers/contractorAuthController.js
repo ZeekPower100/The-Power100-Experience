@@ -215,7 +215,7 @@ const getContractorProfile = async (req, res, next) => {
 
     console.log('📋 Getting contractor profile for user ID:', req.user.id);
 
-    // Get contractor user profile with contractor data
+    // Get contractor user profile with contractor data (including CEO PCR access)
     const profileResult = await query(`
       SELECT
         cu.id as user_id,
@@ -230,7 +230,11 @@ const getContractorProfile = async (req, res, next) => {
         c.focus_areas,
         c.revenue_tier,
         c.team_size,
-        c.lifecycle_stage
+        c.lifecycle_stage,
+        c.has_ceo_pcr_access,
+        c.ceo_pcr_subscription_tier,
+        c.ceo_pcr_subscription_status,
+        c.ceo_pcr_subscription_start
       FROM contractor_users cu
       JOIN contractors c ON cu.contractor_id = c.id
       WHERE cu.id = $1
@@ -259,7 +263,12 @@ const getContractorProfile = async (req, res, next) => {
         teamSize: profile.team_size,
         lifecycleStage: profile.lifecycle_stage,
         lastLogin: profile.last_login,
-        createdAt: profile.created_at
+        createdAt: profile.created_at,
+        // CEO PCR Premium Access
+        hasCeoPcrAccess: profile.has_ceo_pcr_access || false,
+        ceoPcrSubscriptionTier: profile.ceo_pcr_subscription_tier,
+        ceoPcrSubscriptionStatus: profile.ceo_pcr_subscription_status,
+        ceoPcrSubscriptionStart: profile.ceo_pcr_subscription_start
       }
     });
 
