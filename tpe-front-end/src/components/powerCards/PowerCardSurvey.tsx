@@ -67,41 +67,60 @@ const PowerCardSurvey: React.FC<PowerCardSurveyProps> = ({ surveyLink, onComplet
   const loadSurveyTemplate = async () => {
     try {
       setLoading(true);
-      // In a real implementation, we'd extract the template from the survey link
-      // For now, we'll use mock data
-      const mockTemplate: PowerCardTemplate = {
-        id: '1',
-        partner_name: 'Buildr CRM',
-        metric_1_name: 'Lead Management',
-        metric_1_question: 'How effectively has Buildr helped you manage and track your leads?',
-        metric_1_type: 'rating',
-        metric_2_name: 'Sales Pipeline',
-        metric_2_question: 'How much has Buildr improved your sales pipeline visibility?',
-        metric_2_type: 'rating',
-        metric_3_name: 'Customer Communication',
-        metric_3_question: 'How has Buildr enhanced your customer communication process?',
-        metric_3_type: 'rating',
-        include_satisfaction_score: true,
-        include_recommendation_score: true,
-        include_culture_questions: false
+      setError(null);
+
+      // Fetch real template data from the API
+      const response = await fetch(getApiUrl(`api/power-cards/survey/${surveyLink}`));
+      const data = await handleApiResponse(response);
+
+      if (!data.success) {
+        // Handle specific error cases
+        if (data.completed) {
+          setError('This survey has already been completed. Thank you for your feedback!');
+        } else if (data.closed) {
+          setError('This survey campaign has ended. Thank you for your interest.');
+        } else {
+          setError(data.message || 'Survey not found. Please check your link.');
+        }
+        return;
+      }
+
+      const templateData = data.template;
+
+      // Map API response to template interface
+      const template: PowerCardTemplate = {
+        id: templateData.id?.toString() || '',
+        partner_name: templateData.partner_name || 'Partner',
+        metric_1_name: templateData.metric_1_name || 'Metric 1',
+        metric_1_question: templateData.metric_1_question || `How would you rate ${templateData.metric_1_name || 'this metric'}?`,
+        metric_1_type: templateData.metric_1_type || 'rating',
+        metric_2_name: templateData.metric_2_name || 'Metric 2',
+        metric_2_question: templateData.metric_2_question || `How would you rate ${templateData.metric_2_name || 'this metric'}?`,
+        metric_2_type: templateData.metric_2_type || 'rating',
+        metric_3_name: templateData.metric_3_name || 'Metric 3',
+        metric_3_question: templateData.metric_3_question || `How would you rate ${templateData.metric_3_name || 'this metric'}?`,
+        metric_3_type: templateData.metric_3_type || 'rating',
+        include_satisfaction_score: templateData.include_satisfaction_score ?? true,
+        include_recommendation_score: templateData.include_recommendation_score ?? true,
+        include_culture_questions: templateData.include_culture_questions ?? false
       };
-      
-      setTemplate(mockTemplate);
-      
+
+      setTemplate(template);
+
       // Build steps array dynamically based on template
       const newSteps = ['partner_metrics'];
-      if (mockTemplate.include_satisfaction_score) {
+      if (template.include_satisfaction_score) {
         newSteps.push('satisfaction');
       }
-      if (mockTemplate.include_recommendation_score) {
+      if (template.include_recommendation_score) {
         newSteps.push('recommendation');
       }
-      if (mockTemplate.include_culture_questions) {
+      if (template.include_culture_questions) {
         newSteps.push('culture');
       }
       newSteps.push('feedback');
       setSteps(newSteps);
-      
+
       // Initialize default values for required fields
       setResponses(prev => ({
         ...prev,
@@ -115,6 +134,7 @@ const PowerCardSurvey: React.FC<PowerCardSurveyProps> = ({ surveyLink, onComplet
         growth_opportunity_score: 5
       }));
     } catch (err) {
+      console.error('Error loading survey template:', err);
       setError('Failed to load survey. Please check your link and try again.');
     } finally {
       setLoading(false);

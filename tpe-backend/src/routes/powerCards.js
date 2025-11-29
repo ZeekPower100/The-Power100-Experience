@@ -223,6 +223,43 @@ router.get('/campaigns/:campaignId/recipients', protect, async (req, res) => {
 
 // ===== POWER CARD RESPONSES =====
 
+// Get survey template by survey link (Public endpoint - no auth required)
+router.get('/survey/:surveyLink', async (req, res) => {
+  try {
+    const { surveyLink } = req.params;
+
+    const templateData = await powerCardService.getTemplateBySurveyLink(surveyLink);
+
+    if (!templateData) {
+      return res.status(404).json({
+        success: false,
+        message: 'Survey not found or invalid link'
+      });
+    }
+
+    if (templateData.error) {
+      return res.status(400).json({
+        success: false,
+        message: templateData.error,
+        completed: templateData.completed || false,
+        closed: templateData.closed || false
+      });
+    }
+
+    res.json({
+      success: true,
+      template: templateData
+    });
+  } catch (error) {
+    console.error('Error fetching survey template:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
+
 // Submit a survey response (Public endpoint with survey link)
 router.post('/survey/:surveyLink/response', validatePowerCardResponse, async (req, res) => {
   try {

@@ -75,6 +75,56 @@ class PowerCardService {
     return result.rows;
   }
 
+  // Get template by survey link (for public survey page)
+  async getTemplateBySurveyLink(surveyLink) {
+    const result = await query(`
+      SELECT
+        t.id,
+        t.partner_id,
+        t.partner_type,
+        t.metric_1_name,
+        t.metric_1_question,
+        t.metric_1_type,
+        t.metric_2_name,
+        t.metric_2_question,
+        t.metric_2_type,
+        t.metric_3_name,
+        t.metric_3_question,
+        t.metric_3_type,
+        t.include_satisfaction_score,
+        t.include_recommendation_score,
+        t.include_culture_questions,
+        p.company_name as partner_name,
+        p.logo_url as partner_logo,
+        r.status as recipient_status,
+        r.recipient_name,
+        c.campaign_name,
+        c.status as campaign_status
+      FROM power_card_recipients r
+      JOIN power_card_templates t ON r.template_id = t.id
+      JOIN power_card_campaigns c ON r.campaign_id = c.id
+      LEFT JOIN strategic_partners p ON t.partner_id = p.id
+      WHERE r.survey_link = $1
+    `, [surveyLink]);
+
+    if (result.rows.length === 0) {
+      return null;
+    }
+
+    const data = result.rows[0];
+
+    // Check if survey is still valid
+    if (data.recipient_status === 'completed') {
+      return { error: 'Survey already completed', completed: true };
+    }
+
+    if (data.campaign_status === 'closed') {
+      return { error: 'Campaign has ended', closed: true };
+    }
+
+    return data;
+  }
+
   // ===== POWER CARD CAMPAIGNS =====
 
   // Create a quarterly campaign
