@@ -119,28 +119,29 @@ async function generateQuarterlyCampaigns(job) {
 
         let templateId;
         if (templateResult.rows.length === 0) {
-          // Create standard quarterly template
-          console.log(`[PowerCardWorker] Creating template for ${partner.company_name}...`);
+          // Create template with AI-selected questions from question library
+          console.log(`[PowerCardWorker] Creating template with AI questions for ${partner.company_name}...`);
+
+          // Default metric categories - can be customized per partner in the future
+          const metrics = [
+            { name: 'Communication Quality', category_name: 'communication' },
+            { name: 'Service Delivery', category_name: 'professionalism' },
+            { name: 'Value for Investment', category_name: 'roi_value' }
+          ];
 
           const templateData = {
             partner_id: partner.id,
             partner_type: 'strategic_partner',
-            metric_1_name: 'Communication Quality',
-            metric_1_question: 'How would you rate the quality and responsiveness of communication?',
-            metric_1_type: 'rating',
-            metric_2_name: 'Service Delivery',
-            metric_2_question: 'How satisfied are you with the service delivery and execution?',
-            metric_2_type: 'rating',
-            metric_3_name: 'Value for Investment',
-            metric_3_question: 'How would you rate the value you received for your investment?',
-            metric_3_type: 'rating',
+            metrics,
             include_satisfaction_score: true,
             include_recommendation_score: true,
-            include_culture_questions: false
+            include_culture_questions: false,
+            use_ai: true // Enable AI question selection
           };
 
-          const template = await powerCardService.createTemplate(templateData);
+          const template = await powerCardService.createTemplateWithAIQuestions(templateData);
           templateId = template.id;
+          console.log(`[PowerCardWorker] ✅ Template created with AI-selected questions (ID: ${templateId})`);
         } else {
           templateId = templateResult.rows[0].id;
         }

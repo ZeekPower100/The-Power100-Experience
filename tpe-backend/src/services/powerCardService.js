@@ -5,6 +5,7 @@ const powerCardsIntegrationService = require('./powerCardsIntegrationService');
 const axios = require('axios');
 const { safeJsonStringify } = require('../utils/jsonHelpers');
 const { buildTags } = require('../utils/tagBuilder');
+const questionSelectorService = require('./questionSelectorService');
 
 class PowerCardService {
   
@@ -50,6 +51,101 @@ class PowerCardService {
       return this.getTemplateById(result.rows[0]?.id || result.lastID);
     }
     return null;
+  }
+
+  /**
+   * Create template with AI-selected questions from the question library
+   *
+   * @param {Object} templateData - Template configuration
+   * @param {number} templateData.partner_id - Partner ID
+   * @param {string} templateData.partner_type - 'strategic_partner' or 'contractor'
+   * @param {Array} templateData.metrics - Array of {name, category_name, forced_question_id?}
+   * @param {boolean} templateData.use_ai - Whether to use AI selection (default: true)
+   */
+  async createTemplateWithAIQuestions(templateData) {
+    const {
+      partner_id,
+      partner_type = 'strategic_partner',
+      metrics = [], // [{name: 'Closing Rate', category_name: 'closing_rate', forced_question_id: null}]
+      include_satisfaction_score = true,
+      include_recommendation_score = true,
+      include_culture_questions = false,
+      use_ai = true
+    } = templateData;
+
+    // Select questions for each metric using AI
+    const selections = await questionSelectorService.selectQuestionsForTemplate(
+      partner_id,
+      metrics.map(m => ({
+        name: m.name,
+        category_name: m.category_name,
+        forced_question_id: m.forced_question_id
+      })),
+      { useAI: use_ai }
+    );
+
+    // Build template data with selected questions
+    const metric1 = selections.metric_1;
+    const metric2 = selections.metric_2;
+    const metric3 = selections.metric_3;
+
+    const result = await query(`
+      INSERT INTO power_card_templates (
+        partner_id, partner_type,
+        metric_1_name, metric_1_question, metric_1_type, metric_1_question_id,
+        metric_2_name, metric_2_question, metric_2_type, metric_2_question_id,
+        metric_3_name, metric_3_question, metric_3_type, metric_3_question_id,
+        include_satisfaction_score, include_recommendation_score, include_culture_questions,
+        ai_selected_questions
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      RETURNING id
+    `, [
+      partner_id, partner_type,
+      metric1?.metric_name || metrics[0]?.name,
+      metric1?.question?.question_text || `How would you rate ${metrics[0]?.name}?`,
+      'rating',
+      metric1?.question?.id || null,
+      metric2?.metric_name || metrics[1]?.name,
+      metric2?.question?.question_text || `How would you rate ${metrics[1]?.name}?`,
+      'rating',
+      metric2?.question?.id || null,
+      metric3?.metric_name || metrics[2]?.name,
+      metric3?.question?.question_text || `How would you rate ${metrics[2]?.name}?`,
+      'rating',
+      metric3?.question?.id || null,
+      include_satisfaction_score, include_recommendation_score, include_culture_questions,
+      JSON.stringify({
+        metric_1: { method: metric1?.selection_method, reasoning: metric1?.ai_reasoning },
+        metric_2: { method: metric2?.selection_method, reasoning: metric2?.ai_reasoning },
+        metric_3: { method: metric3?.selection_method, reasoning: metric3?.ai_reasoning }
+      })
+    ]);
+
+    if (result.rowCount > 0) {
+      return this.getTemplateById(result.rows[0]?.id);
+    }
+    return null;
+  }
+
+  /**
+   * Get question library categories and questions
+   */
+  async getQuestionLibrary() {
+    return questionSelectorService.getAllCategories();
+  }
+
+  /**
+   * Get questions for a specific category
+   */
+  async getQuestionsForCategory(categoryName) {
+    return questionSelectorService.getQuestionsForCategory(categoryName);
+  }
+
+  /**
+   * Add a new question to the library
+   */
+  async addQuestionToLibrary(categoryId, questionData, createdBy) {
+    return questionSelectorService.addQuestion(categoryId, questionData, createdBy);
   }
 
   // Get template by ID
@@ -184,13 +280,13 @@ class PowerCardService {
       const result = await query(`
         INSERT INTO power_card_recipients (
           campaign_id, template_id, recipient_type, recipient_id,
-          recipient_email, recipient_name, company_id, company_type,
+          recipient_email, recipient_name, recipient_phone, company_id, company_type,
           revenue_tier, survey_link
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         RETURNING id
       `, [
         campaignId, templateId, recipient.recipient_type, recipient.recipient_id,
-        recipient.recipient_email, recipient.recipient_name,
+        recipient.recipient_email, recipient.recipient_name, recipient.recipient_phone,
         recipient.company_id, recipient.company_type,
         recipient.revenue_tier, surveyLink
       ]);
