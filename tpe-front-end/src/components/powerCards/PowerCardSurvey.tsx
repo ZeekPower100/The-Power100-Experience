@@ -17,12 +17,18 @@ interface PowerCardTemplate {
   metric_1_name: string;
   metric_1_question: string;
   metric_1_type: string;
+  metric_1_scale_low?: string;
+  metric_1_scale_high?: string;
   metric_2_name: string;
   metric_2_question: string;
   metric_2_type: string;
+  metric_2_scale_low?: string;
+  metric_2_scale_high?: string;
   metric_3_name: string;
   metric_3_question: string;
   metric_3_type: string;
+  metric_3_scale_low?: string;
+  metric_3_scale_high?: string;
   include_satisfaction_score: boolean;
   include_recommendation_score: boolean;
   include_culture_questions: boolean;
@@ -94,12 +100,18 @@ const PowerCardSurvey: React.FC<PowerCardSurveyProps> = ({ surveyLink, onComplet
         metric_1_name: templateData.metric_1_name || 'Metric 1',
         metric_1_question: templateData.metric_1_question || `How would you rate ${templateData.metric_1_name || 'this metric'}?`,
         metric_1_type: templateData.metric_1_type || 'rating',
+        metric_1_scale_low: templateData.metric_1_scale_low || undefined,
+        metric_1_scale_high: templateData.metric_1_scale_high || undefined,
         metric_2_name: templateData.metric_2_name || 'Metric 2',
         metric_2_question: templateData.metric_2_question || `How would you rate ${templateData.metric_2_name || 'this metric'}?`,
         metric_2_type: templateData.metric_2_type || 'rating',
+        metric_2_scale_low: templateData.metric_2_scale_low || undefined,
+        metric_2_scale_high: templateData.metric_2_scale_high || undefined,
         metric_3_name: templateData.metric_3_name || 'Metric 3',
         metric_3_question: templateData.metric_3_question || `How would you rate ${templateData.metric_3_name || 'this metric'}?`,
         metric_3_type: templateData.metric_3_type || 'rating',
+        metric_3_scale_low: templateData.metric_3_scale_low || undefined,
+        metric_3_scale_high: templateData.metric_3_scale_high || undefined,
         include_satisfaction_score: templateData.include_satisfaction_score ?? true,
         include_recommendation_score: templateData.include_recommendation_score ?? true,
         include_culture_questions: templateData.include_culture_questions ?? false
@@ -242,27 +254,33 @@ const PowerCardSurvey: React.FC<PowerCardSurveyProps> = ({ surveyLink, onComplet
     field: keyof SurveyResponse,
     label: string,
     question: string,
-    isNPS: boolean = false
+    isNPS: boolean = false,
+    scaleLow?: string,
+    scaleHigh?: string
   ) => {
     const value = responses[field] as number || (isNPS ? 5 : 5);
     const max = isNPS ? 10 : 10;
     const min = isNPS ? 0 : 1;
-    
+
+    // Use dynamic scale labels if provided, otherwise fall back to defaults
+    const lowLabel = isNPS ? 'Not at all likely' : (scaleLow || 'Very Poor');
+    const highLabel = isNPS ? 'Extremely likely' : (scaleHigh || 'Excellent');
+
     return (
       <div className="space-y-4">
         <div>
           <h3 className="font-semibold text-lg text-power100-black">{label}</h3>
           <p className="text-power100-grey mt-1">{question}</p>
         </div>
-        
+
         <div className="space-y-4">
           <div className="flex justify-center">
             <div className="text-center">
               <div className="text-4xl font-bold text-power100-red mb-2">{value}</div>
-              <Badge 
+              <Badge
                 variant="secondary"
                 className={`${
-                  isNPS 
+                  isNPS
                     ? value >= 9 ? 'bg-green-100 text-green-800' :
                       value >= 7 ? 'bg-yellow-100 text-yellow-800' :
                       'bg-red-100 text-red-800'
@@ -275,7 +293,7 @@ const PowerCardSurvey: React.FC<PowerCardSurveyProps> = ({ surveyLink, onComplet
               </Badge>
             </div>
           </div>
-          
+
           <div className="px-4">
             <Slider
               value={[value]}
@@ -286,8 +304,8 @@ const PowerCardSurvey: React.FC<PowerCardSurveyProps> = ({ surveyLink, onComplet
               className="w-full"
             />
             <div className="flex justify-between text-sm text-power100-grey mt-2">
-              <span>{isNPS ? 'Not at all likely' : 'Very Poor'}</span>
-              <span>{isNPS ? 'Extremely likely' : 'Excellent'}</span>
+              <span>{lowLabel}</span>
+              <span>{highLabel}</span>
             </div>
           </div>
         </div>
@@ -388,9 +406,9 @@ const PowerCardSurvey: React.FC<PowerCardSurveyProps> = ({ surveyLink, onComplet
                         </p>
                       </div>
 
-                      {renderRatingSlider('metric_1_score', template.metric_1_name, template.metric_1_question)}
-                      {renderRatingSlider('metric_2_score', template.metric_2_name, template.metric_2_question)}
-                      {renderRatingSlider('metric_3_score', template.metric_3_name, template.metric_3_question)}
+                      {renderRatingSlider('metric_1_score', template.metric_1_name, template.metric_1_question, false, template.metric_1_scale_low, template.metric_1_scale_high)}
+                      {renderRatingSlider('metric_2_score', template.metric_2_name, template.metric_2_question, false, template.metric_2_scale_low, template.metric_2_scale_high)}
+                      {renderRatingSlider('metric_3_score', template.metric_3_name, template.metric_3_question, false, template.metric_3_scale_low, template.metric_3_scale_high)}
                     </div>
                   )}
 

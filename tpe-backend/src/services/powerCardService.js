@@ -190,6 +190,19 @@ class PowerCardService {
         t.include_satisfaction_score,
         t.include_recommendation_score,
         t.include_culture_questions,
+        t.metric_1_question_id,
+        t.metric_2_question_id,
+        t.metric_3_question_id,
+        -- Scale labels from question library
+        q1.scale_low_label as metric_1_scale_low,
+        q1.scale_high_label as metric_1_scale_high,
+        q1.question_text as metric_1_question_text,
+        q2.scale_low_label as metric_2_scale_low,
+        q2.scale_high_label as metric_2_scale_high,
+        q2.question_text as metric_2_question_text,
+        q3.scale_low_label as metric_3_scale_low,
+        q3.scale_high_label as metric_3_scale_high,
+        q3.question_text as metric_3_question_text,
         p.company_name as partner_name,
         p.logo_url as partner_logo,
         r.status as recipient_status,
@@ -200,6 +213,9 @@ class PowerCardService {
       JOIN power_card_templates t ON r.template_id = t.id
       JOIN power_card_campaigns c ON r.campaign_id = c.id
       LEFT JOIN strategic_partners p ON t.partner_id = p.id
+      LEFT JOIN pcr_question_library q1 ON t.metric_1_question_id = q1.id
+      LEFT JOIN pcr_question_library q2 ON t.metric_2_question_id = q2.id
+      LEFT JOIN pcr_question_library q3 ON t.metric_3_question_id = q3.id
       WHERE r.survey_link = $1
     `, [surveyLink]);
 
@@ -216,6 +232,19 @@ class PowerCardService {
 
     if (data.campaign_status === 'closed') {
       return { error: 'Campaign has ended', closed: true };
+    }
+
+    // Use question library text if available, otherwise fall back to template question
+    // Also replace {partner} placeholder with actual partner name
+    const partnerName = data.partner_name || 'our partner';
+    if (data.metric_1_question_text) {
+      data.metric_1_question = data.metric_1_question_text.replace(/{partner}/g, partnerName);
+    }
+    if (data.metric_2_question_text) {
+      data.metric_2_question = data.metric_2_question_text.replace(/{partner}/g, partnerName);
+    }
+    if (data.metric_3_question_text) {
+      data.metric_3_question = data.metric_3_question_text.replace(/{partner}/g, partnerName);
     }
 
     return data;
