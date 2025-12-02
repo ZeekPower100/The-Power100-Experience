@@ -384,26 +384,27 @@ class RecommendationService {
       whereClauses.push(`sp.revenue_tiers::text ILIKE $${paramCounter++}`);
     }
 
-    // Add services matching condition - match contractor's services with partner's ideal client services
+    // Service areas matching - STRONG RANKING BONUS, not a hard filter
+    // Partners serve nationally/globally, but matching service areas is a strong relevance signal
+    // Worth 30 points - significant enough that only a 30+ PCR difference overcomes it
+    // Example: PCR 70 + service match (100) ≈ PCR 100 without match (acceptable trade-off)
+    //          PCR 60 + service match (90) < PCR 100 without match (PCR gap too significant)
+    let serviceAreaBonus = '';
     if (services_offered.length > 0) {
-      console.log('DEBUG: Matching contractor services:', services_offered);
+      console.log('DEBUG: Service areas for ranking bonus:', services_offered);
 
-      // Match ANY of the contractor's services with partner's service_areas
-      // This ensures partners who work with contractors offering these services
-      const serviceConditions = services_offered.map((service) => {
+      // Build CASE statement for bonus scoring
+      const servicePatterns = services_offered.map((service) => {
         // Handle both formats: "Windows & Doors" and "windows_doors"
         const servicePattern = service.toLowerCase()
           .replace(/&/g, '')
           .replace(/\s+/g, '_')
           .replace(/__+/g, '_');
-
-        params.push(`%${servicePattern}%`);
-        return `sp.service_areas::text ILIKE $${paramCounter++}`;
+        return `sp.service_areas::text ILIKE '%${servicePattern}%'`;
       });
 
-      if (serviceConditions.length > 0) {
-        whereClauses.push(`(${serviceConditions.join(' OR ')})`);
-      }
+      // Add 30 points bonus if ANY service area matches
+      serviceAreaBonus = `+ CASE WHEN (${servicePatterns.join(' OR ')}) THEN 30 ELSE 0 END`;
     }
 
     // Add limit parameter
@@ -415,10 +416,12 @@ class RecommendationService {
         sp.id, sp.company_name, sp.description,
         sp.focus_areas_served, sp.revenue_tiers,
         sp.powerconfidence_score, sp.client_count,
-        sp.geographic_regions, sp.service_category
+        sp.geographic_regions, sp.service_category,
+        sp.momentum_modifier, sp.performance_trend
       FROM strategic_partners sp
       WHERE ${whereClauses.join(' AND ')}
-      ORDER BY sp.powerconfidence_score DESC NULLS LAST
+      ORDER BY
+        (COALESCE(sp.powerconfidence_score, 0) + COALESCE(sp.momentum_modifier, 0) ${serviceAreaBonus}) DESC NULLS LAST
       LIMIT ${limitParam}
     `;
 
@@ -431,6 +434,13 @@ class RecommendationService {
 
     return result.rows.map(partner => {
       const reasons = [];
+
+      // Add hot streak indicator FIRST if applicable
+      if (partner.momentum_modifier === 5) {
+        reasons.push('🔥 Hot streak performer');
+      } else if (partner.performance_trend === 'improving') {
+        reasons.push('📈 Improving performance');
+      }
 
       if (focus_areas.length > 0) {
         reasons.push(`Addresses ${focus_areas.join(', ')}`);
@@ -455,7 +465,10 @@ class RecommendationService {
           powerconfidence_score: partner.powerconfidence_score,
           client_count: partner.client_count,
           geographic_regions: safeJsonParse(partner.geographic_regions, []),
-          service_category: partner.service_category
+          service_category: partner.service_category,
+          momentum_modifier: partner.momentum_modifier,
+          performance_trend: partner.performance_trend,
+          is_hot_streak: partner.momentum_modifier === 5
         }
       };
     });

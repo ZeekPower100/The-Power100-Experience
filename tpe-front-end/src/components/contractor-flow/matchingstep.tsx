@@ -679,6 +679,23 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                             return <p>{summary}</p>;
                           })()}
                         </div>
+                        {/* AI Match Reasons - displays recommendation_reason and is_hot_streak from ai_recommendations */}
+                        {partner.matchReasons && partner.matchReasons.length > 0 && (
+                          <div className="mb-4 bg-gradient-to-r from-orange-50 to-yellow-50 border border-orange-200 rounded-lg p-3">
+                            <h4 className="font-semibold text-orange-900 mb-2 text-sm flex items-center gap-2">
+                              <Sparkles className="w-4 h-4" />
+                              Why This Partner:
+                            </h4>
+                            <div className="space-y-1">
+                              {partner.matchReasons.map((reason: string, index: number) => (
+                                <div key={index} className="flex items-start space-x-2">
+                                  <div className="w-1.5 h-1.5 bg-orange-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                                  <span className="text-orange-800 text-sm">{reason}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         {partner.key_differentiators?.length > 0 && <div className="mb-4"><h4 className="font-semibold text-power100-black mb-2 text-sm">Key Benefits:</h4><div className="space-y-2">{partner.key_differentiators.map((diff, index) => <div key={index} className="flex items-start space-x-2"><div className="w-1.5 h-1.5 bg-power100-red rounded-full mt-1.5 flex-shrink-0"></div><span className="text-gray-700 text-sm">{diff}</span></div>)}</div></div>}
                         {partner.pricing_model && <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4"><h4 className="font-semibold text-green-900 mb-1 text-sm">Pricing:</h4><p className="text-green-800 text-sm">{partner.pricing_model}</p></div>}
                         <div className="space-y-2">

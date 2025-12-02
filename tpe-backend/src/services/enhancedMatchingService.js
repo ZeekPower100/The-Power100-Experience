@@ -3,6 +3,11 @@ const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 const { query } = require('../config/database');
 const outcomeTrackingService = require('./outcomeTrackingService');
 const matchingService = require('./matchingService');
+// Recommendation service exports an instance, not a class
+const recommendationService = require('./recommendationService');
+
+// Feature flag for recommendation-based matching (can be toggled)
+const USE_RECOMMENDATION_SERVICE = true;
 
 // Match contractor with podcasts based on focus areas
 const matchPodcast = async (contractor) => {
@@ -470,31 +475,96 @@ const getEnhancedMatches = async (contractor, focusAreaIndex = 0) => {
     modifiedContractor.focus_areas = reorderedFocusAreas;
   }
   
-  // Get partner matches (returns top 2) for the specific focus area
-  const partnerMatches = await matchingService.matchContractorWithPartners(modifiedContractor);
-  
+  // Get partner matches using either recommendation service or basic matching
+  let partnerMatches = [];
+
+  if (USE_RECOMMENDATION_SERVICE && contractor.id) {
+    try {
+      console.log('[EnhancedMatching] Using Recommendation Service for partner matching');
+
+      // Use recommendation service - gets partners with trending/popularity scoring
+      const recommendations = await recommendationService.generateRecommendations(
+        contractor.id,
+        { entity_type: 'partner', limit: 3, include_reasons: true }
+      );
+
+      if (recommendations && recommendations.length > 0) {
+        // Transform recommendation format to match expected structure
+        // Need to fetch full partner data for each recommendation
+        const partnerIds = recommendations.map(r => r.entity_id);
+        const partnersResult = await query(`
+          SELECT
+            id, company_name, description, value_proposition, website, logo_url,
+            powerconfidence_score, is_active,
+            to_json(focus_areas_served) as focus_areas_served,
+            to_json(target_revenue_range) as target_revenue_range,
+            to_json(geographic_regions) as geographic_regions,
+            to_json(client_testimonials) as client_testimonials,
+            key_differentiators, ai_summary
+          FROM strategic_partners
+          WHERE id = ANY($1)
+        `, [partnerIds]);
+
+        const partnersById = {};
+        partnersResult.rows.forEach(p => { partnersById[p.id] = p; });
+
+        partnerMatches = recommendations.map(rec => {
+          const partner = partnersById[rec.entity_id] || {};
+          return {
+            partner: {
+              ...partner,
+              focus_areas_served: safeJsonParse(partner.focus_areas_served, []),
+              target_revenue_range: safeJsonParse(partner.target_revenue_range, []),
+              geographic_regions: safeJsonParse(partner.geographic_regions, []),
+              client_testimonials: safeJsonParse(partner.client_testimonials, [])
+            },
+            matchScore: Math.round((rec.ai_confidence_score || rec.total_score || rec.confidence_score || 0.75) * 100),
+            matchReasons: [
+              rec.recommendation_reason || rec.reason,
+              rec.business_context?.is_hot_streak ? '🔥 Hot streak performer' : null,
+              partner.powerconfidence_score >= 90 ? '⭐ Top-rated partner' : null
+            ].filter(Boolean)
+          };
+        });
+
+        console.log(`[EnhancedMatching] Recommendation service returned ${partnerMatches.length} partners`);
+      }
+    } catch (recError) {
+      console.error('[EnhancedMatching] Recommendation service failed, falling back to basic matching:', recError.message);
+      // Fall through to basic matching
+    }
+  }
+
+  // Fall back to basic matching if recommendation service didn't return results
+  if (partnerMatches.length === 0) {
+    console.log('[EnhancedMatching] Using basic matching service');
+    partnerMatches = await matchingService.matchContractorWithPartners(modifiedContractor);
+  }
+
   // Get podcast match for the specific focus area
   const podcastMatch = await matchPodcast(modifiedContractor);
-  
+
   // Get event match for the specific focus area
   const eventMatch = await matchEvent(modifiedContractor);
-  
+
   // MANUFACTURERS DISABLED - Return null instead
   const manufacturerMatch = null; // await matchManufacturer(modifiedContractor);
-  
+
   // Track the matching outcome with focus area context
   if (partnerMatches && partnerMatches.length > 0) {
+    const primaryMatch = partnerMatches[0];
     await outcomeTrackingService.trackPartnerMatch(
       contractor.id,
-      partnerMatches[0].partner.id,
+      primaryMatch.partner?.id || primaryMatch.partner_id,
       {
-        score: partnerMatches[0].matchScore,
-        reasons: partnerMatches[0].matchReasons,
+        score: primaryMatch.matchScore,
+        reasons: primaryMatch.matchReasons,
         podcastMatched: !!podcastMatch,
         eventMatched: !!eventMatch,
         manufacturerMatched: false, // Always false since disabled
         focusAreaIndex: focusAreaIndex,
-        focusAreaSelected: modifiedContractor.primary_focus_area
+        focusAreaSelected: modifiedContractor.primary_focus_area,
+        matchingMethod: USE_RECOMMENDATION_SERVICE ? 'recommendation_service' : 'basic_matching'
       }
     );
   }
