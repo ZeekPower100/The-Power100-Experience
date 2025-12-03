@@ -21,7 +21,7 @@ import {
   Quote,
   ArrowRight
 } from 'lucide-react';
-import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage } from '../../utils/jsonHelpers';
+import { safeJsonParse, safeJsonStringify, handleApiResponse, getFromStorage, setToStorage, parseJsonFields, PARTNER_JSON_FIELDS } from '../../utils/jsonHelpers';
 import FocusAreaIcon from '@/components/icons/FocusAreaIcon';
 
 interface PublicPCRProps {
@@ -102,7 +102,14 @@ export default function PublicPCRLandingV2({ partnerId, slug }: PublicPCRProps) 
 
       if (data.success || data.pcr) {
         // Handle both response formats
-        setReport(data.report || data.pcr);
+        const reportData = data.report || data.pcr;
+
+        // Parse JSON fields in partner data using existing pattern
+        if (reportData?.partner) {
+          reportData.partner = parseJsonFields(reportData.partner, [...PARTNER_JSON_FIELDS, 'key_differentiators', 'client_testimonials']);
+        }
+
+        setReport(reportData);
       } else {
         setError('Failed to load report');
       }

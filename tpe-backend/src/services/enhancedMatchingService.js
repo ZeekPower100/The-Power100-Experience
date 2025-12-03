@@ -495,7 +495,7 @@ const getEnhancedMatches = async (contractor, focusAreaIndex = 0) => {
         const partnersResult = await query(`
           SELECT
             id, company_name, description, value_proposition, website, logo_url,
-            powerconfidence_score, is_active,
+            powerconfidence_score, is_active, public_url,
             to_json(focus_areas_served) as focus_areas_served,
             to_json(target_revenue_range) as target_revenue_range,
             to_json(geographic_regions) as geographic_regions,

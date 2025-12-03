@@ -230,7 +230,16 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
   };
 
   const formatFocusArea = (area: string) => area.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  
+
+  // Helper function to format match reasons for display (convert database format to readable text)
+  const formatMatchReason = (reason: string) => {
+    if (!reason) return reason;
+    // Replace underscores with spaces and capitalize each word
+    return reason
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, l => l.toUpperCase());
+  };
+
   // Helper function to fix logo URLs (serve from frontend, not backend)
   const getLogoUrl = (logoUrl: string) => {
     if (!logoUrl) return '';
@@ -690,7 +699,7 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                               {partner.matchReasons.map((reason: string, index: number) => (
                                 <div key={index} className="flex items-start space-x-2">
                                   <div className="w-1.5 h-1.5 bg-orange-500 rounded-full mt-1.5 flex-shrink-0"></div>
-                                  <span className="text-orange-800 text-sm">{reason}</span>
+                                  <span className="text-orange-800 text-sm">{formatMatchReason(reason)}</span>
                                 </div>
                               ))}
                             </div>
@@ -699,34 +708,28 @@ export default function MatchingStep({ data, onNext, onPrev, onUpdate }: StepPro
                         {partner.key_differentiators?.length > 0 && <div className="mb-4"><h4 className="font-semibold text-power100-black mb-2 text-sm">Key Benefits:</h4><div className="space-y-2">{partner.key_differentiators.map((diff, index) => <div key={index} className="flex items-start space-x-2"><div className="w-1.5 h-1.5 bg-power100-red rounded-full mt-1.5 flex-shrink-0"></div><span className="text-gray-700 text-sm">{diff}</span></div>)}</div></div>}
                         {partner.pricing_model && <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4"><h4 className="font-semibold text-green-900 mb-1 text-sm">Pricing:</h4><p className="text-green-800 text-sm">{partner.pricing_model}</p></div>}
                         <div className="space-y-2">
-                          <Button 
-                            className="w-full bg-green-500 hover:bg-green-600 text-white"
-                            onClick={() => {
-                              // For Destination Motivation (ID 4), redirect to demo reports
-                              if (partner.id === 4 || partner.name === 'Destination Motivation') {
-                                window.open('/demo/dm-reports', '_blank');
-                              } else {
-                                // For other partners, could show a message or different action
-                                alert('Reports coming soon for this partner');
-                              }
-                            }}
-                          >
-                            <span className="text-sm">View Quarterly Reports</span>
-                          </Button>
-                          <Button 
-                            className="w-full bg-green-500 hover:bg-green-600 text-white"
-                            onClick={() => {
-                              // For Destination Motivation (ID 4), redirect to contractor report
-                              if (partner.id === 4 || partner.name === 'Destination Motivation') {
-                                window.open('/demo/dm-reports?report=contractor', '_blank');
-                              } else {
-                                // For other partners, could show a message or different action
-                                alert('Customer stories coming soon for this partner');
-                              }
-                            }}
-                          >
-                            <span className="text-sm">Hear from Similar Customers</span>
-                          </Button>
+                          {partner.public_url && (
+                            <Button
+                              className="w-full bg-green-500 hover:bg-green-600 text-white"
+                              onClick={() => {
+                                // Dynamic link to partner's PCR landing page
+                                window.open(`/pcr/${partner.public_url}`, '_blank');
+                              }}
+                            >
+                              <span className="text-sm">View Quarterly Reports</span>
+                            </Button>
+                          )}
+                          {partner.public_url && (
+                            <Button
+                              className="w-full bg-green-500 hover:bg-green-600 text-white"
+                              onClick={() => {
+                                // Dynamic link to partner's customer stories section
+                                window.open(`/pcr/${partner.public_url}#customer-stories`, '_blank');
+                              }}
+                            >
+                              <span className="text-sm">Hear from Similar Customers</span>
+                            </Button>
+                          )}
                           <Button className="w-full bg-blue-500 hover:bg-blue-600 text-white">
                             <span className="text-sm">Schedule Introduction</span>
                           </Button>
