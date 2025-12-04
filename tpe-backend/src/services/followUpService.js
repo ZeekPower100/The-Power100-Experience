@@ -7,6 +7,7 @@
 const { query } = require('../config/database');
 const { safeJsonStringify } = require('../utils/jsonHelpers');
 const { scheduleFollowUp: enqueueBullJob, cancelFollowUp: cancelBullJob } = require('../queues/followUpQueue');
+const optimalTimingService = require('./optimalTimingService');
 
 /**
  * Follow-Up Service
@@ -16,6 +17,7 @@ const { scheduleFollowUp: enqueueBullJob, cancelFollowUp: cancelBullJob } = requ
 /**
  * Schedule a follow-up for contractor
  * @param {Object} params - Follow-up parameters
+ * @param {boolean} params.use_optimal_timing - Use ML-based optimal timing (for AI Concierge messages only)
  * @returns {Object} - Created follow-up schedule
  */
 async function scheduleFollowUp({
@@ -30,10 +32,45 @@ async function scheduleFollowUp({
   ai_should_personalize = true,
   skip_if_completed = true,
   is_recurring = false,
-  recurrence_interval_days = null
+  recurrence_interval_days = null,
+  use_optimal_timing = false
 }) {
   try {
-    console.log('[FollowUpService] Scheduling follow-up for contractor', contractor_id, 'at', scheduled_time);
+    let finalScheduledTime = scheduled_time;
+    let timingPrediction = null;
+
+    // Use ML-based optimal timing if requested and no specific time provided
+    // NOTE: Only for AI Concierge proactive messages, NOT for PowerCards or Event messaging
+    if (use_optimal_timing && !scheduled_time) {
+      console.log('[FollowUpService] Using ML optimal timing for contractor', contractor_id);
+      try {
+        const optimalSlot = await optimalTimingService.calculateNextOptimalSlot(contractor_id, followup_type);
+        finalScheduledTime = optimalSlot.scheduledTime;
+        timingPrediction = optimalSlot.prediction;
+        console.log(`[FollowUpService] ML predicted optimal time: ${finalScheduledTime.toISOString()} (confidence: ${timingPrediction.confidence})`);
+      } catch (timingError) {
+        console.error('[FollowUpService] Optimal timing failed, using fallback:', timingError.message);
+        // Fallback: schedule for tomorrow at 10 AM
+        finalScheduledTime = new Date();
+        finalScheduledTime.setDate(finalScheduledTime.getDate() + 1);
+        finalScheduledTime.setHours(10, 0, 0, 0);
+      }
+    }
+
+    // Store timing prediction in context hints if ML was used
+    let finalContextHints = ai_context_hints;
+    if (timingPrediction) {
+      finalContextHints = {
+        ...ai_context_hints,
+        ml_timing: {
+          predicted_hour: timingPrediction.hour,
+          confidence: timingPrediction.confidence,
+          source: timingPrediction.source
+        }
+      };
+    }
+
+    console.log('[FollowUpService] Scheduling follow-up for contractor', contractor_id, 'at', finalScheduledTime);
 
     const result = await query(`
       INSERT INTO contractor_followup_schedules (
@@ -49,8 +86,8 @@ async function scheduleFollowUp({
       RETURNING *
     `, [
       contractor_id, action_item_id, event_id,
-      scheduled_time, followup_type, message_template, message_tone,
-      safeJsonStringify(ai_context_hints), ai_should_personalize,
+      finalScheduledTime, followup_type, message_template, message_tone,
+      safeJsonStringify(finalContextHints), ai_should_personalize,
       skip_if_completed, is_recurring, recurrence_interval_days
     ]);
 

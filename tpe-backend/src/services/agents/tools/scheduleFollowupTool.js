@@ -14,12 +14,14 @@ const { tool } = require('@langchain/core/tools');
 const { query } = require('../../../config/database');
 const AIActionGuards = require('../../guards/aiActionGuards');
 const GuardLogger = require('../../guards/guardLogger');
+const optimalTimingService = require('../../optimalTimingService');
 
 // Zod schema for input validation
 // DATABASE VERIFIED: followup_type values from expanded CHECK constraint (October 13, 2025)
 const ScheduleFollowupSchema = z.object({
   contractorId: z.number().int().positive().describe('The contractor ID'),
-  scheduledTime: z.string().describe('ISO 8601 datetime when to send the follow-up'),  // DATABASE VERIFIED: scheduled_time
+  scheduledTime: z.string().optional().describe('ISO 8601 datetime when to send the follow-up. If not provided and useOptimalTiming is true, ML will predict best time.'),  // DATABASE VERIFIED: scheduled_time
+  useOptimalTiming: z.boolean().default(true).describe('Use ML-based optimal timing prediction. Only for AI Concierge proactive messages - NOT for PowerCards or Event messaging.'),
   followupType: z.enum([
     // ORIGINAL 5 TYPES
     'check_in',                // DATABASE VERIFIED: General check-in or goal progress review
@@ -48,6 +50,7 @@ const ScheduleFollowupSchema = z.object({
 const scheduleFollowupFunction = async ({
   contractorId,
   scheduledTime,
+  useOptimalTiming = true,
   followupType,
   messageTemplate,
   eventId,
@@ -55,7 +58,7 @@ const scheduleFollowupFunction = async ({
   aiShouldPersonalize = true,
   aiContextHints
 }) => {
-  console.log(`[Schedule Follow-up Tool] Scheduling ${followupType} for contractor ${contractorId} at ${scheduledTime}`);
+  console.log(`[Schedule Follow-up Tool] Scheduling ${followupType} for contractor ${contractorId}${scheduledTime ? ` at ${scheduledTime}` : ' (using optimal timing)'}`);
 
   try {
     // PHASE 3 DAY 4: GUARD CHECK 1 - Permission Check
@@ -93,14 +96,56 @@ const scheduleFollowupFunction = async ({
     console.log(`[Schedule Follow-up Tool] ✅ All guards passed - proceeding with follow-up scheduling`);
 
     // ALL GUARDS PASSED - Proceed with validation and database operation
-    // Validate scheduled time is in the future
-    const scheduledDate = new Date(scheduledTime);
     const now = new Date();
+    let scheduledDate;
+    let timingPrediction = null;
+    let timingSource = 'specified';
 
-    if (scheduledDate <= now) {
-      console.warn(`[Schedule Follow-up Tool] Scheduled time is in the past, adjusting to +1 hour from now`);
-      scheduledDate.setHours(now.getHours() + 1);
+    // Use ML-based optimal timing if no specific time provided
+    if (!scheduledTime && useOptimalTiming) {
+      console.log(`[Schedule Follow-up Tool] Using ML optimal timing for contractor ${contractorId}`);
+      try {
+        const optimalSlot = await optimalTimingService.calculateNextOptimalSlot(contractorId, followupType);
+        scheduledDate = optimalSlot.scheduledTime;
+        timingPrediction = optimalSlot.prediction;
+        timingSource = `ml_optimal (confidence: ${timingPrediction.confidence})`;
+        console.log(`[Schedule Follow-up Tool] ML predicted optimal time: ${scheduledDate.toISOString()}`);
+      } catch (timingError) {
+        console.warn(`[Schedule Follow-up Tool] Optimal timing failed, using fallback: ${timingError.message}`);
+        // Fallback: tomorrow at 10 AM
+        scheduledDate = new Date();
+        scheduledDate.setDate(scheduledDate.getDate() + 1);
+        scheduledDate.setHours(10, 0, 0, 0);
+        timingSource = 'fallback';
+      }
+    } else if (scheduledTime) {
+      // Use specified time
+      scheduledDate = new Date(scheduledTime);
+      if (scheduledDate <= now) {
+        console.warn(`[Schedule Follow-up Tool] Scheduled time is in the past, adjusting to +1 hour from now`);
+        scheduledDate.setHours(now.getHours() + 1);
+        timingSource = 'adjusted';
+      }
+    } else {
+      // No time specified and optimal timing disabled - default to tomorrow 10 AM
+      scheduledDate = new Date();
+      scheduledDate.setDate(scheduledDate.getDate() + 1);
+      scheduledDate.setHours(10, 0, 0, 0);
+      timingSource = 'default';
     }
+
+    // Add timing metadata to context hints
+    const enhancedContextHints = {
+      ...aiContextHints,
+      timing_source: timingSource,
+      ...(timingPrediction && {
+        ml_timing: {
+          predicted_hour: timingPrediction.hour,
+          confidence: timingPrediction.confidence,
+          source: timingPrediction.source
+        }
+      })
+    };
 
     // Insert follow-up schedule using DATABASE VERIFIED field names
     const insertQuery = `
@@ -128,7 +173,7 @@ const scheduleFollowupFunction = async ({
       followupType,
       messageTemplate,
       aiShouldPersonalize,
-      aiContextHints ? JSON.stringify(aiContextHints) : null
+      JSON.stringify(enhancedContextHints)
     ]);
 
     const followupId = result.rows[0].id;
@@ -155,18 +200,20 @@ const scheduleFollowupFunction = async ({
       eventType: 'followup_scheduled',
       contractorId,
       eventId: eventId || null,
-      context: `Scheduled ${followupType} follow-up ${timeDescription}`,
+      context: `Scheduled ${followupType} follow-up ${timeDescription} (timing: ${timingSource})`,
       actionTaken: 'schedule_followup',
       outcome: 'followup_scheduled',
       successScore: 1.0,
-      learnedInsight: `Follow-up type: ${followupType}, scheduled for ${scheduledTimeActual}`,
-      confidenceLevel: 0.9,
+      learnedInsight: `Follow-up type: ${followupType}, scheduled for ${scheduledTimeActual}, timing source: ${timingSource}`,
+      confidenceLevel: timingPrediction?.confidence || 0.9,
       relatedEntities: {
         followupId,
         followupType,
         scheduledTime: scheduledTimeActual,
         hoursUntil,
-        aiShouldPersonalize
+        aiShouldPersonalize,
+        timingSource,
+        mlTimingPrediction: timingPrediction || null
       }
     });
 
@@ -177,7 +224,9 @@ const scheduleFollowupFunction = async ({
       followupType,
       timeDescription,
       aiShouldPersonalize,
-      message: `Follow-up scheduled ${timeDescription}! I'll reach out then.`,
+      timingSource,
+      mlConfidence: timingPrediction?.confidence || null,
+      message: `Follow-up scheduled ${timeDescription}${timingSource.startsWith('ml_optimal') ? ' (ML-optimized timing)' : ''}! I'll reach out then.`,
       eventId: eventId || null,
       contractorId
     });
@@ -286,6 +335,13 @@ IMPORTANT: This is for SCHEDULED future communication, not immediate responses.
 - Integrates with existing follow-up automation system
 - Tracks status (scheduled, sent, responded, cancelled, deferred)
 
+ML OPTIMAL TIMING (Phase 5 Feature):
+- By default, useOptimalTiming=true predicts the best time to reach this contractor
+- Based on their historical response patterns and engagement activity
+- If scheduledTime is not provided, ML will choose the optimal slot
+- NOT used for PowerCards or Event messaging (those have fixed schedules)
+- Stores timing prediction metadata in ai_context_hints for learning
+
 Follow-up Types (DATABASE VERIFIED - 9 types):
 - check_in: General check-in or goal progress review
 - reminder: Reminder about upcoming event, demo, or action
@@ -303,13 +359,14 @@ AI Personalization:
 - Message template serves as base, AI enhances with contractor-specific details
 
 The tool automatically:
+- Uses ML to predict optimal send time (if no specific time provided)
 - Validates scheduled time is in future (adjusts if not)
 - Links to event or action item if provided
 - Calculates human-readable time description
 - Sets status to 'scheduled'
-- Logs to ai_learning_events
+- Logs to ai_learning_events with timing metadata
 
-Returns: JSON with follow-up ID, scheduled time, and confirmation message.
+Returns: JSON with follow-up ID, scheduled time, timing source, ML confidence, and confirmation message.
 
 Automatically logs to ai_learning_events for continuous improvement.`,
     schema: ScheduleFollowupSchema
