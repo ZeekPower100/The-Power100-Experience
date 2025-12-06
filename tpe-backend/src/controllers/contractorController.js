@@ -7,6 +7,7 @@ const { matchContractorWithPartners } = require('../services/matchingService');
 const { getEnhancedMatches } = require('../services/enhancedMatchingService');
 const { sendPartnerIntroEmail } = require('../services/emailService');
 const contactTaggingService = require('../services/contactTaggingService');
+const outcomeTrackingService = require('../services/outcomeTrackingService');
 
 // Start verification process
 const startVerification = async (req, res, next) => {
@@ -257,12 +258,13 @@ const getMatches = async (req, res, next) => {
 const completeFlow = async (req, res, next) => {
   const { id } = req.params;
   const { selected_partner_id } = req.body;
+  const flowStartTime = Date.now();
 
   await transaction(async (client) => {
     // Update contractor status
-    await client.query(`UPDATE contractors 
-       SET workflow_step = 'completed', 
-           completed_at = CURRENT_TIMESTAMP 
+    await client.query(`UPDATE contractors
+       SET workflow_step = 'completed',
+           completed_at = CURRENT_TIMESTAMP
        WHERE id = $1`, [id]);
 
     // Create demo booking if partner selected
@@ -272,6 +274,20 @@ const completeFlow = async (req, res, next) => {
 
       await client.query(`INSERT INTO demo_bookings (contractor_id, partner_id, scheduled_date)
          VALUES ($1, $2, $3)`, [id, selected_partner_id, scheduledDate]);
+
+      // Track demo booking for ML learning
+      try {
+        await outcomeTrackingService.trackDemoBooked(id, selected_partner_id, {
+          date: scheduledDate.toISOString().split('T')[0],
+          time: scheduledDate.toISOString().split('T')[1],
+          type: 'initial_demo',
+          source: 'contractor_flow'
+        });
+        console.log(`[OutcomeTracking] Demo booking tracked for contractor ${id}`);
+      } catch (trackingError) {
+        console.error('[OutcomeTracking] Failed to track demo booking:', trackingError.message);
+        // Don't fail the flow - tracking is non-critical
+      }
 
       // Send introduction email
       const contractorResult = await client.query(`SELECT * FROM contractors WHERE id = $1`, [id]);
@@ -289,6 +305,23 @@ const completeFlow = async (req, res, next) => {
       }
     }
   });
+
+  // Track flow completion for ML learning (outside transaction for performance)
+  try {
+    const completionTimeMs = Date.now() - flowStartTime;
+    await outcomeTrackingService.trackFlowCompletion(id, {
+      completionTime: Math.round(completionTimeMs / 1000), // seconds
+      stepsCompleted: 5, // All 5 steps: verification, focus, profiling, matching, completion
+      abandonedSteps: [],
+      deviceType: req.headers['user-agent']?.includes('Mobile') ? 'mobile' : 'desktop',
+      browser: req.headers['user-agent'] || 'unknown',
+      referrer: req.headers['referer'] || 'direct'
+    });
+    console.log(`[OutcomeTracking] Flow completion tracked for contractor ${id}`);
+  } catch (trackingError) {
+    console.error('[OutcomeTracking] Failed to track flow completion:', trackingError.message);
+    // Don't fail the response - tracking is non-critical
+  }
 
   res.status(200).json({
     success: true,

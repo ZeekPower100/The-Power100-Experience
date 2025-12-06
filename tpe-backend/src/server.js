@@ -74,6 +74,7 @@ const igeMonitorRoutes = require('./routes/igeMonitorRoutes');
 const employeeRoutes = require('./routes/employeeRoutes');
 const ceoPcrRoutes = require('./routes/ceoPcrRoutes');
 const ceoDashboardRoutes = require('./routes/ceoDashboardRoutes');
+const abExperimentRoutes = require('./routes/abExperimentRoutes');
 
 const app = express();
 
@@ -217,6 +218,7 @@ app.use('/api/admin-controls', adminControlsRoutes);
 app.use('/api/scheduler', schedulerRoutes);
 app.use('/api/state-machine', stateMachineRoutes);
 app.use('/api/event-orchestrator', require('../routes/eventOrchestratorRoutes'));
+app.use('/api/ab-experiments', abExperimentRoutes);
 app.use('/api/event-scheduler', require('../routes/eventMessageSchedulerRoutes'));
 app.use('/api/event-agenda', require('../routes/eventAgendaRoutes'));
 

@@ -6,6 +6,7 @@ const axios = require('axios');
 const { safeJsonStringify } = require('../utils/jsonHelpers');
 const { buildTags } = require('../utils/tagBuilder');
 const questionSelectorService = require('./questionSelectorService');
+const outcomeTrackingService = require('./outcomeTrackingService');
 
 class PowerCardService {
   
@@ -484,7 +485,43 @@ class PowerCardService {
       });
     }
 
-    // Return result immediately (don't wait for auto-processing)
+    // Track feedback submission for ML learning (non-blocking)
+    setImmediate(async () => {
+      try {
+        // Get recipient info to determine user type
+        const recipientResult = await query(`
+          SELECT recipient_type, recipient_id, company_type
+          FROM power_card_recipients WHERE survey_link = $1
+        `, [surveyLink]);
+
+        if (recipientResult.rows.length > 0) {
+          const recipient = recipientResult.rows[0];
+          await outcomeTrackingService.trackFeedback(
+            recipient.recipient_id,
+            recipient.recipient_type || 'contractor', // 'contractor' or 'partner_client'
+            {
+              rating: responseData.satisfaction_score,
+              comments: responseData.additional_feedback,
+              categories: [
+                responseData.metric_1_score ? 'metric_1' : null,
+                responseData.metric_2_score ? 'metric_2' : null,
+                responseData.metric_3_score ? 'metric_3' : null
+              ].filter(Boolean),
+              wouldRecommend: responseData.recommendation_score >= 8,
+              surveyVersion: 'powercard_v1',
+              collectionPoint: 'power_card_survey',
+              sessionDuration: responseData.time_to_complete
+            }
+          );
+          console.log(`[OutcomeTracking] Feedback tracked for ${recipient.recipient_type} ${recipient.recipient_id}`);
+        }
+      } catch (trackingError) {
+        console.error('[OutcomeTracking] Failed to track feedback:', trackingError.message);
+        // Don't throw - tracking is non-critical
+      }
+    });
+
+    // Return result immediately (don't wait for auto-processing or tracking)
     return result;
   }
 
