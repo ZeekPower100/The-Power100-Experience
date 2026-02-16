@@ -106,8 +106,8 @@ class ConciergeStateMachineManager {
    * @param {string} eventName
    * @param {object} eventData
    */
-  async sendEvent(contractorId, sessionId, eventName, eventData = {}) {
-    const service = await this.getOrCreateMachine(contractorId, sessionId);
+  async sendEvent(contractorId, sessionId, eventName, eventData = {}, memberId = null) {
+    const service = await this.getOrCreateMachine(contractorId, sessionId, memberId);
 
     // Update context if event includes event context
     if (eventData.eventContext) {

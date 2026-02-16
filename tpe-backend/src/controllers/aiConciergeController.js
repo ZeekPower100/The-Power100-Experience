@@ -94,14 +94,33 @@ async function routeToAgent(contractorId, sessionId) {
       eventStatus: result.rows[0].event_status
     } : null;
 
+    // DATABASE VERIFIED FIELD NAMES: inner_circle_members.id, email, membership_status
+    // DATABASE VERIFIED FIELD NAMES: contractors.email
+    // Check if contractor is an Inner Circle member (lookup by email)
+    let memberId = null;
+    try {
+      const memberCheck = await query(`
+        SELECT icm.id FROM inner_circle_members icm
+        JOIN contractors c ON c.email = icm.email
+        WHERE c.id = $1 AND icm.membership_status = 'active'
+        LIMIT 1
+      `, [contractorId]);
+      if (memberCheck.rows.length > 0) {
+        memberId = memberCheck.rows[0].id;
+        console.log(`[AI Concierge Controller] Inner Circle member detected: memberId=${memberId} for contractor ${contractorId}`);
+      }
+    } catch (err) {
+      console.log(`[AI Concierge Controller] Inner Circle lookup skipped: ${err.message}`);
+    }
+
     // Update state machine context
     await stateMachineManager.updateEventContext(contractorId, sessionId, eventContext);
 
-    // Send MESSAGE_RECEIVED event to state machine
-    await stateMachineManager.sendEvent(contractorId, sessionId, 'MESSAGE_RECEIVED', { eventContext });
+    // Send MESSAGE_RECEIVED event to state machine (with memberId for IC routing)
+    await stateMachineManager.sendEvent(contractorId, sessionId, 'MESSAGE_RECEIVED', { eventContext }, memberId);
 
-    // Get current agent from state machine
-    const agentType = await stateMachineManager.getCurrentAgent(contractorId, sessionId);
+    // Get current agent from state machine (with memberId for IC routing)
+    const agentType = await stateMachineManager.getCurrentAgent(contractorId, sessionId, memberId);
 
     // Get current state for logging
     const currentState = await stateMachineManager.getCurrentState(contractorId, sessionId);
@@ -114,9 +133,8 @@ async function routeToAgent(contractorId, sessionId) {
     if (agentType === 'event') {
       agent = getOrCreateEventAgent();
     } else if (agentType === 'inner_circle') {
-      // Inner Circle agent requires memberId — get from state machine context
-      const snapshot = await stateMachineManager.getCurrentState(contractorId, sessionId);
-      agent = getOrCreateInnerCircleAgent(contractorId); // memberId passed as contractorId for IC sessions
+      // Inner Circle agent requires memberId
+      agent = getOrCreateInnerCircleAgent(memberId || contractorId);
     } else {
       agent = getOrCreateStandardAgent();
     }
@@ -124,6 +142,7 @@ async function routeToAgent(contractorId, sessionId) {
     return {
       agentType: agentType || 'standard',
       agent,
+      memberId,
       eventId: eventContext?.eventId || null,
       sessionType: agentType || 'standard',
       context: eventContext
@@ -529,9 +548,14 @@ const aiConciergeController = {
       });
 
       // Get contractor context for agent
-      const contractorContext = routing.agentType === 'event'
-        ? await getEventContext(contractorId, routing.eventId)
-        : await getStandardContext(contractorId);
+      let contractorContext;
+      if (routing.agentType === 'event') {
+        contractorContext = await getEventContext(contractorId, routing.eventId);
+      } else if (routing.agentType === 'inner_circle' && routing.memberId) {
+        contractorContext = await getMemberContext(routing.memberId);
+      } else {
+        contractorContext = await getStandardContext(contractorId);
+      }
 
       // Prepare message for agent
       const fullContext = processedFileContent
