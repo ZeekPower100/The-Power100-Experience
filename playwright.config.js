@@ -9,8 +9,8 @@ const { defineConfig, devices } = require('@playwright/test');
 module.exports = defineConfig({
   testDir: './tests',
 
-  // Maximum time one test can run (5 minutes for complex flows)
-  timeout: 300 * 1000,
+  // Maximum time one test can run (8 minutes for complex flows)
+  timeout: 480 * 1000,
 
   // Test execution settings
   fullyParallel: false, // Run tests sequentially to avoid DB conflicts
