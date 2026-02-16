@@ -201,10 +201,43 @@ const securityHeaders = (req, res, next) => {
   next();
 };
 
+/**
+ * Per-Member Concierge Rate Limiting
+ * Limits AI concierge messages per member per day.
+ * Uses member_id from request body as the rate limit key.
+ */
+const memberConciergeRateLimiter = rateLimit({
+  windowMs: 24 * 60 * 60 * 1000, // 24-hour rolling window
+  max: parseInt(process.env.MEMBER_DAILY_MESSAGE_LIMIT) || 50,
+  keyGenerator: (req) => {
+    // Use member_id if present, fall back to IP
+    return req.body?.member_id ? `member:${req.body.member_id}` : req.ip;
+  },
+  skip: (req) => {
+    // Only apply to requests with member_id (Inner Circle members)
+    // Contractor requests use the general rate limiter
+    return !req.body?.member_id;
+  },
+  message: {
+    error: 'Daily conversation limit reached',
+    message: "You've reached your daily conversation limit. It resets tomorrow — in the meantime, check out your PowerMoves!",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    console.warn(`[MEMBER_RATE_LIMIT] Member ${req.body?.member_id} exceeded daily concierge limit`);
+    res.status(429).json({
+      error: 'Daily conversation limit reached',
+      message: "You've reached your daily conversation limit. It resets tomorrow — in the meantime, check out your PowerMoves!",
+    });
+  },
+});
+
 module.exports = {
   helmetConfig,
   createRateLimiter,
   authRateLimiter,
+  memberConciergeRateLimiter,
   getCorsOptions,
   sanitizeInput,
   securityHeaders,

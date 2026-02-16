@@ -75,6 +75,9 @@ const employeeRoutes = require('./routes/employeeRoutes');
 const ceoPcrRoutes = require('./routes/ceoPcrRoutes');
 const ceoDashboardRoutes = require('./routes/ceoDashboardRoutes');
 const abExperimentRoutes = require('./routes/abExperimentRoutes');
+const engagementRoutes = require('./routes/engagementRoutes');
+const innerCircleRoutes = require('./routes/innerCircleRoutes');
+const skillRoutes = require('./routes/skillRoutes');
 
 const app = express();
 
@@ -219,6 +222,9 @@ app.use('/api/scheduler', schedulerRoutes);
 app.use('/api/state-machine', stateMachineRoutes);
 app.use('/api/event-orchestrator', require('../routes/eventOrchestratorRoutes'));
 app.use('/api/ab-experiments', abExperimentRoutes);
+app.use('/api/engagement', engagementRoutes);
+app.use('/api/inner-circle', innerCircleRoutes);
+app.use('/api/skills', skillRoutes);
 app.use('/api/event-scheduler', require('../routes/eventMessageSchedulerRoutes'));
 app.use('/api/event-agenda', require('../routes/eventAgendaRoutes'));
 
@@ -271,6 +277,16 @@ app.use(errorHandler);
 
 // Initialize event orchestration handlers
 registerAllHandlers();
+
+// Seed skills from SKILL.md files on startup
+const skillLoader = require('./services/skillLoaderService');
+skillLoader.seedFromFilesystem()
+  .then((results) => {
+    console.log(`✅ Skills seeded: ${results.seeded} new, ${results.updated} updated, ${results.errors.length} errors`);
+  })
+  .catch((err) => {
+    console.error('❌ Failed to seed skills:', err.message);
+  });
 
 // 🔥 CRITICAL: Initialize scheduled message processor (runs every minute)
 // This is THE automation that makes all scheduled messages send!

@@ -19,6 +19,9 @@ const { v4: uuidv4 } = require('uuid');
 const { createStandardAgent, getContractorContext: getStandardContext } = require('../services/agents/aiConciergeStandardAgent');
 const { createEventAgent, getContractorContext: getEventContext } = require('../services/agents/aiConciergeEventAgent');
 
+// INNER CIRCLE: Import Inner Circle agent
+const { createInnerCircleAgent, getMemberContext } = require('../services/agents/aiConciergeInnerCircleAgent');
+
 // PHASE 3: Import OpenAI Tracer for token usage tracking
 const OpenAITracer = require('../services/openai/openaiTracer');
 
@@ -28,6 +31,7 @@ const stateMachineManager = require('../services/conciergeStateMachineManager');
 // Initialize agents (reusable across requests)
 let standardAgent = null;
 let eventAgent = null;
+const innerCircleAgents = new Map(); // keyed by memberId
 
 function getOrCreateStandardAgent() {
   if (!standardAgent) {
@@ -43,6 +47,14 @@ function getOrCreateEventAgent() {
     console.log('[AI Concierge Controller] Event Agent initialized');
   }
   return eventAgent;
+}
+
+function getOrCreateInnerCircleAgent(memberId) {
+  if (!innerCircleAgents.has(memberId)) {
+    innerCircleAgents.set(memberId, createInnerCircleAgent(memberId));
+    console.log(`[AI Concierge Controller] Inner Circle Agent initialized for member ${memberId}`);
+  }
+  return innerCircleAgents.get(memberId);
 }
 
 /**
@@ -97,9 +109,21 @@ async function routeToAgent(contractorId, sessionId) {
     console.log(`[AI Concierge Controller] 🤖 State Machine in state: ${currentState}`);
     console.log(`[AI Concierge Controller] 🎯 Routed to: ${agentType} agent`);
 
+    // Select appropriate agent based on state machine routing
+    let agent;
+    if (agentType === 'event') {
+      agent = getOrCreateEventAgent();
+    } else if (agentType === 'inner_circle') {
+      // Inner Circle agent requires memberId — get from state machine context
+      const snapshot = await stateMachineManager.getCurrentState(contractorId, sessionId);
+      agent = getOrCreateInnerCircleAgent(contractorId); // memberId passed as contractorId for IC sessions
+    } else {
+      agent = getOrCreateStandardAgent();
+    }
+
     return {
       agentType: agentType || 'standard',
-      agent: agentType === 'event' ? getOrCreateEventAgent() : getOrCreateStandardAgent(),
+      agent,
       eventId: eventContext?.eventId || null,
       sessionType: agentType || 'standard',
       context: eventContext

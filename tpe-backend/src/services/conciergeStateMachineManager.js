@@ -40,13 +40,14 @@ class ConciergeStateMachineManager {
   }
 
   /**
-   * Get or create machine for contractor
+   * Get or create machine for contractor or member
    * @param {number} contractorId
    * @param {string} sessionId
+   * @param {number} [memberId] - Inner Circle member ID (if member session)
    * @returns {Promise<object>} Machine service
    */
-  async getOrCreateMachine(contractorId, sessionId) {
-    const key = `${contractorId}-${sessionId}`;
+  async getOrCreateMachine(contractorId, sessionId, memberId = null) {
+    const key = memberId ? `member-${memberId}-${sessionId}` : `${contractorId}-${sessionId}`;
 
     if (this.machines.has(key)) {
       return this.machines.get(key);
@@ -59,6 +60,8 @@ class ConciergeStateMachineManager {
     const actor = createActor(conciergeStateMachine, {
       input: {
         contractorId,
+        memberId,
+        memberContext: savedState?.memberContext || null,
         sessionId,
         eventContext: savedState?.eventContext || null,
         currentAgent: savedState?.currentAgent || null,
@@ -90,7 +93,8 @@ class ConciergeStateMachineManager {
 
     this.machines.set(key, actor);
 
-    console.log(`[State Machine Manager] Created new machine for contractor ${contractorId}, session ${sessionId}`);
+    const entityLabel = memberId ? `member ${memberId}` : `contractor ${contractorId}`;
+    console.log(`[State Machine Manager] Created new machine for ${entityLabel}, session ${sessionId}`);
 
     return actor;
   }
@@ -125,14 +129,15 @@ class ConciergeStateMachineManager {
    * Get current agent type for contractor
    * @param {number} contractorId
    * @param {string} sessionId
-   * @returns {Promise<'standard'|'event'|null>}
+   * @returns {Promise<'standard'|'event'|'inner_circle'|null>}
    */
-  async getCurrentAgent(contractorId, sessionId) {
-    const service = await this.getOrCreateMachine(contractorId, sessionId);
+  async getCurrentAgent(contractorId, sessionId, memberId = null) {
+    const service = await this.getOrCreateMachine(contractorId, sessionId, memberId);
     const state = service.getSnapshot();
 
     if (state.matches('standard_agent')) return 'standard';
     if (state.matches('event_agent')) return 'event';
+    if (state.matches('inner_circle_agent')) return 'inner_circle';
 
     // If in idle or routing, return null
     return null;
@@ -168,6 +173,7 @@ class ConciergeStateMachineManager {
    */
   async persistState(contractorId, sessionId, service) {
     const snapshot = service.getSnapshot();
+    const memberId = snapshot.context.memberId;
 
     const stateData = {
       state: snapshot.value,
@@ -175,26 +181,28 @@ class ConciergeStateMachineManager {
       timestamp: new Date().toISOString()
     };
 
-    // DATABASE VERIFIED FIELD NAMES: session_data, session_type, session_id, contractor_id
+    // DATABASE VERIFIED FIELD NAMES: session_data, session_type, session_id, contractor_id, member_id
     // Phase 5 Optimization: Use UPSERT (INSERT ON CONFLICT) for better performance
-    // This allows for both insert and update in a single query, reducing database round-trips
     await query(`
       INSERT INTO ai_concierge_sessions
-        (session_id, contractor_id, session_data, session_type, started_at, updated_at)
-      VALUES ($1, $2, $3, $4, NOW(), NOW())
+        (session_id, contractor_id, member_id, session_data, session_type, started_at, updated_at)
+      VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
       ON CONFLICT (session_id)
       DO UPDATE SET
         session_data = EXCLUDED.session_data,
         session_type = EXCLUDED.session_type,
+        member_id = EXCLUDED.member_id,
         updated_at = NOW()
     `, [
       sessionId,
       contractorId,
+      memberId || null,
       JSON.stringify(stateData),  // TEXT field - JSON.stringify required
       snapshot.context.currentAgent || 'standard'  // VARCHAR field - plain text
     ]);
 
-    console.log(`[State Machine Manager] Persisted state for contractor ${contractorId}, agent: ${snapshot.context.currentAgent}`);
+    const entityLabel = memberId ? `member ${memberId}` : `contractor ${contractorId}`;
+    console.log(`[State Machine Manager] Persisted state for ${entityLabel}, agent: ${snapshot.context.currentAgent}`);
   }
 
   /**

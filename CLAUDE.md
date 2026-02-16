@@ -26,8 +26,9 @@ When you see these keywords, use these SPECIFIC tools:
 **PRODUCTION DATABASE** (keywords: "production database", "prod database", "check prod"):
 → Use: `mcp__aws-production__exec` with command:
 ```
-PGPASSWORD='dBP0wer100!!' psql -h tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com -U tpeadmin -d tpedb -c "YOUR SQL HERE"
+PGPASSWORD=$PROD_DB_PASSWORD psql -h $PROD_DB_HOST -U $PROD_DB_USER -d $PROD_DB_NAME -c "YOUR SQL HERE"
 ```
+→ Credentials are in `tpe-backend/.env.production` (gitignored, never committed)
 
 **NEVER MIX THESE UP!** Local uses batch file, Production uses MCP tool.
 
@@ -113,20 +114,15 @@ Critical documents:
 - If you forget how to connect, CHECK `DATABASE-CONNECTION-PATTERN.md`
 
 ### LOCAL DEVELOPMENT Database
-- **Host**: localhost
-- **Database**: tpedb  
-- **User**: postgres
-- **Password**: TPXP0stgres!!
-- **Port**: 5432
+- **Credentials**: Stored in `tpe-backend/.env` (DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD)
 - **Connection Pattern**: See `DATABASE-CONNECTION-PATTERN.md` for EXACT steps
+- **Quick Query**: `powershell -Command ".\quick-db.bat \"YOUR SQL HERE\""`
 
 ### PRODUCTION Database (AWS RDS)
-- **Host**: tpe-database-production.cmtcsi0kytrf.us-east-1.rds.amazonaws.com
-- **Database**: tpedb
-- **User**: tpeadmin  
-- **Password**: dBP0wer100!!
-- **Port**: 5432
+- **Credentials**: Stored in `tpe-backend/.env.production` (PROD_DB_HOST, PROD_DB_PORT, PROD_DB_NAME, PROD_DB_USER, PROD_DB_PASSWORD)
 - **SSL Required**: Yes
+- **Quick Query**: Use `mcp__aws-production__exec` with env var references
+- **NEVER commit production credentials to source control**
 
 **SQLite is NOT used** - USE_SQLITE=false in all environments
 
@@ -687,7 +683,7 @@ The Power100 Experience platform is now fully functional with the following capa
 - **Local Development**: PostgreSQL backend + Next.js frontend
   - Frontend Port: 3002
   - Backend Port: 5000
-- **Authentication**: Admin access via admin@power100.io / admin123
+- **Authentication**: Admin access credentials in `tpe-backend/.env` (ADMIN_EMAIL, ADMIN_PASSWORD)
 - **Testing**: Comprehensive manual testing of all flows and features
 - **Version Control**: Git with feature branches and comprehensive commit history
 

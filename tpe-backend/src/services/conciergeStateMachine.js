@@ -40,14 +40,18 @@ const { createMachine, assign } = require('xstate');
  * - routing: Determining which agent to use
  * - standard_agent: Using Standard Agent (business growth focus)
  * - event_agent: Using Event Agent (event context focus)
+ * - inner_circle_agent: Using Inner Circle Agent (member coaching and guidance)
  *
  * Guards:
  * - hasActiveEvent: Check if contractor has event registration with event today
+ * - isInnerCircleMember: Check if session is for an Inner Circle member (memberId present)
  *
  * Context:
  * - contractorId: integer
+ * - memberId: integer (Inner Circle member ID)
+ * - memberContext: null | { name, onboardingComplete, powerMovesActive, partnerUnlocked }
  * - eventContext: null | { eventId, eventName, eventDate, eventStatus }
- * - currentAgent: 'standard' | 'event'
+ * - currentAgent: 'standard' | 'event' | 'inner_circle'
  * - lastTransition: timestamp
  * - sessionId: string
  */
@@ -58,6 +62,8 @@ const conciergeStateMachine = createMachine({
   // XState v5: Use context function to accept input
   context: ({ input }) => ({
     contractorId: input?.contractorId || null,
+    memberId: input?.memberId || null,
+    memberContext: input?.memberContext || null,
     eventContext: input?.eventContext || null,
     currentAgent: input?.currentAgent || null,
     sessionId: input?.sessionId || null,
@@ -85,6 +91,11 @@ const conciergeStateMachine = createMachine({
           target: 'event_agent',
           guard: 'hasActiveEvent',
           actions: 'setEventAgent'
+        },
+        {
+          target: 'inner_circle_agent',
+          guard: 'isInnerCircleMember',
+          actions: 'setInnerCircleAgent'
         },
         {
           target: 'standard_agent',
@@ -127,6 +138,20 @@ const conciergeStateMachine = createMachine({
         agentType: 'event',
         description: 'Event-specific support with real-time context'
       }
+    },
+
+    inner_circle_agent: {
+      on: {
+        MESSAGE_RECEIVED: 'routing',
+        SESSION_END: 'idle'
+      },
+
+      entry: 'logInnerCircleAgentEntry',
+
+      meta: {
+        agentType: 'inner_circle',
+        description: 'Inner Circle member coaching, content, and business guidance'
+      }
     }
   }
 }, {
@@ -138,6 +163,14 @@ const conciergeStateMachine = createMachine({
      * - contractor_event_registrations.event_date (DATE)
      * - events.date (DATE)
      */
+    /**
+     * Check if this session is for an Inner Circle member.
+     * memberId is set in context when the controller detects a member session.
+     */
+    isInnerCircleMember: ({ context }) => {
+      return context.memberId !== null && context.memberId !== undefined;
+    },
+
     hasActiveEvent: ({ context }) => {
       if (!context.eventContext) {
         return false;
@@ -204,6 +237,21 @@ const conciergeStateMachine = createMachine({
      */
     logEventAgentEntry: ({ context }) => {
       console.log(`[State Machine] → EVENT AGENT for contractor ${context.contractorId} at ${context.eventContext?.eventName || 'unknown event'}`);
+    },
+
+    /**
+     * Set Inner Circle Agent as current agent
+     */
+    setInnerCircleAgent: assign({
+      currentAgent: 'inner_circle',
+      lastTransition: () => new Date().toISOString()
+    }),
+
+    /**
+     * Log entry into Inner Circle Agent state
+     */
+    logInnerCircleAgentEntry: ({ context }) => {
+      console.log(`[State Machine] → INNER CIRCLE AGENT for member ${context.memberId}`);
     }
   }
 });
