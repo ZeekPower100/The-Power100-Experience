@@ -29,6 +29,7 @@ const { initializeScheduledMessageProcessor } = require('./queues/eventOrchestra
 const { initializeIGEScheduler } = require('./queues/igeQueue');
 const { initializeProactiveMessageScheduler } = require('./queues/proactiveMessageQueue');
 const { initializeQuarterlyPowerCardScheduler } = require('./queues/powerCardQueue');
+const { initializeHeartbeatScheduler } = require('./services/heartbeatService');
 
 // Import routes
 const contractorRoutes = require('./routes/contractorRoutes');
@@ -326,6 +327,15 @@ initializeQuarterlyPowerCardScheduler()
   })
   .catch((err) => {
     console.error('❌ Failed to initialize quarterly PowerCard scheduler:', err);
+  });
+
+// Initialize Inner Circle heartbeat scheduler (daily member scan for proactive outreach)
+initializeHeartbeatScheduler()
+  .then(() => {
+    console.log('✅ Inner Circle heartbeat scheduler initialized - daily scan at 9 AM EST');
+  })
+  .catch((err) => {
+    console.error('❌ Failed to initialize heartbeat scheduler:', err.message);
   });
 
 // Start server
