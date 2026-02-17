@@ -1,50 +1,138 @@
 // DATABASE-CHECKED: inner_circle_members, power_moves, member_watch_history verified 2026-02-16
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
 const innerCircleController = require('../controllers/innerCircleController');
 const { promptInjectionGuard } = require('../middleware/promptInjectionGuard');
+const { apiKeyOnly } = require('../middleware/flexibleAuth');
 const { memberConciergeRateLimiter } = require('../config/security');
 const { query } = require('../config/database');
 const { calculateEngagementScore } = require('../services/engagementScoreService');
 const { getContentStats } = require('../services/contentIngestionService');
 
-// All Inner Circle routes use prompt injection guard on message input
-// and per-member rate limiting
+// n8n webhook configuration
+const N8N_WEBHOOK_BASE = process.env.N8N_WEBHOOK_BASE || 'https://n8n.srv918843.hstgr.cloud';
+const N8N_ENV = process.env.NODE_ENV === 'production' ? '' : '-dev';
+
+// ============================================================
+// WordPress Integration: Registration
+// ============================================================
+
+/**
+ * @route   POST /api/inner-circle/register
+ * @desc    Register a new Inner Circle member (called from WordPress)
+ * @access  API Key (WordPress proxy)
+ */
+router.post('/register', apiKeyOnly, async (req, res, next) => {
+  try {
+    const { name, email, phone, business_type, revenue_tier, team_size, focus_areas, entry_source } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'email is required' });
+    }
+    if (!name) {
+      return res.status(400).json({ success: false, error: 'name is required' });
+    }
+
+    // Check for duplicate email
+    const existing = await query(
+      'SELECT id FROM inner_circle_members WHERE email = $1',
+      [email.toLowerCase().trim()]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: 'Member with this email already exists',
+        member_id: existing.rows[0].id
+      });
+    }
+
+    // DATABASE VERIFIED: inner_circle_members columns
+    const result = await query(`
+      INSERT INTO inner_circle_members (
+        email, name, phone, business_type, revenue_tier, team_size,
+        focus_areas, entry_source, membership_status, onboarding_complete,
+        registration_date, created_at, updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'active', false, NOW(), NOW(), NOW())
+      RETURNING id, email, name, membership_status
+    `, [
+      email.toLowerCase().trim(),
+      name.trim(),
+      phone || null,
+      business_type || null,
+      revenue_tier || null,
+      team_size || null,
+      focus_areas ? JSON.stringify(focus_areas) : null,
+      entry_source || 'wordpress'
+    ]);
+
+    const newMember = result.rows[0];
+    console.log(`[Inner Circle] New member registered: ${newMember.id} (${newMember.email}) via ${entry_source || 'wordpress'}`);
+
+    // Fire n8n webhook for CRM sync (async, non-blocking)
+    const webhookUrl = `${N8N_WEBHOOK_BASE}/webhook/ic-member-registration${N8N_ENV}`;
+    axios.post(webhookUrl, {
+      member_id: newMember.id,
+      email: newMember.email,
+      name: newMember.name,
+      phone: phone || null,
+      business_type: business_type || null,
+      revenue_tier: revenue_tier || null,
+      entry_source: entry_source || 'wordpress',
+      registered_at: new Date().toISOString()
+    }, { timeout: 10000 }).catch(err => {
+      console.warn(`[Inner Circle] n8n webhook failed (non-blocking): ${err.message}`);
+    });
+
+    res.status(201).json({
+      success: true,
+      member: newMember
+    });
+  } catch (error) {
+    console.error('[Inner Circle] Registration error:', error);
+    next(error);
+  }
+});
+
+// ============================================================
+// WordPress Integration: Authenticated Member Routes
+// ============================================================
 
 /**
  * @route   POST /api/inner-circle/message
  * @desc    Send a message to the Inner Circle AI Concierge
- * @access  Member (via WordPress portal token — auth TBD in Phase 2)
+ * @access  API Key (WordPress proxy)
  */
-router.post('/message', memberConciergeRateLimiter, promptInjectionGuard, innerCircleController.sendMessage);
+router.post('/message', apiKeyOnly, memberConciergeRateLimiter, promptInjectionGuard, innerCircleController.sendMessage);
 
 /**
  * @route   GET /api/inner-circle/conversations
  * @desc    Get conversation history for a member
- * @access  Member
+ * @access  API Key (WordPress proxy)
  */
-router.get('/conversations', innerCircleController.getConversations);
+router.get('/conversations', apiKeyOnly, innerCircleController.getConversations);
 
 /**
  * @route   GET /api/inner-circle/profile
  * @desc    Get member profile (what the concierge knows about them)
- * @access  Member
+ * @access  API Key (WordPress proxy)
  */
-router.get('/profile', innerCircleController.getProfile);
+router.get('/profile', apiKeyOnly, innerCircleController.getProfile);
 
 /**
  * @route   GET /api/inner-circle/sessions
  * @desc    Get member's concierge sessions
- * @access  Member
+ * @access  API Key (WordPress proxy)
  */
-router.get('/sessions', innerCircleController.getSessions);
+router.get('/sessions', apiKeyOnly, innerCircleController.getSessions);
 
 /**
  * @route   POST /api/inner-circle/session/:session_id/end
  * @desc    End an active session
- * @access  Member
+ * @access  API Key (WordPress proxy)
  */
-router.post('/session/:session_id/end', innerCircleController.endSessionHandler);
+router.post('/session/:session_id/end', apiKeyOnly, innerCircleController.endSessionHandler);
 
 // ============================================================
 // Phase 2: PowerMove Routes
@@ -53,9 +141,9 @@ router.post('/session/:session_id/end', innerCircleController.endSessionHandler)
 /**
  * @route   GET /api/inner-circle/power-moves?member_id=X
  * @desc    Get active PowerMoves for a member
- * @access  Member
+ * @access  API Key (WordPress proxy)
  */
-router.get('/power-moves', async (req, res, next) => {
+router.get('/power-moves', apiKeyOnly, async (req, res, next) => {
   try {
     const memberId = parseInt(req.query.member_id);
     const status = req.query.status || 'active,in_progress';
@@ -81,9 +169,9 @@ router.get('/power-moves', async (req, res, next) => {
 /**
  * @route   GET /api/inner-circle/power-moves/:id/checkins
  * @desc    Get check-in history for a PowerMove
- * @access  Member
+ * @access  API Key (WordPress proxy)
  */
-router.get('/power-moves/:id/checkins', async (req, res, next) => {
+router.get('/power-moves/:id/checkins', apiKeyOnly, async (req, res, next) => {
   try {
     const powerMoveId = parseInt(req.params.id);
     const memberId = parseInt(req.query.member_id);
@@ -151,9 +239,9 @@ router.post('/watch-history', async (req, res, next) => {
 /**
  * @route   GET /api/inner-circle/watch-history?member_id=X
  * @desc    Get member's watch history
- * @access  Member
+ * @access  API Key (WordPress proxy)
  */
-router.get('/watch-history', async (req, res, next) => {
+router.get('/watch-history', apiKeyOnly, async (req, res, next) => {
   try {
     const memberId = parseInt(req.query.member_id);
     const limit = parseInt(req.query.limit) || 20;
@@ -200,9 +288,9 @@ router.get('/shows', async (req, res, next) => {
 /**
  * @route   GET /api/inner-circle/engagement-score?member_id=X
  * @desc    Calculate and return engagement score
- * @access  Member
+ * @access  API Key (WordPress proxy)
  */
-router.get('/engagement-score', async (req, res, next) => {
+router.get('/engagement-score', apiKeyOnly, async (req, res, next) => {
   try {
     const memberId = parseInt(req.query.member_id);
     if (!memberId) return res.status(400).json({ success: false, error: 'member_id required' });
@@ -235,18 +323,19 @@ if (process.env.NODE_ENV === 'development') {
       success: true,
       message: 'Inner Circle API is working (Phase 2)',
       endpoints: [
-        'POST /api/inner-circle/message',
-        'GET /api/inner-circle/conversations?member_id=X',
-        'GET /api/inner-circle/profile?member_id=X',
-        'GET /api/inner-circle/sessions?member_id=X',
-        'POST /api/inner-circle/session/:session_id/end',
-        'GET /api/inner-circle/power-moves?member_id=X',
-        'GET /api/inner-circle/power-moves/:id/checkins?member_id=X',
-        'POST /api/inner-circle/watch-history',
-        'GET /api/inner-circle/watch-history?member_id=X',
-        'GET /api/inner-circle/shows',
-        'GET /api/inner-circle/engagement-score?member_id=X',
-        'GET /api/inner-circle/content-stats'
+        'POST /api/inner-circle/register [API Key]',
+        'POST /api/inner-circle/message [API Key]',
+        'GET /api/inner-circle/conversations?member_id=X [API Key]',
+        'GET /api/inner-circle/profile?member_id=X [API Key]',
+        'GET /api/inner-circle/sessions?member_id=X [API Key]',
+        'POST /api/inner-circle/session/:session_id/end [API Key]',
+        'GET /api/inner-circle/power-moves?member_id=X [API Key]',
+        'GET /api/inner-circle/power-moves/:id/checkins?member_id=X [API Key]',
+        'POST /api/inner-circle/watch-history [Open - n8n webhook]',
+        'GET /api/inner-circle/watch-history?member_id=X [API Key]',
+        'GET /api/inner-circle/shows [Open]',
+        'GET /api/inner-circle/engagement-score?member_id=X [API Key]',
+        'GET /api/inner-circle/content-stats [Open]'
       ]
     });
   });

@@ -354,6 +354,31 @@ const optionalFlexibleAuth = async (req, res, next) => {
   next();
 };
 
+// API Key Only middleware - lightweight auth for WordPress IC proxy
+// Validates X-API-Key header without requiring JWT or setting req.contractor
+const apiKeyOnly = (req, res, next) => {
+  const apiKey = req.headers['x-api-key'];
+
+  if (!apiKey) {
+    return next(new AppError('API key required', 401));
+  }
+
+  // Check against IC-specific key first, fall back to n8n key
+  const validKey = process.env.TPX_IC_API_KEY || process.env.TPX_N8N_API_KEY;
+
+  if (!validKey) {
+    console.error('[apiKeyOnly] No API key configured (TPX_IC_API_KEY or TPX_N8N_API_KEY)');
+    return next(new AppError('Server misconfiguration', 500));
+  }
+
+  if (apiKey !== validKey) {
+    return next(new AppError('Invalid API key', 401));
+  }
+
+  req.apiKeyAuth = true;
+  next();
+};
+
 // Backwards compatibility exports
 // These match the old auth.js exports but use flexible logic
 module.exports = {
@@ -364,6 +389,7 @@ module.exports = {
   contractorOnly,
   protectPartnerOrAdmin,
   optionalFlexibleAuth,
+  apiKeyOnly,
 
   // Backwards compatibility (maps to flexible versions)
   protect: flexibleProtect,  // This is the key fix - protect now handles all token types
