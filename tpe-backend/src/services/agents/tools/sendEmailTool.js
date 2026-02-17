@@ -192,6 +192,8 @@ const sendEmailFunction = async ({ contractorId, subject, message, emailType }) 
 
     // Create n8n payload (same format as emailScheduler.js lines 114-123)
     const n8nPayload = {
+      from_email: 'concierge@outreach.power100.io',
+      from_name: 'Power100 Concierge',
       to_email: contractor.email,
       to_name: contractorName,
       subject: subject,

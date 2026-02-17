@@ -532,7 +532,7 @@ async function scheduleCheckInReminderEmail({
       eventId,
       contractorId,
       reminderType,
-      process.env.EVENT_FROM_EMAIL || 'events@power100.io',
+      process.env.EVENT_FROM_EMAIL || 'events@outreach.power100.io',
       email,
       subject,
       scheduledTime,
@@ -554,7 +554,7 @@ async function scheduleCheckInReminderEmail({
       personalization_data: personalizationData,
       email: email,
       subject: subject,
-      from_email: process.env.EVENT_FROM_EMAIL || 'events@power100.io',
+      from_email: process.env.EVENT_FROM_EMAIL || 'events@outreach.power100.io',
       to_email: email,
       channel: 'email'
     });
@@ -1186,7 +1186,7 @@ async function scheduleProfileCompletionReminderEmail({
       eventId,
       contractorId,
       'profile_completion_reminder',
-      process.env.EVENT_FROM_EMAIL || 'events@power100.io',
+      process.env.EVENT_FROM_EMAIL || 'events@outreach.power100.io',
       email,
       subject,
       scheduledTime,
@@ -1208,7 +1208,7 @@ async function scheduleProfileCompletionReminderEmail({
       personalization_data: personalizationData,
       email: email,
       subject: subject,
-      from_email: process.env.EVENT_FROM_EMAIL || 'events@power100.io',
+      from_email: process.env.EVENT_FROM_EMAIL || 'events@outreach.power100.io',
       to_email: email,
       channel: 'email'
     });

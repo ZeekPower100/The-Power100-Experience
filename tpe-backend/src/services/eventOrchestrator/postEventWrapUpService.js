@@ -417,9 +417,12 @@ async function sendViaWebhook(phone, messages) {
 
     for (const message of messages) {
       await axios.post(n8nWebhookUrl, {
-        phone,
-        message,
-        timestamp: new Date().toISOString()
+        send_via_ghl: {
+          phone,
+          message,
+          from_name: 'Power100 Events',
+          timestamp: new Date().toISOString()
+        }
       });
     }
 

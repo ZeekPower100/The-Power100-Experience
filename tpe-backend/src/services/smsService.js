@@ -36,6 +36,7 @@ async function sendViaWebhook(phone, message, tags = []) {
       send_via_ghl: {
         phone,
         message,
+        from_name: 'Power100',
         timestamp: new Date().toISOString(),
         tags: tags
       }

@@ -115,6 +115,8 @@ async function sendRegistrationConfirmation(eventId, contractorId) {
     // Trigger n8n email workflow
     const n8nWebhook = `${N8N_WEBHOOK_BASE}/webhook/email-outbound${N8N_ENV}`;
     const n8nPayload = {
+      from_email: 'events@outreach.power100.io',
+      from_name: 'Power100 Events',
       message_id: messageId,
       to_email: contractor.email,
       to_name: `${contractor.first_name} ${contractor.last_name}`,
@@ -237,6 +239,8 @@ async function sendProfileCompletionRequest(eventId, contractorId) {
     // Trigger n8n email
     const n8nWebhook = `${N8N_WEBHOOK_BASE}/webhook/email-outbound${N8N_ENV}`;
     const n8nPayload = {
+      from_email: 'events@outreach.power100.io',
+      from_name: 'Power100 Events',
       message_id: messageId,
       to_email: contractor.email,
       to_name: `${contractor.first_name} ${contractor.last_name}`,
@@ -391,6 +395,8 @@ async function sendProfileCompletionReminder(eventId, contractorId) {
     // Trigger n8n
     const n8nWebhook = `${N8N_WEBHOOK_BASE}/webhook/email-outbound${N8N_ENV}`;
     const n8nPayload = {
+      from_email: 'events@outreach.power100.io',
+      from_name: 'Power100 Events',
       message_id: messageId,
       to_email: contractor.email,
       to_name: `${contractor.first_name} ${contractor.last_name}`,
@@ -514,6 +520,8 @@ async function sendPersonalizedAgenda(eventId, contractorId, recommendations) {
     // Trigger n8n
     const n8nWebhook = `${N8N_WEBHOOK_BASE}/webhook/email-outbound${N8N_ENV}`;
     const n8nPayload = {
+      from_email: 'events@outreach.power100.io',
+      from_name: 'Power100 Events',
       message_id: messageId,
       to_email: contractor.email,
       to_name: `${contractor.first_name} ${contractor.last_name}`,
@@ -632,6 +640,8 @@ async function sendEventSummary(eventId, contractorId, sessionData) {
     // Trigger n8n
     const n8nWebhook = `${N8N_WEBHOOK_BASE}/webhook/email-outbound${N8N_ENV}`;
     const n8nPayload = {
+      from_email: 'events@outreach.power100.io',
+      from_name: 'Power100 Events',
       message_id: messageId,
       to_email: contractor.email,
       to_name: `${contractor.first_name} ${contractor.last_name}`,
@@ -753,6 +763,8 @@ async function sendAgendaReadyNotification(eventId, contractorId, recommendation
     // Trigger n8n
     const n8nWebhook = `${N8N_WEBHOOK_BASE}/webhook/email-outbound${N8N_ENV}`;
     const n8nPayload = {
+      from_email: 'events@outreach.power100.io',
+      from_name: 'Power100 Events',
       message_id: messageId,
       to_email: contractor.email,
       to_name: `${contractor.first_name} ${contractor.last_name}`,
@@ -881,6 +893,8 @@ async function sendCheckInReminderNightBefore(eventId, contractorId, messageId =
     // Trigger n8n email workflow
     const n8nWebhook = `${N8N_WEBHOOK_BASE}/webhook/email-outbound${N8N_ENV}`;
     const n8nPayload = {
+      from_email: 'events@outreach.power100.io',
+      from_name: 'Power100 Events',
       message_id: messageId,
       to_email: contractor.email,
       to_name: `${contractor.first_name} ${contractor.last_name}`,
@@ -1002,6 +1016,8 @@ async function sendCheckInReminder1HourBefore(eventId, contractorId, messageId =
     // Trigger n8n email workflow
     const n8nWebhook = `${N8N_WEBHOOK_BASE}/webhook/email-outbound${N8N_ENV}`;
     const n8nPayload = {
+      from_email: 'events@outreach.power100.io',
+      from_name: 'Power100 Events',
       message_id: messageId,
       to_email: contractor.email,
       to_name: `${contractor.first_name} ${contractor.last_name}`,

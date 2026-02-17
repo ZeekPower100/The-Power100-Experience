@@ -313,6 +313,8 @@ async function generatePreOnboardingCampaign(partnerId) {
 
         try {
           await axios.post(emailWebhook, {
+            from_email: 'powercards@outreach.power100.io',
+            from_name: 'Power100 PowerCards',
             message_id: emailMessageId,
             to_email: recipientData.recipient_email,
             to_name: recipientData.recipient_name,
@@ -387,6 +389,7 @@ async function generatePreOnboardingCampaign(partnerId) {
               send_via_ghl: {
                 phone: recipientData.recipient_phone,
                 message: smsMessage,
+                from_name: 'Power100 PowerCards',
                 timestamp: new Date().toISOString(),
                 tags: smsTags
               }

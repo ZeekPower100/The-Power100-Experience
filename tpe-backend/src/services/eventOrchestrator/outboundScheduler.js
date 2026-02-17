@@ -304,6 +304,7 @@ async function sendViaWebhook(phone, messages, tags = []) {
         send_via_ghl: {
           phone,
           message,
+          from_name: 'Power100 Events',
           timestamp: new Date().toISOString(),
           tags: tags  // Add tags to webhook payload
         }

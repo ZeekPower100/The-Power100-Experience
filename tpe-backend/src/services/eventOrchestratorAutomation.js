@@ -73,6 +73,7 @@ class EventOrchestratorAutomation {
             send_via_ghl: {
               phone: contractor.phone,
               message: smsMessage,
+              from_name: 'Power100 Events',
               contractor_id: contractor_id,
               event_id: event_id,
               event_name: event.name,
@@ -1144,6 +1145,7 @@ class EventOrchestratorAutomation {
         send_via_ghl: {
           phone,
           message: messageText,
+          from_name: 'Power100 Events',
           timestamp: new Date().toISOString(),
           message_type: message.message_type,
           message_id: message.id

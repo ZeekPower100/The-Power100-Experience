@@ -613,6 +613,7 @@ const handleInbound = async (req, res, next) => {
             send_via_ghl: {
               ...basePayload,
               message: messages[i],
+              from_name: 'Power100 Events',
               is_multi_sms: messages.length > 1,
               message_index: i + 1,
               total_messages: messages.length

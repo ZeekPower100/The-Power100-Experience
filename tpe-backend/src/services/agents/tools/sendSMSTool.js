@@ -112,6 +112,7 @@ const sendSMSFunction = async ({ contractorId, message, messageType }) => {
       send_via_ghl: {
         phone: contractor.phone,
         message: message,
+        from_name: 'Power100 Concierge',
         contractor_id: contractorId,
         contractor_name: `${contractor.first_name || ''} ${contractor.last_name || ''}`.trim(),
         message_type: messageType,

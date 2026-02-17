@@ -96,6 +96,7 @@ async function sendPendingProactiveMessages(job) {
           send_via_ghl: {
             phone: message.phone,
             message: message.message_content,
+            from_name: 'Power100 Concierge',
             timestamp: new Date().toISOString()
           },
           // Additional metadata for tracking

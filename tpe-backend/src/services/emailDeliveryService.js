@@ -86,6 +86,8 @@ async function sendExecutiveReport(reportId) {
   // STEP 3: Send via n8n webhook (same pattern as emailScheduler.js)
   const n8nWebhook = `${N8N_WEBHOOK_BASE}/webhook/email-outbound${N8N_ENV}`;
   const n8nPayload = {
+    from_email: 'reports@outreach.power100.io',
+    from_name: 'Power100 Reports',
     to_email: report.primary_email,
     to_name: report.company_name,
     subject: emailSubject,
@@ -206,6 +208,8 @@ async function sendContractorReport(reportId, contractorId) {
   // STEP 3: Send via n8n webhook
   const n8nWebhook = `${N8N_WEBHOOK_BASE}/webhook/email-outbound${N8N_ENV}`;
   const n8nPayload = {
+    from_email: 'reports@outreach.power100.io',
+    from_name: 'Power100 Reports',
     to_email: report.contractor_email,
     to_name: report.contractor_name,
     subject: emailSubject,
