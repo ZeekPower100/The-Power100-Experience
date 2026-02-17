@@ -33,6 +33,12 @@ const IC_BRAND = {
 // IC logo hosted on WordPress (HTTPS — works across Outlook + Gmail after first trust)
 const IC_LOGO_URL = 'https://innercircle.power100.io/wp-content/uploads/2026/02/ic-logo-transparent-512.png';
 
+// Sender identity for IC communications (vs Events@ for event mode)
+const IC_SENDER = {
+  email: 'innercircle@outreach.power100.io',
+  name: 'Power100 Inner Circle'
+};
+
 /**
  * Inner Circle base email template wrapper
  * Dark theme with gold accents — distinct from TPX white/red templates
@@ -217,6 +223,8 @@ async function sendICRegistrationComms(memberId) {
 
       try {
         await axios.post(emailWebhook, {
+          from_email: IC_SENDER.email,
+          from_name: IC_SENDER.name,
           to_email: member.email,
           to_name: member.name,
           subject: 'Welcome to the Power100 Inner Circle',
@@ -245,6 +253,7 @@ async function sendICRegistrationComms(memberId) {
           send_via_ghl: {
             phone: member.phone,
             message: smsMessage,
+            from_name: IC_SENDER.name,
             member_id: member.id,
             message_type: 'ic_registration_confirmation',
             sent_by: 'inner_circle_system',
@@ -296,6 +305,8 @@ async function sendICPasswordResetComms(memberId, resetUrl, expiresIn) {
 
       try {
         await axios.post(emailWebhook, {
+          from_email: IC_SENDER.email,
+          from_name: IC_SENDER.name,
           to_email: member.email,
           to_name: member.name,
           subject: 'Reset Your Inner Circle Password',
@@ -328,6 +339,7 @@ async function sendICPasswordResetComms(memberId, resetUrl, expiresIn) {
           send_via_ghl: {
             phone: member.phone,
             message: smsMessage,
+            from_name: IC_SENDER.name,
             member_id: member.id,
             message_type: 'ic_password_reset',
             sent_by: 'inner_circle_system',
@@ -360,5 +372,6 @@ module.exports = {
   sendICPasswordResetComms,
   // Brand constants (for other modules)
   IC_BRAND,
+  IC_SENDER,
   wrapICEmailTemplate
 };
