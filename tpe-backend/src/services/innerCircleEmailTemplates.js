@@ -30,10 +30,8 @@ const IC_BRAND = {
   border: '#1F1F1F'
 };
 
-// Base64-encoded IC logo (gold Power100 icon in golden circle)
-const fs = require('fs');
-const path = require('path');
-const IC_LOGO_BASE64 = fs.readFileSync(path.join(__dirname, 'ic-logo-base64.txt'), 'utf8').trim();
+// IC logo hosted on WordPress (HTTPS — works across Outlook + Gmail after first trust)
+const IC_LOGO_URL = 'https://innercircle.power100.io/wp-content/uploads/2026/02/ic-logo-transparent-512.png';
 
 /**
  * Inner Circle base email template wrapper
@@ -54,7 +52,7 @@ function wrapICEmailTemplate(content) {
 
     <!-- Header with IC branding + logo -->
     <div style="background-color: ${IC_BRAND.black}; padding: 35px 40px; text-align: center; border-bottom: 2px solid ${IC_BRAND.gold};">
-      <img src="data:image/png;base64,${IC_LOGO_BASE64}" alt="Power100 Inner Circle" width="80" height="80" style="display: block; margin: 0 auto 16px auto; width: 80px; height: 80px;" />
+      <img src="${IC_LOGO_URL}" alt="Power100 Inner Circle" width="80" height="80" style="display: block; margin: 0 auto 16px auto; width: 80px; height: 80px;" />
       <h1 style="margin: 0 0 6px 0; color: ${IC_BRAND.gold}; font-family: 'Oswald', Arial, sans-serif; font-size: 28px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase;">
         INNER CIRCLE
       </h1>
