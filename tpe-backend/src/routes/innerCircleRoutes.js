@@ -9,6 +9,7 @@ const { memberConciergeRateLimiter } = require('../config/security');
 const { query } = require('../config/database');
 const { calculateEngagementScore } = require('../services/engagementScoreService');
 const { getContentStats } = require('../services/contentIngestionService');
+const { sendICRegistrationComms, sendICPasswordResetComms } = require('../services/innerCircleEmailTemplates');
 
 // n8n webhook configuration
 const N8N_WEBHOOK_BASE = process.env.N8N_WEBHOOK_BASE || 'https://n8n.srv918843.hstgr.cloud';
@@ -70,6 +71,11 @@ router.post('/register', apiKeyOnly, async (req, res, next) => {
     const newMember = result.rows[0];
     console.log(`[Inner Circle] New member registered: ${newMember.id} (${newMember.email}) via ${entry_source || 'wordpress'}`);
 
+    // Send registration confirmation email + SMS (async, non-blocking)
+    sendICRegistrationComms(newMember.id).catch(err => {
+      console.warn(`[Inner Circle] Registration comms failed (non-blocking): ${err.message}`);
+    });
+
     // Fire n8n webhook for CRM sync (async, non-blocking)
     const webhookUrl = `${N8N_WEBHOOK_BASE}/webhook/ic-member-registration${N8N_ENV}`;
     axios.post(webhookUrl, {
@@ -91,6 +97,49 @@ router.post('/register', apiKeyOnly, async (req, res, next) => {
     });
   } catch (error) {
     console.error('[Inner Circle] Registration error:', error);
+    next(error);
+  }
+});
+
+/**
+ * @route   POST /api/inner-circle/password-reset
+ * @desc    Send password reset email + SMS to an IC member (called from WordPress)
+ * @access  API Key (WordPress proxy)
+ */
+router.post('/password-reset', apiKeyOnly, async (req, res, next) => {
+  try {
+    const { email, reset_url, expires_in } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, error: 'email is required' });
+    }
+    if (!reset_url) {
+      return res.status(400).json({ success: false, error: 'reset_url is required' });
+    }
+
+    // Find member by email
+    const memberResult = await query(
+      'SELECT id, name, email, phone FROM inner_circle_members WHERE email = $1',
+      [email.toLowerCase().trim()]
+    );
+
+    if (!memberResult.rows.length) {
+      // Don't reveal whether email exists (security best practice)
+      return res.json({ success: true, message: 'If this email is registered, a reset link has been sent.' });
+    }
+
+    const member = memberResult.rows[0];
+    const results = await sendICPasswordResetComms(member.id, reset_url, expires_in || '1 hour');
+
+    console.log(`[Inner Circle] Password reset comms sent for member ${member.id}: email=${results.email}, sms=${results.sms}`);
+
+    res.json({
+      success: true,
+      message: 'If this email is registered, a reset link has been sent.',
+      comms: results
+    });
+  } catch (error) {
+    console.error('[Inner Circle] Password reset error:', error);
     next(error);
   }
 });

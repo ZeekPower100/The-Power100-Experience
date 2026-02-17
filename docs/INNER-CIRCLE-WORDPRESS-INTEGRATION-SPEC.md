@@ -54,9 +54,40 @@ Required: `name`, `email`. All other fields optional.
 ```
 WordPress should use the returned `member_id` to link the WP user to the TPE member.
 
+**Note:** Registration automatically sends a branded welcome email + SMS to the member via GHL (dark theme, gold accents, IC branding). No additional call needed.
+
 ---
 
-### 2. AI Concierge Chat
+### 2. Password Reset
+```
+POST /api/inner-circle/password-reset
+Auth: X-API-Key
+```
+
+**Request:**
+```json
+{
+  "email": "jane@example.com",
+  "reset_url": "https://innercircle.power100.io/reset?token=abc123",
+  "expires_in": "1 hour"
+}
+```
+Required: `email`, `reset_url`. `expires_in` defaults to "1 hour".
+
+**Response (always 200 — doesn't reveal if email exists):**
+```json
+{
+  "success": true,
+  "message": "If this email is registered, a reset link has been sent.",
+  "comms": { "email": true, "sms": true }
+}
+```
+
+Sends IC-branded password reset email + SMS via GHL. WordPress generates the reset token/URL — TPE just delivers the communications.
+
+---
+
+### 3. AI Concierge Chat
 ```
 POST /api/inner-circle/message
 Auth: X-API-Key
