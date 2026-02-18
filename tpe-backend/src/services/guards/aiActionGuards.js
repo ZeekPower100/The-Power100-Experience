@@ -328,6 +328,75 @@ class AIActionGuards {
   }
 
   /**
+   * Check if AI has permission to send email to a contractor or IC member
+   * @param {number} recipientId - Contractor ID or IC Member ID
+   * @param {Object} options - { checkIcFirst: boolean } - check IC members before contractors (avoids ID collision)
+   * @returns {Promise<{allowed: boolean, reason: string}>}
+   */
+  static async canSendEmail(recipientId, options = {}) {
+    try {
+      // When called from IC agent context, check IC members first to avoid ID collision
+      if (options.checkIcFirst) {
+        const memberResult = await query(
+          'SELECT id, membership_status FROM inner_circle_members WHERE id = $1',
+          [recipientId]
+        );
+
+        if (memberResult.rows.length > 0) {
+          if (memberResult.rows[0].membership_status !== 'active') {
+            return { allowed: false, reason: 'Inner Circle membership is not active' };
+          }
+          return { allowed: true, reason: 'Active Inner Circle member' };
+        }
+      }
+
+      // Check contractors
+      const contractorResult = await query(`
+        SELECT has_ai_access, ai_coach_opt_in, opted_in_coaching
+        FROM contractors WHERE id = $1
+      `, [recipientId]);
+
+      if (contractorResult.rows.length > 0) {
+        const contractor = contractorResult.rows[0];
+        if (!contractor.has_ai_access) {
+          return { allowed: false, reason: 'AI access not enabled for this contractor' };
+        }
+        return { allowed: true, reason: 'Contractor has AI access' };
+      }
+
+      // Fallback: check inner_circle_members (when not checked first)
+      if (!options.checkIcFirst) {
+        const memberResult = await query(
+          'SELECT id, membership_status FROM inner_circle_members WHERE id = $1',
+          [recipientId]
+        );
+
+        if (memberResult.rows.length > 0) {
+          if (memberResult.rows[0].membership_status !== 'active') {
+            return { allowed: false, reason: 'Inner Circle membership is not active' };
+          }
+          return { allowed: true, reason: 'Active Inner Circle member' };
+        }
+      }
+
+      return { allowed: false, reason: 'Recipient not found' };
+    } catch (error) {
+      console.error('[AIActionGuards] Error checking email permission:', error);
+      return { allowed: false, reason: `Database error: ${error.message}` };
+    }
+  }
+
+  /**
+   * Check if AI has permission to send SMS to a contractor or IC member
+   * @param {number} recipientId - Contractor ID or IC Member ID
+   * @param {Object} options - { checkIcFirst: boolean }
+   * @returns {Promise<{allowed: boolean, reason: string}>}
+   */
+  static async canSendSMS(recipientId, options = {}) {
+    return this.canSendEmail(recipientId, options);
+  }
+
+  /**
    * Comprehensive guard check for creating action items
    * Runs all relevant checks in sequence
    * @param {number} contractorId - Contractor ID

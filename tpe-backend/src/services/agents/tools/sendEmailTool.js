@@ -15,6 +15,7 @@ const { tool } = require('@langchain/core/tools');
 const { query } = require('../../../config/database');
 const axios = require('axios');
 const AIActionGuards = require('../../guards/aiActionGuards');
+const { wrapICEmailTemplate, IC_BRAND } = require('../../innerCircleEmailTemplates');
 const GuardLogger = require('../../guards/guardLogger');
 
 /**
@@ -61,7 +62,8 @@ const sendEmailFunction = async ({ contractorId, subject, message, emailType }) 
 
   try {
     // Guard check: Verify AI has permission to send email
-    const permissionCheck = await AIActionGuards.canSendEmail(contractorId);
+    // Check IC members first to avoid ID collision with contractors table
+    const permissionCheck = await AIActionGuards.canSendEmail(contractorId, { checkIcFirst: true });
     if (!permissionCheck.allowed) {
       await GuardLogger.logRejection({
         guardType: 'email_permission',
@@ -78,110 +80,102 @@ const sendEmailFunction = async ({ contractorId, subject, message, emailType }) 
       });
     }
 
-    // Get contractor email and name
-    const contractorResult = await query(
-      'SELECT email, first_name, last_name, phone FROM contractors WHERE id = $1',
+    // Get recipient email and name — check IC members first (avoids ID collision with contractors)
+    let contractor;
+    let isInnerCircle = false;
+
+    // Check inner_circle_members first (IC agent passes member_id as contractorId)
+    const memberResult = await query(
+      'SELECT email, name, phone FROM inner_circle_members WHERE id = $1',
       [contractorId]
     );
+    if (memberResult.rows.length) {
+      const member = memberResult.rows[0];
+      const nameParts = (member.name || '').split(' ');
+      contractor = {
+        email: member.email,
+        first_name: nameParts[0] || '',
+        last_name: nameParts.slice(1).join(' ') || '',
+        phone: member.phone
+      };
+      isInnerCircle = true;
+    } else {
+      // Fallback: check contractors table
+      const contractorResult = await query(
+        'SELECT email, first_name, last_name, phone FROM contractors WHERE id = $1',
+        [contractorId]
+      );
+      if (contractorResult.rows.length) {
+        contractor = contractorResult.rows[0];
+      }
+    }
 
-    if (!contractorResult.rows.length) {
+    if (!contractor) {
       return JSON.stringify({
         success: false,
-        error: 'Contractor not found',
+        error: 'Recipient not found',
         contractorId
       });
     }
-
-    const contractor = contractorResult.rows[0];
 
     if (!contractor.email) {
       return JSON.stringify({
         success: false,
-        error: 'No email address on file for this contractor',
-        suggestion: 'Ask contractor to provide email address or use SMS if phone number available',
+        error: 'No email address on file',
+        suggestion: 'Ask them to provide email address or use SMS if phone number available',
         contractorId
       });
     }
 
-    // Build contractor name for personalization
-    const contractorName = `${contractor.first_name || ''} ${contractor.last_name || ''}`.trim() || 'Valued Contractor';
+    // Build recipient name for personalization
+    const contractorName = `${contractor.first_name || ''} ${contractor.last_name || ''}`.trim() || 'Valued Member';
 
-    // Format email with HTML structure for better presentation
-    const htmlContent = `
+    // Format email with HTML — use IC-branded template for IC members, standard for contractors
+    let htmlContent;
+    if (isInnerCircle) {
+      // IC dark theme with gold accents, inline styles
+      const icContent = `
+        <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: ${IC_BRAND.white};">
+          Hi <strong>${contractorName}</strong>,
+        </p>
+        <div style="margin: 0 0 32px 0; font-size: 15px; line-height: 1.8; color: ${IC_BRAND.dimText}; white-space: pre-wrap;">${message}</div>
+        <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid ${IC_BRAND.border};">
+          <p style="margin: 0; font-size: 14px; color: ${IC_BRAND.gold}; font-weight: 600;">Your AI Business Concierge</p>
+          <p style="margin: 4px 0 0 0; font-size: 13px; color: ${IC_BRAND.mutedText};">Power100 Inner Circle</p>
+        </div>
+      `;
+      htmlContent = wrapICEmailTemplate(icContent);
+    } else {
+      // Standard concierge template with inline styles
+      htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      line-height: 1.6;
-      color: #333;
-      max-width: 600px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    .header {
-      background: linear-gradient(135deg, #FB0401 0%, #c70300 100%);
-      color: white;
-      padding: 20px;
-      border-radius: 8px 8px 0 0;
-      text-align: center;
-    }
-    .content {
-      background: #ffffff;
-      padding: 30px;
-      border: 1px solid #e0e0e0;
-      border-top: none;
-    }
-    .message {
-      white-space: pre-wrap;
-      line-height: 1.8;
-    }
-    .footer {
-      background: #f8f9fa;
-      padding: 20px;
-      border-radius: 0 0 8px 8px;
-      text-align: center;
-      font-size: 12px;
-      color: #6c757d;
-      border: 1px solid #e0e0e0;
-      border-top: none;
-    }
-    .signature {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 2px solid #e0e0e0;
-      font-style: italic;
-      color: #6c757d;
-    }
-  </style>
 </head>
-<body>
-  <div class="header">
-    <h2 style="margin: 0;">The Power100 Experience</h2>
-    <p style="margin: 5px 0 0 0; font-size: 14px;">AI Concierge</p>
-  </div>
-
-  <div class="content">
-    <p>Hi ${contractorName},</p>
-    <div class="message">${message}</div>
-
-    <div class="signature">
-      <p><strong>Your AI Business Concierge</strong><br>
-      The Power100 Experience<br>
-      <em>Always here to help you succeed</em></p>
+<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; background-color: #f4f4f4;">
+  <div style="max-width: 600px; margin: 0 auto;">
+    <div style="background: linear-gradient(135deg, #FB0401 0%, #c70300 100%); color: white; padding: 20px; border-radius: 8px 8px 0 0; text-align: center;">
+      <h2 style="margin: 0; font-size: 22px;">The Power100 Experience</h2>
+      <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">AI Concierge</p>
     </div>
-  </div>
-
-  <div class="footer">
-    <p>This email was sent by your AI Concierge at The Power100 Experience.</p>
-    <p>If you have questions or prefer different communication methods, just let us know!</p>
+    <div style="background: #ffffff; padding: 30px; border-left: 1px solid #e0e0e0; border-right: 1px solid #e0e0e0;">
+      <p style="margin: 0 0 16px 0; font-size: 16px;">Hi ${contractorName},</p>
+      <div style="white-space: pre-wrap; line-height: 1.8; font-size: 15px; color: #333;">${message}</div>
+      <div style="margin-top: 24px; padding-top: 20px; border-top: 2px solid #e0e0e0;">
+        <p style="margin: 0; font-style: italic; color: #6c757d;"><strong>Your AI Business Concierge</strong><br>The Power100 Experience<br><em>Always here to help you succeed</em></p>
+      </div>
+    </div>
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 0 0 8px 8px; text-align: center; font-size: 12px; color: #6c757d; border: 1px solid #e0e0e0; border-top: none;">
+      <p style="margin: 0 0 4px 0;">This email was sent by your AI Concierge at The Power100 Experience.</p>
+      <p style="margin: 0;">If you have questions or prefer different communication methods, just let us know!</p>
+    </div>
   </div>
 </body>
 </html>
-    `.trim();
+      `.trim();
+    }
 
     // Determine webhook URL based on environment (same pattern as emailScheduler.js)
     const N8N_WEBHOOK_BASE = process.env.N8N_WEBHOOK_BASE || 'https://n8n.srv918843.hstgr.cloud';
@@ -190,10 +184,12 @@ const sendEmailFunction = async ({ contractorId, subject, message, emailType }) 
 
     console.log(`[AI Concierge Email] Sending via ${process.env.NODE_ENV || 'development'} webhook: ${n8nWebhook}`);
 
-    // Create n8n payload (same format as emailScheduler.js lines 114-123)
+    // Create n8n payload — sender identity based on context
+    const senderEmail = isInnerCircle ? 'innercircle@outreach.power100.io' : 'concierge@outreach.power100.io';
+    const senderName = isInnerCircle ? 'Power100 Inner Circle' : 'Power100 Concierge';
     const n8nPayload = {
-      from_email: 'concierge@outreach.power100.io',
-      from_name: 'Power100 Concierge',
+      from_email: senderEmail,
+      from_name: senderName,
       to_email: contractor.email,
       to_name: contractorName,
       subject: subject,
@@ -212,43 +208,36 @@ const sendEmailFunction = async ({ contractorId, subject, message, emailType }) 
 
     const responseTime = Date.now() - startTime;
 
-    // Log successful email to ai_learning_events for continuous learning
-    await query(`
-      INSERT INTO ai_learning_events (
-        event_type,
-        contractor_id,
-        action_taken,
-        outcome,
-        metadata,
-        created_at
-      ) VALUES ($1, $2, $3, $4, $5, NOW())
-    `, [
-      'email_sent',
-      contractorId,
-      `Sent ${emailType} email via AI Concierge`,
-      'success',
-      JSON.stringify({
-        emailType,
-        subject,
-        messageLength: message.length,
-        to: contractor.email,
-        responseTime,
-        webhookStatus: webhookResponse.status,
-        environment: process.env.NODE_ENV || 'development'
-      })
-    ]);
-
-    // Log success to guard system
-    await GuardLogger.logSuccess({
-      guardType: 'email_sent',
-      contractorId,
-      details: {
-        emailType,
-        subject,
-        messageLength: message.length,
-        responseTime
-      }
-    });
+    // Log successful email to ai_learning_events (non-blocking — don't let logging break success)
+    try {
+      await query(`
+        INSERT INTO ai_learning_events (
+          event_type,
+          contractor_id,
+          action_taken,
+          outcome,
+          context,
+          created_at
+        ) VALUES ($1, $2, $3, $4, $5, NOW())
+      `, [
+        'email_sent',
+        contractorId,
+        `Sent ${emailType} email via AI Concierge`,
+        'success',
+        JSON.stringify({
+          emailType,
+          subject,
+          messageLength: message.length,
+          to: contractor.email,
+          responseTime,
+          webhookStatus: webhookResponse.status,
+          isInnerCircle,
+          environment: process.env.NODE_ENV || 'development'
+        })
+      ]);
+    } catch (logErr) {
+      console.error('[AI Concierge Email] Non-blocking log error:', logErr.message);
+    }
 
     return JSON.stringify({
       success: true,
@@ -271,7 +260,7 @@ const sendEmailFunction = async ({ contractorId, subject, message, emailType }) 
         contractor_id,
         action_taken,
         outcome,
-        metadata,
+        context,
         created_at
       ) VALUES ($1, $2, $3, $4, $5, NOW())
     `, [

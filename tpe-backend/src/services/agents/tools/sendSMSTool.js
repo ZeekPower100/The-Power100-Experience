@@ -58,7 +58,7 @@ const sendSMSFunction = async ({ contractorId, message, messageType }) => {
 
   try {
     // Guard check: Verify AI has permission to send SMS
-    const permissionCheck = await AIActionGuards.canSendSMS(contractorId);
+    const permissionCheck = await AIActionGuards.canSendSMS(contractorId, { checkIcFirst: true });
     if (!permissionCheck.allowed) {
       await GuardLogger.logRejection({
         guardType: 'sms_permission',
@@ -75,27 +75,49 @@ const sendSMSFunction = async ({ contractorId, message, messageType }) => {
       });
     }
 
-    // Get contractor phone number and name
-    const contractorResult = await query(
-      'SELECT phone, first_name, last_name, email FROM contractors WHERE id = $1',
+    // Get recipient phone and name — check IC members first (avoids ID collision with contractors)
+    let contractor;
+    let isInnerCircle = false;
+
+    // Check inner_circle_members first (IC agent passes member_id as contractorId)
+    const memberResult = await query(
+      'SELECT phone, name, email FROM inner_circle_members WHERE id = $1',
       [contractorId]
     );
+    if (memberResult.rows.length) {
+      const member = memberResult.rows[0];
+      const nameParts = (member.name || '').split(' ');
+      contractor = {
+        phone: member.phone,
+        first_name: nameParts[0] || '',
+        last_name: nameParts.slice(1).join(' ') || '',
+        email: member.email
+      };
+      isInnerCircle = true;
+    } else {
+      // Fallback: check contractors table
+      const contractorResult = await query(
+        'SELECT phone, first_name, last_name, email FROM contractors WHERE id = $1',
+        [contractorId]
+      );
+      if (contractorResult.rows.length) {
+        contractor = contractorResult.rows[0];
+      }
+    }
 
-    if (!contractorResult.rows.length) {
+    if (!contractor) {
       return JSON.stringify({
         success: false,
-        error: 'Contractor not found',
+        error: 'Recipient not found',
         contractorId
       });
     }
 
-    const contractor = contractorResult.rows[0];
-
     if (!contractor.phone) {
       return JSON.stringify({
         success: false,
-        error: 'No phone number on file for this contractor',
-        suggestion: 'Ask contractor to provide phone number or use email instead',
+        error: 'No phone number on file',
+        suggestion: 'Ask them to provide phone number or use email instead',
         contractorId
       });
     }
@@ -105,6 +127,7 @@ const sendSMSFunction = async ({ contractorId, message, messageType }) => {
       ? 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl'
       : 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl-dev';
 
+    const senderName = isInnerCircle ? 'Power100 Inner Circle' : 'Power100 Concierge';
     console.log(`[AI Concierge SMS] Sending via ${process.env.NODE_ENV || 'development'} webhook: ${n8nWebhook}`);
 
     // Send SMS via n8n webhook → GoHighLevel
@@ -112,11 +135,11 @@ const sendSMSFunction = async ({ contractorId, message, messageType }) => {
       send_via_ghl: {
         phone: contractor.phone,
         message: message,
-        from_name: 'Power100 Concierge',
+        from_name: senderName,
         contractor_id: contractorId,
         contractor_name: `${contractor.first_name || ''} ${contractor.last_name || ''}`.trim(),
         message_type: messageType,
-        sent_by: 'ai_concierge',
+        sent_by: isInnerCircle ? 'ai_concierge_inner_circle' : 'ai_concierge',
         timestamp: new Date().toISOString()
       }
     }, {
@@ -125,41 +148,35 @@ const sendSMSFunction = async ({ contractorId, message, messageType }) => {
 
     const responseTime = Date.now() - startTime;
 
-    // Log successful SMS to ai_learning_events for continuous learning
-    await query(`
-      INSERT INTO ai_learning_events (
-        event_type,
-        contractor_id,
-        action_taken,
-        outcome,
-        metadata,
-        created_at
-      ) VALUES ($1, $2, $3, $4, $5, NOW())
-    `, [
-      'sms_sent',
-      contractorId,
-      `Sent ${messageType} SMS via AI Concierge`,
-      'success',
-      JSON.stringify({
-        messageType,
-        messageLength: message.length,
-        phone: contractor.phone,
-        responseTime,
-        webhookStatus: webhookResponse.status,
-        environment: process.env.NODE_ENV || 'development'
-      })
-    ]);
-
-    // Log success to guard system
-    await GuardLogger.logSuccess({
-      guardType: 'sms_sent',
-      contractorId,
-      details: {
-        messageType,
-        messageLength: message.length,
-        responseTime
-      }
-    });
+    // Log successful SMS to ai_learning_events (non-blocking — don't let logging break success)
+    try {
+      await query(`
+        INSERT INTO ai_learning_events (
+          event_type,
+          contractor_id,
+          action_taken,
+          outcome,
+          context,
+          created_at
+        ) VALUES ($1, $2, $3, $4, $5, NOW())
+      `, [
+        'sms_sent',
+        contractorId,
+        `Sent ${messageType} SMS via AI Concierge`,
+        'success',
+        JSON.stringify({
+          messageType,
+          messageLength: message.length,
+          phone: contractor.phone,
+          responseTime,
+          webhookStatus: webhookResponse.status,
+          isInnerCircle,
+          environment: process.env.NODE_ENV || 'development'
+        })
+      ]);
+    } catch (logErr) {
+      console.error('[AI Concierge SMS] Non-blocking log error:', logErr.message);
+    }
 
     return JSON.stringify({
       success: true,
@@ -181,7 +198,7 @@ const sendSMSFunction = async ({ contractorId, message, messageType }) => {
         contractor_id,
         action_taken,
         outcome,
-        metadata,
+        context,
         created_at
       ) VALUES ($1, $2, $3, $4, $5, NOW())
     `, [
