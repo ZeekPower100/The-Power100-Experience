@@ -253,6 +253,9 @@ app.use('/api/video-analysis', require('./routes/videoAnalysisRoutes'));
 app.use('/api/demo-segments', require('./routes/demoSegmentsRoutes'));
 app.use('/api/video-performance', require('./routes/videoPerformanceRoutes'));
 
+// Content Ingestion Pipeline Routes (YouTube → DB → AI enrichment → n8n → WordPress)
+app.use('/api/content', require('./routes/contentIngestionRoutes'));
+
 // Document Extraction Pipeline Routes
 app.use('/api/document-uploads', require('./routes/documentUploadsRoutes'));
 app.use('/api/document-extraction-jobs', require('./routes/documentExtractionJobsRoutes'));

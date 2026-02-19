@@ -8,6 +8,7 @@
 // ================================================================
 
 const { query } = require('../config/database');
+const { safeJsonStringify } = require('../utils/jsonHelpers');
 
 /**
  * Ingest a show episode into both video_content and podcast_episodes
@@ -29,16 +30,16 @@ async function ingestShowEpisode(episode) {
     // Insert into video_content
     const videoResult = await query(`
       INSERT INTO video_content (
-        title, description, video_type, video_url, show_id,
+        entity_type, entity_id, title, description, video_type, file_url, show_id,
         episode_number, featured_names, duration_seconds, is_active
-      ) VALUES ($1, $2, 'episode', $3, $4, $5, $6, $7, true)
+      ) VALUES ('show', $1, $2, $3, 'episode', $4, $1, $5, $6, $7, true)
       ON CONFLICT DO NOTHING
       RETURNING id
     `, [
+      episode.showId,
       episode.title,
       episode.description || null,
       episode.videoUrl || null,
-      episode.showId,
       episode.episodeNumber || null,
       episode.featuredNames || [],
       episode.durationSeconds || null
@@ -57,7 +58,7 @@ async function ingestShowEpisode(episode) {
         episode.episodeNumber || null,
         episode.title,
         episode.description || null,
-        episode.audioUrl || null,
+        episode.audioUrl || episode.videoUrl || '',
         episode.durationSeconds || null,
         episode.publishDate || null,
         episode.featuredNames || []
@@ -91,9 +92,9 @@ async function ingestGeneralContent(video) {
   try {
     const result = await query(`
       INSERT INTO video_content (
-        title, description, video_type, video_url,
+        entity_type, entity_id, title, description, video_type, file_url,
         featured_names, duration_seconds, is_active
-      ) VALUES ($1, $2, $3, $4, $5, $6, true)
+      ) VALUES ('general', 0, $1, $2, $3, $4, $5, $6, true)
       ON CONFLICT DO NOTHING
       RETURNING id
     `, [
@@ -138,7 +139,7 @@ async function processContentAI(contentId) {
         ai_key_topics = $2,
         ai_processing_status = 'basic_processed'
       WHERE id = $1
-    `, [contentId, JSON.stringify(topics)]);
+    `, [contentId, safeJsonStringify(topics)]);
 
     console.log(`[Content Ingestion] Basic AI processing complete for content ${contentId}`);
     return { success: true, topics };

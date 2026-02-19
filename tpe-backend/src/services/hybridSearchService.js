@@ -289,11 +289,39 @@ async function testSearchPerformance(queryText) {
   };
 }
 
+/**
+ * Search for video content (show episodes) only
+ * @param {string} queryText - Search query
+ * @param {object} options - Search options
+ * @returns {Promise<Array>}
+ */
+async function searchVideoContent(queryText, options = {}) {
+  return await search(queryText, {
+    ...options,
+    entityTypes: ['video_content']
+  });
+}
+
+/**
+ * Search for podcast episodes only
+ * @param {string} queryText - Search query
+ * @param {object} options - Search options
+ * @returns {Promise<Array>}
+ */
+async function searchEpisodes(queryText, options = {}) {
+  return await search(queryText, {
+    ...options,
+    entityTypes: ['podcast_episode']
+  });
+}
+
 module.exports = {
   search,
   searchPartners,
   searchBooks,
   searchPodcasts,
+  searchVideoContent,
+  searchEpisodes,
   searchPersonalized,
   getIndexStats,
   testSearchPerformance,
