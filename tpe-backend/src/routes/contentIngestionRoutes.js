@@ -85,6 +85,28 @@ router.post('/ingest', apiKeyOnly, async (req, res) => {
     console.log('[Content Ingestion API] Fetching YouTube metadata...');
     const metadata = await youtubeService.fetchYouTubeMetadata(videoId);
 
+    // Step 4b: Filter out shorts — shorts are for social media, not Inner Circle
+    // Skip by title containing "short" (mobile-dimensioned clips) or duration under 2 min
+    const MIN_DURATION_SECONDS = parseInt(process.env.MIN_VIDEO_DURATION_SECONDS) || 120;
+    const isShortByTitle = /\bshort\b/i.test(metadata.title);
+    const isShortByDuration = metadata.durationSeconds < MIN_DURATION_SECONDS;
+
+    if (isShortByTitle || isShortByDuration) {
+      const reason = isShortByTitle ? 'title_contains_short' : 'too_short';
+      const message = isShortByTitle
+        ? `Title contains "short" — mobile-dimensioned content, not for Inner Circle`
+        : `Video is ${metadata.durationFormatted} — below ${MIN_DURATION_SECONDS}s minimum for Inner Circle`;
+      console.log(`[Content Ingestion API] Skipping: ${reason} — ${metadata.title} (${metadata.durationFormatted})`);
+      return res.status(200).json({
+        success: false,
+        skipped: true,
+        reason,
+        duration: metadata.durationSeconds,
+        title: metadata.title,
+        message
+      });
+    }
+
     // Step 5: Determine episode number
     let epNumber = episodeNumber;
     if (!epNumber) {

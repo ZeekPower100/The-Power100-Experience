@@ -363,15 +363,18 @@ const apiKeyOnly = (req, res, next) => {
     return next(new AppError('API key required', 401));
   }
 
-  // Check against IC-specific key first, fall back to n8n key
-  const validKey = process.env.TPX_IC_API_KEY || process.env.TPX_N8N_API_KEY;
+  // Accept either IC key or n8n key (both are valid for API-key-only routes)
+  const validKeys = [
+    process.env.TPX_IC_API_KEY,
+    process.env.TPX_N8N_API_KEY
+  ].filter(Boolean);
 
-  if (!validKey) {
+  if (validKeys.length === 0) {
     console.error('[apiKeyOnly] No API key configured (TPX_IC_API_KEY or TPX_N8N_API_KEY)');
     return next(new AppError('Server misconfiguration', 500));
   }
 
-  if (apiKey !== validKey) {
+  if (!validKeys.includes(apiKey)) {
     return next(new AppError('Invalid API key', 401));
   }
 
