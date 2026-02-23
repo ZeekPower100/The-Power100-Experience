@@ -1,4 +1,4 @@
-// DATABASE-CHECKED: video_content, podcast_episodes, shows columns verified on 2026-02-18
+// DATABASE-CHECKED: video_content, podcast_episodes, shows, content_approval_log columns verified on 2026-02-23
 // ================================================================
 // Content Ingestion Routes
 // ================================================================
@@ -409,5 +409,94 @@ async function fireCompletionWebhook({ videoContentId, videoId, show, episodeNum
     // Don't throw — webhook failure shouldn't fail the whole pipeline
   }
 }
+
+/**
+ * POST /api/content/approval-feedback
+ * Receives approval decisions from Telegram bot (via n8n)
+ *
+ * Body: {
+ *   wpPostId: number (required),
+ *   tpxVideoId: number (required),
+ *   action: 'published' | 'needs_edits' | 'rejected' (required),
+ *   feedback: string (optional — for edit/reject),
+ *   approver: string (optional, default 'telegram'),
+ *   timestamp: string (optional ISO timestamp)
+ * }
+ */
+router.post('/approval-feedback', apiKeyOnly, async (req, res) => {
+  const { wpPostId, tpxVideoId, action, feedback, approver = 'telegram' } = req.body;
+
+  if (!wpPostId || !tpxVideoId || !action) {
+    return res.status(400).json({
+      success: false,
+      error: 'wpPostId, tpxVideoId, and action are required'
+    });
+  }
+
+  const validActions = ['published', 'needs_edits', 'rejected'];
+  if (!validActions.includes(action)) {
+    return res.status(400).json({
+      success: false,
+      error: `Invalid action. Must be one of: ${validActions.join(', ')}`
+    });
+  }
+
+  try {
+    // Update video_content approval_status and wp_post_id
+    await query(
+      `UPDATE video_content
+       SET approval_status = $1, wp_post_id = $2, updated_at = NOW()
+       WHERE id = $3`,
+      [action, wpPostId, tpxVideoId]
+    );
+
+    // Log to content_approval_log for audit trail
+    await query(
+      `INSERT INTO content_approval_log (video_content_id, wp_post_id, action, feedback, approver)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [tpxVideoId, wpPostId, action, feedback || null, approver]
+    );
+
+    console.log(`[Content Approval] ${action} — video_content #${tpxVideoId}, WP post #${wpPostId}${feedback ? ` — feedback: ${feedback.substring(0, 100)}` : ''}`);
+
+    res.json({ success: true, action, wpPostId, tpxVideoId });
+
+  } catch (error) {
+    console.error('[Content Approval] Error:', error.message);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/content/approval-status
+ * Get approval status summary for all content
+ */
+router.get('/approval-status', apiKeyOnly, async (req, res) => {
+  try {
+    const statusResult = await query(`
+      SELECT approval_status, COUNT(*) as count
+      FROM video_content
+      WHERE show_id IS NOT NULL
+      GROUP BY approval_status
+      ORDER BY count DESC
+    `);
+
+    const recentLogs = await query(`
+      SELECT cal.*, vc.title
+      FROM content_approval_log cal
+      LEFT JOIN video_content vc ON cal.video_content_id = vc.id
+      ORDER BY cal.created_at DESC
+      LIMIT 20
+    `);
+
+    res.json({
+      success: true,
+      statusCounts: statusResult.rows,
+      recentActivity: recentLogs.rows
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 module.exports = router;

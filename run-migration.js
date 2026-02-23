@@ -1,6 +1,5 @@
+// Temporary migration runner for content_approval_log table
 const { Pool } = require('pg');
-const fs = require('fs');
-const path = require('path');
 
 async function runMigration(isProduction = false) {
   const pool = new Pool(isProduction ? {
@@ -22,56 +21,61 @@ async function runMigration(isProduction = false) {
     console.log(`\n${isProduction ? 'PRODUCTION' : 'LOCAL DEV'} Database Migration:`);
     console.log('='.repeat(50));
 
-    // Read migration file
-    const migrationPath = path.join(__dirname, 'tpe-database', 'migrations', 'create_routing_logs.sql');
-    const sql = fs.readFileSync(migrationPath, 'utf8');
+    // 1. Add wp_post_id to video_content (if not exists)
+    await pool.query(`ALTER TABLE video_content ADD COLUMN IF NOT EXISTS wp_post_id INTEGER`);
+    console.log('  wp_post_id column ensured on video_content');
 
-    // Remove comments and execute
-    const statements = sql
-      .split(';')
-      .map(s => s.trim())
-      .filter(s => s.length > 0 && !s.startsWith('--'));
+    // 2. Add approval_status to video_content (if not exists)
+    await pool.query(`ALTER TABLE video_content ADD COLUMN IF NOT EXISTS approval_status VARCHAR(20) DEFAULT 'pending'`);
+    console.log('  approval_status column ensured on video_content');
 
-    for (const statement of statements) {
-      if (statement.trim()) {
-        console.log(`Executing: ${statement.substring(0, 60)}...`);
-        await pool.query(statement);
-      }
-    }
-
-    // Verify table was created
-    const result = await pool.query(`
-      SELECT column_name, data_type
-      FROM information_schema.columns
-      WHERE table_name = 'routing_logs'
-      ORDER BY ordinal_position
+    // 3. Create content_approval_log table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS content_approval_log (
+        id SERIAL PRIMARY KEY,
+        video_content_id INTEGER REFERENCES video_content(id),
+        wp_post_id INTEGER,
+        action VARCHAR(20) NOT NULL,
+        feedback TEXT,
+        approver VARCHAR(50) DEFAULT 'telegram',
+        created_at TIMESTAMP DEFAULT NOW()
+      )
     `);
+    console.log('  content_approval_log table created');
 
-    console.log('\n✅ Table created successfully!');
-    console.log('\nColumns:');
+    // Verify
+    const result = await pool.query(
+      "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'content_approval_log' ORDER BY ordinal_position"
+    );
+    console.log('\n  content_approval_log columns:');
     result.rows.forEach(row => {
-      console.log(`  - ${row.column_name}: ${row.data_type}`);
+      console.log(`    - ${row.column_name}: ${row.data_type}`);
+    });
+
+    // Verify video_content new columns
+    const vcResult = await pool.query(
+      "SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'video_content' AND column_name IN ('wp_post_id', 'approval_status') ORDER BY ordinal_position"
+    );
+    console.log('\n  video_content new columns:');
+    vcResult.rows.forEach(row => {
+      console.log(`    - ${row.column_name}: ${row.data_type}`);
     });
 
   } catch (error) {
-    console.error('❌ Error:', error.message);
+    console.error('Error:', error.message);
   } finally {
     await pool.end();
   }
 }
 
-// Run for both local dev and production
 async function main() {
-  console.log('🔄 Running routing_logs Table Migration');
+  console.log('Running Content Approval Migrations');
   console.log('='.repeat(50));
 
-  // Local dev first
-  await runMigration(false);
+  await runMigration(false);   // Local
+  await runMigration(true);    // Production
 
-  // Then production
-  await runMigration(true);
-
-  console.log('\n✅ Migration complete for both databases!');
+  console.log('\nMigration complete for both databases!');
 }
 
 main();
