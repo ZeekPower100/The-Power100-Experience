@@ -83,8 +83,14 @@ const createRateLimiter = () => {
     },
     standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
     legacyHeaders: false, // Disable `X-RateLimit-*` headers
-    // Skip rate limiting for health checks
-    skip: (req) => req.path === '/health' || req.path === '/api/health',
+    // Skip rate limiting for health checks and API-key-authenticated automation
+    skip: (req) => {
+      if (req.path === '/health' || req.path === '/api/health') return true;
+      // Exempt n8n automation requests authenticated via X-API-Key
+      const apiKey = req.headers['x-api-key'];
+      if (apiKey && apiKey === process.env.TPX_N8N_API_KEY) return true;
+      return false;
+    },
     // Custom handler for rate limit exceeded
     handler: (req, res) => {
       console.warn(`⚠️ Rate limit exceeded for IP: ${req.ip}`);
