@@ -51,7 +51,7 @@ module.exports = defineConfig({
   webServer: {
     command: 'npm run safe',
     url: 'http://localhost:3002',
-    timeout: 120 * 1000,
+    timeout: 540 * 1000, // 9 minutes — first push after 24hrs needs cold-start time
     reuseExistingServer: true,
   },
 });
