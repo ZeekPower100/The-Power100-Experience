@@ -499,4 +499,131 @@ router.get('/approval-status', apiKeyOnly, async (req, res) => {
   }
 });
 
+/**
+ * POST /api/content/resend-to-wordpress
+ * Re-fire the video-analysis-complete webhook for already-enriched videos.
+ * Used when WP drafts need to be recreated (e.g., after theme update adds new taxonomy handling).
+ *
+ * Body: {
+ *   showId: number (optional — resend only videos from this show),
+ *   videoIds: number[] (optional — resend specific video_content IDs),
+ *   delayMs: number (optional — delay between webhook fires, default 2000ms)
+ * }
+ * If neither showId nor videoIds provided, resends ALL enriched videos.
+ */
+router.post('/resend-to-wordpress', apiKeyOnly, async (req, res) => {
+  const { showId, videoIds, delayMs = 2000 } = req.body;
+
+  try {
+    // Build query based on filters
+    let sql = `
+      SELECT vc.id, vc.title, vc.description, vc.file_url, vc.thumbnail_url,
+             vc.duration_seconds, vc.upload_date, vc.episode_number,
+             vc.ai_summary, vc.ai_insights,
+             s.id as show_id, s.name as show_name, s.slug as show_slug,
+             s.wp_term_slug, s.hosts, s.format as show_format
+      FROM video_content vc
+      JOIN shows s ON vc.show_id = s.id
+      WHERE vc.ai_processing_status = 'enriched'
+        AND vc.show_id IS NOT NULL
+    `;
+    const params = [];
+
+    if (videoIds && videoIds.length > 0) {
+      params.push(videoIds);
+      sql += ` AND vc.id = ANY($${params.length})`;
+    } else if (showId) {
+      params.push(showId);
+      sql += ` AND vc.show_id = $${params.length}`;
+    }
+
+    sql += ' ORDER BY vc.show_id, vc.episode_number';
+
+    const result = await query(sql, params);
+    const videos = result.rows;
+
+    if (videos.length === 0) {
+      return res.json({ success: true, message: 'No enriched videos found matching criteria', sent: 0 });
+    }
+
+    // Respond immediately — fire webhooks in background
+    res.json({
+      success: true,
+      message: `Resending ${videos.length} videos to WordPress Sync workflow`,
+      sent: videos.length,
+      delayMs,
+      estimatedTime: `${Math.ceil((videos.length * delayMs) / 1000 / 60)} minutes`
+    });
+
+    // Fire webhooks sequentially with delay to avoid overwhelming n8n/WP
+    for (let i = 0; i < videos.length; i++) {
+      const v = videos[i];
+
+      // Extract YouTube video ID from file_url
+      const urlMatch = v.file_url?.match(/[?&]v=([^&]+)/) || v.file_url?.match(/youtu\.be\/([^?]+)/);
+      const videoId = urlMatch ? urlMatch[1] : '';
+
+      // Format duration
+      const hrs = Math.floor((v.duration_seconds || 0) / 3600);
+      const mins = Math.floor(((v.duration_seconds || 0) % 3600) / 60);
+      const secs = (v.duration_seconds || 0) % 60;
+      const durationFormatted = hrs > 0
+        ? `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+        : `${mins}:${String(secs).padStart(2, '0')}`;
+
+      const insights = v.ai_insights || {};
+
+      const show = {
+        id: v.show_id,
+        name: v.show_name,
+        slug: v.show_slug,
+        wp_term_slug: v.wp_term_slug,
+        hosts: v.hosts,
+        format: v.show_format
+      };
+
+      await fireCompletionWebhook({
+        videoContentId: v.id,
+        videoId,
+        show,
+        episodeNumber: v.episode_number,
+        metadata: {
+          title: v.title,
+          description: v.description || '',
+          durationFormatted,
+          durationSeconds: v.duration_seconds || 0,
+          publishDate: v.upload_date,
+          thumbnailUrl: v.thumbnail_url || ''
+        },
+        enrichment: {
+          summary: v.ai_summary || '',
+          excerpt: (v.ai_summary || '').substring(0, 150),
+          insights
+        }
+      });
+
+      console.log(`[Resend] ${i + 1}/${videos.length} — "${v.title}" (show: ${v.show_name})`);
+
+      // Reset approval status since we're recreating the WP draft
+      await query(
+        `UPDATE video_content SET approval_status = 'pending', wp_post_id = NULL, updated_at = NOW() WHERE id = $1`,
+        [v.id]
+      );
+
+      // Delay between fires
+      if (i < videos.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+
+    console.log(`[Resend] Complete — ${videos.length} webhooks fired`);
+
+  } catch (error) {
+    console.error('[Resend] Error:', error.message);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: error.message });
+    }
+  }
+});
+
 module.exports = router;
