@@ -10,6 +10,9 @@ const { query } = require('../config/database');
 const { calculateEngagementScore } = require('../services/engagementScoreService');
 const { getContentStats } = require('../services/contentIngestionService');
 const { sendICRegistrationComms, sendICPasswordResetComms } = require('../services/innerCircleEmailTemplates');
+const homepageService = require('../services/homepageService');
+const greetingService = require('../services/greetingService');
+const articleSyncService = require('../services/articleSyncService');
 
 // n8n webhook configuration
 const N8N_WEBHOOK_BASE = process.env.N8N_WEBHOOK_BASE || 'https://n8n.srv918843.hstgr.cloud';
@@ -365,6 +368,205 @@ router.get('/content-stats', async (req, res, next) => {
   }
 });
 
+// ============================================================
+// Homepage Feed Endpoints (Netflix-style)
+// ============================================================
+
+/**
+ * @route   GET /api/inner-circle/homepage/feed
+ * @desc    Get the full homepage feed for a member (all sections)
+ * @access  API Key
+ */
+router.get('/homepage/feed', apiKeyOnly, async (req, res, next) => {
+  try {
+    const memberId = parseInt(req.query.member_id);
+    if (!memberId) return res.status(400).json({ success: false, error: 'member_id is required' });
+    const feed = await homepageService.getHomepageFeed(memberId);
+    res.json({ success: true, ...feed });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   GET /api/inner-circle/homepage/hero
+ * @desc    Get hero/featured content for the homepage banner
+ * @access  Open
+ */
+router.get('/homepage/hero', async (req, res, next) => {
+  try {
+    const hero = await homepageService.getHeroContent();
+    res.json({ success: true, hero });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   GET /api/inner-circle/homepage/continue-watching
+ * @desc    Get videos the member started but didn't finish
+ * @access  API Key
+ */
+router.get('/homepage/continue-watching', apiKeyOnly, async (req, res, next) => {
+  try {
+    const memberId = parseInt(req.query.member_id);
+    if (!memberId) return res.status(400).json({ success: false, error: 'member_id is required' });
+    const limit = parseInt(req.query.limit) || 12;
+    const items = await homepageService.getContinueWatching(memberId, limit);
+    res.json({ success: true, items });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   GET /api/inner-circle/homepage/new-this-week
+ * @desc    Get content published in the last 7 days
+ * @access  Open
+ */
+router.get('/homepage/new-this-week', async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit) || 12;
+    const items = await homepageService.getNewThisWeek(limit);
+    res.json({ success: true, items });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   GET /api/inner-circle/homepage/trending
+ * @desc    Get most watched content in the last 7 days
+ * @access  Open
+ */
+router.get('/homepage/trending', async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit) || 12;
+    const items = await homepageService.getTrending(limit);
+    res.json({ success: true, items });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   GET /api/inner-circle/homepage/show/:showSlug
+ * @desc    Get content for a specific show row
+ * @access  Open
+ */
+router.get('/homepage/show/:showSlug', async (req, res, next) => {
+  try {
+    const limit = parseInt(req.query.limit) || 12;
+    const items = await homepageService.getShowContent(req.params.showSlug, limit);
+    res.json({ success: true, show_slug: req.params.showSlug, items });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   GET /api/inner-circle/homepage/recommended
+ * @desc    Get personalized content recommendations for a member
+ * @access  API Key
+ */
+router.get('/homepage/recommended', apiKeyOnly, async (req, res, next) => {
+  try {
+    const memberId = parseInt(req.query.member_id);
+    if (!memberId) return res.status(400).json({ success: false, error: 'member_id is required' });
+    const limit = parseInt(req.query.limit) || 12;
+    const items = await homepageService.getRecommended(memberId, limit);
+    res.json({ success: true, items });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   GET /api/inner-circle/homepage/because-you-watched
+ * @desc    Get "Because You Watched X" recommendations
+ * @access  API Key
+ */
+router.get('/homepage/because-you-watched', apiKeyOnly, async (req, res, next) => {
+  try {
+    const memberId = parseInt(req.query.member_id);
+    if (!memberId) return res.status(400).json({ success: false, error: 'member_id is required' });
+    const limit = parseInt(req.query.limit) || 12;
+    const result = await homepageService.getBecauseYouWatched(memberId, limit);
+    res.json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   GET /api/inner-circle/homepage/greeting
+ * @desc    Get personalized contextual greeting (cached per session)
+ * @access  API Key
+ */
+router.get('/homepage/greeting', apiKeyOnly, async (req, res, next) => {
+  try {
+    const memberId = parseInt(req.query.member_id);
+    if (!memberId) return res.status(400).json({ success: false, error: 'member_id is required' });
+    const sessionId = req.query.session_id || 'default';
+    const greeting = await greetingService.getGreeting(memberId, sessionId);
+    res.json({ success: true, greeting });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ============================================================
+// Articles: Sync + Search
+// ============================================================
+
+/**
+ * POST /api/inner-circle/articles/sync
+ * Trigger article sync from power100.io
+ * Body: { mode: 'full'|'incremental', enrich: boolean }
+ */
+router.post('/articles/sync', apiKeyOnly, async (req, res, next) => {
+  try {
+    const { mode = 'incremental', enrich = true } = req.body;
+    // Respond immediately — sync runs in background
+    res.json({ success: true, message: `Article ${mode} sync started`, enrich });
+    articleSyncService.syncArticles({ mode, enrich }).then(result => {
+      console.log('[Articles] Sync finished:', result);
+    }).catch(err => {
+      console.error('[Articles] Sync error:', err.message);
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/inner-circle/articles/search?q=keyword&limit=10
+ * Search indexed articles (used by AI concierge)
+ */
+router.get('/articles/search', async (req, res, next) => {
+  try {
+    const { q, limit = 10 } = req.query;
+    if (!q) return res.status(400).json({ success: false, error: 'q parameter required' });
+    const articles = await articleSyncService.searchArticles(q, parseInt(limit));
+    res.json({ success: true, count: articles.length, articles });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * GET /api/inner-circle/articles/status
+ * Get article sync status and counts
+ */
+router.get('/articles/status', apiKeyOnly, async (req, res, next) => {
+  try {
+    const status = await articleSyncService.getStatus();
+    res.json({ success: true, ...status });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Development test route
 if (process.env.NODE_ENV === 'development') {
   router.get('/test', (req, res) => {
@@ -384,7 +586,18 @@ if (process.env.NODE_ENV === 'development') {
         'GET /api/inner-circle/watch-history?member_id=X [API Key]',
         'GET /api/inner-circle/shows [Open]',
         'GET /api/inner-circle/engagement-score?member_id=X [API Key]',
-        'GET /api/inner-circle/content-stats [Open]'
+        'GET /api/inner-circle/content-stats [Open]',
+        'GET /api/inner-circle/homepage/feed?member_id=X [API Key]',
+        'GET /api/inner-circle/homepage/hero [Open]',
+        'GET /api/inner-circle/homepage/continue-watching?member_id=X [API Key]',
+        'GET /api/inner-circle/homepage/new-this-week [Open]',
+        'GET /api/inner-circle/homepage/trending [Open]',
+        'GET /api/inner-circle/homepage/show/:showSlug [Open]',
+        'GET /api/inner-circle/homepage/recommended?member_id=X [API Key]',
+        'GET /api/inner-circle/homepage/because-you-watched?member_id=X [API Key]',
+        'POST /api/inner-circle/articles/sync [API Key]',
+        'GET /api/inner-circle/articles/search?q=keyword [Open]',
+        'GET /api/inner-circle/articles/status [API Key]'
       ]
     });
   });

@@ -1,4 +1,4 @@
-// DATABASE-CHECKED: video_content, podcast_episodes columns verified on 2026-02-18
+// DATABASE-CHECKED: video_content(+ai_transcript), podcast_episodes columns verified on 2026-03-01
 // ================================================================
 // Show Episode Enrichment Service
 // ================================================================
@@ -56,13 +56,14 @@ async function enrichShowEpisode({ videoContentId, youtubeUrl, metadata = {} }) 
     console.log('[Episode Enrichment] Running GPT-4o enrichment...');
     const enrichment = await generateEnrichment(transcript, metadata);
 
-    // Step 3: Write AI fields to video_content
+    // Step 3: Write AI fields + transcript to video_content
     console.log('[Episode Enrichment] Writing AI fields to database...');
     await query(`
       UPDATE video_content SET
         ai_summary = $2,
         ai_insights = $3,
         ai_key_topics = $4,
+        ai_transcript = $5,
         ai_processing_status = 'enriched',
         last_ai_analysis = NOW()
       WHERE id = $1
@@ -70,7 +71,8 @@ async function enrichShowEpisode({ videoContentId, youtubeUrl, metadata = {} }) 
       videoContentId,
       enrichment.summary,
       safeJsonStringify(enrichment.insights),
-      safeJsonStringify(enrichment.topics)
+      safeJsonStringify(enrichment.topics),
+      transcript.hasTranscript ? transcript.fullText : null
     ]);
 
     // Step 4: Also update podcast_episodes AI fields if a matching row exists
@@ -93,6 +95,9 @@ async function enrichShowEpisode({ videoContentId, youtubeUrl, metadata = {} }) 
     }
 
     console.log(`[Episode Enrichment] Complete for video_content.id=${videoContentId}`);
+
+    // Attach raw transcript to enrichment for webhook payload
+    enrichment.transcript = transcript.hasTranscript ? transcript.fullText : null;
 
     return {
       success: true,

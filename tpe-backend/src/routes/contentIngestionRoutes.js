@@ -393,6 +393,9 @@ async function fireCompletionWebhook({ videoContentId, videoId, show, episodeNum
     tpx_video_id: videoContentId,
     tpx_show_id: show.id,
 
+    // Transcript (for WP syndication — stored as post content or ACF field)
+    transcript: enrichment.transcript || null,
+
     // Additional context for n8n (not consumed by WP directly)
     target_audience: enrichment.insights?.target_audience || {},
     content_value_score: enrichment.insights?.content_value_score || 0,
@@ -519,7 +522,7 @@ router.post('/resend-to-wordpress', apiKeyOnly, async (req, res) => {
     let sql = `
       SELECT vc.id, vc.title, vc.description, vc.file_url, vc.thumbnail_url,
              vc.duration_seconds, vc.upload_date, vc.episode_number,
-             vc.ai_summary, vc.ai_insights,
+             vc.ai_summary, vc.ai_insights, vc.ai_transcript,
              s.id as show_id, s.name as show_name, s.slug as show_slug,
              s.wp_term_slug, s.hosts, s.format as show_format
       FROM video_content vc
@@ -598,7 +601,8 @@ router.post('/resend-to-wordpress', apiKeyOnly, async (req, res) => {
         enrichment: {
           summary: v.ai_summary || '',
           excerpt: (v.ai_summary || '').substring(0, 150),
-          insights
+          insights,
+          transcript: v.ai_transcript || null
         }
       });
 
