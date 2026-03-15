@@ -3,7 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const FormData = require('form-data');
-const { YoutubeTranscript } = require('youtube-transcript');
+let YoutubeTranscript;
+try { YoutubeTranscript = require('youtube-transcript').YoutubeTranscript; } catch(e) { console.log('[VideoAnalysis] youtube-transcript not available (ESM module):', e.message); YoutubeTranscript = null; }
 const { query } = require('../config/database');
 const { safeJsonParse, safeJsonStringify } = require('../utils/jsonHelpers');
 
