@@ -40,14 +40,19 @@ class ConciergeStateMachineManager {
   }
 
   /**
-   * Get or create machine for contractor or member
+   * Get or create machine for contractor, member, or rankings rep
    * @param {number} contractorId
    * @param {string} sessionId
    * @param {number} [memberId] - Inner Circle member ID (if member session)
+   * @param {number} [rankingsRepId] - Rankings System rep user ID (if rep session)
    * @returns {Promise<object>} Machine service
    */
-  async getOrCreateMachine(contractorId, sessionId, memberId = null) {
-    const key = memberId ? `member-${memberId}-${sessionId}` : `${contractorId}-${sessionId}`;
+  async getOrCreateMachine(contractorId, sessionId, memberId = null, rankingsRepId = null) {
+    const key = rankingsRepId
+      ? `srep-${rankingsRepId}-${sessionId}`
+      : memberId
+        ? `member-${memberId}-${sessionId}`
+        : `${contractorId}-${sessionId}`;
 
     if (this.machines.has(key)) {
       return this.machines.get(key);
@@ -61,6 +66,7 @@ class ConciergeStateMachineManager {
       input: {
         contractorId,
         memberId,
+        rankingsRepId,
         memberContext: savedState?.memberContext || null,
         sessionId,
         eventContext: savedState?.eventContext || null,
@@ -93,7 +99,7 @@ class ConciergeStateMachineManager {
 
     this.machines.set(key, actor);
 
-    const entityLabel = memberId ? `member ${memberId}` : `contractor ${contractorId}`;
+    const entityLabel = rankingsRepId ? `rep ${rankingsRepId}` : memberId ? `member ${memberId}` : `contractor ${contractorId}`;
     console.log(`[State Machine Manager] Created new machine for ${entityLabel}, session ${sessionId}`);
 
     return actor;
@@ -106,8 +112,8 @@ class ConciergeStateMachineManager {
    * @param {string} eventName
    * @param {object} eventData
    */
-  async sendEvent(contractorId, sessionId, eventName, eventData = {}, memberId = null) {
-    const service = await this.getOrCreateMachine(contractorId, sessionId, memberId);
+  async sendEvent(contractorId, sessionId, eventName, eventData = {}, memberId = null, rankingsRepId = null) {
+    const service = await this.getOrCreateMachine(contractorId, sessionId, memberId, rankingsRepId);
 
     // Update context if event includes event context
     if (eventData.eventContext) {
@@ -129,15 +135,16 @@ class ConciergeStateMachineManager {
    * Get current agent type for contractor
    * @param {number} contractorId
    * @param {string} sessionId
-   * @returns {Promise<'standard'|'event'|'inner_circle'|null>}
+   * @returns {Promise<'standard'|'event'|'inner_circle'|'rankings_rep'|null>}
    */
-  async getCurrentAgent(contractorId, sessionId, memberId = null) {
-    const service = await this.getOrCreateMachine(contractorId, sessionId, memberId);
+  async getCurrentAgent(contractorId, sessionId, memberId = null, rankingsRepId = null) {
+    const service = await this.getOrCreateMachine(contractorId, sessionId, memberId, rankingsRepId);
     const state = service.getSnapshot();
 
     if (state.matches('standard_agent')) return 'standard';
     if (state.matches('event_agent')) return 'event';
     if (state.matches('inner_circle_agent')) return 'inner_circle';
+    if (state.matches('rankings_rep_agent')) return 'rankings_rep';
 
     // If in idle or routing, return null
     return null;

@@ -278,5 +278,30 @@ Would you like specific implementation strategies that worked best for businesse
 
 ---
 
-**Status**: Architecture Complete - Ready for Implementation
+## Agent Registry
+
+The AI Concierge uses a state machine to route messages to specialized agents:
+
+| Agent | File | State | Guard | Purpose |
+|-------|------|-------|-------|---------|
+| Standard | `aiConciergeStandardAgent.js` | `standard_agent` | (default) | Contractor matching, business growth |
+| Event | `aiConciergeEventAgent.js` | `event_agent` | `hasActiveEvent` | Live event context and coaching |
+| Inner Circle | `aiConciergeInnerCircleAgent.js` | `inner_circle_agent` | `isInnerCircleMember` | IC member coaching, PowerMoves, content |
+| **Rankings Rep** | `aiConciergeRankingsRepAgent.js` | `rankings_rep_agent` | `isRankingsRep` | Rankings System sales rep enablement |
+
+### Routing Priority
+`event_agent` → `inner_circle_agent` → `rankings_rep_agent` → `standard_agent`
+
+### Rankings Rep Agent (Added March 2026)
+- **Purpose**: Sales enablement AI for Rankings System account executives
+- **Entry**: API-to-API (Ranking System dashboard → TPX `/api/sales-agent/*`)
+- **Database**: `power_rankings_db` (second pg Pool, same RDS instance)
+- **Tools**: 8 rankings-specific + 3 shared (11 total)
+- **Skills**: 4 (`account_research`, `outreach_script`, `follow_up_cadence`, `objection_handling`)
+- **Temperature**: 0.4 (precise, professional)
+- **See**: `docs/AI-CONCIERGE-RANKINGS-REP-AGENT.md` for full documentation
+
+---
+
+**Status**: Architecture Complete - Active Development
 **Next Steps**: Begin Phase 1 development with database schema updates

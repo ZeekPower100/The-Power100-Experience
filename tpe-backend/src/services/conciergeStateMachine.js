@@ -41,17 +41,20 @@ const { createMachine, assign } = require('xstate');
  * - standard_agent: Using Standard Agent (business growth focus)
  * - event_agent: Using Event Agent (event context focus)
  * - inner_circle_agent: Using Inner Circle Agent (member coaching and guidance)
+ * - rankings_rep_agent: Using Rankings Rep Agent (sales enablement for ranking system reps)
  *
  * Guards:
  * - hasActiveEvent: Check if contractor has event registration with event today
  * - isInnerCircleMember: Check if session is for an Inner Circle member (memberId present)
+ * - isRankingsRep: Check if session is for a Rankings System sales rep (rankingsRepId present)
  *
  * Context:
  * - contractorId: integer
  * - memberId: integer (Inner Circle member ID)
+ * - rankingsRepId: integer (Rankings System rep user ID)
  * - memberContext: null | { name, onboardingComplete, powerMovesActive, partnerUnlocked }
  * - eventContext: null | { eventId, eventName, eventDate, eventStatus }
- * - currentAgent: 'standard' | 'event' | 'inner_circle'
+ * - currentAgent: 'standard' | 'event' | 'inner_circle' | 'rankings_rep'
  * - lastTransition: timestamp
  * - sessionId: string
  */
@@ -63,6 +66,7 @@ const conciergeStateMachine = createMachine({
   context: ({ input }) => ({
     contractorId: input?.contractorId || null,
     memberId: input?.memberId || null,
+    rankingsRepId: input?.rankingsRepId || null,
     memberContext: input?.memberContext || null,
     eventContext: input?.eventContext || null,
     currentAgent: input?.currentAgent || null,
@@ -96,6 +100,11 @@ const conciergeStateMachine = createMachine({
           target: 'inner_circle_agent',
           guard: 'isInnerCircleMember',
           actions: 'setInnerCircleAgent'
+        },
+        {
+          target: 'rankings_rep_agent',
+          guard: 'isRankingsRep',
+          actions: 'setRankingsRepAgent'
         },
         {
           target: 'standard_agent',
@@ -152,6 +161,20 @@ const conciergeStateMachine = createMachine({
         agentType: 'inner_circle',
         description: 'Inner Circle member coaching, content, and business guidance'
       }
+    },
+
+    rankings_rep_agent: {
+      on: {
+        MESSAGE_RECEIVED: 'routing',
+        SESSION_END: 'idle'
+      },
+
+      entry: 'logRankingsRepAgentEntry',
+
+      meta: {
+        agentType: 'rankings_rep',
+        description: 'Rankings System sales rep — account research, outreach, objection handling'
+      }
     }
   }
 }, {
@@ -169,6 +192,10 @@ const conciergeStateMachine = createMachine({
      */
     isInnerCircleMember: ({ context }) => {
       return context.memberId !== null && context.memberId !== undefined;
+    },
+
+    isRankingsRep: ({ context }) => {
+      return context.rankingsRepId !== null && context.rankingsRepId !== undefined;
     },
 
     hasActiveEvent: ({ context }) => {
@@ -252,6 +279,21 @@ const conciergeStateMachine = createMachine({
      */
     logInnerCircleAgentEntry: ({ context }) => {
       console.log(`[State Machine] → INNER CIRCLE AGENT for member ${context.memberId}`);
+    },
+
+    /**
+     * Set Rankings Rep Agent as current agent
+     */
+    setRankingsRepAgent: assign({
+      currentAgent: 'rankings_rep',
+      lastTransition: () => new Date().toISOString()
+    }),
+
+    /**
+     * Log entry into Rankings Rep Agent state
+     */
+    logRankingsRepAgentEntry: ({ context }) => {
+      console.log(`[State Machine] → RANKINGS REP AGENT for rep ${context.rankingsRepId}`);
     }
   }
 });

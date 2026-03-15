@@ -79,6 +79,7 @@ const abExperimentRoutes = require('./routes/abExperimentRoutes');
 const engagementRoutes = require('./routes/engagementRoutes');
 const innerCircleRoutes = require('./routes/innerCircleRoutes');
 const skillRoutes = require('./routes/skillRoutes');
+const expertContributorRoutes = require('./routes/expertContributorRoutes');
 
 const app = express();
 
@@ -226,6 +227,7 @@ app.use('/api/ab-experiments', abExperimentRoutes);
 app.use('/api/engagement', engagementRoutes);
 app.use('/api/inner-circle', innerCircleRoutes);
 app.use('/api/skills', skillRoutes);
+app.use('/api/expert-contributors', expertContributorRoutes);
 app.use('/api/event-scheduler', require('../routes/eventMessageSchedulerRoutes'));
 app.use('/api/event-agenda', require('../routes/eventAgendaRoutes'));
 
@@ -255,6 +257,9 @@ app.use('/api/video-performance', require('./routes/videoPerformanceRoutes'));
 
 // Content Ingestion Pipeline Routes (YouTube → DB → AI enrichment → n8n → WordPress)
 app.use('/api/content', require('./routes/contentIngestionRoutes'));
+
+// Sales Agent Routes (Rankings Rep Agent — API-to-API from Ranking System dashboard)
+app.use('/api/sales-agent', require('./routes/salesAgentRoutes'));
 
 // Document Extraction Pipeline Routes
 app.use('/api/document-uploads', require('./routes/documentUploadsRoutes'));
