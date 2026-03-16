@@ -279,7 +279,155 @@ After generating the summary, log this communication and create any follow-up ta
       console.error('[Sales Agent Controller] Error in getCompanyIntel:', error.message);
       next(error);
     }
+  },
+
+  /**
+   * POST /api/sales-agent/send-daily-reports
+   * Receive daily performance reports from ranking system and email to reps
+   * Called nightly after report generation
+   */
+  async sendDailyReports(req, res, next) {
+    try {
+      const { reports } = req.body;
+
+      if (!reports || !Array.isArray(reports) || reports.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: 'reports array is required and must not be empty'
+        });
+      }
+
+      console.log(`[Sales Agent Controller] Processing ${reports.length} daily reports`);
+
+      const results = [];
+      const axios = require('axios');
+
+      const webhookUrl = process.env.NODE_ENV === 'production'
+        ? 'https://n8n.srv918843.hstgr.cloud/webhook/email-outbound'
+        : 'https://n8n.srv918843.hstgr.cloud/webhook/email-outbound-dev';
+
+      for (const report of reports) {
+        const { user_id, user_name, user_email, report_date, metrics, ai_analysis } = report;
+
+        if (!user_email || !user_name) {
+          results.push({ user_id, success: false, error: 'Missing user_email or user_name' });
+          continue;
+        }
+
+        try {
+          // Build the email HTML
+          const emailHtml = buildDailyReportEmail(user_name, report_date, metrics, ai_analysis);
+
+          // Send via n8n webhook (same pattern as all TPX emails)
+          await axios.post(webhookUrl, {
+            message_id: `daily-report-${user_id}-${report_date}`,
+            to_email: user_email,
+            to_name: user_name,
+            subject: `Your Power100 Daily Performance Report — ${report_date}`,
+            body: emailHtml,
+            template: 'daily_report'
+          }, {
+            timeout: 10000
+          });
+
+          console.log(`[Sales Agent Controller] Daily report sent to ${user_email}`);
+          results.push({ user_id, success: true, email: user_email });
+        } catch (emailError) {
+          console.error(`[Sales Agent Controller] Failed to send report to ${user_email}:`, emailError.message);
+          results.push({ user_id, success: false, error: emailError.message });
+        }
+      }
+
+      const sent = results.filter(r => r.success).length;
+      const failed = results.filter(r => !r.success).length;
+
+      return res.status(200).json({
+        success: true,
+        total: reports.length,
+        sent,
+        failed,
+        results
+      });
+    } catch (error) {
+      console.error('[Sales Agent Controller] Error in sendDailyReports:', error.message);
+      next(error);
+    }
   }
 };
+
+/**
+ * Build HTML email for daily performance report
+ */
+function buildDailyReportEmail(userName, reportDate, metrics, aiAnalysis) {
+  const m = metrics || {};
+  const ai = aiAnalysis || {};
+
+  const firstName = userName.split(' ')[0];
+
+  // Metric rows
+  const metricRows = [
+    { label: 'Session Time', value: `${m.total_session_minutes || 0} min`, icon: '&#128337;' },
+    { label: 'Accounts Viewed', value: `${m.unique_accounts_viewed || 0} unique / ${m.accounts_viewed || 0} total`, icon: '&#128188;' },
+    { label: 'Calls Logged', value: m.calls_logged || 0, icon: '&#128222;' },
+    { label: 'Emails Logged', value: m.emails_logged || 0, icon: '&#128231;' },
+    { label: 'SMS Logged', value: m.sms_logged || 0, icon: '&#128172;' },
+    { label: 'Notes Created', value: m.notes_created || 0, icon: '&#128221;' },
+    { label: 'Tasks Created', value: m.tasks_created || 0, icon: '&#9745;' },
+    { label: 'Tasks Completed', value: m.tasks_completed || 0, icon: '&#9989;' },
+    { label: 'AI Briefings', value: m.briefings_requested || 0, icon: '&#129302;' },
+    { label: 'Outreach Volume', value: m.outreach_volume || 0, icon: '&#128640;' }
+  ];
+
+  const metricsHtml = metricRows.map(r =>
+    `<tr><td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:14px;">${r.icon} ${r.label}</td><td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:14px;font-weight:bold;text-align:right;">${r.value}</td></tr>`
+  ).join('');
+
+  // AI coaching section
+  let coachingHtml = '';
+  if (ai && ai.status !== 'error') {
+    const score = ai.performance_score || 0;
+    const scoreColor = score >= 70 ? '#28a745' : score >= 40 ? '#ffc107' : '#dc3545';
+
+    const strengths = (ai.strengths || []).map(s => `<li style="margin-bottom:4px;">${s}</li>`).join('');
+    const improvements = (ai.improvements || []).map(s => `<li style="margin-bottom:4px;">${s}</li>`).join('');
+    const suggestions = (ai.specific_suggestions || []).map(s => `<li style="margin-bottom:4px;">${s}</li>`).join('');
+
+    coachingHtml = `
+      <div style="margin-top:24px;padding:20px;background:#f8f9fa;border-radius:12px;">
+        <h3 style="margin:0 0 12px;color:#333;font-size:16px;">AI Performance Coaching</h3>
+        <div style="text-align:center;margin-bottom:16px;">
+          <span style="display:inline-block;background:${scoreColor};color:#fff;font-size:28px;font-weight:bold;padding:12px 24px;border-radius:12px;">${score}/100</span>
+          <div style="color:#666;font-size:13px;margin-top:4px;">Performance Score ${ai.trend ? '(' + ai.trend + ')' : ''}</div>
+        </div>
+        ${strengths ? `<div style="margin-bottom:12px;"><strong style="color:#28a745;">Strengths:</strong><ul style="margin:4px 0;padding-left:20px;">${strengths}</ul></div>` : ''}
+        ${improvements ? `<div style="margin-bottom:12px;"><strong style="color:#ffc107;">Areas to Improve:</strong><ul style="margin:4px 0;padding-left:20px;">${improvements}</ul></div>` : ''}
+        ${suggestions ? `<div style="margin-bottom:12px;"><strong style="color:#17a2b8;">Suggestions:</strong><ul style="margin:4px 0;padding-left:20px;">${suggestions}</ul></div>` : ''}
+        ${ai.motivational_note ? `<div style="margin-top:16px;padding:12px;background:#fff;border-left:4px solid #28a745;border-radius:4px;font-style:italic;color:#555;">${ai.motivational_note}</div>` : ''}
+      </div>`;
+  }
+
+  return `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333;">
+      <div style="background:#000;padding:20px;text-align:center;border-radius:12px 12px 0 0;">
+        <h1 style="color:#FB0401;margin:0;font-size:22px;">POWER100</h1>
+        <p style="color:#fff;margin:4px 0 0;font-size:13px;">Daily Performance Report</p>
+      </div>
+      <div style="padding:24px;background:#fff;border:1px solid #eee;">
+        <p style="font-size:15px;margin-bottom:16px;">Hey ${firstName},</p>
+        <p style="font-size:14px;color:#666;margin-bottom:20px;">Here is your performance summary for <strong>${reportDate}</strong>.</p>
+        <table style="width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;border:1px solid #eee;">
+          <thead><tr><th style="padding:10px 12px;background:#f8f9fa;text-align:left;font-size:13px;color:#666;">Metric</th><th style="padding:10px 12px;background:#f8f9fa;text-align:right;font-size:13px;color:#666;">Value</th></tr></thead>
+          <tbody>${metricsHtml}</tbody>
+        </table>
+        ${coachingHtml}
+        <div style="margin-top:24px;text-align:center;">
+          <p style="font-size:13px;color:#999;">Keep pushing, ${firstName}. Every call counts.</p>
+        </div>
+      </div>
+      <div style="background:#f8f9fa;padding:12px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #eee;border-top:none;">
+        <p style="margin:0;font-size:11px;color:#999;">Power100 Ranking System | AI Sales Assistant</p>
+      </div>
+    </div>`;
+}
 
 module.exports = salesAgentController;

@@ -120,4 +120,15 @@ router.post('/company-intel',
   (req, res, next) => salesAgentController.getCompanyIntel(req, res, next)
 );
 
+/**
+ * @route   POST /api/sales-agent/send-daily-reports
+ * @desc    Receive daily performance reports and email to reps
+ * @access  API Key
+ * @body    { reports: [{ user_id, user_name, user_email, report_date, metrics: {...}, ai_analysis: {...} }] }
+ * @returns { success: boolean, total: number, sent: number, failed: number, results: array }
+ */
+router.post('/send-daily-reports',
+  (req, res, next) => salesAgentController.sendDailyReports(req, res, next)
+);
+
 module.exports = router;
