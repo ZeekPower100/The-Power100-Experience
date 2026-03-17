@@ -129,6 +129,8 @@ const getCorsOptions = () => {
     'https://tpx.power100.io',
     'http://tpx.power100.io',
     'https://innercircle.power100.io',
+    'https://power100.io',
+    'https://www.power100.io',
     process.env.FRONTEND_URL,
   ].filter(Boolean);
 

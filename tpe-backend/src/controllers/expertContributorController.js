@@ -1,5 +1,82 @@
 // DATABASE-CHECKED: expert_contributors columns verified on 2026-03-11
 const { query } = require('../config/database');
+const axios = require('axios');
+
+const N8N_EMAIL_WEBHOOK = process.env.NODE_ENV === 'production'
+  ? 'https://n8n.srv918843.hstgr.cloud/webhook/email-outbound'
+  : 'https://n8n.srv918843.hstgr.cloud/webhook/email-outbound-dev';
+
+const N8N_SMS_WEBHOOK = process.env.NODE_ENV === 'production'
+  ? 'https://n8n.srv918843.hstgr.cloud/webhook/sms-outbound'
+  : 'https://n8n.srv918843.hstgr.cloud/webhook/sms-outbound-dev';
+
+/**
+ * Send welcome email and SMS to new expert contributor
+ * Non-blocking — failures don't affect the API response
+ */
+async function sendWelcomeMessages(contributor) {
+  const firstName = contributor.first_name || 'there';
+  const email = contributor.email;
+  const phone = contributor.phone;
+
+  // Welcome Email
+  try {
+    const emailHtml = `
+      <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333;">
+        <div style="background:#000;padding:24px;text-align:center;border-radius:12px 12px 0 0;">
+          <h1 style="color:#FB0401;margin:0;font-size:24px;">POWER100</h1>
+          <p style="color:#fff;margin:6px 0 0;font-size:13px;">Authority Contributor Program</p>
+        </div>
+        <div style="padding:28px;background:#fff;border:1px solid #eee;">
+          <p style="font-size:16px;margin-bottom:16px;">Welcome, ${firstName}!</p>
+          <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">Thank you for joining the Power100 Authority Contributor Network. You have just taken a major step in positioning yourself and your company as a verified leader in the home improvement industry.</p>
+          <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">As an Authority Contributor, here is what you can expect:</p>
+          <ul style="font-size:14px;color:#555;line-height:1.8;padding-left:20px;margin-bottom:16px;">
+            <li>A dedicated contributor page on Power100.io showcasing your leadership</li>
+            <li>A PowerChat video feature with Power100 CEO Greg Cummings</li>
+            <li>Published press release articles highlighting your story and expertise</li>
+            <li>Short-form video clips for social media distribution</li>
+            <li>Third-party authority positioning that sets you apart in the industry</li>
+          </ul>
+          <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">Our team is now building your contributor page. We will reach out to you personally once it is complete and ready for your review.</p>
+          <p style="font-size:14px;color:#555;line-height:1.7;">Welcome to the network, ${firstName}. We are excited to have you.</p>
+          <p style="font-size:14px;color:#333;margin-top:24px;font-weight:600;">Greg Cummings<br><span style="font-weight:400;color:#777;">CEO, Power100</span></p>
+        </div>
+        <div style="background:#f8f9fa;padding:12px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #eee;border-top:none;">
+          <p style="margin:0;font-size:11px;color:#999;">Power100 Authority Contributor Program | power100.io</p>
+        </div>
+      </div>`;
+
+    await axios.post(N8N_EMAIL_WEBHOOK, {
+      message_id: 'ec-welcome-' + contributor.id,
+      to_email: email,
+      to_name: firstName,
+      subject: 'Welcome to the Power100 Authority Contributor Network',
+      body: emailHtml,
+      template: 'ec_welcome'
+    }, { timeout: 10000 });
+
+    console.log('[Expert Contributor] Welcome email sent to ' + email);
+  } catch (err) {
+    console.error('[Expert Contributor] Welcome email failed:', err.message);
+  }
+
+  // Welcome SMS
+  if (phone) {
+    try {
+      await axios.post(N8N_SMS_WEBHOOK, {
+        message_id: 'ec-welcome-sms-' + contributor.id,
+        to_phone: phone,
+        to_name: firstName,
+        message: 'Welcome to the Power100 Authority Contributor Network, ' + firstName + '! Thank you for joining. Our team is building your contributor page now and we will notify you as soon as it is ready for review. - Power100 Team'
+      }, { timeout: 10000 });
+
+      console.log('[Expert Contributor] Welcome SMS sent to ' + phone);
+    } catch (err) {
+      console.error('[Expert Contributor] Welcome SMS failed:', err.message);
+    }
+  }
+}
 
 const createExpertContributor = async (req, res) => {
   try {
@@ -68,6 +145,11 @@ const createExpertContributor = async (req, res) => {
         email
       ]);
 
+      // Send welcome messages if payment just succeeded
+      if (payment_status === 'succeeded') {
+        sendWelcomeMessages(result.rows[0]).catch(e => console.error('[Expert Contributor] Welcome messages error:', e.message));
+      }
+
       return res.status(200).json({ success: true, contributor: result.rows[0], updated: true });
     }
 
@@ -96,6 +178,11 @@ const createExpertContributor = async (req, res) => {
       testimonials ? JSON.stringify(testimonials) : '[]',
       source || 'presentation_page'
     ]);
+
+    // Send welcome email and SMS (non-blocking)
+    if (result.rows[0].payment_status === 'succeeded') {
+      sendWelcomeMessages(result.rows[0]).catch(e => console.error('[Expert Contributor] Welcome messages error:', e.message));
+    }
 
     return res.status(201).json({ success: true, contributor: result.rows[0], created: true });
   } catch (err) {
