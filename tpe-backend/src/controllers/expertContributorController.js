@@ -79,52 +79,91 @@ async function sendWelcomeMessages(contributor) {
 }
 
 /**
- * Send delegation email to the team member who will complete the profile
+ * Send delegation emails to all 3 roles:
+ * 1. Leader — CC on everything, confirmation that delegation is set up
+ * 2. Article Writer — heads-up email with benefit points
+ * 3. Onboarding Contact — action email with profile completion link
  */
-async function sendDelegationEmail(contributor, token) {
-  const delegateName = contributor.delegated_to_name || 'Team Member';
-  const delegateEmail = contributor.delegated_to_email;
+async function sendDelegationEmails(contributor, token) {
   const ceoName = `${contributor.first_name || ''} ${contributor.last_name || ''}`.trim();
+  const ceoEmail = contributor.email;
   const companyName = contributor.company || 'your company';
-
-  if (!delegateEmail) return;
-
   const delegateLink = `https://power100.io/contributor-delegate/?token=${token}`;
 
-  try {
-    const emailHtml = `
-      <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333;">
-        <div style="background:#000;padding:24px;text-align:center;border-radius:12px 12px 0 0;">
-          <h1 style="color:#FB0401;margin:0;font-size:24px;">POWER100</h1>
-          <p style="color:#fff;margin:6px 0 0;font-size:13px;">Authority Contributor Program</p>
-        </div>
-        <div style="padding:28px;background:#fff;border:1px solid #eee;">
-          <p style="font-size:16px;margin-bottom:16px;">Hi ${delegateName.split(' ')[0]},</p>
-          <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;"><strong>${ceoName}</strong> from <strong>${companyName}</strong> has joined the Power100 Authority Contributor Network and has designated you to complete their contributor profile.</p>
-          <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">This profile will be used to build their dedicated Authority Contributor page on Power100.io, featuring their leadership story, credentials, and media content.</p>
-          <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:24px;">Please click the link below to complete the profile:</p>
-          <div style="text-align:center;margin-bottom:24px;">
-            <a href="${delegateLink}" style="display:inline-block;background:#FB0401;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;">Complete ${ceoName}'s Profile</a>
-          </div>
-          <p style="font-size:13px;color:#888;line-height:1.6;margin-bottom:0;">If you have any questions, reply to this email or reach out to our team. This link is unique to this request and can be used anytime.</p>
-        </div>
-        <div style="background:#f8f9fa;padding:12px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #eee;border-top:none;">
-          <p style="margin:0;font-size:11px;color:#999;">Power100 Authority Contributor Program | power100.io</p>
-        </div>
-      </div>`;
+  const emailHeader = '<div style="background:#000;padding:24px;text-align:center;border-radius:12px 12px 0 0;"><h1 style="color:#FB0401;margin:0;font-size:24px;">POWER100</h1><p style="color:#fff;margin:6px 0 0;font-size:13px;">Authority Contributor Program</p></div>';
+  const emailFooter = '<div style="background:#f8f9fa;padding:12px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #eee;border-top:none;"><p style="margin:0;font-size:11px;color:#999;">Power100 Authority Contributor Program | power100.io</p></div>';
+  const wrap = (body) => '<div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333;">' + emailHeader + '<div style="padding:28px;background:#fff;border:1px solid #eee;">' + body + '</div>' + emailFooter + '</div>';
 
-    await axios.post(N8N_EMAIL_WEBHOOK, {
-      message_id: 'ec-delegate-' + contributor.id,
-      to_email: delegateEmail,
-      to_name: delegateName,
-      subject: `${ceoName} has asked you to complete their Power100 Authority Profile`,
-      body: emailHtml,
-      template: 'ec_delegation'
-    }, { timeout: 10000 });
+  // === EMAIL 1: Article Writer ===
+  const awName = contributor.article_writer_name;
+  const awEmail = contributor.article_writer_email;
+  if (awEmail && awEmail !== ceoEmail) {
+    try {
+      const awBody = `<p style="font-size:16px;margin-bottom:16px;">Hi ${(awName || 'there').split(' ')[0]},</p>
+        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;"><strong>${ceoName}</strong> has joined the <strong>Power100 Authority Contributor Network</strong> and has designated you as the content contact for <strong>${companyName}</strong>.</p>
+        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">Here is what this means for you and the company:</p>
+        <ul style="font-size:14px;color:#555;line-height:1.8;padding-left:20px;margin-bottom:16px;">
+          <li>Power100 will be publishing authority articles positioning ${ceoName} as an industry leader</li>
+          <li>These articles build third-party credibility that AI search engines use to recommend your company</li>
+          <li>Your leader will be in touch with you about content collaboration and article topics</li>
+          <li>This is a strategic investment in long-term authority positioning for ${companyName}</li>
+        </ul>
+        <p style="font-size:14px;color:#555;line-height:1.7;">${ceoName} will be reaching out to discuss next steps. If you have any questions in the meantime, feel free to reply to this email.</p>`;
+      await axios.post(N8N_EMAIL_WEBHOOK, {
+        message_id: 'ec-delegate-article-' + contributor.id,
+        to_email: awEmail, to_name: awName || 'Team Member',
+        subject: ceoName + ' has joined Power100 — You have been designated as content contact',
+        body: wrap(awBody), template: 'ec_delegation_article'
+      }, { timeout: 10000 });
+      console.log('[Expert Contributor] Article writer email sent to ' + awEmail);
+    } catch (err) { console.error('[Expert Contributor] Article writer email failed:', err.message); }
+  }
 
-    console.log('[Expert Contributor] Delegation email sent to ' + delegateEmail);
-  } catch (err) {
-    console.error('[Expert Contributor] Delegation email failed:', err.message);
+  // === EMAIL 2: Onboarding Contact ===
+  const obName = contributor.onboarding_contact_name || contributor.delegated_to_name;
+  const obEmail = contributor.onboarding_contact_email || contributor.delegated_to_email;
+  if (obEmail && obEmail !== ceoEmail) {
+    try {
+      const obBody = `<p style="font-size:16px;margin-bottom:16px;">Hi ${(obName || 'there').split(' ')[0]},</p>
+        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;"><strong>${ceoName}</strong> has joined the <strong>Power100 Authority Contributor Network</strong> and has delegated you to complete their contributor profile for <strong>${companyName}</strong>.</p>
+        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">This profile will be used to build a dedicated Authority Contributor page on Power100.io featuring:</p>
+        <ul style="font-size:14px;color:#555;line-height:1.8;padding-left:20px;margin-bottom:16px;">
+          <li>Leadership bio, credentials, and industry expertise</li>
+          <li>PowerChat video features with Power100 CEO Greg Cummings</li>
+          <li>Published press release articles and media content</li>
+          <li>Third-party authority signals that position ${companyName} in AI search</li>
+        </ul>
+        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:24px;">Please click the button below to complete the profile:</p>
+        <div style="text-align:center;margin-bottom:24px;"><a href="${delegateLink}" style="display:inline-block;background:#FB0401;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;">Complete ${ceoName}'s Profile</a></div>
+        <p style="font-size:13px;color:#888;line-height:1.6;">This link is unique and secure. You can use it anytime. If you have questions, reply to this email.</p>`;
+      await axios.post(N8N_EMAIL_WEBHOOK, {
+        message_id: 'ec-delegate-onboard-' + contributor.id,
+        to_email: obEmail, to_name: obName || 'Team Member',
+        subject: ceoName + ' has asked you to complete their Power100 Authority Profile',
+        body: wrap(obBody), template: 'ec_delegation_onboard'
+      }, { timeout: 10000 });
+      console.log('[Expert Contributor] Onboarding email sent to ' + obEmail);
+    } catch (err) { console.error('[Expert Contributor] Onboarding email failed:', err.message); }
+  }
+
+  // === EMAIL 3: Leader — CC copies of what was sent ===
+  if (ceoEmail) {
+    try {
+      const leaderBody = `<p style="font-size:16px;margin-bottom:16px;">Hi ${(contributor.first_name || 'there')},</p>
+        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">Your delegation has been set up. Here is a summary of what your team is receiving:</p>
+        ${awEmail && awEmail !== ceoEmail ? '<div style="background:#f8f9fa;border-radius:8px;padding:16px;margin-bottom:16px;"><p style="font-size:13px;color:#333;margin:0 0 4px;font-weight:600;">Article Contact: ' + (awName || awEmail) + '</p><p style="font-size:13px;color:#666;margin:0;">Received a heads-up email about the authority articles and content collaboration.</p></div>' : ''}
+        ${obEmail && obEmail !== ceoEmail ? '<div style="background:#f8f9fa;border-radius:8px;padding:16px;margin-bottom:16px;"><p style="font-size:13px;color:#333;margin:0 0 4px;font-weight:600;">Onboarding Contact: ' + (obName || obEmail) + '</p><p style="font-size:13px;color:#666;margin:0;">Received the secure link to complete your contributor profile on your behalf.</p></div>' : ''}
+        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">If any of these contacts were not expected, or if you need to make changes, please reply to this email and we will update your delegation immediately.</p>
+        <p style="font-size:14px;color:#555;line-height:1.7;">For your reference, here is the profile completion link that was sent to your onboarding contact:</p>
+        <div style="text-align:center;margin:20px 0;"><a href="${delegateLink}" style="display:inline-block;background:#FB0401;color:#fff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;">Profile Completion Link</a></div>`;
+      await axios.post(N8N_EMAIL_WEBHOOK, {
+        message_id: 'ec-delegate-leader-' + contributor.id,
+        to_email: ceoEmail, to_name: contributor.first_name || 'Leader',
+        subject: 'Power100 Delegation Confirmed — Your team has been notified',
+        body: wrap(leaderBody), template: 'ec_delegation_leader'
+      }, { timeout: 10000 });
+      console.log('[Expert Contributor] Leader delegation summary sent to ' + ceoEmail);
+    } catch (err) { console.error('[Expert Contributor] Leader delegation email failed:', err.message); }
   }
 }
 
@@ -137,7 +176,9 @@ const createExpertContributor = async (req, res) => {
       hero_quote, bio, years_in_industry, revenue_value, geographic_reach,
       custom_stat, credentials, expertise_topics, recognition,
       company_description, notes, videos, testimonials, source,
-      delegated_to_name, delegated_to_email
+      delegated_to_name, delegated_to_email,
+      article_writer_name, article_writer_email, article_writer_phone, article_writer_position,
+      onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_position
     } = req.body;
 
     if (!email) {
@@ -218,12 +259,16 @@ const createExpertContributor = async (req, res) => {
         hero_quote, bio, years_in_industry, revenue_value, geographic_reach,
         custom_stat, credentials, expertise_topics, recognition,
         company_description, notes, videos, testimonials, source,
-        delegated_to_name, delegated_to_email, delegation_token
+        delegated_to_name, delegated_to_email, delegation_token,
+        article_writer_name, article_writer_email, article_writer_phone, article_writer_position,
+        onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_position
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
         $21, $22, $23, $24, $25, $26, $27, $28, $29,
-        $30, $31, $32
+        $30, $31, $32,
+        $33, $34, $35, $36,
+        $37, $38, $39, $40
       ) RETURNING *
     `, [
       stripe_customer_id, stripe_subscription_id, payment_status || 'incomplete', plan || 'individual', amount_cents,
@@ -237,7 +282,15 @@ const createExpertContributor = async (req, res) => {
       source || 'presentation_page',
       delegated_to_name || null,
       delegated_to_email || null,
-      delegationToken
+      delegationToken,
+      article_writer_name || null,
+      article_writer_email || null,
+      article_writer_phone || null,
+      article_writer_position || null,
+      onboarding_contact_name || null,
+      onboarding_contact_email || null,
+      onboarding_contact_phone || null,
+      onboarding_contact_position || null
     ]);
 
     // Send welcome email and SMS (non-blocking)
@@ -245,9 +298,9 @@ const createExpertContributor = async (req, res) => {
       sendWelcomeMessages(result.rows[0]).catch(e => console.error('[Expert Contributor] Welcome messages error:', e.message));
     }
 
-    // Send delegation email if delegated
-    if (delegated_to_email && delegationToken) {
-      sendDelegationEmail(result.rows[0], delegationToken).catch(e => console.error('[Expert Contributor] Delegation email error:', e.message));
+    // Send delegation emails if delegated (3 role-based emails)
+    if (delegationToken && (delegated_to_email || onboarding_contact_email)) {
+      sendDelegationEmails(result.rows[0], delegationToken).catch(e => console.error('[Expert Contributor] Delegation emails error:', e.message));
     }
 
     return res.status(201).json({ success: true, contributor: result.rows[0], created: true });
