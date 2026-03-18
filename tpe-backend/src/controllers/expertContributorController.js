@@ -24,7 +24,7 @@ async function sendWelcomeMessages(contributor) {
     const emailHtml = `
       <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333;">
         <div style="background:#000;padding:24px;text-align:center;border-radius:12px 12px 0 0;">
-          <h1 style="color:#FB0401;margin:0;font-size:24px;">POWER100</h1>
+          <img src="https://power100.io/wp-content/uploads/2026/01/Power100-Icon-Hi-Res-and-Large-1.png" alt="Power100" style="width:48px;margin-bottom:8px;"><h1 style="color:#FB0401;margin:0;font-size:24px;">POWER100</h1>
           <p style="color:#fff;margin:6px 0 0;font-size:13px;">Authority Contributor Program</p>
         </div>
         <div style="padding:28px;background:#fff;border:1px solid #eee;">
@@ -90,7 +90,7 @@ async function sendDelegationEmails(contributor, token) {
   const companyName = contributor.company || 'your company';
   const delegateLink = `https://power100.io/contributor-delegate/?token=${token}`;
 
-  const emailHeader = '<div style="background:#000;padding:24px;text-align:center;border-radius:12px 12px 0 0;"><h1 style="color:#FB0401;margin:0;font-size:24px;">POWER100</h1><p style="color:#fff;margin:6px 0 0;font-size:13px;">Authority Contributor Program</p></div>';
+  const emailHeader = '<div style="background:#000;padding:24px;text-align:center;border-radius:12px 12px 0 0;"><img src="https://power100.io/wp-content/uploads/2026/01/Power100-Icon-Hi-Res-and-Large-1.png" alt="Power100" style="width:48px;margin-bottom:8px;"><h1 style="color:#FB0401;margin:0;font-size:24px;">POWER100</h1><p style="color:#fff;margin:6px 0 0;font-size:13px;">Authority Contributor Program</p></div>';
   const emailFooter = '<div style="background:#f8f9fa;padding:12px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #eee;border-top:none;"><p style="margin:0;font-size:11px;color:#999;">Power100 Authority Contributor Program | power100.io</p></div>';
   const wrap = (body) => '<div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333;">' + emailHeader + '<div style="padding:28px;background:#fff;border:1px solid #eee;">' + body + '</div>' + emailFooter + '</div>';
 
@@ -339,4 +339,119 @@ const updatePaymentStatus = async (req, res) => {
   }
 };
 
-module.exports = { createExpertContributor, updatePaymentStatus };
+/**
+ * GET /api/expert-contributors/delegate/:token
+ * Look up contributor by delegation token — used by the delegate completion page
+ */
+const getDelegateProfile = async (req, res) => {
+  try {
+    const { token } = req.params;
+    if (!token) return res.status(400).json({ success: false, error: 'Token is required' });
+
+    const result = await query(
+      'SELECT id, first_name, last_name, email, company, title_position, contributor_type, form_tier, delegation_completed FROM expert_contributors WHERE delegation_token = $1',
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Invalid or expired delegation link' });
+    }
+
+    const contributor = result.rows[0];
+    if (contributor.delegation_completed) {
+      return res.status(400).json({ success: false, error: 'This profile has already been completed', contributor: { first_name: contributor.first_name, last_name: contributor.last_name, company: contributor.company } });
+    }
+
+    return res.status(200).json({
+      success: true,
+      contributor: {
+        id: contributor.id,
+        first_name: contributor.first_name,
+        last_name: contributor.last_name,
+        email: contributor.email,
+        company: contributor.company,
+        title_position: contributor.title_position,
+        contributor_type: contributor.contributor_type,
+        form_tier: contributor.form_tier
+      }
+    });
+  } catch (err) {
+    console.error('Error looking up delegate profile:', err);
+    return res.status(500).json({ success: false, error: 'Failed to look up profile' });
+  }
+};
+
+/**
+ * POST /api/expert-contributors/delegate/:token/complete
+ * Complete the contributor profile via delegation
+ */
+const completeDelegateProfile = async (req, res) => {
+  try {
+    const { token } = req.params;
+    if (!token) return res.status(400).json({ success: false, error: 'Token is required' });
+
+    // Verify token exists and not already completed
+    const existing = await query(
+      'SELECT id, delegation_completed FROM expert_contributors WHERE delegation_token = $1',
+      [token]
+    );
+
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Invalid or expired delegation link' });
+    }
+    if (existing.rows[0].delegation_completed) {
+      return res.status(400).json({ success: false, error: 'This profile has already been completed' });
+    }
+
+    const {
+      hero_quote, bio, years_in_industry, revenue_value, geographic_reach,
+      custom_stat, credentials, expertise_topics, recognition,
+      company_description, notes, videos, testimonials,
+      linkedin_url, website_url
+    } = req.body;
+
+    const result = await query(`
+      UPDATE expert_contributors SET
+        hero_quote = COALESCE($1, hero_quote),
+        bio = COALESCE($2, bio),
+        years_in_industry = COALESCE($3, years_in_industry),
+        revenue_value = COALESCE($4, revenue_value),
+        geographic_reach = COALESCE($5, geographic_reach),
+        custom_stat = COALESCE($6, custom_stat),
+        credentials = COALESCE($7, credentials),
+        expertise_topics = COALESCE($8, expertise_topics),
+        recognition = COALESCE($9, recognition),
+        company_description = COALESCE($10, company_description),
+        notes = COALESCE($11, notes),
+        videos = COALESCE($12, videos),
+        testimonials = COALESCE($13, testimonials),
+        linkedin_url = COALESCE($14, linkedin_url),
+        website_url = COALESCE($15, website_url),
+        delegation_completed = true,
+        updated_at = NOW()
+      WHERE delegation_token = $16
+      RETURNING *
+    `, [
+      hero_quote, bio, years_in_industry, revenue_value, geographic_reach,
+      custom_stat, credentials, expertise_topics, recognition,
+      company_description, notes,
+      videos ? JSON.stringify(videos) : null,
+      testimonials ? JSON.stringify(testimonials) : null,
+      linkedin_url, website_url,
+      token
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Profile not found' });
+    }
+
+    console.log('[Expert Contributor] Delegate profile completed for:', result.rows[0].email);
+
+    return res.status(200).json({ success: true, message: 'Profile completed successfully', contributor: result.rows[0] });
+  } catch (err) {
+    console.error('Error completing delegate profile:', err);
+    return res.status(500).json({ success: false, error: 'Failed to complete profile' });
+  }
+};
+
+module.exports = { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile };
