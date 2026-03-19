@@ -7,8 +7,8 @@ const N8N_EMAIL_WEBHOOK = process.env.NODE_ENV === 'production'
   : 'https://n8n.srv918843.hstgr.cloud/webhook/email-outbound-dev';
 
 const N8N_SMS_WEBHOOK = process.env.NODE_ENV === 'production'
-  ? 'https://n8n.srv918843.hstgr.cloud/webhook/sms-outbound'
-  : 'https://n8n.srv918843.hstgr.cloud/webhook/sms-outbound-dev';
+  ? 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl'
+  : 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl-dev';
 
 /**
  * Send welcome email and SMS to new expert contributor
@@ -67,10 +67,12 @@ async function sendWelcomeMessages(contributor) {
   if (phone) {
     try {
       await axios.post(N8N_SMS_WEBHOOK, {
-        message_id: 'ec-welcome-sms-' + contributor.id,
-        to_phone: phone,
-        to_name: firstName,
-        message: 'Welcome to the Power100 Authority Contributor Network, ' + firstName + '! Thank you for joining. Our team is building your contributor page now and we will notify you as soon as it is ready for review. - Power100 Team'
+        send_via_ghl: {
+          phone: phone,
+          message: 'Welcome to the Power100 Authority Contributor Network, ' + firstName + '! Thank you for joining. Our team is building your contributor page now and we will notify you as soon as it is ready for review. - Power100 Team',
+          message_type: 'ec_welcome',
+          contractor_id: contributor.id
+        }
       }, { timeout: 10000 });
 
       console.log('[Expert Contributor] Welcome SMS sent to ' + phone);
