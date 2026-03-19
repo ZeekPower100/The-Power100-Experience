@@ -220,7 +220,7 @@ async function sendArticleRequestEmail(contributor) {
       template: 'ec_article_request',
       from_name: 'Power100',
       from_email: 'info@power100.io',
-      cc_email: 'rey@power100.io'
+      cc_email: 'zeekbee50@gmail.com'  // TODO: Switch back to rey@power100.io after testing
     }, { timeout: 10000 });
 
     console.log('[Expert Contributor] Article request email sent to ' + recipientEmail + ' (cc: rey@power100.io)');
