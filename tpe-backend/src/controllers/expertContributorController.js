@@ -229,6 +229,66 @@ async function sendArticleRequestEmail(contributor) {
   }
 }
 
+/**
+ * Send notification to leader and delegation contacts that the profile is complete
+ */
+async function sendDelegationCompleteEmail(contributor) {
+  const ceoName = `${contributor.first_name || ''} ${contributor.last_name || ''}`.trim();
+  const companyName = contributor.company || '';
+  const LOGO = 'https://power100.io/wp-content/uploads/2026/01/Power100-Icon-Hi-Res-and-Large-1.png';
+
+  const emailHeader = `<div style="background:#000;padding:24px;text-align:center;border-radius:12px 12px 0 0;"><img src="${LOGO}" alt="Power100" style="width:48px;margin-bottom:8px;"><h1 style="color:#FB0401;margin:0;font-size:24px;">POWER100</h1><p style="color:#fff;margin:6px 0 0;font-size:13px;">Authority Contributor Program</p></div>`;
+  const emailFooter = `<div style="background:#f8f9fa;padding:12px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #eee;border-top:none;"><p style="margin:0;font-size:11px;color:#999;">Power100 Authority Contributor Program | power100.io</p></div>`;
+  const wrap = (body) => `<div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333;">${emailHeader}<div style="padding:28px;background:#fff;border:1px solid #eee;">${body}</div>${emailFooter}</div>`;
+
+  // Build recipient list — leader + article writer + onboarding contact (deduplicated)
+  const recipients = new Set();
+  const emailMap = {};
+
+  if (contributor.email) {
+    recipients.add(contributor.email);
+    emailMap[contributor.email] = ceoName;
+  }
+  if (contributor.article_writer_email) {
+    recipients.add(contributor.article_writer_email);
+    emailMap[contributor.article_writer_email] = contributor.article_writer_name || 'Team Member';
+  }
+  if (contributor.onboarding_contact_email) {
+    recipients.add(contributor.onboarding_contact_email);
+    emailMap[contributor.onboarding_contact_email] = contributor.onboarding_contact_name || 'Team Member';
+  }
+
+  for (const email of recipients) {
+    const name = emailMap[email];
+    const firstName = (name || 'there').split(' ')[0];
+    const isLeader = email === contributor.email;
+
+    const body = `<p style="font-size:16px;margin-bottom:16px;">Hi ${firstName},</p>
+      <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">${isLeader
+        ? `Great news — your Authority Contributor profile for <strong>${companyName}</strong> has been completed${contributor.delegate_payment ? ' and payment has been processed' : ''}. Our team is now building your dedicated Authority Contributor page on Power100.io.`
+        : `The Authority Contributor profile for <strong>${ceoName}</strong> at <strong>${companyName}</strong> has been completed${contributor.delegate_payment ? ' and payment has been processed' : ''}. The Power100 team is now building the contributor page.`
+      }</p>
+      <p style="font-size:14px;color:#555;line-height:1.7;">We will notify everyone when the page is live and ready for review.</p>
+      <p style="font-size:14px;color:#333;margin-top:24px;font-weight:600;">The Power100 Team</p>`;
+
+    try {
+      await axios.post(N8N_EMAIL_WEBHOOK, {
+        message_id: 'ec-complete-notify-' + contributor.id + '-' + Date.now(),
+        to_email: email,
+        to_name: name,
+        subject: 'Authority Contributor Profile Complete — ' + (isLeader ? 'Your Page Is Being Built' : ceoName + "'s Page Is Being Built"),
+        body: wrap(body),
+        template: 'ec_delegation_complete',
+        from_name: 'Power100',
+        from_email: 'info@power100.io'
+      }, { timeout: 10000 });
+      console.log('[Expert Contributor] Completion notification sent to ' + email);
+    } catch (err) {
+      console.error('[Expert Contributor] Completion notification failed for ' + email + ':', err.message);
+    }
+  }
+}
+
 const createExpertContributor = async (req, res) => {
   try {
     const {
@@ -521,9 +581,29 @@ const completeDelegateProfile = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Profile not found' });
     }
 
-    console.log('[Expert Contributor] Delegate profile completed for:', result.rows[0].email);
+    const completed = result.rows[0];
+    console.log('[Expert Contributor] Delegate profile completed for:', completed.email);
 
-    return res.status(200).json({ success: true, message: 'Profile completed successfully', contributor: result.rows[0] });
+    // If payment was delegated and this completion means payment succeeded, update status
+    if (completed.delegate_payment) {
+      await query(
+        "UPDATE expert_contributors SET payment_status = 'succeeded', status = 'active', updated_at = NOW() WHERE id = $1",
+        [completed.id]
+      );
+      completed.payment_status = 'succeeded';
+      console.log('[Expert Contributor] Payment status updated to succeeded for delegate completion');
+    }
+
+    // Fire welcome messages now that profile + payment are complete
+    if (completed.payment_status === 'succeeded' || completed.delegate_payment) {
+      sendWelcomeMessages(completed).catch(function(e) { console.error('[Expert Contributor] Welcome messages error:', e.message); });
+      sendArticleRequestEmail(completed).catch(function(e) { console.error('[Expert Contributor] Article request email error:', e.message); });
+    }
+
+    // Notify delegation contacts that profile is complete
+    sendDelegationCompleteEmail(completed).catch(function(e) { console.error('[Expert Contributor] Delegation complete email error:', e.message); });
+
+    return res.status(200).json({ success: true, message: 'Profile completed successfully', contributor: completed });
   } catch (err) {
     console.error('Error completing delegate profile:', err);
     return res.status(500).json({ success: false, error: 'Failed to complete profile' });
