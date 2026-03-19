@@ -169,6 +169,66 @@ async function sendDelegationEmails(contributor, token) {
   }
 }
 
+/**
+ * Send article request email to the contributor (or article writer if delegated)
+ * CC's Rey (rey@power100.io) as the content point of contact
+ * Fires alongside welcome email — separate message, operational tone
+ */
+async function sendArticleRequestEmail(contributor) {
+  const ceoName = `${contributor.first_name || ''} ${contributor.last_name || ''}`.trim();
+  const companyName = contributor.company || 'your company';
+
+  // Send to article writer if delegated, otherwise to the contributor directly
+  const recipientEmail = contributor.article_writer_email || contributor.email;
+  const recipientName = contributor.article_writer_name || ceoName;
+  const firstName = (recipientName || 'there').split(' ')[0];
+  const isDelegate = recipientEmail !== contributor.email;
+
+  const LOGO = 'https://power100.io/wp-content/uploads/2026/01/Power100-Icon-Hi-Res-and-Large-1.png';
+
+  const emailHtml = `
+    <div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333;">
+      <div style="background:#000;padding:24px;text-align:center;border-radius:12px 12px 0 0;">
+        <img src="${LOGO}" alt="Power100" style="width:48px;margin-bottom:8px;">
+        <h1 style="color:#FB0401;margin:0;font-size:24px;">POWER100</h1>
+        <p style="color:#fff;margin:6px 0 0;font-size:13px;">Authority Contributor Program</p>
+      </div>
+      <div style="padding:28px;background:#fff;border:1px solid #eee;">
+        <p style="font-size:16px;margin-bottom:16px;">Hi ${firstName},</p>
+        ${isDelegate
+          ? `<p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">As the content contact for <strong>${ceoName}</strong> at <strong>${companyName}</strong>, we wanted to touch base about getting the first article going.</p>`
+          : `<p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">Now that you are part of the Power100 Authority Contributor Network, we are excited to start building your content footprint.</p>`
+        }
+        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">One of the most impactful elements of the program is the authority articles we publish on your behalf. Each month, we provide a topic that contributors write about from the perspective of their own expertise and experience. This keeps the content relevant, timely, and uniquely yours.</p>
+        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">To get things moving, we would love to have your first article within the first week. It does not need to be perfect — our editorial team will polish it. What matters most is your voice and your perspective.</p>
+        <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">Your dedicated Content Director is <strong>Rey</strong> (cc'd on this email) — he will provide you with your monthly topic and is your go-to for anything related to articles, content strategy, and submissions. Feel free to reach out to him directly at <a href="mailto:rey@power100.io" style="color:#FB0401;">rey@power100.io</a>.</p>
+        <p style="font-size:14px;color:#555;line-height:1.7;">We are looking forward to amplifying ${isDelegate ? ceoName + "'s" : 'your'} story. Let us know if you have any questions.</p>
+        <p style="font-size:14px;color:#333;margin-top:24px;font-weight:600;">The Power100 Content Team</p>
+      </div>
+      <div style="background:#f8f9fa;padding:12px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #eee;border-top:none;">
+        <p style="margin:0;font-size:11px;color:#999;">Power100 Authority Contributor Program | power100.io</p>
+      </div>
+    </div>`;
+
+  try {
+    await axios.post(N8N_EMAIL_WEBHOOK, {
+      message_id: 'ec-article-request-' + contributor.id,
+      to_email: recipientEmail,
+      to_name: recipientName,
+      subject: 'Your First Authority Article — Let Us Get Started',
+      body: emailHtml,
+      template: 'ec_article_request',
+      from_name: 'Power100',
+      from_email: 'info@power100.io',
+      cc_email: 'rey@power100.io'
+    }, { timeout: 10000 });
+
+    console.log('[Expert Contributor] Article request email sent to ' + recipientEmail + ' (cc: rey@power100.io)');
+  } catch (err) {
+    console.error('[Expert Contributor] Article request email failed:', err.message);
+  }
+}
+
 const createExpertContributor = async (req, res) => {
   try {
     const {
@@ -302,6 +362,13 @@ const createExpertContributor = async (req, res) => {
     // Send welcome email and SMS (non-blocking)
     if (result.rows[0].payment_status === 'succeeded') {
       sendWelcomeMessages(result.rows[0]).catch(e => console.error('[Expert Contributor] Welcome messages error:', e.message));
+      // Article request email — fires for all contributors (paid or delegation)
+      sendArticleRequestEmail(result.rows[0]).catch(e => console.error('[Expert Contributor] Article request email error:', e.message));
+    }
+
+    // For delegation with payment pending — still send article request since they're onboard
+    if (result.rows[0].payment_status === 'pending_delegation') {
+      sendArticleRequestEmail(result.rows[0]).catch(e => console.error('[Expert Contributor] Article request email error:', e.message));
     }
 
     // Send delegation emails if delegated (3 role-based emails)
