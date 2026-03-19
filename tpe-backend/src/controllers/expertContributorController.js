@@ -53,7 +53,9 @@ async function sendWelcomeMessages(contributor) {
       to_name: firstName,
       subject: 'Welcome to the Power100 Authority Contributor Network',
       body: emailHtml,
-      template: 'ec_welcome'
+      template: 'ec_welcome',
+      from_name: 'Power100',
+      from_email: 'info@power100.io'
     }, { timeout: 10000 });
 
     console.log('[Expert Contributor] Welcome email sent to ' + email);
@@ -113,7 +115,7 @@ async function sendDelegationEmails(contributor, token) {
         message_id: 'ec-delegate-article-' + contributor.id,
         to_email: awEmail, to_name: awName || 'Team Member',
         subject: ceoName + ' has joined Power100 — You have been designated as content contact',
-        body: wrap(awBody), template: 'ec_delegation_article'
+        body: wrap(awBody), template: 'ec_delegation_article', from_name: 'Power100', from_email: 'info@power100.io'
       }, { timeout: 10000 });
       console.log('[Expert Contributor] Article writer email sent to ' + awEmail);
     } catch (err) { console.error('[Expert Contributor] Article writer email failed:', err.message); }
@@ -140,7 +142,7 @@ async function sendDelegationEmails(contributor, token) {
         message_id: 'ec-delegate-onboard-' + contributor.id,
         to_email: obEmail, to_name: obName || 'Team Member',
         subject: ceoName + ' has asked you to complete their Power100 Authority Profile',
-        body: wrap(obBody), template: 'ec_delegation_onboard'
+        body: wrap(obBody), template: 'ec_delegation_onboard', from_name: 'Power100', from_email: 'info@power100.io'
       }, { timeout: 10000 });
       console.log('[Expert Contributor] Onboarding email sent to ' + obEmail);
     } catch (err) { console.error('[Expert Contributor] Onboarding email failed:', err.message); }
@@ -160,7 +162,7 @@ async function sendDelegationEmails(contributor, token) {
         message_id: 'ec-delegate-leader-' + contributor.id,
         to_email: ceoEmail, to_name: contributor.first_name || 'Leader',
         subject: 'Power100 Delegation Confirmed — Your team has been notified',
-        body: wrap(leaderBody), template: 'ec_delegation_leader'
+        body: wrap(leaderBody), template: 'ec_delegation_leader', from_name: 'Power100', from_email: 'info@power100.io'
       }, { timeout: 10000 });
       console.log('[Expert Contributor] Leader delegation summary sent to ' + ceoEmail);
     } catch (err) { console.error('[Expert Contributor] Leader delegation email failed:', err.message); }
@@ -178,7 +180,8 @@ const createExpertContributor = async (req, res) => {
       company_description, notes, videos, testimonials, source,
       delegated_to_name, delegated_to_email,
       article_writer_name, article_writer_email, article_writer_phone, article_writer_position,
-      onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_position
+      onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_position,
+      delegate_payment
     } = req.body;
 
     if (!email) {
@@ -261,14 +264,16 @@ const createExpertContributor = async (req, res) => {
         company_description, notes, videos, testimonials, source,
         delegated_to_name, delegated_to_email, delegation_token,
         article_writer_name, article_writer_email, article_writer_phone, article_writer_position,
-        onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_position
+        onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_position,
+        delegate_payment
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
         $21, $22, $23, $24, $25, $26, $27, $28, $29,
         $30, $31, $32,
         $33, $34, $35, $36,
-        $37, $38, $39, $40
+        $37, $38, $39, $40,
+        $41
       ) RETURNING *
     `, [
       stripe_customer_id, stripe_subscription_id, payment_status || 'incomplete', plan || 'individual', amount_cents,
@@ -290,7 +295,8 @@ const createExpertContributor = async (req, res) => {
       onboarding_contact_name || null,
       onboarding_contact_email || null,
       onboarding_contact_phone || null,
-      onboarding_contact_position || null
+      onboarding_contact_position || null,
+      delegate_payment || false
     ]);
 
     // Send welcome email and SMS (non-blocking)
@@ -349,7 +355,7 @@ const getDelegateProfile = async (req, res) => {
     if (!token) return res.status(400).json({ success: false, error: 'Token is required' });
 
     const result = await query(
-      'SELECT id, first_name, last_name, email, company, title_position, contributor_type, form_tier, delegation_completed FROM expert_contributors WHERE delegation_token = $1',
+      'SELECT id, first_name, last_name, email, company, title_position, contributor_type, form_tier, delegation_completed, delegate_payment, plan, amount_cents FROM expert_contributors WHERE delegation_token = $1',
       [token]
     );
 
@@ -372,7 +378,10 @@ const getDelegateProfile = async (req, res) => {
         company: contributor.company,
         title_position: contributor.title_position,
         contributor_type: contributor.contributor_type,
-        form_tier: contributor.form_tier
+        form_tier: contributor.form_tier,
+        delegate_payment: contributor.delegate_payment || false,
+        plan: contributor.plan,
+        amount_cents: contributor.amount_cents
       }
     });
   } catch (err) {
