@@ -330,6 +330,122 @@ const rankingsDbService = {
       console.error('[Rankings DB Service] Error in createAccountTask:', error.message);
       throw error;
     }
+  },
+
+  // ============================================================
+  // EC-DRC Integration: Company Matching & Rep Assignment
+  // ============================================================
+
+  /**
+   * Search companies by name with tiered matching
+   * Tier 1: Exact match (case-insensitive)
+   * Tier 2: Contains match
+   * Tier 3: Word-based match (skip common suffixes)
+   * @param {string} companyName
+   * @returns {Promise<Array<{id, company_name, city, state, match_tier}>>}
+   */
+  async searchCompaniesByName(companyName) {
+    if (!companyName || !companyName.trim()) return [];
+
+    try {
+      const name = companyName.trim();
+
+      // Tier 1: Exact match (case-insensitive)
+      const exact = await rankingsQuery(
+        `SELECT id, company_name, city, state, pillar_id
+         FROM companies WHERE LOWER(company_name) = LOWER($1)
+         LIMIT 5`,
+        [name]
+      );
+      if (exact.rows.length > 0) {
+        return exact.rows.map(r => ({ ...r, match_tier: 1 }));
+      }
+
+      // Tier 2: Contains match
+      const contains = await rankingsQuery(
+        `SELECT id, company_name, city, state, pillar_id
+         FROM companies WHERE LOWER(company_name) LIKE LOWER($1)
+         ORDER BY company_name LIMIT 10`,
+        [`%${name}%`]
+      );
+      if (contains.rows.length > 0) {
+        return contains.rows.map(r => ({ ...r, match_tier: 2 }));
+      }
+
+      // Tier 3: Word-based match (strip common suffixes)
+      const skipWords = ['llc', 'inc', 'corp', 'corporation', 'services', 'the', 'co', 'company', 'group', 'enterprises', 'solutions'];
+      const words = name.toLowerCase().split(/\s+/).filter(w => !skipWords.includes(w) && w.length > 2);
+      if (words.length === 0) return [];
+
+      const wordConditions = words.map((_, i) => `LOWER(company_name) LIKE $${i + 1}`);
+      const wordParams = words.map(w => `%${w}%`);
+
+      const wordMatch = await rankingsQuery(
+        `SELECT id, company_name, city, state, pillar_id
+         FROM companies WHERE ${wordConditions.join(' AND ')}
+         ORDER BY company_name LIMIT 10`,
+        wordParams
+      );
+      return wordMatch.rows.map(r => ({ ...r, match_tier: 3 }));
+    } catch (error) {
+      console.error('[Rankings DB Service] Error in searchCompaniesByName:', error.message);
+      return [];
+    }
+  },
+
+  /**
+   * Find the most recent rep (user_id) who worked a company
+   * Checks communications first, then account_tasks
+   * @param {number} companyId
+   * @returns {Promise<number|null>} user_id or null
+   */
+  async getLastRepForCompany(companyId) {
+    try {
+      // Check communications for most recent user_id
+      const commResult = await rankingsQuery(
+        `SELECT user_id FROM communications
+         WHERE company_id = $1 AND user_id IS NOT NULL
+         ORDER BY created_at DESC LIMIT 1`,
+        [companyId]
+      );
+      if (commResult.rows.length > 0) return commResult.rows[0].user_id;
+
+      // Fallback: check account_tasks
+      const taskResult = await rankingsQuery(
+        `SELECT user_id FROM account_tasks
+         WHERE company_id = $1 AND user_id IS NOT NULL
+         ORDER BY created_at DESC LIMIT 1`,
+        [companyId]
+      );
+      if (taskResult.rows.length > 0) return taskResult.rows[0].user_id;
+
+      return null;
+    } catch (error) {
+      console.error('[Rankings DB Service] Error in getLastRepForCompany:', error.message);
+      return null;
+    }
+  },
+
+  /**
+   * Get an active rep assigned to a given pillar
+   * @param {number} pillarId
+   * @returns {Promise<number|null>} user_id or null
+   */
+  async getRepByPillar(pillarId) {
+    if (!pillarId) return null;
+    try {
+      const result = await rankingsQuery(
+        `SELECT upa.user_id FROM user_pillar_assignments upa
+         JOIN users u ON upa.user_id = u.id
+         WHERE upa.pillar_id = $1 AND u.is_active = true
+         LIMIT 1`,
+        [pillarId]
+      );
+      return result.rows.length > 0 ? result.rows[0].user_id : null;
+    } catch (error) {
+      console.error('[Rankings DB Service] Error in getRepByPillar:', error.message);
+      return null;
+    }
   }
 };
 

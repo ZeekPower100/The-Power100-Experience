@@ -1,6 +1,7 @@
-// DATABASE-CHECKED: expert_contributors columns verified on 2026-03-11
+// DATABASE-CHECKED: expert_contributors columns verified on 2026-03-20
 const { query } = require('../config/database');
 const axios = require('axios');
+const ecDrcIntegration = require('../services/ecDrcIntegrationService');
 
 const N8N_EMAIL_WEBHOOK = process.env.NODE_ENV === 'production'
   ? 'https://n8n.srv918843.hstgr.cloud/webhook/email-outbound'
@@ -63,13 +64,18 @@ async function sendWelcomeMessages(contributor) {
     console.error('[Expert Contributor] Welcome email failed:', err.message);
   }
 
-  // Welcome SMS
+  // Welcome SMS — varies based on delegation status
   if (phone) {
+    const isDelegated = contributor.delegated_to_email || contributor.onboarding_contact_email;
+    const smsMessage = isDelegated
+      ? 'Welcome to the Power100 Authority Contributor Network, ' + firstName + '! Your team has been notified and we will keep you posted as your profile is completed. - Power100 Team'
+      : 'Welcome to the Power100 Authority Contributor Network, ' + firstName + '! Thank you for joining. Our team is building your contributor page now and we will notify you as soon as it is ready for review. - Power100 Team';
+
     try {
       await axios.post(N8N_SMS_WEBHOOK, {
         send_via_ghl: {
           phone: phone,
-          message: 'Welcome to the Power100 Authority Contributor Network, ' + firstName + '! Thank you for joining. Our team is building your contributor page now and we will notify you as soon as it is ready for review. - Power100 Team',
+          message: smsMessage,
           message_type: 'ec_welcome',
           contractor_id: contributor.id
         }
@@ -79,6 +85,31 @@ async function sendWelcomeMessages(contributor) {
     } catch (err) {
       console.error('[Expert Contributor] Welcome SMS failed:', err.message);
     }
+  }
+}
+
+/**
+ * Send completion SMS to the contributor when delegate finishes profile
+ */
+async function sendCompletionSMS(contributor) {
+  const phone = contributor.phone;
+  const firstName = (contributor.first_name || 'there');
+
+  if (!phone) return;
+
+  try {
+    await axios.post(N8N_SMS_WEBHOOK, {
+      send_via_ghl: {
+        phone: phone,
+        message: 'Great news, ' + firstName + '! Your Authority Contributor profile is complete and your Power100 page is now being built. We will notify you when it is live. - Power100 Team',
+        message_type: 'ec_delegation_complete',
+        contractor_id: contributor.id
+      }
+    }, { timeout: 10000 });
+
+    console.log('[Expert Contributor] Completion SMS sent to ' + phone);
+  } catch (err) {
+    console.error('[Expert Contributor] Completion SMS failed:', err.message);
   }
 }
 
@@ -222,7 +253,7 @@ async function sendArticleRequestEmail(contributor) {
       template: 'ec_article_request',
       from_name: 'Power100',
       from_email: 'info@power100.io',
-      cc_email: 'zeekbee50@gmail.com'  // TODO: Switch back to rey@power100.io after testing
+      cc_email: 'rey@power100.io'
     }, { timeout: 10000 });
 
     console.log('[Expert Contributor] Article request email sent to ' + recipientEmail + ' (cc: rey@power100.io)');
@@ -428,8 +459,9 @@ const createExpertContributor = async (req, res) => {
       sendArticleRequestEmail(result.rows[0]).catch(e => console.error('[Expert Contributor] Article request email error:', e.message));
     }
 
-    // For delegation with payment pending — still send article request since they're onboard
+    // For delegation with payment pending — send article request + welcome SMS since they're onboard
     if (result.rows[0].payment_status === 'pending_delegation') {
+      sendWelcomeMessages(result.rows[0]).catch(e => console.error('[Expert Contributor] Welcome messages error:', e.message));
       sendArticleRequestEmail(result.rows[0]).catch(e => console.error('[Expert Contributor] Article request email error:', e.message));
     }
 
@@ -437,6 +469,11 @@ const createExpertContributor = async (req, res) => {
     if (delegationToken && (delegated_to_email || onboarding_contact_email)) {
       sendDelegationEmails(result.rows[0], delegationToken).catch(e => console.error('[Expert Contributor] Delegation emails error:', e.message));
     }
+
+    // EC-DRC Integration: match company, assign rep, create DRC tasks/notes
+    ecDrcIntegration.handleSignup(result.rows[0]).catch(e =>
+      console.error('[EC-DRC] Signup integration error:', e.message)
+    );
 
     return res.status(201).json({ success: true, contributor: result.rows[0], created: true });
   } catch (err) {
@@ -604,6 +641,12 @@ const completeDelegateProfile = async (req, res) => {
 
     // Notify delegation contacts that profile is complete
     sendDelegationCompleteEmail(completed).catch(function(e) { console.error('[Expert Contributor] Delegation complete email error:', e.message); });
+    sendCompletionSMS(completed).catch(function(e) { console.error('[Expert Contributor] Completion SMS error:', e.message); });
+
+    // EC-DRC Integration: log profile completion, create follow-up tasks
+    ecDrcIntegration.handleProfileComplete(completed).catch(function(e) {
+      console.error('[EC-DRC] Profile complete integration error:', e.message);
+    });
 
     return res.status(200).json({ success: true, message: 'Profile completed successfully', contributor: completed });
   } catch (err) {
@@ -612,4 +655,154 @@ const completeDelegateProfile = async (req, res) => {
   }
 };
 
-module.exports = { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile };
+/**
+ * POST /api/expert-contributors/:id/link-company
+ * Manually link an EC to a rankings company when fuzzy match fails
+ * Body: { rankings_company_id }
+ */
+const linkCompany = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { rankings_company_id } = req.body;
+
+    if (!rankings_company_id) {
+      return res.status(400).json({ success: false, error: 'rankings_company_id is required' });
+    }
+
+    // Verify the company exists in rankings DB
+    const rankingsDbService = require('../services/rankingsDbService');
+    const company = await rankingsDbService.getCompany(rankings_company_id);
+    if (!company) {
+      return res.status(404).json({ success: false, error: 'Company not found in rankings database' });
+    }
+
+    // Assign rep via the same 3-tier fallback
+    let repId = await rankingsDbService.getLastRepForCompany(rankings_company_id);
+    if (!repId && company.pillar_id) {
+      repId = await rankingsDbService.getRepByPillar(company.pillar_id);
+    }
+    if (!repId) repId = 2; // Greg default
+
+    const result = await query(
+      `UPDATE expert_contributors SET rankings_company_id = $1, assigned_rep_id = $2, updated_at = NOW() WHERE id = $3 RETURNING *`,
+      [rankings_company_id, repId, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Contributor not found' });
+    }
+
+    console.log(`[EC-DRC] Manual company link: EC ${id} → Company ${rankings_company_id}, Rep ${repId}`);
+    return res.status(200).json({
+      success: true,
+      contributor: result.rows[0],
+      linked_company: { id: company.id, company_name: company.company_name, city: company.city, state: company.state },
+      assigned_rep_id: repId
+    });
+  } catch (err) {
+    console.error('Error linking company:', err);
+    return res.status(500).json({ success: false, error: 'Failed to link company' });
+  }
+};
+
+/**
+ * POST /api/expert-contributors/:id/page-live
+ * Called when the WP page goes live — fires DRC page-live actions
+ * Body: { wp_page_url }
+ */
+const markPageLive = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { wp_page_url } = req.body;
+
+    // Update wp_page_url if provided
+    if (wp_page_url) {
+      await query(
+        'UPDATE expert_contributors SET wp_page_url = $1, updated_at = NOW() WHERE id = $2',
+        [wp_page_url, id]
+      );
+    }
+
+    const result = await query('SELECT * FROM expert_contributors WHERE id = $1', [id]);
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Contributor not found' });
+    }
+
+    const contributor = result.rows[0];
+
+    // Fire DRC page-live actions (non-blocking)
+    ecDrcIntegration.handlePageLive(contributor, wp_page_url || contributor.wp_page_url).catch(e =>
+      console.error('[EC-DRC] Page live integration error:', e.message)
+    );
+
+    return res.status(200).json({ success: true, message: 'Page marked as live', contributor });
+  } catch (err) {
+    console.error('Error marking page live:', err);
+    return res.status(500).json({ success: false, error: 'Failed to mark page live' });
+  }
+};
+
+/**
+ * GET /api/expert-contributors/:id/drc-status
+ * Returns integration status: company match, assigned rep, pipeline stage
+ */
+const getDrcStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const result = await query(
+      'SELECT id, first_name, last_name, company, email, rankings_company_id, assigned_rep_id, pipeline_stage FROM expert_contributors WHERE id = $1',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Contributor not found' });
+    }
+
+    const ec = result.rows[0];
+    const response = {
+      contributor_id: ec.id,
+      name: `${ec.first_name} ${ec.last_name}`.trim(),
+      company: ec.company,
+      pipeline_stage: ec.pipeline_stage,
+      rankings_company_id: ec.rankings_company_id,
+      assigned_rep_id: ec.assigned_rep_id,
+      company_details: null,
+      rep_details: null
+    };
+
+    // Live lookups from rankings DB
+    if (ec.rankings_company_id) {
+      const rankingsDbService = require('../services/rankingsDbService');
+      const company = await rankingsDbService.getCompany(ec.rankings_company_id);
+      if (company) {
+        response.company_details = {
+          id: company.id,
+          company_name: company.company_name,
+          city: company.city,
+          state: company.state,
+          pillar_name: company.pillar_name
+        };
+      }
+    }
+
+    if (ec.assigned_rep_id) {
+      const rankingsDbService = require('../services/rankingsDbService');
+      const rep = await rankingsDbService.getRepUser(ec.assigned_rep_id);
+      if (rep) {
+        response.rep_details = {
+          id: rep.id,
+          full_name: rep.full_name,
+          email: rep.email
+        };
+      }
+    }
+
+    return res.status(200).json({ success: true, drc_status: response });
+  } catch (err) {
+    console.error('Error getting DRC status:', err);
+    return res.status(500).json({ success: false, error: 'Failed to get DRC status' });
+  }
+};
+
+module.exports = { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile, linkCompany, markPageLive, getDrcStatus };
