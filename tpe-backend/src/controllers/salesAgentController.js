@@ -325,7 +325,9 @@ After generating the summary, log this communication and create any follow-up ta
             to_name: user_name,
             subject: `Your Power100 Daily Performance Report — ${report_date}`,
             body: emailHtml,
-            template: 'daily_report'
+            template: 'daily_report',
+            from_name: 'Power100',
+            from_email: 'info@power100.io'
           }, {
             timeout: 10000
           });
