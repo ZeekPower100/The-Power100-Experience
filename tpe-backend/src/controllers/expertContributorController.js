@@ -765,6 +765,7 @@ const getDrcStatus = async (req, res) => {
       name: `${ec.first_name} ${ec.last_name}`.trim(),
       company: ec.company,
       pipeline_stage: ec.pipeline_stage,
+      pipeline_stages: ['outreach', 'production_call', 'powerchat', 'campaign', 'ec_pitch', 'signup', 'delegation_sent', 'profile_complete', 'page_live', 'active'],
       rankings_company_id: ec.rankings_company_id,
       assigned_rep_id: ec.assigned_rep_id,
       company_details: null,

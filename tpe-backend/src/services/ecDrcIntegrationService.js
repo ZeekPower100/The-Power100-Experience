@@ -13,6 +13,22 @@ const rankingsDbService = require('./rankingsDbService');
 
 const DEFAULT_REP_ID = 2; // Greg — fallback when no rep can be determined
 
+// Full EC pipeline funnel (in order)
+// Pre-signup stages (outreach → ec_pitch) are tracked in Rankings DB as comms/tasks on the company
+// Post-signup stages (signup → active) are tracked here on the expert_contributors row
+const PIPELINE_STAGES = [
+  'outreach',           // VP reached out to CEO
+  'production_call',    // Production call scheduled/completed
+  'powerchat',          // PowerChat episode recorded
+  'campaign',           // PowerChat episode campaign running
+  'ec_pitch',           // EC program pitched to CEO
+  'signup',             // CEO signed up (EC record created — DB default)
+  'delegation_sent',    // Profile completion delegated to team
+  'profile_complete',   // All profile info submitted
+  'page_live',          // WordPress contributor page is live
+  'active'              // Fully onboarded and active EC
+];
+
 /**
  * Helper: calculate a due date N days from now
  */
@@ -187,7 +203,7 @@ const ecDrcIntegration = {
     console.log(`${label} Starting integration...`);
 
     // Guard: skip if already past this stage
-    if (contributor.pipeline_stage === 'profile_complete' || contributor.pipeline_stage === 'page_live') {
+    if (['profile_complete', 'page_live', 'active'].includes(contributor.pipeline_stage)) {
       console.log(`${label} Already at stage "${contributor.pipeline_stage}", skipping`);
       return;
     }
