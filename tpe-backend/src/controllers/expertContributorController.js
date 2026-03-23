@@ -334,7 +334,7 @@ const createExpertContributor = async (req, res) => {
       delegated_to_name, delegated_to_email,
       article_writer_name, article_writer_email, article_writer_phone, article_writer_position,
       onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_position,
-      delegate_payment
+      delegate_payment, geo_keywords
     } = req.body;
 
     if (!email) {
@@ -378,8 +378,9 @@ const createExpertContributor = async (req, res) => {
           notes = COALESCE($25, notes),
           videos = COALESCE($26, videos),
           testimonials = COALESCE($27, testimonials),
+          geo_keywords = COALESCE($28, geo_keywords),
           updated_at = NOW()
-        WHERE email = $28
+        WHERE email = $29
         RETURNING *
       `, [
         stripe_customer_id, stripe_subscription_id, payment_status, plan, amount_cents,
@@ -390,6 +391,7 @@ const createExpertContributor = async (req, res) => {
         company_description, notes,
         videos ? JSON.stringify(videos) : null,
         testimonials ? JSON.stringify(testimonials) : null,
+        geo_keywords ? JSON.stringify(geo_keywords) : null,
         email
       ]);
 
@@ -418,7 +420,7 @@ const createExpertContributor = async (req, res) => {
         delegated_to_name, delegated_to_email, delegation_token,
         article_writer_name, article_writer_email, article_writer_phone, article_writer_position,
         onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_position,
-        delegate_payment
+        delegate_payment, geo_keywords
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
@@ -426,7 +428,7 @@ const createExpertContributor = async (req, res) => {
         $30, $31, $32,
         $33, $34, $35, $36,
         $37, $38, $39, $40,
-        $41
+        $41, $42
       ) RETURNING *
     `, [
       stripe_customer_id, stripe_subscription_id, payment_status || 'incomplete', plan || 'individual', amount_cents,
@@ -449,7 +451,8 @@ const createExpertContributor = async (req, res) => {
       onboarding_contact_email || null,
       onboarding_contact_phone || null,
       onboarding_contact_position || null,
-      delegate_payment || false
+      delegate_payment || false,
+      geo_keywords ? JSON.stringify(geo_keywords) : '[]'
     ]);
 
     // Send welcome email and SMS (non-blocking)
