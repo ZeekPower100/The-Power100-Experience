@@ -211,7 +211,7 @@ Format it clearly with sections. Be concise but thorough.`;
    */
   async generateEmail(req, res, next) {
     try {
-      const { user_id, company_id, purpose, additional_context } = req.body;
+      const { user_id, company_id, purpose, additional_context, prompt } = req.body;
 
       if (!user_id || !company_id) {
         return res.status(400).json({
@@ -222,9 +222,12 @@ Format it clearly with sections. Be concise but thorough.`;
 
       console.log(`[Sales Agent Controller] Email draft request from rep ${user_id} for company ${company_id}`);
 
+      // Support both "prompt" (from DRC dashboard) and "purpose"/"additional_context" (legacy)
+      const guidanceText = prompt || purpose || 'outreach';
+      const extraContext = additional_context ? `\nAdditional context: ${additional_context}` : '';
+
       const emailPrompt = `Generate a personalized email for this account.
-Purpose: ${purpose || 'outreach'}
-${additional_context ? `Additional context: ${additional_context}` : ''}
+Purpose/guidance: ${guidanceText}${extraContext}
 
 Use the company's data, intel, and communication history to make it personal and compelling. Include a clear subject line. The email should sound natural, not templated.
 
@@ -254,7 +257,7 @@ Subject: [subject line]
    */
   async generateSms(req, res, next) {
     try {
-      const { user_id, company_id, purpose, additional_context } = req.body;
+      const { user_id, company_id, purpose, additional_context, prompt } = req.body;
 
       if (!user_id || !company_id) {
         return res.status(400).json({
@@ -265,9 +268,11 @@ Subject: [subject line]
 
       console.log(`[Sales Agent Controller] SMS draft request from rep ${user_id} for company ${company_id}`);
 
+      const guidanceText = prompt || purpose || 'follow-up';
+      const extraContext = additional_context ? `\nAdditional context: ${additional_context}` : '';
+
       const smsPrompt = `Generate a short, professional SMS message for this account.
-Purpose: ${purpose || 'follow-up'}
-${additional_context ? `Additional context: ${additional_context}` : ''}
+Purpose/guidance: ${guidanceText}${extraContext}
 
 Keep it under 160 characters if possible. Make it personal using company/CEO name. Include a clear call-to-action.`;
 
