@@ -10,9 +10,96 @@
 const { v4: uuidv4 } = require('uuid');
 const { createRankingsRepAgent } = require('../services/agents/aiConciergeRankingsRepAgent');
 const rankingsDbService = require('../services/rankingsDbService');
+const { ChatOpenAI } = require('@langchain/openai');
 
 // Agent cache — keyed by rep-company pair
 const agentCache = new Map();
+
+/**
+ * Fast direct GPT-4o call with pre-fetched context (no agent loop)
+ * Used for email/SMS generation where speed matters and tools aren't needed
+ * Typical: 2-5 seconds vs 15-60+ seconds with the full agent
+ */
+async function fastGenerate(userId, companyId, taskPrompt) {
+  const startTime = Date.now();
+
+  // Pre-fetch all context in parallel (same data the agent would gather via tools)
+  const [company, comms, notes, intel, rep] = await Promise.all([
+    rankingsDbService.getCompany(companyId),
+    rankingsDbService.getCompanyCommunications(companyId, 10),
+    rankingsDbService.getCompanyNotes(companyId),
+    rankingsDbService.getCompanyIntel(companyId),
+    userId ? rankingsDbService.getRepUser(userId) : null
+  ]);
+
+  if (!company) {
+    throw new Error(`Company ${companyId} not found in rankings database`);
+  }
+
+  // Build context string
+  const ctx = [];
+  ctx.push(`Company: ${company.company_name} | ${company.city}, ${company.state}`);
+  if (company.ceo_name) ctx.push(`CEO: ${company.ceo_name}${company.ceo_title ? ` (${company.ceo_title})` : ''}`);
+  if (company.estimated_revenue) ctx.push(`Revenue: ~$${(company.estimated_revenue / 1000000).toFixed(1)}M`);
+  if (company.employee_count_max) ctx.push(`Employees: ~${company.employee_count_max}`);
+  if (company.rating) ctx.push(`Google: ${company.rating} stars (${company.review_count} reviews)`);
+  if (company.years_in_business) ctx.push(`Years in business: ${company.years_in_business}`);
+  if (company.website) ctx.push(`Website: ${company.website}`);
+  if (company.pillar_name) ctx.push(`Pillar: ${company.pillar_name}`);
+  ctx.push(`Status: ${company.status} | Client: ${company.is_client ? 'Yes' : 'No'}`);
+  if (company.score) ctx.push(`Score: ${company.score} | Grade: ${company.rank_grade || 'N/A'}`);
+
+  if (comms && comms.length > 0) {
+    ctx.push(`\nRecent communications (${comms.length}):`);
+    for (const c of comms.slice(0, 5)) {
+      const d = new Date(c.created_at).toLocaleDateString();
+      ctx.push(`  - ${d}: ${c.comm_type} (${c.direction})${c.subject ? ` — ${c.subject}` : ''}${c.ai_summary ? ` | ${c.ai_summary}` : ''}`);
+    }
+  } else {
+    ctx.push('\nNo prior communications — untouched account.');
+  }
+
+  if (intel && intel.length > 0) {
+    ctx.push('\nRecent intel:');
+    for (const i of intel.slice(0, 3)) {
+      ctx.push(`  - [${i.intel_type}] ${i.title || (i.content || '').substring(0, 100)}`);
+    }
+  }
+
+  const pinnedNotes = (notes || []).filter(n => n.is_pinned);
+  if (pinnedNotes.length > 0) {
+    ctx.push('\nPinned notes:');
+    for (const n of pinnedNotes) {
+      ctx.push(`  - ${(n.content || '').substring(0, 200)}`);
+    }
+  }
+
+  const repName = rep ? (rep.full_name || rep.username) : 'Rep';
+
+  const systemPrompt = `You are the Power100 AI Sales Assistant. You write professional, personalized sales content for home improvement industry account executives.
+
+Rep: ${repName}
+
+Account context:
+${ctx.join('\n')}`;
+
+  const model = new ChatOpenAI({
+    modelName: 'gpt-4o',
+    temperature: 0.4,
+    openAIApiKey: process.env.OPENAI_API_KEY,
+    timeout: 25000
+  });
+
+  const result = await model.invoke([
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: taskPrompt }
+  ]);
+
+  const elapsed = Date.now() - startTime;
+  console.log(`[Sales Agent Controller] fastGenerate completed in ${elapsed}ms`);
+
+  return typeof result.content === 'string' ? result.content : JSON.stringify(result.content);
+}
 
 /**
  * Get or create a Rankings Rep Agent for a rep+company pair
@@ -120,6 +207,7 @@ Format it clearly with sections. Be concise but thorough.`;
   /**
    * POST /api/sales-agent/generate-email
    * Generate email draft for account
+   * Uses fast direct GPT-4o call (no agent loop) — typically 2-5s vs 15-60s
    */
   async generateEmail(req, res, next) {
     try {
@@ -132,6 +220,8 @@ Format it clearly with sections. Be concise but thorough.`;
         });
       }
 
+      console.log(`[Sales Agent Controller] Email draft request from rep ${user_id} for company ${company_id}`);
+
       const emailPrompt = `Generate a personalized email for this account.
 Purpose: ${purpose || 'outreach'}
 ${additional_context ? `Additional context: ${additional_context}` : ''}
@@ -143,7 +233,7 @@ Subject: [subject line]
 
 [email body]`;
 
-      const response = await invokeAgent(user_id, company_id, emailPrompt);
+      const response = await fastGenerate(user_id, company_id, emailPrompt);
 
       return res.status(200).json({
         success: true,
@@ -160,6 +250,7 @@ Subject: [subject line]
   /**
    * POST /api/sales-agent/generate-sms
    * Generate SMS draft for account
+   * Uses fast direct GPT-4o call (no agent loop) — typically 2-5s vs 15-60s
    */
   async generateSms(req, res, next) {
     try {
@@ -172,13 +263,15 @@ Subject: [subject line]
         });
       }
 
+      console.log(`[Sales Agent Controller] SMS draft request from rep ${user_id} for company ${company_id}`);
+
       const smsPrompt = `Generate a short, professional SMS message for this account.
 Purpose: ${purpose || 'follow-up'}
 ${additional_context ? `Additional context: ${additional_context}` : ''}
 
 Keep it under 160 characters if possible. Make it personal using company/CEO name. Include a clear call-to-action.`;
 
-      const response = await invokeAgent(user_id, company_id, smsPrompt);
+      const response = await fastGenerate(user_id, company_id, smsPrompt);
 
       return res.status(200).json({
         success: true,
