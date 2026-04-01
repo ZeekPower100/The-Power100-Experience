@@ -334,7 +334,7 @@ const createExpertContributor = async (req, res) => {
       delegated_to_name, delegated_to_email,
       article_writer_name, article_writer_email, article_writer_phone, article_writer_position,
       onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_position,
-      delegate_payment, geo_keywords
+      delegate_payment, geo_keywords, distribution_contacts
     } = req.body;
 
     if (!email) {
@@ -379,8 +379,9 @@ const createExpertContributor = async (req, res) => {
           videos = COALESCE($26, videos),
           testimonials = COALESCE($27, testimonials),
           geo_keywords = COALESCE($28, geo_keywords),
+          distribution_contacts = COALESCE($29, distribution_contacts),
           updated_at = NOW()
-        WHERE email = $29
+        WHERE email = $30
         RETURNING *
       `, [
         stripe_customer_id, stripe_subscription_id, payment_status, plan, amount_cents,
@@ -392,6 +393,7 @@ const createExpertContributor = async (req, res) => {
         videos ? JSON.stringify(videos) : null,
         testimonials ? JSON.stringify(testimonials) : null,
         geo_keywords ? JSON.stringify(geo_keywords) : null,
+        distribution_contacts ? JSON.stringify(distribution_contacts) : null,
         email
       ]);
 
@@ -420,7 +422,7 @@ const createExpertContributor = async (req, res) => {
         delegated_to_name, delegated_to_email, delegation_token,
         article_writer_name, article_writer_email, article_writer_phone, article_writer_position,
         onboarding_contact_name, onboarding_contact_email, onboarding_contact_phone, onboarding_contact_position,
-        delegate_payment, geo_keywords
+        delegate_payment, geo_keywords, distribution_contacts
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,
@@ -428,7 +430,7 @@ const createExpertContributor = async (req, res) => {
         $30, $31, $32,
         $33, $34, $35, $36,
         $37, $38, $39, $40,
-        $41, $42
+        $41, $42, $43
       ) RETURNING *
     `, [
       stripe_customer_id, stripe_subscription_id, payment_status || 'incomplete', plan || 'individual', amount_cents,
@@ -452,7 +454,8 @@ const createExpertContributor = async (req, res) => {
       onboarding_contact_phone || null,
       onboarding_contact_position || null,
       delegate_payment || false,
-      geo_keywords ? JSON.stringify(geo_keywords) : '[]'
+      geo_keywords ? JSON.stringify(geo_keywords) : '[]',
+      distribution_contacts ? JSON.stringify(distribution_contacts) : '[]'
     ]);
 
     // Send welcome email and SMS (non-blocking)
@@ -585,7 +588,7 @@ const completeDelegateProfile = async (req, res) => {
       hero_quote, bio, years_in_industry, revenue_value, geographic_reach,
       custom_stat, credentials, expertise_topics, recognition,
       company_description, notes, videos, testimonials,
-      linkedin_url, website_url
+      linkedin_url, website_url, geo_keywords, distribution_contacts
     } = req.body;
 
     const result = await query(`
@@ -605,9 +608,11 @@ const completeDelegateProfile = async (req, res) => {
         testimonials = COALESCE($13, testimonials),
         linkedin_url = COALESCE($14, linkedin_url),
         website_url = COALESCE($15, website_url),
+        geo_keywords = COALESCE($16, geo_keywords),
+        distribution_contacts = COALESCE($17, distribution_contacts),
         delegation_completed = true,
         updated_at = NOW()
-      WHERE delegation_token = $16
+      WHERE delegation_token = $18
       RETURNING *
     `, [
       hero_quote, bio, years_in_industry, revenue_value, geographic_reach,
@@ -616,6 +621,8 @@ const completeDelegateProfile = async (req, res) => {
       videos ? JSON.stringify(videos) : null,
       testimonials ? JSON.stringify(testimonials) : null,
       linkedin_url, website_url,
+      geo_keywords ? JSON.stringify(geo_keywords) : null,
+      distribution_contacts ? JSON.stringify(distribution_contacts) : null,
       token
     ]);
 
