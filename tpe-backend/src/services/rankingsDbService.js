@@ -446,6 +446,39 @@ const rankingsDbService = {
       console.error('[Rankings DB Service] Error in getRepByPillar:', error.message);
       return null;
     }
+  },
+
+  /**
+   * Create a booking link for an EC onboarding call
+   * Inserts directly into booking_links table in rankings DB
+   * @param {object} data - { company_id, appointment_type, invitee_name, invitee_email, created_by }
+   * @returns {Promise<{url: string, token: string}|null>}
+   */
+  async createBookingLink(data) {
+    try {
+      const crypto = require('crypto');
+      const token = crypto.randomUUID().substring(0, 12);
+
+      await rankingsQuery(
+        `INSERT INTO booking_links (token, company_id, appointment_type, invitee_name, invitee_email, created_by, created_at, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW() + INTERVAL '30 days')`,
+        [
+          token,
+          data.company_id || null,
+          data.appointment_type || 'onboarding-call',
+          data.invitee_name || null,
+          data.invitee_email || null,
+          data.created_by || 2 // Default to Greg
+        ]
+      );
+
+      const url = `https://prs.power100.io/book/${token}`;
+      console.log(`[Rankings DB Service] Booking link created: ${url}`);
+      return { url, token };
+    } catch (error) {
+      console.error('[Rankings DB Service] Error in createBookingLink:', error.message);
+      return null;
+    }
   }
 };
 

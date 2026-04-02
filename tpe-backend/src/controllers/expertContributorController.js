@@ -17,8 +17,34 @@ const N8N_SMS_WEBHOOK = process.env.NODE_ENV === 'production'
  */
 async function sendWelcomeMessages(contributor) {
   const firstName = contributor.first_name || 'there';
+  const fullName = ((contributor.first_name || '') + ' ' + (contributor.last_name || '')).trim();
   const email = contributor.email;
   const phone = contributor.phone;
+
+  // Generate booking link for onboarding call (non-blocking)
+  let bookingUrl = null;
+  try {
+    const rankingsDbService = require('../services/rankingsDbService');
+    const booking = await rankingsDbService.createBookingLink({
+      company_id: contributor.rankings_company_id || null,
+      appointment_type: 'onboarding-call',
+      invitee_name: fullName,
+      invitee_email: email,
+      created_by: contributor.assigned_rep_id || 2
+    });
+    if (booking) bookingUrl = booking.url;
+  } catch (err) {
+    console.error('[Expert Contributor] Booking link generation failed:', err.message);
+  }
+
+  // Build booking CTA block if link was generated
+  const bookingBlock = bookingUrl
+    ? `<div style="margin:24px 0;padding:20px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;text-align:center;">
+            <p style="font-size:14px;color:#333;margin-bottom:12px;font-weight:600;">Schedule Your Onboarding Call with Greg</p>
+            <p style="font-size:13px;color:#555;margin-bottom:16px;">Book a time to discuss your contributor page, PowerChat feature, and content strategy.</p>
+            <a href="${bookingUrl}" style="display:inline-block;padding:12px 32px;background:#FB0401;color:#fff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;">Book Your Onboarding Call</a>
+          </div>`
+    : '';
 
   // Welcome Email
   try {
@@ -39,6 +65,7 @@ async function sendWelcomeMessages(contributor) {
             <li>Short-form video clips for social media distribution</li>
             <li>Third-party authority positioning that sets you apart in the industry</li>
           </ul>
+          ${bookingBlock}
           <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">Our team is now building your contributor page. We will reach out to you personally once it is complete and ready for your review.</p>
           <p style="font-size:14px;color:#555;line-height:1.7;">Welcome to the network, ${firstName}. We are excited to have you.</p>
           <p style="font-size:14px;color:#333;margin-top:24px;font-weight:600;">Greg Cummings<br><span style="font-weight:400;color:#777;">CEO, Power100</span></p>
