@@ -1,0 +1,250 @@
+<!-- TRENDING EXPERT CONTRIBUTORS — Paste into Elementor Custom HTML widget -->
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,800;0,900;1,400;1,700&family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+/* Kill Elementor wrapper borders/padding — :has() targets parent from child */
+.elementor-widget-container:has(.p100-trending),
+.elementor-widget:has(.p100-trending) {
+  padding: 0 !important; margin: 0 !important; border: none !important;
+  background: #0d0d0d !important; box-shadow: none !important;
+}
+.elementor-section:has(.p100-trending),
+.elementor-column:has(.p100-trending),
+.elementor-column-wrap:has(.p100-trending),
+.elementor-widget-wrap:has(.p100-trending),
+.elementor-element:has(.p100-trending) {
+  padding: 0 !important; margin: 0 !important; border: none !important;
+  background: #0d0d0d !important; gap: 0 !important; box-shadow: none !important;
+}
+.p100-trending * { box-sizing: border-box; margin: 0; padding: 0; }
+.p100-trending a, .p100-trending a:hover, .p100-trending a:focus, .p100-trending a:active,
+.p100-trending img, .p100-trending .ec-photo, .p100-trending .ec-item {
+  border: none !important; outline: none !important; box-shadow: none !important; text-decoration: none !important;
+}
+.p100-trending {
+  background: #0d0d0d;
+  padding: 72px 24px 64px;
+  font-family: 'Poppins', sans-serif;
+  position: relative;
+}
+.p100-trending-inner {
+  max-width: 1140px;
+  margin: 0 auto;
+}
+/* Header — editorial style matching homepage */
+.p100-trending .trending-header {
+  text-align: center;
+  margin-bottom: 52px;
+}
+.p100-trending .trending-label {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 14px;
+  font-weight: 400;
+  color: #FB0401;
+  margin-bottom: 10px;
+  display: block;
+}
+.p100-trending h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 800;
+  color: #fff;
+  margin-bottom: 14px;
+  line-height: 1.15;
+}
+.p100-trending .trending-rule {
+  width: 60px;
+  height: 3px;
+  background: #FB0401;
+  margin: 0 auto 16px;
+}
+.p100-trending .trending-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,0.4);
+  font-weight: 300;
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+/* === CONTRIBUTOR STRIP — single row, edge-to-edge photos === */
+.p100-trending .ec-strip {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  max-width: 1140px;
+  margin: 0 auto;
+}
+.p100-trending .ec-item {
+  flex: 1 1 0;
+  max-width: calc(1140px / 7);
+  text-decoration: none;
+  color: inherit;
+  position: relative;
+  text-align: center;
+  overflow: hidden;
+}
+/* Photo — square, as large as the column allows */
+.p100-trending .ec-photo {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  position: relative;
+  background: #1a1a1a;
+}
+.p100-trending .ec-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.4s ease, filter 0.4s ease;
+}
+.p100-trending .ec-item:hover .ec-photo img {
+  transform: scale(1.05);
+}
+/* Gradient overlay — tight at the bottom so faces stay visible */
+.p100-trending .ec-photo::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 35%;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
+  pointer-events: none;
+}
+/* Rank number — bold, positioned inside the photo */
+.p100-trending .ec-rank-num {
+  position: absolute;
+  top: 8px;
+  left: 10px;
+  font-family: 'Playfair Display', serif;
+  font-size: 36px;
+  font-weight: 900;
+  color: rgba(255,255,255,0.12);
+  line-height: 1;
+  z-index: 2;
+  transition: color 0.3s ease;
+}
+.p100-trending .ec-item:hover .ec-rank-num {
+  color: rgba(251,4,1,0.3);
+}
+/* Name + title overlay at bottom of photo */
+.p100-trending .ec-info {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 8px 6px;
+  z-index: 2;
+  text-align: center;
+}
+/* Default photo position — center on face */
+.p100-trending .ec-photo img { object-position: center 20%; }
+.p100-trending .ec-name {
+  font-family: 'Poppins', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  line-height: 1.3;
+  margin-bottom: 1px;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+}
+.p100-trending .ec-title {
+  font-size: 9px;
+  font-weight: 300;
+  color: rgba(255,255,255,0.6);
+  line-height: 1.3;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+}
+/* Red bottom accent bar on hover */
+.p100-trending .ec-item::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: #FB0401;
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+.p100-trending .ec-item:hover::after {
+  transform: scaleX(1);
+}
+/* Bottom accent — thin red line */
+.p100-trending .trending-footer {
+  margin-top: 48px;
+  text-align: center;
+}
+.p100-trending .trending-footer-rule {
+  width: 100%;
+  max-width: 900px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(251,4,1,0.2), transparent);
+  margin: 0 auto 16px;
+}
+.p100-trending .trending-cta {
+  font-family: 'Playfair Display', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: rgba(255,255,255,0.3);
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+.p100-trending .trending-cta:hover {
+  color: #FB0401;
+}
+/* Responsive */
+@media (max-width: 960px) {
+  .p100-trending .ec-name { font-size: 11px; }
+  .p100-trending .ec-rank-num { font-size: 28px; }
+  .p100-trending .ec-strip { gap: 2px; }
+}
+@media (max-width: 768px) {
+  .p100-trending { padding: 48px 12px; }
+  .p100-trending .ec-strip {
+    overflow-x: auto;
+    justify-content: flex-start;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x mandatory;
+  }
+  .p100-trending .ec-item { min-width: 140px; flex-shrink: 0; scroll-snap-align: start; }
+}
+</style>
+<div class="p100-trending">
+<div class="p100-trending-inner">
+<div class="trending-header">
+<span class="trending-label">Trending in America</span>
+<h2>Top 7 Expert Contributors</h2>
+<div class="trending-rule"></div>
+<p class="trending-sub">Vetted and verified through our five-layer proprietary ranking system. These leaders are shaping the conversation in home improvement.</p>
+</div>
+<div class="ec-strip">
+<a class="ec-item" href="https://power100.io/james-freeman-expert-contributor/">
+<div class="ec-photo"><div class="ec-rank-num">1</div><img src="https://power100.io/wp-content/uploads/2026/01/James-Freeman-Power100-Frame-2.png" alt="James Freeman"><div class="ec-info"><div class="ec-name">James Freeman</div><div class="ec-title">CEO, PJ Fitzpatrick</div></div></div>
+</a>
+<a class="ec-item" href="https://power100.io/peter-svedin-expert-contributor/">
+<div class="ec-photo"><div class="ec-rank-num">2</div><img src="https://power100.io/wp-content/uploads/2026/02/peter-svedin-headshot.png" alt="Peter Svedin"><div class="ec-info"><div class="ec-name">Peter Svedin</div><div class="ec-title">CEO, Lifetime Home Remodeling</div></div></div>
+</a>
+<a class="ec-item" href="https://power100.io/caleb-nelson-expert-contributor/">
+<div class="ec-photo"><div class="ec-rank-num">3</div><img src="https://power100.io/wp-content/uploads/2026/02/Caleb-Nelson-Photo-2026-1.jpeg" alt="Caleb Nelson"><div class="ec-info"><div class="ec-name">Caleb Nelson</div><div class="ec-title">CEO, Destination Motivation</div></div></div>
+</a>
+<a class="ec-item" href="https://power100.io/vic-sun-expert-contributor/">
+<div class="ec-photo"><div class="ec-rank-num">4</div><img src="https://power100.io/wp-content/uploads/2026/02/Vic-Sun-Photo-For-Next100-Partners-1.png" alt="Vic Sun"><div class="ec-info"><div class="ec-name">Vic Sun</div><div class="ec-title">CEO, Channel Automation</div></div></div>
+</a>
+<a class="ec-item" href="https://power100.io/dominic-caminata-expert-contributor/">
+<div class="ec-photo"><div class="ec-rank-num">5</div><img src="https://power100.io/wp-content/uploads/2026/02/dominic-caminata-headshot.jpg" alt="Dominic Caminata"><div class="ec-info"><div class="ec-name">Dominic Caminata</div><div class="ec-title">CEO, Grosso University</div></div></div>
+</a>
+<a class="ec-item" href="https://power100.io/paul-burleson-expert-contributor/">
+<div class="ec-photo"><div class="ec-rank-num">6</div><img src="https://power100.io/wp-content/uploads/2026/02/paul-burleson-headshot-1.jpg" alt="Paul Burleson"><div class="ec-info"><div class="ec-name">Paul Burleson</div><div class="ec-title">Power100 Advisory Board</div></div></div>
+</a>
+<a class="ec-item" href="https://power100.io/gina-ruiz-sullivan-expert-contributor/">
+<div class="ec-photo"><div class="ec-rank-num">7</div><img src="https://power100.io/wp-content/uploads/2026/03/Gina-Sullivan-Leader-Photo-3.png" alt="Gina Ruiz Sullivan"><div class="ec-info"><div class="ec-name">Gina Ruiz Sullivan</div><div class="ec-title">Director, Alside</div></div></div>
+</a>
+</div>
+<div class="trending-footer">
+<div class="trending-footer-rule"></div>
+<a class="trending-cta" href="https://power100.io/contributor-presentation/">Become a Verified Contributor</a>
+</div>
+</div>
+</div>
