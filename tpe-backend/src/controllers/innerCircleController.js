@@ -135,39 +135,96 @@ const innerCircleController = {
 
   /**
    * GET /api/inner-circle/conversations?member_id=X
-   * Get conversation history for a member
+   * Get conversation history grouped into logical threads (30-min gap = new conversation)
    */
   async getConversations(req, res, next) {
     try {
       const memberId = parseInt(req.query.member_id);
-      const limit = parseInt(req.query.limit) || 50;
-      const offset = parseInt(req.query.offset) || 0;
+      const limit = parseInt(req.query.limit) || 30;
 
       if (!memberId) {
         return res.status(400).json({ success: false, error: 'member_id is required' });
+      }
+
+      // Fetch all non-system messages for this member
+      const result = await query(`
+        SELECT id, member_id, message_type, content, created_at
+        FROM ai_concierge_conversations
+        WHERE member_id = $1
+          AND message_type != 'system'
+        ORDER BY created_at ASC
+      `, [memberId]);
+
+      // Group messages into conversations (30-min gap = new conversation)
+      const GAP_MS = 30 * 60 * 1000;
+      const threads = [];
+      let currentThread = null;
+
+      for (const row of result.rows) {
+        const ts = new Date(row.created_at).getTime();
+        if (!currentThread || ts - currentThread.lastTs > GAP_MS) {
+          currentThread = {
+            id: row.id, // first message ID as thread identifier
+            title: null,
+            started_at: row.created_at,
+            ended_at: row.created_at,
+            message_count: 0,
+            lastTs: ts
+          };
+          threads.push(currentThread);
+        }
+        currentThread.ended_at = row.created_at;
+        currentThread.lastTs = ts;
+        currentThread.message_count++;
+        if (!currentThread.title && row.message_type === 'user') {
+          currentThread.title = row.content.length > 80 ? row.content.substring(0, 80) + '...' : row.content;
+        }
+      }
+
+      // Return most recent first, limited
+      const sorted = threads.reverse().slice(0, limit);
+
+      res.json({
+        success: true,
+        conversations: sorted,
+        total: threads.length
+      });
+    } catch (error) {
+      console.error('[Inner Circle Controller] getConversations error:', error);
+      next(error);
+    }
+  },
+
+  /**
+   * GET /api/inner-circle/conversation-messages?member_id=X&start=ISO&end=ISO
+   * Get all messages for a specific conversation thread
+   */
+  async getConversationMessages(req, res, next) {
+    try {
+      const memberId = parseInt(req.query.member_id);
+      const start = req.query.start;
+      const end = req.query.end;
+
+      if (!memberId || !start || !end) {
+        return res.status(400).json({ success: false, error: 'member_id, start, and end are required' });
       }
 
       const result = await query(`
         SELECT id, member_id, message_type, content, created_at
         FROM ai_concierge_conversations
         WHERE member_id = $1
+          AND message_type != 'system'
+          AND created_at >= $2
+          AND created_at <= $3
         ORDER BY created_at ASC
-        LIMIT $2 OFFSET $3
-      `, [memberId, limit, offset]);
-
-      const countResult = await query(
-        'SELECT COUNT(*) as total FROM ai_concierge_conversations WHERE member_id = $1',
-        [memberId]
-      );
+      `, [memberId, start, end]);
 
       res.json({
         success: true,
-        conversations: result.rows,
-        total: parseInt(countResult.rows[0].total),
-        hasMore: offset + result.rows.length < parseInt(countResult.rows[0].total)
+        messages: result.rows
       });
     } catch (error) {
-      console.error('[Inner Circle Controller] getConversations error:', error);
+      console.error('[Inner Circle Controller] getConversationMessages error:', error);
       next(error);
     }
   },

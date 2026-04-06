@@ -166,6 +166,13 @@ router.post('/message', apiKeyOnly, memberConciergeRateLimiter, promptInjectionG
 router.get('/conversations', apiKeyOnly, innerCircleController.getConversations);
 
 /**
+ * @route   GET /api/inner-circle/conversation-messages
+ * @desc    Get all messages for a specific conversation thread
+ * @access  API Key (WordPress proxy)
+ */
+router.get('/conversation-messages', apiKeyOnly, innerCircleController.getConversationMessages);
+
+/**
  * @route   GET /api/inner-circle/profile
  * @desc    Get member profile (what the concierge knows about them)
  * @access  API Key (WordPress proxy)
