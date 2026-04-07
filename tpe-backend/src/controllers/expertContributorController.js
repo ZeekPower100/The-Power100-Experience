@@ -772,6 +772,15 @@ const markPageLive = async (req, res) => {
       console.error('[EC-DRC] Page live integration error:', e.message)
     );
 
+    // Auto-link IC leader to EC page (non-blocking)
+    try {
+      const contributorEnrichment = require('../services/contributorEnrichmentService');
+      const fullName = `${contributor.first_name} ${contributor.last_name}`.trim();
+      contributorEnrichment.enrichSingleLeader(fullName).catch(e =>
+        console.error('[EC-IC] Auto-link error:', e.message)
+      );
+    } catch (e) { /* enrichment service not critical */ }
+
     return res.status(200).json({ success: true, message: 'Page marked as live', contributor });
   } catch (err) {
     console.error('Error marking page live:', err);

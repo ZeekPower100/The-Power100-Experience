@@ -574,6 +574,82 @@ router.get('/articles/status', apiKeyOnly, async (req, res, next) => {
   }
 });
 
+// ════════════════════════════════════════
+// CONTRIBUTOR ENRICHMENT
+// ════════════════════════════════════════
+const contributorEnrichment = require('../services/contributorEnrichmentService');
+
+/**
+ * @route   POST /api/inner-circle/enrichment/run
+ * @desc    Run full contributor enrichment pipeline
+ * @access  API Key
+ */
+router.post('/enrichment/run', apiKeyOnly, async (req, res, next) => {
+  try {
+    const report = await contributorEnrichment.runFullEnrichment();
+    res.json({ success: true, report });
+  } catch (error) {
+    console.error('[Enrichment] Full run error:', error.message);
+    next(error);
+  }
+});
+
+/**
+ * @route   POST /api/inner-circle/enrichment/articles
+ * @desc    Sync Power100 articles to IC leaders
+ * @access  API Key
+ */
+router.post('/enrichment/articles', apiKeyOnly, async (req, res, next) => {
+  try {
+    const result = await contributorEnrichment.syncArticles();
+    res.json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   POST /api/inner-circle/enrichment/ec-links
+ * @desc    Auto-link IC leaders to Power100 EC pages
+ * @access  API Key
+ */
+router.post('/enrichment/ec-links', apiKeyOnly, async (req, res, next) => {
+  try {
+    const result = await contributorEnrichment.linkEcPages();
+    res.json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   POST /api/inner-circle/enrichment/rankings
+ * @desc    Detect ranked CEO landers for IC leaders
+ * @access  API Key
+ */
+router.post('/enrichment/rankings', apiKeyOnly, async (req, res, next) => {
+  try {
+    const result = await contributorEnrichment.detectRankings();
+    res.json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+});
+
+/**
+ * @route   POST /api/inner-circle/enrichment/photos
+ * @desc    Propagate speaker photos to leader terms
+ * @access  API Key
+ */
+router.post('/enrichment/photos', apiKeyOnly, async (req, res, next) => {
+  try {
+    const result = await contributorEnrichment.propagatePhotos();
+    res.json({ success: true, ...result });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Development test route
 if (process.env.NODE_ENV === 'development') {
   router.get('/test', (req, res) => {
