@@ -199,15 +199,23 @@ async function detectRankings() {
     // Skip if already ranked
     if (leader.ic_power_rank) continue;
 
-    // Build slug from name
+    // Build slug from name — check both URL patterns
     const slug = leader.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    const url = `https://power100.io/${slug}-ceo-lander/`;
+    const patterns = [
+      `https://power100.io/${slug}-power-ranked-ceo/`,   // New pattern (2026+)
+      `https://power100.io/${slug}-ceo-lander/`,    // Legacy pattern
+    ];
 
     try {
-      const res = await axios.head(url, { timeout: 5000, validateStatus: s => s < 500 });
-      if (res.status === 200) {
+      let foundUrl = null;
+      for (const url of patterns) {
+        const res = await axios.head(url, { timeout: 5000, validateStatus: s => s < 500 });
+        if (res.status === 200) { foundUrl = url; break; }
+      }
+
+      if (foundUrl) {
         // Fetch the page to extract rank number
-        const pageRes = await axios.get(url, { timeout: 10000 });
+        const pageRes = await axios.get(foundUrl, { timeout: 10000 });
         const rankMatch = pageRes.data.match(/<h[^>]*>\s*#(\d+)\s*<\/h/i);
         if (rankMatch) {
           const rank = parseInt(rankMatch[1]);
@@ -219,10 +227,10 @@ async function detectRankings() {
           await icApiCall('POST', '/leader/update-meta', {
             term_id: leader.term_id,
             meta_key: 'ic_rank_lander_url',
-            meta_value: url,
+            meta_value: foundUrl,
           });
           results.found++;
-          console.log(`[ContributorEnrichment] Found ranking: ${leader.name} #${rank}`);
+          console.log(`[ContributorEnrichment] Found ranking: ${leader.name} #${rank} (${foundUrl})`);
         }
       }
     } catch (err) {
@@ -283,15 +291,18 @@ async function enrichSingleLeader(leaderName) {
     }
   } catch (err) { /* not an EC */ }
 
-  // Check for ranked CEO lander
-  try {
-    const rankRes = await axios.head(`https://power100.io/${slug}-ceo-lander/`, {
-      timeout: 5000, validateStatus: s => s < 500,
-    });
-    if (rankRes.status === 200) {
-      results.rankedCeo = `https://power100.io/${slug}-ceo-lander/`;
-    }
-  } catch (err) { /* not ranked */ }
+  // Check for ranked CEO lander (both patterns)
+  for (const pattern of [`${slug}-ranked-ceo`, `${slug}-ceo-lander`]) {
+    try {
+      const rankRes = await axios.head(`https://power100.io/${pattern}/`, {
+        timeout: 5000, validateStatus: s => s < 500,
+      });
+      if (rankRes.status === 200) {
+        results.rankedCeo = `https://power100.io/${pattern}/`;
+        break;
+      }
+    } catch (err) { /* not ranked */ }
+  }
 
   console.log(`[ContributorEnrichment] Enrichment results for ${leaderName}:`, results);
   return results;
