@@ -37,7 +37,12 @@ const N8N_ENV = process.env.NODE_ENV === 'production' ? '' : '-dev';
  * }
  */
 router.post('/ingest', apiKeyOnly, async (req, res) => {
-  const { youtubeUrl, showId, episodeNumber, featuredNames, skipEnrichment = false } = req.body;
+  // DATABASE-CHECKED: ic_content table schema referenced via n8n → IC REST bridge
+  // skipHero (alias: isBackfill): when true, IC flags post as _ic_is_backfill=1
+  //   which excludes it from hero-selection + suppresses Rey announcement email.
+  //   Used by the DRC content pipeline for archival/backfill drops.
+  const { youtubeUrl, showId, episodeNumber, featuredNames, skipEnrichment = false,
+          skipHero = false, isBackfill = false } = req.body;
 
   if (!youtubeUrl || !showId) {
     return res.status(400).json({
@@ -187,7 +192,8 @@ router.post('/ingest', apiKeyOnly, async (req, res) => {
             show,
             episodeNumber: epNumber,
             metadata,
-            enrichment: enrichmentResult.enrichment
+            enrichment: enrichmentResult.enrichment,
+            skipHero: skipHero || isBackfill
           });
         } else {
           console.error('[Content Ingestion API] AI enrichment failed:', enrichmentResult.error);
@@ -361,7 +367,7 @@ router.get('/pipeline-status', apiKeyOnly, async (req, res) => {
  *   duration, recording_date, speakers[], timestamps[], takeaways[],
  *   tags[], thumbnail_url, tpx_video_id
  */
-async function fireCompletionWebhook({ videoContentId, videoId, show, episodeNumber, metadata, enrichment }) {
+async function fireCompletionWebhook({ videoContentId, videoId, show, episodeNumber, metadata, enrichment, skipHero = false }) {
   const webhookUrl = `${N8N_WEBHOOK_BASE}/webhook/video-analysis-complete${N8N_ENV}`;
 
   // Convert pillar name to slug (WordPress taxonomy expects lowercase slug)
@@ -395,6 +401,11 @@ async function fireCompletionWebhook({ videoContentId, videoId, show, episodeNum
 
     // Transcript (for WP syndication — stored as post content or ACF field)
     transcript: enrichment.transcript || null,
+
+    // Backfill flag — when true, IC sets _ic_is_backfill=1 post meta which
+    // excludes from hero-selection queries, and n8n skips the Rey email.
+    skip_hero: !!skipHero,
+    is_backfill: !!skipHero,
 
     // Additional context for n8n (not consumed by WP directly)
     target_audience: enrichment.insights?.target_audience || {},
