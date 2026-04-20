@@ -408,6 +408,260 @@ def flux_generate_scene(prompt, output_path):
 
 
 
+
+INSPIRATION_NETFLIX_DIR = f"{HOME}/thumbnail-system/inspiration/netflix"
+INSPIRATION_MRBEAST_DIR = f"{HOME}/thumbnail-system/inspiration/mrbeast"
+
+
+def load_inspiration_images(dir_path, cap=3):
+    if not os.path.isdir(dir_path):
+        return []
+    candidates = sorted([
+        f"{dir_path}/{f}" for f in os.listdir(dir_path)
+        if f.lower().endswith((".jpg", ".jpeg", ".png"))
+    ])
+    return candidates[:cap]
+
+
+def build_minimal_sandbox_prompt(post, hook, all_hooks, transcript_sample, beats, predecided_scene=None, guest_name=None):
+    """v3 minimal role-based prompt. Heartbeat placed BEFORE hook so emotional
+    register drives design choices. Explicit affirmative prop direction +
+    hologram/AR ban. Universal-over-business philosophy front and center."""
+    title = post.get("title", "")[:200]
+
+    heartbeat_lines = []
+    if beats.get("emotional_arc"):
+        heartbeat_lines.append(f"Emotional arc: {beats['emotional_arc']}")
+    if beats.get("visual_metaphor"):
+        heartbeat_lines.append(f"Visual metaphor: {beats['visual_metaphor']}")
+    if beats.get("specific_places"):
+        heartbeat_lines.append(f"Specific places referenced: {beats['specific_places']}")
+    if beats.get("specific_objects"):
+        heartbeat_lines.append(f"Specific objects/symbols: {beats['specific_objects']}")
+    heartbeat_block = "\n".join(heartbeat_lines) if heartbeat_lines else "(no specific beats extracted)"
+
+    scene_block = ""
+    if predecided_scene:
+        scene_block = f"""
+
+DESIGNED SCENE (your own pre-decided concept — execute this faithfully):
+{predecided_scene}
+"""
+
+    return f"""You are a Netflix-level poster and cover artist delivering a balance of EYE-CATCHING visual impact, RELEVANCE to the episode content, and CREATIVITY that pushes boundaries in reason.
+
+Your reference library for proven click-through aesthetics includes both Netflix prestige-series cover art AND Mr. Beast thumbnails (the most-clicked creator on YouTube). Deeply understand the visual elements of both — Netflix's cinematic storytelling framing, Mr. Beast's emotional-expression-plus-environmental-payoff composition — and bring this specific episode to life from its hook and heartbeat.
+
+UNIVERSAL OVER BUSINESS — READ CAREFULLY: The surface of every episode is business (leadership, sales, growth, companies). The SOUL of every episode is human. Real people, real transformations, real beliefs that held through doubt. Someone who has never run a company should be able to look at this thumbnail and feel the person — the expression, the weight of what they have lived, what they have built, what they have sacrificed, what they believe. Business words in the hook ("7% closing rate," "$440B market," "revenue," "deals") are context, NOT subject. The SUBJECT is always the person.
+
+Let the HEARTBEAT drive the scene more than the hook surface language. If the hook sounds corporate and the heartbeat sounds emotional, follow the heartbeat. A thumbnail about "closing rate" should feel like conviction and perseverance, not like a corporate sales seminar. Design so the viewer feels the PERSON first, the business context as atmosphere second. Intangibles — the moment before a decision, the weight of a choice, the quiet after a breakthrough — beat corporate props every time.
+
+EPISODE TITLE: {title}
+
+THE HEARTBEAT — READ THIS FIRST, THIS IS THE SOUL OF THE EPISODE:
+{heartbeat_block}{scene_block}
+
+THE HEADLINE LABEL (this text will be overlaid on the thumbnail by post-processing — you do NOT render it inside the image): "{hook['title']}"
+
+THE SUBJECT (the person who must appear in the thumbnail — match REFERENCE_A exactly): {guest_name or "the guest from the reference photos"}
+
+Design a thumbnail that makes a stranger stop, understand what this episode is about emotionally, and feel they need to watch. Use your own artistic judgment on setting, composition, framing, lighting, palette, subject expression, and narrative props. Let the heartbeat lead every decision.
+
+PROP DIRECTION — REACH FOR THESE: physical, human-scale objects with emotional weight. A handwritten note. A framed family photo. A weathered ledger. An empty chair. Hands holding something meaningful. A door closed or cracked open. A coffee cup gone cold. A jacket thrown over a chair. Keys on a counter. A watch on a wrist. Objects a person would remember, not data a computer would display.
+
+NON-NEGOTIABLE RULES:
+1. Photorealistic. No illustration, no stylization, no painterly effects. Real-photograph feel.
+2. DO NOT generate ANY text anywhere in the image. This includes text overlays AND text rendered on objects inside the scene: building signs, storefront names, shop fronts, street signs, billboards, banners, pennants, plaques, awards, trophies, papers or documents with writing, books with titles, screens/monitors with labels, phones displaying UI, license plates, clothing with logos or printed text, tattoos, graffiti, product labels, packaging text, any object that would naturally carry writing. The world rendered must be completely text-free. Every sign, plaque, banner, page, screen in the scene must be BLANK or abstract (shapes/colors only, no letters or numbers). The headline is added in post-processing — leave the image PURELY visual.
+3. DO NOT use holograms, holographic overlays, augmented reality displays, floating data visualizations, bar graphs, line charts, leaderboards, scoreboards, dashboards, or glowing sci-fi UI panels. These are templated crutches. Reach for the physical human-scale props listed above instead.
+4. Keep narrative props/symbols to ONE OR TWO maximum. One strong, emotionally-loaded prop beats five weak ones.
+5. The GUEST's face MUST match the provided headshot and episode-frame references EXACTLY. Preserve their actual identity.
+6. ACCESSORIES / FACIAL FEATURES RULE: hair, facial hair, eyewear, jewelry, and any visible accessory MUST match the reference photo EXACTLY. Do NOT add glasses/beards/mustaches/earrings not in the reference. Do NOT remove features that ARE there.
+
+SUBJECT POSITIONING: faces in UPPER HALF of frame; BOTTOM 25-30% clear for title overlay.
+
+LIGHTING VARIETY: Deliberately vary lighting mood episode-to-episode. Do NOT default to golden hour or warm sunset. Pick a palette that matches the EMOTIONAL REGISTER of THIS episode — morning blue-hour for hope/beginnings, overcast gray for gravity/weight, fluorescent cool for tension/pressure, dusk magic-hour for reflection/legacy, neon night for urgency/momentum, harsh noon for raw competition, candlelit warm for intimacy/family. The hook and heartbeat should suggest the palette. Every thumbnail should feel lit for its specific story, not like every other thumbnail.
+
+The LEFT ~35% of the frame should be atmospheric/darker for visual breathing room and contrast — composition hint, not a hard rule.
+
+Render as 16:9 landscape."""
+
+
+def gemini_extract_scene_beats(post, hook, all_hooks, transcript_full):
+    """Gemini 2.5 Flash text — same-vendor beats extraction alt to Haiku.
+    Same prompt shape + return dict so it's a drop-in."""
+    sa_path = os.environ.get("VERTEX_SA_JSON") or pipeline._env.get("VERTEX_SA_JSON", "")
+    project = os.environ.get("GOOGLE_CLOUD_PROJECT") or pipeline._env.get("GOOGLE_CLOUD_PROJECT", "")
+    if not sa_path or not os.path.exists(sa_path) or not project:
+        log("beats", "  Vertex creds missing — falling back to Haiku")
+        return claude_extract_scene_beats(post, hook, all_hooks, transcript_full)
+
+    from google.oauth2 import service_account as _sa
+    from google.auth.transport.requests import Request as _GReq
+    creds = _sa.Credentials.from_service_account_file(
+        sa_path, scopes=["https://www.googleapis.com/auth/cloud-platform"]
+    )
+    creds.refresh(_GReq())
+
+    guest_names = ", ".join(g["name"] for g in post.get("guests", [])[:2])
+    show = post.get("show", "PowerChat")
+    title = post.get("title", "")[:200]
+    hooks_text = "\n".join(f"- {h['title']}" for h in (all_hooks or [hook])[:5])
+
+    prompt = f"""Read this podcast episode and extract the visual material a Netflix poster art director would need to design the thumbnail.
+
+SHOW: {show}
+EPISODE TITLE: {title}
+GUESTS: {guest_names}
+TOP HOOKS:
+{hooks_text}
+
+TRANSCRIPT (first segments):
+"{transcript_full[:5000]}"
+
+Extract the following — be SPECIFIC, drawing from what is actually mentioned in the transcript. Don't invent.
+
+Respond in EXACTLY this format, no preamble:
+SPECIFIC_PLACES: <3-5 concrete places mentioned in the transcript or directly tied to the story>
+SPECIFIC_OBJECTS: <3-5 physical objects, tools, artifacts, or visual symbols tied to the episode>
+ERA_OR_TIME: <one phrase describing when this story spans>
+EMOTIONAL_ARC: <one phrase describing the emotional through-line>
+VISUAL_METAPHOR: <one specific visual that would represent this episode as a single image>"""
+
+    endpoint = f"https://aiplatform.googleapis.com/v1/projects/{project}/locations/global/publishers/google/models/gemini-2.5-flash:generateContent"
+    body = {"contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.6, "maxOutputTokens": 600}}
+    try:
+        r = requests.post(endpoint, headers={"Authorization": f"Bearer {creds.token}", "Content-Type": "application/json"}, json=body, timeout=60)
+        if r.status_code != 200:
+            log("beats", f"  Gemini text {r.status_code} — falling back to Haiku")
+            return claude_extract_scene_beats(post, hook, all_hooks, transcript_full)
+        content = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+    except Exception as e:
+        log("beats", f"  Gemini beats failed ({e}) — falling back to Haiku")
+        return claude_extract_scene_beats(post, hook, all_hooks, transcript_full)
+
+    beats = {}
+    for line in content.splitlines():
+        line = line.strip()
+        for key in ("SPECIFIC_PLACES", "SPECIFIC_OBJECTS", "ERA_OR_TIME", "EMOTIONAL_ARC", "VISUAL_METAPHOR"):
+            if line.upper().startswith(key + ":"):
+                beats[key.lower()] = line.split(":", 1)[1].strip()
+    return beats
+
+
+def sonnet_extract_scene_beats(post, hook, all_hooks, transcript_full):
+    """Claude Sonnet 4.6 beats extraction — higher-quality alt to Haiku."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY") or pipeline._env.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return claude_extract_scene_beats(post, hook, all_hooks, transcript_full)
+
+    guest_names = ", ".join(g["name"] for g in post.get("guests", [])[:2])
+    show = post.get("show", "PowerChat")
+    title = post.get("title", "")[:200]
+    hooks_text = "\n".join(f"- {h['title']}" for h in (all_hooks or [hook])[:5])
+
+    prompt = f"""Read this podcast episode and extract the visual material a Netflix poster art director would need to design the thumbnail.
+
+SHOW: {show}
+EPISODE TITLE: {title}
+GUESTS: {guest_names}
+TOP HOOKS:
+{hooks_text}
+
+TRANSCRIPT (first segments):
+"{transcript_full[:5000]}"
+
+Extract the following — be SPECIFIC, drawing from what is actually mentioned in the transcript. Don't invent.
+
+Respond in EXACTLY this format, no preamble:
+SPECIFIC_PLACES: <3-5 concrete places mentioned in the transcript or directly tied to the story>
+SPECIFIC_OBJECTS: <3-5 physical objects, tools, artifacts, or visual symbols tied to the episode>
+ERA_OR_TIME: <one phrase describing when this story spans>
+EMOTIONAL_ARC: <one phrase describing the emotional through-line>
+VISUAL_METAPHOR: <one specific visual that would represent this episode as a single image>"""
+
+    try:
+        content = _claude_call_sonnet(prompt, max_tokens=600, temperature=0.6)
+    except Exception as e:
+        log("beats", f"  Sonnet beats failed ({e}) — falling back to Haiku")
+        return claude_extract_scene_beats(post, hook, all_hooks, transcript_full)
+
+    beats = {}
+    for line in content.splitlines():
+        line = line.strip()
+        for key in ("SPECIFIC_PLACES", "SPECIFIC_OBJECTS", "ERA_OR_TIME", "EMOTIONAL_ARC", "VISUAL_METAPHOR"):
+            if line.upper().startswith(key + ":"):
+                beats[key.lower()] = line.split(":", 1)[1].strip()
+    return beats
+
+
+def extract_scene_beats_routed(post, hook, all_hooks, transcript_full):
+    """Router — picks the beats extraction engine based on SANDBOX_BEATS_ENGINE env.
+    Defaults to haiku for backward compatibility."""
+    engine = (os.environ.get("SANDBOX_BEATS_ENGINE", "haiku") or "haiku").lower().strip()
+    log("beats", f"  engine: {engine}")
+    if engine == "gemini":
+        return gemini_extract_scene_beats(post, hook, all_hooks, transcript_full)
+    if engine == "sonnet":
+        return sonnet_extract_scene_beats(post, hook, all_hooks, transcript_full)
+    return claude_extract_scene_beats(post, hook, all_hooks, transcript_full)
+
+
+def gemini_propose_scene_text(post, hook, beats):
+    """Stage-1 Gemini text call — same-vendor cohesion. Activated by SANDBOX_GEMINI_PREDECIDE=true."""
+    sa_path = os.environ.get("VERTEX_SA_JSON") or pipeline._env.get("VERTEX_SA_JSON", "")
+    project = os.environ.get("GOOGLE_CLOUD_PROJECT") or pipeline._env.get("GOOGLE_CLOUD_PROJECT", "")
+    if not sa_path or not os.path.exists(sa_path) or not project:
+        log("predecide", "  Vertex creds missing")
+        return None
+
+    from google.oauth2 import service_account as _sa
+    from google.auth.transport.requests import Request as _GReq
+    creds = _sa.Credentials.from_service_account_file(
+        sa_path, scopes=["https://www.googleapis.com/auth/cloud-platform"]
+    )
+    creds.refresh(_GReq())
+
+    title = post.get("title", "")[:200]
+    heartbeat_lines = []
+    for k, label in [("emotional_arc", "Emotional arc"),
+                     ("visual_metaphor", "Visual metaphor"),
+                     ("specific_places", "Specific places"),
+                     ("specific_objects", "Specific objects")]:
+        if beats.get(k):
+            heartbeat_lines.append(f"- {label}: {beats[k]}")
+    heartbeat = "\n".join(heartbeat_lines) if heartbeat_lines else "(no beats)"
+
+    prompt = f"""You are a Netflix-level poster and cover art director.
+
+THE HOOK (headline): "{hook['title']}"
+EPISODE TITLE: {title}
+THE HEARTBEAT:
+{heartbeat}
+
+Design ONE specific real-world scene that visually anchors this hook. Pick a location, a single moment, ONE narrative prop, and the subject's posture/expression. Do NOT include text, logos, or graphics in the scene. ONE strong narrative element only.
+
+Respond in EXACTLY this format, no preamble:
+SCENE: <one paragraph, 60-90 words: specific real-world setting, subject pose/expression, ONE narrative prop, lighting direction, color palette>"""
+
+    endpoint = f"https://aiplatform.googleapis.com/v1/projects/{project}/locations/global/publishers/google/models/gemini-2.5-flash:generateContent"
+    body = {"contents": [{"role": "user", "parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.85, "maxOutputTokens": 400}}
+    try:
+        r = requests.post(endpoint, headers={"Authorization": f"Bearer {creds.token}", "Content-Type": "application/json"}, json=body, timeout=60)
+        if r.status_code != 200:
+            log("predecide", f"  Gemini text {r.status_code}: {r.text[:200]}")
+            return None
+        text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+        for line in text.splitlines():
+            if line.strip().upper().startswith("SCENE:"):
+                scene = line.split(":", 1)[1].strip()
+                log("predecide", f"  proposed: {scene[:140]}...")
+                return scene
+        return text.strip()
+    except Exception as e:
+        log("predecide", f"  failed: {e}")
+        return None
+
+
 def gemini_generate_scene(prompt, output_path, references=None):
     """Gemini 2.5 Flash Image scene generator via Vertex AI, now multimodal.
 
@@ -491,6 +745,28 @@ def gemini_generate_scene(prompt, output_path, references=None):
     if frames:
         ref_preamble_lines.append(
             f"The last {len(frames)} images are FRAMES from the actual recent episode recording. Use them to match the GUEST.s real clothing, body proportions, current age, and overall look from that recording day. CRITICAL: if the GUEST appears in these frames, use THEIR APPEARANCE FROM THE FRAMES as the primary face/age reference — the headshot reference may be older or outdated. Render the guest as they look TODAY in the episode. Do not copy the SETTING of these frames — the new scene setting is described in the prompt below."
+        )
+
+    # Inspiration refs (sandbox-only) — Netflix cover art + Mr. Beast thumbs
+    netflix_refs = references.get("inspiration_netflix", [])
+    mrbeast_refs = references.get("inspiration_mrbeast", [])
+    if netflix_refs:
+        log("gemini", f"  attaching {len(netflix_refs)} Netflix inspiration image(s)")
+        for p in netflix_refs:
+            b64 = _encode_image(p)
+            if b64:
+                parts.append({"inlineData": {"mimeType": "image/jpeg", "data": b64}})
+        ref_preamble_lines.append(
+            f"The next {len(netflix_refs)} images are NETFLIX cover art / poster samples — use them ONLY as aesthetic mood reference (lighting, tonal sophistication, composition density, subject framing). DO NOT copy their subjects, settings, or specific compositions."
+        )
+    if mrbeast_refs:
+        log("gemini", f"  attaching {len(mrbeast_refs)} Mr. Beast inspiration image(s)")
+        for p in mrbeast_refs:
+            b64 = _encode_image(p)
+            if b64:
+                parts.append({"inlineData": {"mimeType": "image/jpeg", "data": b64}})
+        ref_preamble_lines.append(
+            f"The last {len(mrbeast_refs)} images are MR. BEAST thumbnails — the most-clicked creator on YouTube. Use them ONLY as aesthetic reference for emotional-expression clarity, environmental narrative payoff, and high-click-through visual hierarchy. DO NOT copy their subjects, settings, text, or specific compositions. Net together with the Netflix refs: Netflix = sophistication, Mr. Beast = clickability. Blend both sensibilities into ONE original thumbnail for the GUEST and scene described below."
         )
 
     ref_preamble = ""
@@ -884,7 +1160,7 @@ def text_overlay_cover_art(scene_path, title_lines, show_label, output_path):
     wordmark_gap = 14
     start_y = 720 - bottom_padding - title_block_h
 
-    # Paint drop shadows FIRST (behind text), in a single layer per line
+    # Paint drop shadows (behind text), per line
     for i, line in enumerate(title_lines):
         y = start_y + i * line_height
         img = _soft_shadow_text(img, (40, y), line, title_font,
@@ -2110,8 +2386,13 @@ def run_reactor(post_id, drive_file_id):
     # 3. Resolve scene setting (cached override → Claude fresh → show default)
     post['id'] = post_id
     transcript_sample = ' '.join(s.get('text', '') for s in segments[:15]) if segments else ''
-    scene_setting = resolve_scene(post, top_hook, transcript_sample,
-                                  all_hooks=analysis.get('top_hooks'))
+    _sandbox_active = os.environ.get("SANDBOX_MINIMAL", "true").lower() not in ("0", "false", "no")
+    if _sandbox_active:
+        log('sandbox', '  skipping resolve_scene (sandbox builds its own via Gemini pre-decide)')
+        scene_setting = None
+    else:
+        scene_setting = resolve_scene(post, top_hook, transcript_sample,
+                                      all_hooks=analysis.get('top_hooks'))
 
     # 3b. Build host exclusion refs — hosts appear in frames but are NOT the
     # target. Prevents Greg-labeled-as-Nick bug on solo PowerChat episodes.
@@ -2141,21 +2422,27 @@ def run_reactor(post_id, drive_file_id):
             log('hosts', f'  failed to load host ref {s["name"]}: {e}')
 
     # 3c. Resolve per-(post + guest) clothing from episode frames (cached)
-    episode_clothing = resolve_episode_clothing(post_id, guests, source_path, work_dir, host_refs=host_refs)
-    for g in guests:
-        ec = episode_clothing.get(g['name'])
-        if ec:
-            g['description']['clothing_override'] = ec
+    if not _sandbox_active:
+        episode_clothing = resolve_episode_clothing(post_id, guests, source_path, work_dir, host_refs=host_refs)
+        for g in guests:
+            ec = episode_clothing.get(g['name'])
+            if ec:
+                g['description']['clothing_override'] = ec
+    else:
+        log('sandbox', '  skipping resolve_episode_clothing (sandbox uses photo refs, not text clothing)')
 
     # 3d. Resolve per-(post + guest) rich body description from episode frames
-    episode_body = resolve_episode_body(post_id, guests, source_path, work_dir)
-    for g in guests:
-        bd = episode_body.get(g['name'])
-        if bd:
-            rich_build = format_body_for_prompt(bd)
-            if rich_build:
-                g['description']['build_description'] = rich_build
-                log('body', f"  {g['name']}: build = {rich_build}")
+    if not _sandbox_active:
+        episode_body = resolve_episode_body(post_id, guests, source_path, work_dir)
+        for g in guests:
+            bd = episode_body.get(g['name'])
+            if bd:
+                rich_build = format_body_for_prompt(bd)
+                if rich_build:
+                    g['description']['build_description'] = rich_build
+                    log('body', f"  {g['name']}: build = {rich_build}")
+    else:
+        log('sandbox', '  skipping resolve_episode_body (sandbox is photo-driven, no text build description)')
 
     # 4. Generate 2-person scene with plain FLUX using episode-specific setting
     scene_prompt = build_scene_prompt(guests, scene_setting=scene_setting)
@@ -2164,15 +2451,41 @@ def run_reactor(post_id, drive_file_id):
     # FLUX ignores references — only Gemini uses them.
     _gemini_refs = {
         "guests": [{"name": g["name"], "path": g["_face_ref_path"]} for g in guests if g.get("_face_ref_path")],
-        "hosts": [{"name": n, "path": p} for (n, p) in host_refs] if host_refs else [],
+        "hosts": ([{"name": n, "path": p} for (n, p) in host_refs] if host_refs else []) if not (os.environ.get("SANDBOX_MINIMAL", "true").lower() not in ("0","false","no") and os.environ.get("SANDBOX_KEEP_HOSTS", "").lower() not in ("1","true","yes")) else [],
         "frames": [],
     }
     # Reuse episode frames that resolve_episode_clothing extracted (already in work_dir)
     try:
         _frame_candidates = sorted([f for f in os.listdir(work_dir) if f.startswith("frame-") and f.endswith(".jpg")])
-        _gemini_refs["frames"] = [f"{work_dir}/{f}" for f in _frame_candidates[:4]]  # cap at 4 for token budget
+        _gemini_refs["frames"] = [f"{work_dir}/{f}" for f in _frame_candidates[:4]]
+        # In sandbox mode, drop frames by default (they often contain host = identity confusion)
+        if os.environ.get("SANDBOX_MINIMAL", "true").lower() not in ("0","false","no") and os.environ.get("SANDBOX_KEEP_FRAMES", "").lower() not in ("1","true","yes"):
+            _gemini_refs["frames"] = []  # cap at 4 for token budget
     except Exception:
         pass
+    # SANDBOX_MINIMAL v2 — refs OFF by default, optional Gemini pre-decide
+    if os.environ.get("SANDBOX_MINIMAL", "true").lower() not in ("0", "false", "no"):
+        log("sandbox", "SANDBOX_MINIMAL=true — v2 minimal prompt")
+        try:
+            _beats = extract_scene_beats_routed(post, top_hook, analysis.get("top_hooks"), transcript_sample)
+        except Exception as _e:
+            log("sandbox", f"  beat extraction failed ({_e})")
+            _beats = {}
+
+        _predecided = None
+        if os.environ.get("SANDBOX_GEMINI_PREDECIDE", "true").lower() not in ("0", "false", "no"):
+            log("sandbox", "  SANDBOX_GEMINI_PREDECIDE=true — Gemini pre-deciding scene")
+            _predecided = gemini_propose_scene_text(post, top_hook, _beats)
+
+        scene_prompt = build_minimal_sandbox_prompt(post, top_hook, analysis.get("top_hooks"), transcript_sample, _beats, predecided_scene=_predecided, guest_name=guests[0]["name"] if guests else None)
+
+        if os.environ.get("SANDBOX_REFS", "").lower() in ("1", "true", "yes"):
+            _gemini_refs["inspiration_netflix"] = load_inspiration_images(INSPIRATION_NETFLIX_DIR, cap=3)
+            _gemini_refs["inspiration_mrbeast"] = load_inspiration_images(INSPIRATION_MRBEAST_DIR, cap=3)
+            log("sandbox", f"  SANDBOX_REFS=true — inspiration: {len(_gemini_refs['inspiration_netflix'])} netflix, {len(_gemini_refs['inspiration_mrbeast'])} mr-beast")
+        else:
+            log("sandbox", "  inspiration refs OFF (set SANDBOX_REFS=true to opt in)")
+
     generate_scene(scene_prompt, scene_path, references=_gemini_refs)
 
     # 4. Bundle scene + N face refs into a zip for ComfyUI
