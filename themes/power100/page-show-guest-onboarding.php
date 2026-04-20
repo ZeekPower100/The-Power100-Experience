@@ -462,6 +462,6 @@ article, .hentry, .type-page,
 
 </div></div>
 <?php wp_footer(); ?>
-<script src="https://tpx.power100.io/assets/show-guest-form.js"></script>
+<script src="https://tpx.power100.io/api/assets/show-guest-form.js"></script>
 </body>
 </html>
