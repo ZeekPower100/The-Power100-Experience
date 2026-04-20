@@ -80,6 +80,7 @@ const engagementRoutes = require('./routes/engagementRoutes');
 const innerCircleRoutes = require('./routes/innerCircleRoutes');
 const skillRoutes = require('./routes/skillRoutes');
 const expertContributorRoutes = require('./routes/expertContributorRoutes');
+const showGuestRoutes = require('./routes/showGuestRoutes');
 
 const app = express();
 
@@ -228,6 +229,7 @@ app.use('/api/engagement', engagementRoutes);
 app.use('/api/inner-circle', innerCircleRoutes);
 app.use('/api/skills', skillRoutes);
 app.use('/api/expert-contributors', expertContributorRoutes);
+app.use('/api/show-guests', showGuestRoutes);
 app.use('/api/event-scheduler', require('../routes/eventMessageSchedulerRoutes'));
 app.use('/api/event-agenda', require('../routes/eventAgendaRoutes'));
 
