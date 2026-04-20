@@ -107,8 +107,28 @@ const uploadShowGuestHeadshotMiddleware = multer({
   fileFilter: showGuestHeadshotFileFilter
 });
 
+// Public (no-token) show-guest headshot upload — anonymous public form
+// Filename: sgp-<timestamp>-<rand>.<ext>, same directory, same filter.
+const showGuestPublicHeadshotStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, showGuestDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.jpg';
+    const rand = Math.random().toString(36).slice(2, 10);
+    cb(null, `sgp-${Date.now()}-${rand}${ext}`);
+  }
+});
+
+const uploadShowGuestPublicHeadshotMiddleware = multer({
+  storage: showGuestPublicHeadshotStorage,
+  limits: { fileSize: 8 * 1024 * 1024 },  // 8MB
+  fileFilter: showGuestHeadshotFileFilter
+});
+
 module.exports = {
   uploadLogoMiddleware,
   uploadDocumentMiddleware,
-  uploadShowGuestHeadshotMiddleware
+  uploadShowGuestHeadshotMiddleware,
+  uploadShowGuestPublicHeadshotMiddleware
 };
