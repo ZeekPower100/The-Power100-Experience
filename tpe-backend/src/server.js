@@ -124,6 +124,14 @@ if (!isAWSConfigured) {
   app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 }
 
+// Public static assets (JS/CSS for WP-hosted forms that can't host inline scripts)
+app.use('/assets', express.static(path.join(__dirname, '..', 'public'), {
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+}));
+
 // Compression middleware
 app.use(compression());
 
