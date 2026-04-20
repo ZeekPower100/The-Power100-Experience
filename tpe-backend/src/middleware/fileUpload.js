@@ -6,8 +6,9 @@ const fs = require('fs');
 const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
 const logosDir = path.join(uploadsDir, 'partner-logos');
 const docsDir = path.join(uploadsDir, 'partner-documents');
+const showGuestDir = path.join(uploadsDir, 'show-guest-headshots');
 
-[uploadsDir, logosDir, docsDir].forEach(dir => {
+[uploadsDir, logosDir, docsDir, showGuestDir].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -79,7 +80,35 @@ const uploadDocumentMiddleware = multer({
   fileFilter: documentFileFilter
 });
 
+// Show-guest headshot upload — token-gated public form, verify token in the controller
+const showGuestHeadshotStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, showGuestDir);
+  },
+  filename: (req, file, cb) => {
+    const token = (req.params.token || 'unknown').slice(0, 16);
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `sg-${token}-${Date.now()}${ext}`);
+  }
+});
+
+const showGuestHeadshotFileFilter = (req, file, cb) => {
+  const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+  if (allowedTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only PNG, JPG, JPEG, and WEBP images are allowed.'), false);
+  }
+};
+
+const uploadShowGuestHeadshotMiddleware = multer({
+  storage: showGuestHeadshotStorage,
+  limits: { fileSize: 8 * 1024 * 1024 },  // 8MB
+  fileFilter: showGuestHeadshotFileFilter
+});
+
 module.exports = {
   uploadLogoMiddleware,
-  uploadDocumentMiddleware
+  uploadDocumentMiddleware,
+  uploadShowGuestHeadshotMiddleware
 };

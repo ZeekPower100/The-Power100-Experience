@@ -470,9 +470,8 @@ article, .hentry, .type-page,
     statusEl.classList.remove('err');
     statusEl.textContent = 'Uploading\u2026';
     var fd = new FormData();
-    fd.append('file', file);
-    fd.append('title', 'Show Guest Headshot - ' + (contributor ? (contributor.first_name || '') + ' ' + (contributor.last_name || '') : 'unknown'));
-    fetch('/wp-json/show-guest/v1/upload-headshot?token=' + encodeURIComponent(token), {
+    fd.append('headshot', file);
+    fetch('https://tpx.power100.io/api/show-guests/token/' + encodeURIComponent(token) + '/upload-headshot', {
       method: 'POST',
       body: fd
     })

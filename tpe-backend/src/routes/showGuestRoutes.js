@@ -3,8 +3,10 @@ const router = express.Router();
 const {
   createShowGuestToken,
   getShowGuestByToken,
-  submitShowGuestForm
+  submitShowGuestForm,
+  uploadShowGuestHeadshot
 } = require('../controllers/showGuestController');
+const { uploadShowGuestHeadshotMiddleware } = require('../middleware/fileUpload');
 
 // Admin creates a token + pending contributor row for a show guest
 router.post('/create-token', createShowGuestToken);
@@ -14,5 +16,12 @@ router.get('/token/:token', getShowGuestByToken);
 
 // Public form-submit
 router.post('/token/:token/submit', submitShowGuestForm);
+
+// Public headshot upload — field name "headshot"
+router.post(
+  '/token/:token/upload-headshot',
+  uploadShowGuestHeadshotMiddleware.single('headshot'),
+  uploadShowGuestHeadshot
+);
 
 module.exports = router;

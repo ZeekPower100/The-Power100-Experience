@@ -138,4 +138,45 @@ const submitShowGuestForm = async (req, res) => {
   }
 };
 
-module.exports = { createShowGuestToken, getShowGuestByToken, submitShowGuestForm };
+// POST /api/show-guests/token/:token/upload-headshot
+// Public. multer middleware has already written the file to uploads/show-guest-headshots/.
+// We verify the token exists + returns the public URL.
+const uploadShowGuestHeadshot = async (req, res) => {
+  try {
+    const { token } = req.params;
+    if (!req.file) {
+      return res.status(400).json({ success: false, error: 'No file uploaded (expected field name "headshot")' });
+    }
+
+    const check = await query(
+      `SELECT id FROM expert_contributors
+       WHERE delegation_token = $1 AND contributor_class = 'contributor'`,
+      [token]
+    );
+    if (check.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Invalid or expired token' });
+    }
+
+    const proto = req.protocol;
+    const host = req.get('host');
+    const publicUrl = `${proto}://${host}/uploads/show-guest-headshots/${req.file.filename}`;
+
+    return res.json({
+      success: true,
+      url: publicUrl,
+      filename: req.file.filename,
+      size: req.file.size,
+      mimetype: req.file.mimetype
+    });
+  } catch (err) {
+    console.error('[showGuest] uploadShowGuestHeadshot error:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+module.exports = {
+  createShowGuestToken,
+  getShowGuestByToken,
+  submitShowGuestForm,
+  uploadShowGuestHeadshot
+};
