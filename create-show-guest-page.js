@@ -3,6 +3,7 @@
 // Mirrors the EC delegate form pattern (page 27702).
 const fs = require('fs');
 const https = require('https');
+const { wpautopSafeCss, wpautopSafeHtml, verifyWpautopSafe } = require('./scripts/wpautop-safe');
 
 const WP_BASE = 'https://power100.io/wp-json/wp/v2';
 const WP_AUTH = 'Basic cG93ZXIxMDA6VjJ1YnpMcHQ3SW5aNmd1Z1o0ckVSN05X';
@@ -38,19 +39,16 @@ function extractContent(php) {
   // Extract style block
   const styleMatch = php.match(/<style>([\s\S]*?)<\/style>/);
   if (!styleMatch) throw new Error('no <style> block found');
-  // Strip ALL line breaks from CSS — wpautop converts blank lines into <p>
-  // tags inside the <style> element, which terminates CSS parsing and
-  // breaks rules like `.p100-sg .step { display: none; }`. Single-line
-  // CSS with rules separated by `}` only is wpautop-safe.
-  const style = styleMatch[1].replace(/\s*\n\s*/g, ' ').trim();
+  // wpautopSafeCss: single-line CSS (wpautop can't inject <p> into what has
+  // no blank lines). See scripts/wpautop-safe.js for full rationale.
+  const style = wpautopSafeCss(styleMatch[1]);
 
   // Extract body content — from after <body ...> to before <?php wp_footer();
   const bodyStart = php.indexOf('<body ');
   const bodyContentStart = php.indexOf('>', bodyStart) + 1;
   const wpFooterIdx = php.indexOf('<?php wp_footer');
   if (bodyStart === -1 || wpFooterIdx === -1) throw new Error('could not bound body');
-  // Strip blank lines from body too — same wpautop reason.
-  const bodyHtml = php.slice(bodyContentStart, wpFooterIdx).trim().replace(/\n\s*\n/g, '\n');
+  const bodyHtml = wpautopSafeHtml(php.slice(bodyContentStart, wpFooterIdx));
 
   // Wrap with background + style scoped to our form
   return `<style>${style}</style>\n<div class="p100-sg-wrapper" style="background:#0c0c0c;min-height:100vh;margin:-20px -20px 0;padding:0;">\n${bodyHtml}\n</div>`;
@@ -85,6 +83,25 @@ async function main() {
   console.log(`Result: ${result.status}`);
   if (result.status >= 200 && result.status < 300) {
     console.log(`SUCCESS: id=${result.body.id}, url=${result.body.link}`);
+    // Post-push canary: fetch rendered HTML, check wpautop didn't break anything.
+    const pageUrl = result.body.link;
+    try {
+      const rendered = await new Promise((resolve, reject) => {
+        https.get(pageUrl, (res) => {
+          let b = '';
+          res.on('data', (d) => b += d);
+          res.on('end', () => resolve(b));
+        }).on('error', reject);
+      });
+      const issues = verifyWpautopSafe(rendered);
+      if (issues.length) {
+        console.error('❌ wpautop corruption detected:\n  - ' + issues.join('\n  - '));
+        process.exit(2);
+      }
+      console.log('✅ wpautop verification passed');
+    } catch (e) {
+      console.warn('⚠️  Could not verify rendered page:', e.message);
+    }
   } else {
     console.log('FAILED:', JSON.stringify(result.body).slice(0, 500));
   }
