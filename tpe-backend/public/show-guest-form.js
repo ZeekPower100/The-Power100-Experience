@@ -1,6 +1,312 @@
+// Form HTML template — injected at runtime to keep the WP page content small
+var SG_FORM_HTML = `<div style="min-height:100vh;background:#0c0c0c;color:#d4d4d4;">
+<div class="p100-sg">
+
+  <div id="sgHeader" class="header">
+    <img decoding="async" src="https://power100.io/wp-content/uploads/2026/01/Power100-Icon-Hi-Res-and-Large-1.png" alt="Power100">
+    <div class="show-badge">Outside The Lines Podcast</div>
+    <h1 id="sgHeaderTitle">Guest Onboarding</h1>
+    <p id="sgHeaderSub">Tell us about yourself so we can build your Inner Circle contributor page.</p>
+  </div>
+
+  <div id="sgLeaderInfo" class="leader-info" style="display:none;">
+    <h3>Completing Profile For</h3>
+    <div class="lname" id="sgLeaderName"></div>
+    <div class="lmeta" id="sgLeaderMeta"></div>
+  </div>
+
+  <div id="sgError" class="error-state" style="display:none;">
+    <h2>Invite Link Issue</h2>
+    <p id="sgErrorMsg">This delegation link is invalid or has expired. Contact zeek@power100.io if you need help.</p>
+  </div>
+
+  <div id="sgForm" style="display:block;">
+
+    <div class="progress-wrap" id="sgProgressWrap">
+      <div class="progress-labels">
+        <span id="sgStepLabel">Step 1 of 8</span>
+        <span id="sgStepTitle">Your basics</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="sgProgressFill"></div></div>
+    </div>
+
+    <!-- Honeypot field — hidden, bots fill, humans don't -->
+    <div class="honeypot" aria-hidden="true">
+      <label>Company website (leave blank)</label>
+      <input type="text" id="sgHoneypot" name="company_website_confirm" tabindex="-1" autocomplete="off">
+    </div>
+
+    <!-- STEP 1: Your basics -->
+    <div class="step active" data-step="1">
+      <div class="step-head">
+        <h2>Your basics</h2>
+        <p>Who you are and how we reach you.</p>
+      </div>
+      <div class="drow">
+        <div class="field">
+          <label>First name<span class="req">*</span></label>
+          <input type="text" id="sgFirstName" placeholder="Jane" autocomplete="given-name">
+          <div class="field-error">Required.</div>
+        </div>
+        <div class="field">
+          <label>Last name<span class="req">*</span></label>
+          <input type="text" id="sgLastName" placeholder="Doe" autocomplete="family-name">
+          <div class="field-error">Required.</div>
+        </div>
+      </div>
+      <div class="drow">
+        <div class="field">
+          <label>Email<span class="req">*</span></label>
+          <input type="email" id="sgEmail" placeholder="jane@company.com" autocomplete="email">
+          <div class="field-error">A valid email is required.</div>
+        </div>
+        <div class="field">
+          <label>Phone</label>
+          <input type="tel" id="sgPhone" placeholder="(555) 123-4567" autocomplete="tel">
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2: Delegation choice -->
+    <div class="step" data-step="2">
+      <div class="step-head">
+        <h2>Who's filling this out?</h2>
+        <p>Pick what works best. You can always come back.</p>
+      </div>
+      <div class="mode-grid">
+        <button type="button" class="mode-card selected" data-mode="self" id="sgModeSelf">
+          <div class="mtitle">I'll fill it out myself</div>
+          <div class="mdesc">Takes about 8&ndash;10 minutes. Continue with the form below.</div>
+        </button>
+        <button type="button" class="mode-card" data-mode="delegate" id="sgModeDelegate">
+          <div class="mtitle">Delegate to my EA / team</div>
+          <div class="mdesc">Enter your assistant's name and email &mdash; we'll send them a secure link.</div>
+        </button>
+      </div>
+      <div id="sgDelegateFields" style="display:none;">
+        <div class="drow">
+          <div class="field">
+            <label>Delegate's name<span class="req">*</span></label>
+            <input type="text" id="sgDelegateName" placeholder="Sarah Johnson">
+            <div class="field-error">Required to send the delegation link.</div>
+          </div>
+          <div class="field">
+            <label>Delegate's email<span class="req">*</span></label>
+            <input type="email" id="sgDelegateEmail" placeholder="sarah@company.com">
+            <div class="field-error">Valid email required.</div>
+          </div>
+        </div>
+        <div class="field">
+          <div class="hint">We'll email them a unique link. You can also continue filling out anything you already know &mdash; it'll save when you submit.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: Company & role -->
+    <div class="step" data-step="3">
+      <div class="step-head">
+        <h2>Your company &amp; role</h2>
+        <p>Where you lead and what you do.</p>
+      </div>
+      <div class="drow">
+        <div class="field">
+          <label>Company<span class="req">*</span></label>
+          <input type="text" id="sgCompany" placeholder="Acme Home Improvement">
+          <div class="field-error">Required.</div>
+        </div>
+        <div class="field">
+          <label>Title / Position<span class="req">*</span></label>
+          <input type="text" id="sgTitle" placeholder="CEO">
+          <div class="field-error">Required.</div>
+        </div>
+      </div>
+      <div class="drow">
+        <div class="field">
+          <label>Years in industry</label>
+          <input type="text" id="sgYears" placeholder="e.g. 18">
+        </div>
+        <div class="field">
+          <label>Revenue / portfolio value</label>
+          <input type="text" id="sgRevenue" placeholder="e.g. $50M+">
+        </div>
+      </div>
+      <div class="drow">
+        <div class="field">
+          <label>Geographic reach</label>
+          <input type="text" id="sgGeo" placeholder="e.g. National, 12 states">
+        </div>
+        <div class="field">
+          <label>Signature stat</label>
+          <input type="text" id="sgStat" placeholder="e.g. 500+ teams trained">
+          <div class="hint">One metric that defines your impact.</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>Company description</label>
+        <textarea id="sgCompDesc" placeholder="Brief overview of the company, mission, and market position."></textarea>
+      </div>
+    </div>
+
+    <!-- STEP 4: Leadership narrative -->
+    <div class="step" data-step="4">
+      <div class="step-head">
+        <h2>Leadership narrative</h2>
+        <p>What the world should know about your leadership and expertise.</p>
+      </div>
+      <div class="field">
+        <label>Hero quote<span class="req">*</span></label>
+        <input type="text" id="sgHeroQuote" maxlength="220" placeholder="A powerful one-line statement that captures your philosophy.">
+        <div class="hint">Shows up as the opening line on your contributor page. ~180 characters.</div>
+        <div class="field-error">Required.</div>
+      </div>
+      <div class="field">
+        <label>Expertise bio<span class="req">*</span></label>
+        <textarea id="sgBio" placeholder="Your career journey, key accomplishments, and what makes you an authority."></textarea>
+        <div class="hint">3&ndash;6 sentences works well. We can refine it.</div>
+        <div class="field-error">Required.</div>
+      </div>
+      <div class="field">
+        <label>Key credentials</label>
+        <textarea id="sgCreds" placeholder="One credential per line. Awards, certifications, notable roles..."></textarea>
+      </div>
+      <div class="field">
+        <label>Expertise topics</label>
+        <textarea id="sgTopics" placeholder="One topic per line. What you can speak authoritatively on."></textarea>
+      </div>
+      <div class="field">
+        <label>Recognition &amp; awards</label>
+        <textarea id="sgRecog" placeholder="One per line. Industry awards, speaking invites, media mentions..."></textarea>
+      </div>
+    </div>
+
+    <!-- STEP 5: Media -->
+    <div class="step" data-step="5">
+      <div class="step-head">
+        <h2>Media &amp; social proof</h2>
+        <p>Videos that show you in action, and testimonials about your work.</p>
+      </div>
+      <div class="field">
+        <label>Featured videos</label>
+        <div class="hint" style="margin-top:0;margin-bottom:10px;">YouTube, Vimeo, or direct URL. Interviews, keynotes, case studies.</div>
+        <div id="sgVideosContainer"></div>
+        <button type="button" id="sgAddVideoBtn" class="add-btn">+ Add another video</button>
+      </div>
+      <div class="field" style="margin-top:24px;">
+        <label>Testimonials</label>
+        <div class="hint" style="margin-top:0;margin-bottom:10px;">Quotes from clients, peers, or industry leaders about you.</div>
+        <div id="sgTestimonialsContainer"></div>
+        <button type="button" id="sgAddTestimonialBtn" class="add-btn">+ Add another testimonial</button>
+      </div>
+    </div>
+
+    <!-- STEP 6: AI GEO keywords -->
+    <div class="step" data-step="6">
+      <div class="step-head">
+        <h2>AI search phrases</h2>
+        <p>Long-tail phrases that AI search engines (ChatGPT, Perplexity, Google) should associate with you.</p>
+      </div>
+      <div class="geo-helper">
+        <strong>Good examples</strong>
+        <p><em>"best home improvement CEO in the Southeast"</em></p>
+        <p><em>"top residential exterior contractor scaling nationally"</em></p>
+        <p><em>"home services leader known for culture and retention"</em></p>
+      </div>
+      <div class="geo-list" id="sgGeoList"></div>
+      <div class="field" style="margin-top:12px;">
+        <div class="hint">Minimum 3, up to 10. Long-tail phrases (5&ndash;10 words) work best. Think about how a buyer or admirer would describe you.</div>
+      </div>
+    </div>
+
+    <!-- STEP 7: Distribution + onboarding contact -->
+    <div class="step" data-step="7">
+      <div class="step-head">
+        <h2>Distribution &amp; onboarding contact</h2>
+        <p>Who we notify when your content goes live, and your main point of contact.</p>
+      </div>
+      <div class="field">
+        <label>Distribution contacts</label>
+        <div class="hint" style="margin-top:0;margin-bottom:10px;">Team members, advocates, or partners who will help amplify your content when it publishes. 3&ndash;10 is ideal.</div>
+        <div id="sgDistContainer"></div>
+        <button type="button" id="sgAddDistBtn" class="add-btn">+ Add another contact</button>
+      </div>
+      <div class="step-head" style="margin-top:32px;margin-bottom:16px;">
+        <h2 style="font-size:16px;">Primary onboarding contact</h2>
+        <p>Your EA, chief of staff, or whoever we should loop in on details.</p>
+      </div>
+      <div class="drow">
+        <div class="field">
+          <label>Contact name</label>
+          <input type="text" id="sgOnbName" placeholder="Sarah Johnson">
+        </div>
+        <div class="field">
+          <label>Contact email</label>
+          <input type="email" id="sgOnbEmail" placeholder="sarah@company.com">
+        </div>
+      </div>
+      <div class="drow">
+        <div class="field">
+          <label>Contact phone</label>
+          <input type="tel" id="sgOnbPhone" placeholder="(555) 123-4567">
+        </div>
+        <div class="field">
+          <label>Contact position</label>
+          <input type="text" id="sgOnbPos" placeholder="Executive Assistant">
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 8: Headshot + review -->
+    <div class="step" data-step="8">
+      <div class="step-head">
+        <h2>Headshot &amp; review</h2>
+        <p>Upload a professional headshot and we'll take it from here.</p>
+      </div>
+      <div class="field">
+        <label>Professional headshot</label>
+        <div class="headshot-drop" id="sgHeadshotDrop">
+          <div class="icon">+</div>
+          <div class="title">Click or drop a photo</div>
+          <div class="sub">PNG, JPG, or WEBP &mdash; up to 8&nbsp;MB</div>
+        </div>
+        <div id="sgHeadshotFileContainer"></div>
+        <div class="headshot-preview" id="sgHeadshotPreview">
+          <img id="sgHeadshotImg" src="" alt="Preview">
+          <div class="fname" id="sgHeadshotFilename"></div>
+          <button type="button" class="replace" id="sgHeadshotReplace">Replace image</button>
+        </div>
+        <div class="upload-status" id="sgHeadshotStatus"></div>
+      </div>
+      <div class="drow">
+        <div class="field">
+          <label>LinkedIn URL</label>
+          <input type="url" id="sgLinkedIn" placeholder="https://linkedin.com/in/...">
+        </div>
+        <div class="field">
+          <label>Company website</label>
+          <input type="url" id="sgWebsite" placeholder="https://...">
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-row" id="sgNavRow">
+      <button type="button" class="btn btn-secondary" id="sgBackBtn" style="display:none;">Back</button>
+      <button type="button" class="btn btn-primary" id="sgNextBtn">Continue</button>
+    </div>
+
+  </div>
+
+  <div id="sgSuccess" class="success-state" style="display:none;">
+    <div class="checkmark">&check;</div>
+    <h2 id="sgSuccessTitle">Thanks &mdash; you're in!</h2>
+    <p id="sgSuccessMsg">Your profile is submitted. Our team will be in touch to schedule the interview and to review your Inner Circle contributor page before it goes live.</p>
+  </div>
+
+</div></div>`;
+
 (function() {
   var params = new URLSearchParams(window.location.search);
   var delegationToken = params.get('delegation_token') || params.get('token');
+  var _sgRoot = document.getElementById("p100-sg-root"); if (_sgRoot) { _sgRoot.innerHTML = SG_FORM_HTML; }
   var API = 'https://tpx.power100.io/api/show-guests';
   var contributorData = null;
   var mode = 'self';
