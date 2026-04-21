@@ -315,24 +315,49 @@ var SG_FORM_HTML = `<div style="min-height:100vh;background:#0c0c0c;color:#d4d4d
   var currentStep = 1;
   var SELF_STEPS = 8;
   var DELEGATE_STEPS = 2;
-  var totalSteps = SELF_STEPS;
+  var TOKEN_STEPS = 7; // token-mode delegate skips step 2 (Who's filling this out)
+  var isTokenMode = !!delegationToken;
+  var totalSteps = isTokenMode ? TOKEN_STEPS : SELF_STEPS;
   var SELF_TITLES = [
     'Your basics', "Who's filling this out", 'Your company & role',
     'Leadership narrative', 'Media & social proof', 'AI search phrases',
     'Distribution & contact', 'Headshot & review'
   ];
   var DELEGATE_TITLES = ['Your basics', 'Delegate to someone'];
-  var stepTitles = SELF_TITLES;
+  var TOKEN_TITLES = [
+    'Your basics', 'Your company & role',
+    'Leadership narrative', 'Media & social proof', 'AI search phrases',
+    'Distribution & contact', 'Headshot & review'
+  ];
+  var stepTitles = isTokenMode ? TOKEN_TITLES : SELF_TITLES;
   var uploadedHeadshotUrl = '';
 
   function $(id) { return document.getElementById(id); }
+  // In token mode, step 2 ("Who's filling this out") is skipped — the
+  // delegate IS the person filling it out. Translate the raw data-step
+  // value into its visible position so progress/label match reality.
+  function visiblePos(n) {
+    if (isTokenMode && n >= 3) { return n - 1; }
+    return n;
+  }
+  function nextStepNum(n) {
+    var next = n + 1;
+    if (isTokenMode && next === 2) { next = 3; }
+    return next;
+  }
+  function prevStepNum(n) {
+    var prev = n - 1;
+    if (isTokenMode && prev === 2) { prev = 1; }
+    return prev;
+  }
   function setProgress() {
-    var pct = (currentStep / totalSteps) * 100;
+    var pos = visiblePos(currentStep);
+    var pct = (pos / totalSteps) * 100;
     $('sgProgressFill').style.width = pct + '%';
-    $('sgStepLabel').textContent = 'Step ' + currentStep + ' of ' + totalSteps;
-    $('sgStepTitle').textContent = stepTitles[currentStep - 1] || '';
-    $('sgBackBtn').style.display = currentStep > 1 ? 'inline-block' : 'none';
-    $('sgNextBtn').textContent = currentStep === totalSteps ? 'Submit' : 'Continue';
+    $('sgStepLabel').textContent = 'Step ' + pos + ' of ' + totalSteps;
+    $('sgStepTitle').textContent = stepTitles[pos - 1] || '';
+    $('sgBackBtn').style.display = pos > 1 ? 'inline-block' : 'none';
+    $('sgNextBtn').textContent = pos === totalSteps ? 'Submit' : 'Continue';
   }
   function showStep(n) {
     var steps = document.querySelectorAll('.p100-sg .step');
@@ -661,19 +686,14 @@ var SG_FORM_HTML = `<div style="min-height:100vh;background:#0c0c0c;color:#d4d4d
   /* === NAV === */
   $('sgNextBtn').addEventListener('click', function() {
     if (!validateStep(currentStep)) { return; }
-    if (currentStep === totalSteps) {
+    if (visiblePos(currentStep) === totalSteps) {
       submitAll();
       return;
     }
-    // If user chose delegate mode on step 2, handle the delegate branch:
-    //   Option A: just collect name/email and submit whole form at end; backend
-    //   creates the pending row + emails the delegate. But simpler UX: if they
-    //   pick delegate, we ALSO let them keep filling in what they know, and on
-    //   final submit we route to /delegate/create with a prefill payload.
-    showStep(currentStep + 1);
+    showStep(nextStepNum(currentStep));
   });
   $('sgBackBtn').addEventListener('click', function() {
-    if (currentStep > 1) { showStep(currentStep - 1); }
+    if (visiblePos(currentStep) > 1) { showStep(prevStepNum(currentStep)); }
   });
 
   /* === SUBMIT === */
