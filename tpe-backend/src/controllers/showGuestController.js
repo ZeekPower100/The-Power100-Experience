@@ -26,7 +26,22 @@ function publicBaseUrl() {
 
 // Internal staff alerts — email/SMS fanout when a new guest onboards
 const STAFF_EMAILS = ['zeek@power100.io', 'greg@power100.io'];
-const STAFF_SMS_PHONES = ['+17274304341']; // Greg. Zeek can be added once his phone is confirmed.
+const STAFF_SMS_PHONES = [
+  '+17274304341', // Greg
+  '+18108934075', // Zeek
+];
+
+// Normalize a user-entered phone to E.164 for GHL SMS (accepts '8108934075',
+// '(810) 893-4075', '+18108934075', '1-810-893-4075', etc.). Returns null if
+// we can't confidently produce a US E.164 number — caller should skip SMS.
+function normalizePhoneE164(phone) {
+  if (!phone || typeof phone !== 'string') return null;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith('1')) return '+' + digits;
+  if (digits.length === 10) return '+1' + digits;
+  if (phone.trim().startsWith('+') && digits.length >= 10) return '+' + digits;
+  return null;
+}
 
 /* ============================================================
    NOTIFICATIONS (all non-blocking — failures logged, not thrown)
@@ -119,6 +134,117 @@ async function notifyStaffOfNewGuest(contributor, isDelegateSubmission) {
     } catch (err) {
       console.error('[showGuest] Staff SMS to ' + phone + ' failed:', err.message);
     }
+  }
+}
+
+// Shared branded email shell for the guest/delegate-facing notifications.
+function brandedEmail(title, bodyInner) {
+  const header = `<div style="background:#000;padding:24px;text-align:center;border-radius:12px 12px 0 0;"><img src="https://power100.io/wp-content/uploads/2026/01/Power100-Icon-Hi-Res-and-Large-1.png" alt="Power100" style="width:48px;margin-bottom:8px;"><h1 style="color:#FB0401;margin:0;font-size:24px;">POWER100</h1><p style="color:#fff;margin:6px 0 0;font-size:13px;">${title}</p></div>`;
+  const footer = '<div style="background:#f8f9fa;padding:12px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #eee;border-top:none;"><p style="margin:0;font-size:11px;color:#999;">Power100 Show Guest Program | power100.io</p></div>';
+  return `<div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333;">${header}<div style="padding:28px;background:#fff;border:1px solid #eee;">${bodyInner}</div>${footer}</div>`;
+}
+
+// Self-fill completion: confirmation email to the guest themselves.
+async function sendGuestSelfCompletionEmail(contributor) {
+  const firstName = (contributor.first_name || '').split(' ')[0] || 'there';
+  const body = `<p style="font-size:16px;margin-bottom:16px;">Hi ${firstName},</p>
+    <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">Thanks for completing your Power100 <strong>Outside The Lines</strong> show guest onboarding profile — it's in.</p>
+    <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">Our team is starting work on your Inner Circle contributor page and will prep everything for your interview. You'll get a review link before anything goes live on power100.io.</p>
+    <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">If anything needs updating, just reply to this email.</p>
+    <p style="font-size:13px;color:#888;line-height:1.6;margin-top:24px;">— The Power100 Team</p>`;
+  try {
+    await axios.post(N8N_EMAIL_WEBHOOK, {
+      message_id: 'sg-guest-self-complete-' + contributor.id,
+      to_email: contributor.email,
+      to_name: ((contributor.first_name || '') + ' ' + (contributor.last_name || '')).trim() || contributor.email,
+      subject: 'Your Power100 show guest profile is submitted',
+      body: brandedEmail('Show Guest Onboarding', body),
+      template: 'sg_guest_self_completion',
+      from_name: 'Power100',
+      from_email: 'info@power100.io'
+    }, { timeout: 10000 });
+    console.log('[showGuest] Guest self-completion email sent to ' + contributor.email);
+  } catch (err) {
+    console.error('[showGuest] Guest self-completion email failed:', err.message);
+  }
+}
+
+// Delegate-flow completion: three messages.
+//   1. Email to delegate — "thanks, you completed X's profile"
+//   2. Email to guest — "your delegate completed your profile"
+//   3. SMS to guest — "your delegate completed your profile"
+async function sendDelegateCompletionNotifications(contributor) {
+  const guestFullName = ((contributor.first_name || '') + ' ' + (contributor.last_name || '')).trim() || 'the guest';
+  const guestFirstName = (contributor.first_name || '').split(' ')[0] || 'there';
+  const delegateFullName = contributor.delegated_to_name || 'Team Member';
+  const delegateFirstName = delegateFullName.split(' ')[0] || 'there';
+
+  // 1. Delegate confirmation email
+  if (contributor.delegated_to_email) {
+    const body = `<p style="font-size:16px;margin-bottom:16px;">Hi ${delegateFirstName},</p>
+      <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">Thanks for completing the Power100 show guest onboarding profile on behalf of <strong>${guestFullName}</strong>. It's in.</p>
+      <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">Our team is starting work on their Inner Circle contributor page and will prep everything for the interview. ${guestFirstName} will get a review link before anything goes live on power100.io.</p>
+      <p style="font-size:13px;color:#888;line-height:1.6;margin-top:24px;">— The Power100 Team</p>`;
+    try {
+      await axios.post(N8N_EMAIL_WEBHOOK, {
+        message_id: 'sg-delegate-complete-' + contributor.id,
+        to_email: contributor.delegated_to_email,
+        to_name: delegateFullName,
+        subject: `${guestFullName}'s Power100 show guest profile is submitted`,
+        body: brandedEmail('Show Guest Onboarding', body),
+        template: 'sg_delegate_completion',
+        from_name: 'Power100',
+        from_email: 'info@power100.io'
+      }, { timeout: 10000 });
+      console.log('[showGuest] Delegate completion email sent to ' + contributor.delegated_to_email);
+    } catch (err) {
+      console.error('[showGuest] Delegate completion email failed:', err.message);
+    }
+  }
+
+  // 2. Guest "your delegate completed it" email
+  if (contributor.email) {
+    const body = `<p style="font-size:16px;margin-bottom:16px;">Hi ${guestFirstName},</p>
+      <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;"><strong>${delegateFullName}</strong> has completed your Power100 <strong>Outside The Lines</strong> show guest onboarding profile on your behalf.</p>
+      <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">Our team is starting work on your Inner Circle contributor page and will prep everything for your interview. You'll get a review link before anything goes live on power100.io.</p>
+      <p style="font-size:14px;color:#555;line-height:1.7;margin-bottom:16px;">If anything needs updating, just reply to this email.</p>
+      <p style="font-size:13px;color:#888;line-height:1.6;margin-top:24px;">— The Power100 Team</p>`;
+    try {
+      await axios.post(N8N_EMAIL_WEBHOOK, {
+        message_id: 'sg-guest-delegate-complete-' + contributor.id,
+        to_email: contributor.email,
+        to_name: guestFullName,
+        subject: 'Your Power100 show guest profile was submitted by your delegate',
+        body: brandedEmail('Show Guest Onboarding', body),
+        template: 'sg_guest_delegate_completion',
+        from_name: 'Power100',
+        from_email: 'info@power100.io'
+      }, { timeout: 10000 });
+      console.log('[showGuest] Guest-side delegate-completion email sent to ' + contributor.email);
+    } catch (err) {
+      console.error('[showGuest] Guest-side delegate-completion email failed:', err.message);
+    }
+  }
+
+  // 3. Guest "your delegate completed it" SMS
+  const guestPhone = normalizePhoneE164(contributor.phone);
+  if (guestPhone) {
+    const smsMsg = `Power100: ${delegateFullName} just completed your Outside The Lines show guest onboarding profile on your behalf. We'll send a review link before anything goes live. — Power100`;
+    try {
+      await axios.post(N8N_SMS_WEBHOOK, {
+        send_via_ghl: {
+          phone: guestPhone,
+          message: smsMsg,
+          message_type: 'sg_guest_delegate_complete',
+          contractor_id: contributor.id
+        }
+      }, { timeout: 10000 });
+      console.log('[showGuest] Guest-side delegate-completion SMS sent to ' + guestPhone);
+    } catch (err) {
+      console.error('[showGuest] Guest-side delegate-completion SMS failed:', err.message);
+    }
+  } else {
+    console.log('[showGuest] Skipping guest SMS — no normalizable phone for contributor ' + contributor.id);
   }
 }
 
@@ -358,7 +484,7 @@ const submitShowGuestForm = async (req, res) => {
          status = 'profile_complete',
          updated_at = CURRENT_TIMESTAMP
        WHERE delegation_token = $27 AND contributor_class = 'contributor'
-       RETURNING id, first_name, last_name, email, phone, company, title_position`,
+       RETURNING id, first_name, last_name, email, phone, company, title_position, delegated_to_name, delegated_to_email`,
       [...u.values, token]
     );
     if (result.rowCount === 0) {
@@ -368,6 +494,9 @@ const submitShowGuestForm = async (req, res) => {
     // Fire notifications (non-blocking).
     const row = result.rows[0];
     setImmediate(() => { notifyStaffOfNewGuest(row, true).catch(() => {}); });
+    // Token submit = delegate completed on guest's behalf. Three messages:
+    // delegate confirmation, guest email, guest SMS.
+    setImmediate(() => { sendDelegateCompletionNotifications(row).catch(() => {}); });
 
     return res.json({
       success: true,
@@ -476,6 +605,9 @@ const submitShowGuestFormPublic = async (req, res) => {
 
     // Fire notifications (non-blocking).
     setImmediate(() => { notifyStaffOfNewGuest(row, false).catch(() => {}); });
+    // Public /submit = guest self-fill (delegation uses /delegate/create, not
+    // this endpoint). Send the guest their completion confirmation email.
+    setImmediate(() => { sendGuestSelfCompletionEmail(row).catch(() => {}); });
 
     return res.json({
       success: true,
