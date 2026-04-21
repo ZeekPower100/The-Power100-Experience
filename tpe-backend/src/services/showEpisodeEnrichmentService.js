@@ -23,8 +23,12 @@ const VideoAnalysisService = require('./videoAnalysisService');
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const videoService = new VideoAnalysisService();
 
-// Power100 content pillars
+// Power100 content pillars (strategic lens — picks ONE of four)
 const PILLARS = ['Growth', 'Culture', 'Community', 'Innovation'];
+
+// Power100 functional areas (which business function — orthogonal to pillar)
+// Picks ONE of four. A video can be "Growth + Sales" or "Culture + Operations".
+const FUNCTIONS = ['Sales', 'Marketing', 'Operations', 'Customer Experience'];
 
 /**
  * Enrich a show episode with AI-generated metadata
@@ -161,9 +165,13 @@ Generate a JSON response with these EXACT fields:
 
   "excerpt": "A 1-sentence teaser/hook for display on the portal card (max 150 chars)",
 
-  "pillar": "One of: Growth, Culture, Community, Innovation — the PRIMARY Power100 pillar this episode aligns with",
+  "pillar": "One of: Growth, Culture, Community, Innovation — the PRIMARY strategic pillar this episode aligns with (the LENS/PERSPECTIVE the content takes)",
 
   "pillar_reasoning": "Brief explanation of why this pillar was chosen",
+
+  "function": "One of: Sales, Marketing, Operations, Customer Experience — the PRIMARY business function this episode addresses (which DEPARTMENT of a contractor business would most benefit). This is orthogonal to pillar — a Growth-pillar episode can be Sales-function OR Marketing-function OR Operations-function OR Customer Experience-function.",
+
+  "function_reasoning": "Brief explanation of why this function was chosen",
 
   "key_takeaways": [
     "Actionable takeaway 1 (specific enough to implement)",
@@ -203,7 +211,8 @@ Generate a JSON response with these EXACT fields:
 
 RULES:
 - chapters: Derive from transcript segment timestamps if available. Create 4-8 logical chapters. If no transcript, create 2-3 estimated chapters from the title/description.
-- pillar: Must be exactly one of: Growth, Culture, Community, Innovation
+- pillar: Must be exactly one of: Growth, Culture, Community, Innovation (strategic lens)
+- function: Must be exactly one of: Sales, Marketing, Operations, Customer Experience (business function). Orthogonal to pillar.
 - tags: 5-8 lowercase tags relevant to contractor business topics
 - key_takeaways: 3-5 specific, actionable items a contractor could implement
 - speakers: Extract from transcript patterns or metadata. Include hosts.
@@ -225,6 +234,10 @@ Return ONLY the JSON object, no markdown formatting.`;
   if (!PILLARS.includes(result.pillar)) {
     result.pillar = 'Growth'; // Default fallback
   }
+  // Validate function
+  if (!FUNCTIONS.includes(result.function)) {
+    result.function = 'Operations'; // Default fallback — most broadly applicable
+  }
 
   // Structure into our DB fields
   return {
@@ -233,6 +246,8 @@ Return ONLY the JSON object, no markdown formatting.`;
     insights: {
       pillar: result.pillar,
       pillar_reasoning: result.pillar_reasoning || '',
+      function: result.function,
+      function_reasoning: result.function_reasoning || '',
       key_takeaways: result.key_takeaways || [],
       chapters: result.chapters || [],
       speakers: result.speakers || [],

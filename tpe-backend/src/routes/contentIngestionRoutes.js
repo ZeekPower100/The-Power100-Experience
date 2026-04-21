@@ -363,7 +363,7 @@ router.get('/pipeline-status', apiKeyOnly, async (req, res) => {
  * Payload field names aligned with WordPress IC REST API (/wp-json/ic/v1/content)
  * so n8n can passthrough with minimal transformation.
  *
- * WordPress expects: title, video_url, youtube_id, show_slug, pillar_slug,
+ * WordPress expects: title, video_url, youtube_id, show_slug, pillar_slug, function_slug,
  *   duration, recording_date, speakers[], timestamps[], takeaways[],
  *   tags[], thumbnail_url, tpx_video_id
  */
@@ -372,6 +372,8 @@ async function fireCompletionWebhook({ videoContentId, videoId, show, episodeNum
 
   // Convert pillar name to slug (WordPress taxonomy expects lowercase slug)
   const pillarSlug = (enrichment.insights?.pillar || 'growth').toLowerCase().replace(/\s+/g, '-');
+  // Function is orthogonal to pillar — a video can be "Growth + Sales" or "Culture + Operations"
+  const functionSlug = (enrichment.insights?.function || 'operations').toLowerCase().replace(/\s+/g, '-');
 
   const payload = {
     // WordPress ic_content fields (aligned with WP REST API field names)
@@ -380,6 +382,7 @@ async function fireCompletionWebhook({ videoContentId, videoId, show, episodeNum
     youtube_id: videoId,
     show_slug: show.wp_term_slug || show.slug,
     pillar_slug: pillarSlug,
+    function_slug: functionSlug,
     episode_number: episodeNumber,
     duration: metadata.durationFormatted,
     duration_seconds: metadata.durationSeconds,
