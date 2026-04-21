@@ -370,10 +370,12 @@ router.get('/pipeline-status', apiKeyOnly, async (req, res) => {
 async function fireCompletionWebhook({ videoContentId, videoId, show, episodeNumber, metadata, enrichment, skipHero = false }) {
   const webhookUrl = `${N8N_WEBHOOK_BASE}/webhook/video-analysis-complete${N8N_ENV}`;
 
-  // Convert pillar name to slug (WordPress taxonomy expects lowercase slug)
-  const pillarSlug = (enrichment.insights?.pillar || 'growth').toLowerCase().replace(/\s+/g, '-');
-  // Function is orthogonal to pillar — a video can be "Growth + Sales" or "Culture + Operations"
-  const functionSlug = (enrichment.insights?.function || 'operations').toLowerCase().replace(/\s+/g, '-');
+  // Taxonomy terms — 1 or 2 per taxonomy, primary first.
+  // A video can be "Growth + Innovation" (both pillars) or "Sales + Operations" (both functions)
+  // when the content has strong signal for multiple buckets. Default = 1 term.
+  const toSlug = (s) => String(s).toLowerCase().replace(/\s+/g, '-');
+  const pillarSlugs = (enrichment.insights?.pillars || [enrichment.insights?.pillar || 'Growth']).map(toSlug);
+  const functionSlugs = (enrichment.insights?.functions || [enrichment.insights?.function || 'Operations']).map(toSlug);
 
   const payload = {
     // WordPress ic_content fields (aligned with WP REST API field names)
@@ -381,8 +383,10 @@ async function fireCompletionWebhook({ videoContentId, videoId, show, episodeNum
     video_url: `https://www.youtube.com/watch?v=${videoId}`,
     youtube_id: videoId,
     show_slug: show.wp_term_slug || show.slug,
-    pillar_slug: pillarSlug,
-    function_slug: functionSlug,
+    pillar_slug: pillarSlugs[0],           // primary (legacy single-slug field)
+    pillar_slugs: pillarSlugs,              // full array, primary first
+    function_slug: functionSlugs[0],        // primary (legacy single-slug field)
+    function_slugs: functionSlugs,          // full array, primary first
     episode_number: episodeNumber,
     duration: metadata.durationFormatted,
     duration_seconds: metadata.durationSeconds,

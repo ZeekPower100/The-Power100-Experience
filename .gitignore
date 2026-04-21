@@ -232,3 +232,8 @@ create-test-*.js
 tpe-backend/test-*.js
 tpe-backend/create-test-*.js
 production-migration-*.sql
+
+# IC taxonomy backfill one-shot artifacts (regenerate via ic-post-dump.php + backfill-ic-function-taxonomy.js --plan)
+scripts/ic-posts-dump.jsonl
+scripts/ic-function-backfill-plan.jsonl
+scripts/ic-function-backfill-apply.sh

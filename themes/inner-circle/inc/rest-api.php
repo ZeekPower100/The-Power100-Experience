@@ -546,20 +546,41 @@ function ic_rest_set_taxonomies($post_id, $data) {
         }
     }
 
-    // Pillar (ic_pillar) — by slug — strategic lens (Growth/Culture/Community/Innovation)
-    if (!empty($data['pillar_slug'])) {
-        $pillar_term = get_term_by('slug', sanitize_title($data['pillar_slug']), 'ic_pillar');
-        if ($pillar_term) {
-            wp_set_object_terms($post_id, array($pillar_term->term_id), 'ic_pillar', false);
+    // Pillar (ic_pillar) — 1 or 2 slugs (primary first). Strategic lens.
+    // Accepts array `pillar_slugs` (preferred) OR legacy scalar `pillar_slug`.
+    $pillar_slugs_input = array();
+    if (!empty($data['pillar_slugs']) && is_array($data['pillar_slugs'])) {
+        $pillar_slugs_input = $data['pillar_slugs'];
+    } elseif (!empty($data['pillar_slug'])) {
+        $pillar_slugs_input = array($data['pillar_slug']);
+    }
+    if (!empty($pillar_slugs_input)) {
+        $pillar_term_ids = array();
+        foreach (array_slice($pillar_slugs_input, 0, 2) as $slug) {
+            $term = get_term_by('slug', sanitize_title($slug), 'ic_pillar');
+            if ($term) $pillar_term_ids[] = $term->term_id;
+        }
+        if (!empty($pillar_term_ids)) {
+            wp_set_object_terms($post_id, $pillar_term_ids, 'ic_pillar', false);
         }
     }
 
-    // Function (ic_function) — by slug — functional area (Sales/Marketing/Operations/Customer Experience)
-    // Orthogonal to pillar — a post can be "Growth + Sales" or "Culture + Operations".
-    if (!empty($data['function_slug'])) {
-        $function_term = get_term_by('slug', sanitize_title($data['function_slug']), 'ic_function');
-        if ($function_term) {
-            wp_set_object_terms($post_id, array($function_term->term_id), 'ic_function', false);
+    // Function (ic_function) — 1 or 2 slugs (primary first). Functional area.
+    // Orthogonal to pillar. Accepts `function_slugs` (preferred) OR `function_slug`.
+    $function_slugs_input = array();
+    if (!empty($data['function_slugs']) && is_array($data['function_slugs'])) {
+        $function_slugs_input = $data['function_slugs'];
+    } elseif (!empty($data['function_slug'])) {
+        $function_slugs_input = array($data['function_slug']);
+    }
+    if (!empty($function_slugs_input)) {
+        $function_term_ids = array();
+        foreach (array_slice($function_slugs_input, 0, 2) as $slug) {
+            $term = get_term_by('slug', sanitize_title($slug), 'ic_function');
+            if ($term) $function_term_ids[] = $term->term_id;
+        }
+        if (!empty($function_term_ids)) {
+            wp_set_object_terms($post_id, $function_term_ids, 'ic_function', false);
         }
     }
 

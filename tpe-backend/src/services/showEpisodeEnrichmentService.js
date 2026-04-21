@@ -165,13 +165,13 @@ Generate a JSON response with these EXACT fields:
 
   "excerpt": "A 1-sentence teaser/hook for display on the portal card (max 150 chars)",
 
-  "pillar": "One of: Growth, Culture, Community, Innovation — the PRIMARY strategic pillar this episode aligns with (the LENS/PERSPECTIVE the content takes)",
+  "pillars": "ARRAY of 1-2 strategic pillars from [Growth, Culture, Community, Innovation], ordered primary first. Include a SECONDARY pillar ONLY if 2+ takeaways/timestamps explicitly address that different pillar — when in doubt, return just one.",
 
-  "pillar_reasoning": "Brief explanation of why this pillar was chosen",
+  "pillar_reasoning": "Brief explanation of why those pillar(s) were chosen",
 
-  "function": "One of: Sales, Marketing, Operations, Customer Experience — the PRIMARY business function this episode addresses (which DEPARTMENT of a contractor business would most benefit). This is orthogonal to pillar — a Growth-pillar episode can be Sales-function OR Marketing-function OR Operations-function OR Customer Experience-function.",
+  "functions": "ARRAY of 1-2 business functions from [Sales, Marketing, Operations, Customer Experience], ordered primary first. Include a SECONDARY function ONLY if 2+ takeaways/timestamps explicitly address that different function — when in doubt, return just one. This is orthogonal to pillars.",
 
-  "function_reasoning": "Brief explanation of why this function was chosen",
+  "function_reasoning": "Brief explanation of why those function(s) were chosen",
 
   "key_takeaways": [
     "Actionable takeaway 1 (specific enough to implement)",
@@ -211,8 +211,8 @@ Generate a JSON response with these EXACT fields:
 
 RULES:
 - chapters: Derive from transcript segment timestamps if available. Create 4-8 logical chapters. If no transcript, create 2-3 estimated chapters from the title/description.
-- pillar: Must be exactly one of: Growth, Culture, Community, Innovation (strategic lens)
-- function: Must be exactly one of: Sales, Marketing, Operations, Customer Experience (business function). Orthogonal to pillar.
+- pillars: Array of 1-2 values from [Growth, Culture, Community, Innovation]. Default to 1 value. Only add a 2nd if the content has 2+ strong takeaways genuinely pointing to a different pillar.
+- functions: Array of 1-2 values from [Sales, Marketing, Operations, Customer Experience]. Default to 1 value. Only add a 2nd if the content has 2+ strong takeaways genuinely pointing to a different function. Orthogonal to pillars.
 - tags: 5-8 lowercase tags relevant to contractor business topics
 - key_takeaways: 3-5 specific, actionable items a contractor could implement
 - speakers: Extract from transcript patterns or metadata. Include hosts.
@@ -230,23 +230,26 @@ Return ONLY the JSON object, no markdown formatting.`;
 
   const result = safeJsonParse(completion.choices[0].message.content, {});
 
-  // Validate pillar
-  if (!PILLARS.includes(result.pillar)) {
-    result.pillar = 'Growth'; // Default fallback
-  }
-  // Validate function
-  if (!FUNCTIONS.includes(result.function)) {
-    result.function = 'Operations'; // Default fallback — most broadly applicable
-  }
+  // Validate pillars — array of 1-2 from PILLARS. Accept either "pillars" array
+  // or legacy "pillar" scalar from older prompt responses.
+  let pillars = Array.isArray(result.pillars) ? result.pillars : (result.pillar ? [result.pillar] : []);
+  pillars = pillars.filter((p) => PILLARS.includes(p)).slice(0, 2);
+  if (pillars.length === 0) pillars = ['Growth']; // default fallback
+  // Validate functions — same pattern
+  let functions = Array.isArray(result.functions) ? result.functions : (result.function ? [result.function] : []);
+  functions = functions.filter((f) => FUNCTIONS.includes(f)).slice(0, 2);
+  if (functions.length === 0) functions = ['Operations'];
 
   // Structure into our DB fields
   return {
     summary: result.summary || 'Episode summary pending.',
     excerpt: result.excerpt || '',
     insights: {
-      pillar: result.pillar,
+      pillar: pillars[0],                    // primary (back-compat)
+      pillars,                                // full array, primary first
       pillar_reasoning: result.pillar_reasoning || '',
-      function: result.function,
+      function: functions[0],                 // primary (back-compat)
+      functions,                              // full array, primary first
       function_reasoning: result.function_reasoning || '',
       key_takeaways: result.key_takeaways || [],
       chapters: result.chapters || [],
