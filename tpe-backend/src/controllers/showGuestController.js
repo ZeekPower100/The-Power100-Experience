@@ -16,6 +16,14 @@ const N8N_SMS_WEBHOOK = process.env.NODE_ENV === 'production'
   ? 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl'
   : 'https://n8n.srv918843.hstgr.cloud/webhook/backend-to-ghl-dev';
 
+// Public base URL for upload responses. Can't use req.protocol/host because
+// nginx proxies to http://localhost:5000 internally, so those headers point
+// at localhost in prod. Honor PUBLIC_BASE_URL env override when set.
+function publicBaseUrl() {
+  return process.env.PUBLIC_BASE_URL
+    || (process.env.NODE_ENV === 'production' ? 'https://tpx.power100.io' : `http://localhost:${process.env.PORT || 5000}`);
+}
+
 // Internal staff alerts — email/SMS fanout when a new guest onboards
 const STAFF_EMAILS = ['zeek@power100.io', 'greg@power100.io'];
 const STAFF_SMS_PHONES = ['+17274304341']; // Greg. Zeek can be added once his phone is confirmed.
@@ -498,9 +506,7 @@ const uploadShowGuestHeadshot = async (req, res) => {
       return res.status(404).json({ success: false, error: 'Invalid or expired token' });
     }
 
-    const proto = req.protocol;
-    const host = req.get('host');
-    const publicUrl = `${proto}://${host}/uploads/show-guest-headshots/${req.file.filename}`;
+    const publicUrl = `${publicBaseUrl()}/api/uploads/show-guest-headshots/${req.file.filename}`;
 
     return res.json({
       success: true,
@@ -524,9 +530,7 @@ const uploadShowGuestPublicHeadshot = async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'No file uploaded (expected field name "headshot")' });
     }
-    const proto = req.protocol;
-    const host = req.get('host');
-    const publicUrl = `${proto}://${host}/uploads/show-guest-headshots/${req.file.filename}`;
+    const publicUrl = `${publicBaseUrl()}/api/uploads/show-guest-headshots/${req.file.filename}`;
     return res.json({
       success: true,
       url: publicUrl,

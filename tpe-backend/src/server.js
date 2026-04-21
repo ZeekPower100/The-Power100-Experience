@@ -124,6 +124,18 @@ if (!isAWSConfigured) {
   app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 }
 
+// Prod-accessible uploads under /api/ (nginx routes /api/* → backend on :5000).
+// Public-facing form uploads (show-guest headshots, etc.) must reference
+// these URLs since /uploads is dev-only and blocked at nginx in prod.
+app.use('/api/uploads', express.static(path.join(__dirname, '..', 'uploads'), {
+  etag: true,
+  lastModified: true,
+  setHeaders: (res) => {
+    res.setHeader('Cache-Control', 'private, max-age=86400');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+}));
+
 // Public static assets (JS/CSS for WP-hosted forms that can't host inline scripts)
 // Under /api/ because nginx routes /api/* to backend; /assets/* is captured by frontend.
 app.use('/api/assets', express.static(path.join(__dirname, '..', 'public'), {
