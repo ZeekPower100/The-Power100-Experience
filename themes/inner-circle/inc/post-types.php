@@ -24,6 +24,25 @@ function ic_register_post_types() {
         'taxonomies' => array('post_tag'),
     ));
 
+    // CPT: Article — imported from staging.power100.io (2026-04-21)
+    // Shares ic_pillar + ic_function taxonomies with ic_content so the same
+    // 4 pillars / 4 functions classify both videos and articles uniformly.
+    register_post_type('ic_article', array(
+        'labels' => array(
+            'name' => 'Articles', 'singular_name' => 'Article',
+            'add_new' => 'Add New', 'add_new_item' => 'Add New Article',
+            'edit_item' => 'Edit Article', 'view_item' => 'View Article',
+            'search_items' => 'Search Articles', 'not_found' => 'No articles found',
+            'all_items' => 'All Articles', 'menu_name' => 'Articles',
+        ),
+        'public' => true, 'has_archive' => 'articles',
+        'rewrite' => array('slug' => 'articles', 'with_front' => false),
+        'menu_icon' => 'dashicons-media-document',
+        'supports' => array('title', 'editor', 'thumbnail', 'excerpt', 'author', 'custom-fields'),
+        'show_in_rest' => true, 'menu_position' => 6,
+        'taxonomies' => array('post_tag'),
+    ));
+
     // Show — PRIMARY filter (all peer-level, no nesting)
     register_taxonomy('ic_show', 'ic_content', array(
         'labels' => array(
@@ -49,7 +68,7 @@ function ic_register_post_types() {
     ));
 
     // Pillar — Growth, Culture, Community, Innovation (strategic lens)
-    register_taxonomy('ic_pillar', array('ic_content', 'ic_resource'), array(
+    register_taxonomy('ic_pillar', array('ic_content', 'ic_resource', 'ic_article'), array(
         'labels' => array(
             'name' => 'Pillars', 'singular_name' => 'Pillar',
             'all_items' => 'All Pillars', 'edit_item' => 'Edit Pillar',
@@ -62,7 +81,7 @@ function ic_register_post_types() {
 
     // Function — Sales, Marketing, Operations, Customer Experience (functional area)
     // Orthogonal to pillar: a post can be "Growth + Sales" or "Culture + Operations".
-    register_taxonomy('ic_function', array('ic_content', 'ic_resource'), array(
+    register_taxonomy('ic_function', array('ic_content', 'ic_resource', 'ic_article'), array(
         'labels' => array(
             'name' => 'Functions', 'singular_name' => 'Function',
             'all_items' => 'All Functions', 'edit_item' => 'Edit Function',
