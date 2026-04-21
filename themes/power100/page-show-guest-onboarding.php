@@ -165,7 +165,7 @@ article, .hentry, .type-page,
 (function() {
   var s = document.createElement("script");
   // ?v= cache-buster — bump on each deploy so browsers fetch fresh.
-  s.src = "https://tpx.power100.io/api/assets/show-guest-form.js?v=20260421-02";
+  s.src = "https://tpx.power100.io/api/assets/show-guest-form.js?v=20260421-03";
   s.async = false;
   document.head.appendChild(s);
 })();

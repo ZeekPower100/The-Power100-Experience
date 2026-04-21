@@ -38,14 +38,19 @@ function extractContent(php) {
   // Extract style block
   const styleMatch = php.match(/<style>([\s\S]*?)<\/style>/);
   if (!styleMatch) throw new Error('no <style> block found');
-  const style = styleMatch[1];
+  // Strip ALL line breaks from CSS — wpautop converts blank lines into <p>
+  // tags inside the <style> element, which terminates CSS parsing and
+  // breaks rules like `.p100-sg .step { display: none; }`. Single-line
+  // CSS with rules separated by `}` only is wpautop-safe.
+  const style = styleMatch[1].replace(/\s*\n\s*/g, ' ').trim();
 
   // Extract body content — from after <body ...> to before <?php wp_footer();
   const bodyStart = php.indexOf('<body ');
   const bodyContentStart = php.indexOf('>', bodyStart) + 1;
   const wpFooterIdx = php.indexOf('<?php wp_footer');
   if (bodyStart === -1 || wpFooterIdx === -1) throw new Error('could not bound body');
-  const bodyHtml = php.slice(bodyContentStart, wpFooterIdx).trim();
+  // Strip blank lines from body too — same wpautop reason.
+  const bodyHtml = php.slice(bodyContentStart, wpFooterIdx).trim().replace(/\n\s*\n/g, '\n');
 
   // Wrap with background + style scoped to our form
   return `<style>${style}</style>\n<div class="p100-sg-wrapper" style="background:#0c0c0c;min-height:100vh;margin:-20px -20px 0;padding:0;">\n${bodyHtml}\n</div>`;
