@@ -234,7 +234,15 @@
 
   /* === HEADSHOT === */
   var drop = $('sgHeadshotDrop');
-  var fileInp = $('sgHeadshotFile');
+  // Create file input dynamically — having <input type=file> in the WP page
+  // HTML triggers a content filter that strips all inline scripts.
+  var fileInp = document.createElement('input');
+  fileInp.type = 'file';
+  fileInp.id = 'sgHeadshotFile';
+  fileInp.accept = 'image/png,image/jpeg,image/webp';
+  fileInp.style.display = 'none';
+  var fileInpContainer = $('sgHeadshotFileContainer');
+  if (fileInpContainer) { fileInpContainer.appendChild(fileInp); } else { document.body.appendChild(fileInp); }
   drop.addEventListener('click', function() { fileInp.click(); });
   $('sgHeadshotReplace').addEventListener('click', function() {
     $('sgHeadshotPreview').classList.remove('visible');

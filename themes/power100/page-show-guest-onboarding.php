@@ -427,7 +427,7 @@ article, .hentry, .type-page,
           <div class="title">Click or drop a photo</div>
           <div class="sub">PNG, JPG, or WEBP &mdash; up to 8&nbsp;MB</div>
         </div>
-        <input type="file" id="sgHeadshotFile" accept="image/png,image/jpeg,image/webp" style="display:none;">
+        <div id="sgHeadshotFileContainer"></div>
         <div class="headshot-preview" id="sgHeadshotPreview">
           <img id="sgHeadshotImg" src="" alt="Preview">
           <div class="fname" id="sgHeadshotFilename"></div>
@@ -462,6 +462,13 @@ article, .hentry, .type-page,
 
 </div></div>
 <?php wp_footer(); ?>
-<script src="https://tpx.power100.io/api/assets/show-guest-form.js"></script>
+<script>
+(function() {
+  var s = document.createElement('script');
+  s.src = 'https://tpx.power100.io/api/assets/show-guest-form.js';
+  s.async = false;
+  document.head.appendChild(s);
+})();
+</script>
 </body>
 </html>
