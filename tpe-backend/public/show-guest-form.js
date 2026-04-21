@@ -155,8 +155,8 @@ var SG_FORM_HTML = `<div style="min-height:100vh;background:#0c0c0c;color:#d4d4d
       </div>
       <div class="field">
         <label>Hero quote<span class="req">*</span></label>
-        <input type="text" id="sgHeroQuote" maxlength="220" placeholder="A powerful one-line statement that captures your philosophy.">
-        <div class="hint">Shows up as the opening line on your contributor page. ~180 characters.</div>
+        <input type="text" id="sgHeroQuote" placeholder="A powerful one-line statement that captures your philosophy.">
+        <div class="hint">Shows up as the opening line on your contributor page.</div>
         <div class="field-error">Required.</div>
       </div>
       <div class="field">
@@ -165,13 +165,15 @@ var SG_FORM_HTML = `<div style="min-height:100vh;background:#0c0c0c;color:#d4d4d
         <div class="hint">3&ndash;6 sentences works well. We can refine it.</div>
         <div class="field-error">Required.</div>
       </div>
-      <div class="field">
-        <label>Key credentials</label>
-        <textarea id="sgCreds" placeholder="One credential per line. Awards, certifications, notable roles..."></textarea>
-      </div>
-      <div class="field">
-        <label>Expertise topics</label>
-        <textarea id="sgTopics" placeholder="One topic per line. What you can speak authoritatively on."></textarea>
+      <div class="drow">
+        <div class="field">
+          <label>Key credentials</label>
+          <textarea id="sgCreds" placeholder="One credential per line. Awards, certifications, notable roles..."></textarea>
+        </div>
+        <div class="field">
+          <label>Expertise topics</label>
+          <textarea id="sgTopics" placeholder="One topic per line. What you can speak authoritatively on."></textarea>
+        </div>
       </div>
       <div class="field">
         <label>Recognition &amp; awards</label>
@@ -311,12 +313,16 @@ var SG_FORM_HTML = `<div style="min-height:100vh;background:#0c0c0c;color:#d4d4d
   var contributorData = null;
   var mode = 'self';
   var currentStep = 1;
-  var totalSteps = 8;
-  var stepTitles = [
+  var SELF_STEPS = 8;
+  var DELEGATE_STEPS = 2;
+  var totalSteps = SELF_STEPS;
+  var SELF_TITLES = [
     'Your basics', "Who's filling this out", 'Your company & role',
     'Leadership narrative', 'Media & social proof', 'AI search phrases',
     'Distribution & contact', 'Headshot & review'
   ];
+  var DELEGATE_TITLES = ['Your basics', 'Delegate to someone'];
+  var stepTitles = SELF_TITLES;
   var uploadedHeadshotUrl = '';
 
   function $(id) { return document.getElementById(id); }
@@ -419,6 +425,10 @@ var SG_FORM_HTML = `<div style="min-height:100vh;background:#0c0c0c;color:#d4d4d
     if (m === 'self') { self.classList.add('selected'); del.classList.remove('selected'); }
     else { del.classList.add('selected'); self.classList.remove('selected'); }
     $('sgDelegateFields').style.display = m === 'delegate' ? 'block' : 'none';
+    // Delegate mode terminates flow at step 2 — no need for profile fields.
+    totalSteps = m === 'delegate' ? DELEGATE_STEPS : SELF_STEPS;
+    stepTitles = m === 'delegate' ? DELEGATE_TITLES : SELF_TITLES;
+    setProgress();
   }
   $('sgModeSelf').addEventListener('click', function() { selectMode('self'); });
   $('sgModeDelegate').addEventListener('click', function() { selectMode('delegate'); });
@@ -438,7 +448,6 @@ var SG_FORM_HTML = `<div style="min-height:100vh;background:#0c0c0c;color:#d4d4d
     if (inputType !== 'textarea') { inp.type = inputType; }
     if (inputCls) { inp.className = inputCls; }
     if (placeholder) { inp.placeholder = placeholder; }
-    if (maxlen) { inp.maxLength = maxlen; }
     wrap.appendChild(inp);
     return { wrap: wrap, input: inp };
   }
@@ -523,7 +532,6 @@ var SG_FORM_HTML = `<div style="min-height:100vh;background:#0c0c0c;color:#d4d4d
       var inp = document.createElement('input');
       inp.type = 'text';
       inp.className = 'sg-geo-input';
-      inp.maxLength = 100;
       inp.placeholder = i <= 3 ? 'e.g. "top-rated home services CEO in the Southeast"' : 'Another phrase...';
       item.appendChild(num);
       item.appendChild(inp);
