@@ -127,8 +127,13 @@ if (!isAWSConfigured) {
 // Public static assets (JS/CSS for WP-hosted forms that can't host inline scripts)
 // Under /api/ because nginx routes /api/* to backend; /assets/* is captured by frontend.
 app.use('/api/assets', express.static(path.join(__dirname, '..', 'public'), {
+  etag: true,
+  lastModified: true,
   setHeaders: (res) => {
-    res.setHeader('Cache-Control', 'public, max-age=300');
+    // no-cache = browser must revalidate every load (sends If-None-Match,
+    // gets 304 if unchanged, 200 with fresh body if we shipped a new version).
+    // Prevents stale form JS on deploys when the WP injector URL doesn't change.
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     res.setHeader('Access-Control-Allow-Origin', '*');
   }
 }));
