@@ -237,3 +237,6 @@ production-migration-*.sql
 scripts/ic-posts-dump.jsonl
 scripts/ic-function-backfill-plan.jsonl
 scripts/ic-function-backfill-apply.sh
+scripts/ic-articles-dump.jsonl
+scripts/ic-article-backfill-plan.jsonl
+scripts/ic-article-backfill-apply.sh
