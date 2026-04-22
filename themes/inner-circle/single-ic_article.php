@@ -20,16 +20,18 @@ $author    = get_post_meta($post_id, '_p100_author_name', true);
 $pub_date  = get_the_date('F j, Y');
 $reading_min = max(1, (int) ceil(str_word_count(wp_strip_all_tags(get_the_content())) / 220));
 
-// Featured image: try post thumbnail, then first <img> in body content
-$hero_img = '';
-if (has_post_thumbnail($post_id)) {
-    $hero_img = get_the_post_thumbnail_url($post_id, 'large');
-}
-if (!$hero_img) {
-    if (preg_match('/<img[^>]+src=[\'"]([^\'"]+)[\'"]/', get_the_content(), $m)) {
-        $hero_img = $m[1];
-    }
-}
+// Featured image is only used for rail cards on the homepage/archive — NOT
+// rendered in the article hero (staging shows a video-thumbnail there;
+// those videos are IC-only now, so the hero image becomes a redundant
+// duplicate of the first inline body image).
+// The featured image backfill script (sideload first body img) handles
+// populating the thumbnail for rail cards.
+
+// Share URLs use the IC canonical (public URL of this article on IC),
+// NOT the staging canonical — sharing sends members to IC, not to P100.
+$share_url = get_permalink($post_id);
+$share_title = rawurlencode(get_the_title($post_id));
+$share_url_enc = rawurlencode($share_url);
 
 $pillars   = wp_get_object_terms($post_id, 'ic_pillar',   array('fields' => 'all'));
 $functions = wp_get_object_terms($post_id, 'ic_function', array('fields' => 'all'));
@@ -119,7 +121,7 @@ $related = get_posts(array(
 .ic-article-hero-inner {
     max-width: 920px; margin: 0 auto; padding: 0 32px;
 }
-.ic-article-hero-byline {
+.ic-article-hero-categories {
     display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
     font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase;
     color: var(--ar-gold); margin-bottom: 24px;
@@ -136,34 +138,74 @@ $related = get_posts(array(
     margin-bottom: 32px; max-width: 720px;
     font-family: var(--ar-body);
 }
-.ic-article-hero-meta {
-    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+/* Byline row — author + meta + share buttons, all on one line (wraps on mobile) */
+.ic-article-hero-byline {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 24px; flex-wrap: wrap;
     padding-top: 24px; border-top: 1px solid var(--ar-border);
-    font-size: 13px; color: var(--ar-text-mute);
 }
 .ic-article-hero-author {
-    display: inline-flex; align-items: center; gap: 12px;
-    font-weight: 600; color: var(--ar-text);
+    display: inline-flex; align-items: center; gap: 14px;
+    flex: 1; min-width: 0;
 }
 .ic-article-hero-avatar {
-    width: 40px; height: 40px; border-radius: 50%;
+    flex-shrink: 0;
+    width: 44px; height: 44px; border-radius: 50%;
     background: linear-gradient(135deg, var(--ar-red), var(--ar-red-dark));
     display: inline-flex; align-items: center; justify-content: center;
-    font-size: 14px; font-weight: 700; color: var(--ar-white);
+    font-size: 15px; font-weight: 700; color: var(--ar-white);
     font-family: var(--ar-display); letter-spacing: 1px;
+    box-shadow: 0 2px 12px rgba(251,4,1,0.25);
 }
-.ic-article-hero-meta-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--ar-text-subtle); }
+.ic-article-hero-author-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ic-article-hero-author-by {
+    font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    color: var(--ar-text-subtle);
+}
+.ic-article-hero-author-name {
+    font-size: 15px; font-weight: 700; color: var(--ar-text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ic-article-hero-author-role {
+    font-size: 12px; color: var(--ar-text-mute);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ic-article-hero-meta {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-size: 12px; color: var(--ar-text-mute);
+}
+.ic-article-hero-meta-dot { width: 3px; height: 3px; border-radius: 50%; background: var(--ar-text-subtle); }
 
-/* HERO IMAGE */
-.ic-article-hero-img-wrap {
-    max-width: 1100px; margin: 36px auto 0; padding: 0 32px;
+/* Share buttons */
+.ic-article-hero-share {
+    display: inline-flex; align-items: center; gap: 6px;
 }
-.ic-article-hero-img {
-    aspect-ratio: 16/9; border-radius: 8px; overflow: hidden;
-    background-size: cover; background-position: center;
-    box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+.ic-article-hero-share a, .ic-article-hero-share button {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--ar-border);
+    color: var(--ar-text-mute);
+    cursor: pointer;
+    transition: background .2s, color .2s, border-color .2s, transform .2s;
+    padding: 0;
 }
-.ic-article-hero-img img { width: 100%; height: 100%; object-fit: cover; }
+.ic-article-hero-share a:hover, .ic-article-hero-share button:hover {
+    background: var(--ar-red);
+    color: var(--ar-white);
+    border-color: var(--ar-red);
+    transform: translateY(-1px);
+}
+.ic-article-hero-share svg { width: 14px; height: 14px; fill: currentColor; }
+.ic-article-hero-share .copied {
+    position: absolute; margin-top: -50px; padding: 4px 10px;
+    background: var(--ar-gold); color: var(--ar-bg);
+    font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
+    border-radius: 4px;
+    opacity: 0; pointer-events: none;
+    transition: opacity .25s;
+}
+.ic-article-hero-share .copied.show { opacity: 1; }
 
 /* BODY */
 .ic-article-body-section {
@@ -346,7 +388,7 @@ get_header();
 <!-- HERO -->
 <section class="ic-article-hero">
     <div class="ic-article-hero-inner">
-        <div class="ic-article-hero-byline">
+        <div class="ic-article-hero-categories">
             <?php if (!empty($pillars) && !is_wp_error($pillars)): foreach ($pillars as $i => $p): ?>
                 <span class="ic-article-hero-pillar"><?php echo esc_html($p->name); ?></span>
                 <?php if ($i < count($pillars) - 1): ?><span class="ic-article-hero-byline-sep">·</span><?php endif; ?>
@@ -364,25 +406,42 @@ get_header();
         <div class="ic-article-hero-deck"><?php echo esc_html(wp_trim_words(wp_strip_all_tags($excerpt), 30)); ?></div>
         <?php endif; ?>
 
-        <div class="ic-article-hero-meta">
-            <?php if ($author): $initials = strtoupper(substr($author, 0, 1) . (strpos($author, ' ') !== false ? substr($author, strpos($author, ' ') + 1, 1) : '')); ?>
-            <span class="ic-article-hero-author">
-                <span class="ic-article-hero-avatar"><?php echo esc_html($initials); ?></span>
-                <span><?php echo esc_html($author); ?></span>
-            </span>
-            <span class="ic-article-hero-meta-dot"></span>
-            <?php endif; ?>
-            <span><?php echo esc_html($pub_date); ?></span>
-            <span class="ic-article-hero-meta-dot"></span>
-            <span><?php echo $reading_min; ?> min read</span>
+        <!-- Byline: author + meta + share -->
+        <div class="ic-article-hero-byline">
+            <?php
+            $initials = $author
+                ? strtoupper(substr($author, 0, 1) . (strpos($author, ' ') !== false ? substr($author, strpos($author, ' ') + 1, 1) : ''))
+                : 'IC';
+            ?>
+            <div class="ic-article-hero-author">
+                <div class="ic-article-hero-avatar"><?php echo esc_html($initials); ?></div>
+                <div class="ic-article-hero-author-info">
+                    <span class="ic-article-hero-author-by">By</span>
+                    <span class="ic-article-hero-author-name"><?php echo esc_html($author ?: 'Power100'); ?></span>
+                    <span class="ic-article-hero-author-role">Power100 Contributor · <?php echo esc_html($pub_date); ?> · <?php echo $reading_min; ?> min read</span>
+                </div>
+            </div>
+
+            <div class="ic-article-hero-share" aria-label="Share this article">
+                <a href="https://www.linkedin.com/sharing/share-offsite/?url=<?php echo $share_url_enc; ?>" target="_blank" rel="noopener" aria-label="Share on LinkedIn">
+                    <svg viewBox="0 0 24 24"><path d="M4.98 3.5C4.98 4.88 3.87 6 2.5 6S.02 4.88.02 3.5C.02 2.12 1.13 1 2.5 1s2.48 1.12 2.48 2.5zM.22 8h4.56v14H.22V8zm7.27 0h4.37v1.92h.06c.61-1.15 2.1-2.37 4.32-2.37 4.62 0 5.47 3.04 5.47 6.99V22h-4.56v-6.21c0-1.48-.03-3.38-2.06-3.38-2.06 0-2.37 1.61-2.37 3.27V22H7.49V8z"/></svg>
+                </a>
+                <a href="https://twitter.com/intent/tweet?url=<?php echo $share_url_enc; ?>&text=<?php echo $share_title; ?>" target="_blank" rel="noopener" aria-label="Share on X">
+                    <svg viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </a>
+                <a href="https://www.facebook.com/sharer/sharer.php?u=<?php echo $share_url_enc; ?>" target="_blank" rel="noopener" aria-label="Share on Facebook">
+                    <svg viewBox="0 0 24 24"><path d="M24 12.07C24 5.41 18.63 0 12 0S0 5.41 0 12.07C0 18.1 4.39 23.09 10.13 24v-8.44H7.08v-3.49h3.05V9.41c0-3.02 1.8-4.69 4.54-4.69 1.31 0 2.69.23 2.69.23v2.96h-1.51c-1.49 0-1.96.93-1.96 1.88v2.26h3.33l-.53 3.49h-2.8V24C19.61 23.09 24 18.1 24 12.07"/></svg>
+                </a>
+                <a href="mailto:?subject=<?php echo $share_title; ?>&body=<?php echo $share_url_enc; ?>" aria-label="Share by email">
+                    <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                </a>
+                <button type="button" data-share-copy="<?php echo esc_attr($share_url); ?>" aria-label="Copy article link">
+                    <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                </button>
+                <span class="copied" id="ic-article-copied">Copied</span>
+            </div>
         </div>
     </div>
-
-    <?php if ($hero_img): ?>
-    <div class="ic-article-hero-img-wrap">
-        <div class="ic-article-hero-img" style="background-image:url('<?php echo esc_url($hero_img); ?>');"></div>
-    </div>
-    <?php endif; ?>
 </section>
 
 <!-- BODY -->
@@ -465,6 +524,21 @@ get_header();
     window.addEventListener('scroll', update, { passive: true });
     window.addEventListener('resize', update);
     update();
+})();
+
+// Copy-link share button
+(function() {
+    var btn = document.querySelector('[data-share-copy]');
+    var toast = document.getElementById('ic-article-copied');
+    if (!btn) return;
+    btn.addEventListener('click', function() {
+        var url = btn.getAttribute('data-share-copy');
+        if (navigator.clipboard) {
+            navigator.clipboard.writeText(url).then(function() {
+                if (toast) { toast.classList.add('show'); setTimeout(function() { toast.classList.remove('show'); }, 1600); }
+            });
+        }
+    });
 })();
 </script>
 </body>
