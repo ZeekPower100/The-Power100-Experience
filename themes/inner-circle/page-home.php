@@ -122,6 +122,25 @@ foreach ($ic_topic_rails as $_slug => &$_rail) {
 }
 unset($_rail);
 
+// Same 8 rails but sourced from ic_article posts. Interleaved with video rails
+// on the homepage (Option 1 layout): video Sales → article Sales → video
+// Marketing → article Marketing → etc.
+$ic_article_topic_rails = $ic_topic_rails; // structural clone (taxonomy + label)
+foreach ($ic_article_topic_rails as $_slug => &$_rail) {
+    $_rail['posts'] = get_posts(array(
+        'post_type'      => 'ic_article',
+        'posts_per_page' => 5,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+        'tax_query'      => array(array(
+            'taxonomy' => $_rail['taxonomy'],
+            'field'    => 'slug',
+            'terms'    => $_slug,
+        )),
+    ));
+}
+unset($_rail);
+
 // Helper: render one "Top 5 Trending For {Label}" rail by slug.
 if (!function_exists('ic_render_topic_rail')) {
     function ic_render_topic_rail($slug) {
@@ -135,6 +154,41 @@ if (!function_exists('ic_render_topic_rail')) {
             <div class="nfx-container">
                 <div class="nfx-row-header">
                     <h2><a href="<?php echo esc_url($archive_url); ?>">Top 5 Trending For <?php echo esc_html($rail['label']); ?></a></h2>
+                    <a href="<?php echo esc_url($archive_url); ?>" class="nfx-browse-all">Browse All ›</a>
+                </div>
+                <div class="nfx-carousel-wrap">
+                    <button class="nfx-scroll-btn nfx-scroll-left" aria-label="Scroll left">‹</button>
+                    <div class="nfx-carousel">
+                        <?php foreach ($rail['posts'] as $item) :
+                            $GLOBALS['post'] = $item;
+                            setup_postdata($item);
+                            include(IC_THEME_DIR . '/template-parts/card-netflix.php');
+                        endforeach;
+                        wp_reset_postdata(); ?>
+                    </div>
+                    <button class="nfx-scroll-btn nfx-scroll-right" aria-label="Scroll right">›</button>
+                </div>
+            </div>
+        </section>
+        <?php
+    }
+}
+
+// Helper: render one "Top 5 Trending Articles For {Label}" rail by slug.
+// Parallels ic_render_topic_rail but sources from ic_article instead of ic_content.
+// Pillar/function taxonomies are shared between the two post types.
+if (!function_exists('ic_render_article_topic_rail')) {
+    function ic_render_article_topic_rail($slug) {
+        global $ic_article_topic_rails;
+        if (empty($ic_article_topic_rails[$slug]) || empty($ic_article_topic_rails[$slug]['posts'])) return;
+        $rail = $ic_article_topic_rails[$slug];
+        $term_link = get_term_link($slug, $rail['taxonomy']);
+        $archive_url = is_wp_error($term_link) ? '#' : $term_link;
+        ?>
+        <section class="nfx-row">
+            <div class="nfx-container">
+                <div class="nfx-row-header">
+                    <h2><a href="<?php echo esc_url($archive_url); ?>">Top 5 Trending Articles For <?php echo esc_html($rail['label']); ?></a></h2>
                     <a href="<?php echo esc_url($archive_url); ?>" class="nfx-browse-all">Browse All ›</a>
                 </div>
                 <div class="nfx-carousel-wrap">
@@ -456,11 +510,15 @@ get_header();
         </section>
         <?php endif; ?>
 
-        <!-- ═══ ROWS 5-8: Topic rails (Sales, Marketing, Innovation, Growth) ═══ -->
+        <!-- ═══ ROWS 5-8: Topic rails (video + article interleaved: Sales, Marketing, Innovation, Growth) ═══ -->
         <?php ic_render_topic_rail('sales'); ?>
+        <?php ic_render_article_topic_rail('sales'); ?>
         <?php ic_render_topic_rail('marketing'); ?>
+        <?php ic_render_article_topic_rail('marketing'); ?>
         <?php ic_render_topic_rail('innovation'); ?>
+        <?php ic_render_article_topic_rail('innovation'); ?>
         <?php ic_render_topic_rail('growth'); ?>
+        <?php ic_render_article_topic_rail('growth'); ?>
 
         <!-- ═══ ROW 6: VIEW BY COMPANY ═══ -->
         <?php
@@ -650,12 +708,16 @@ get_header();
         </section>
         <?php endif; ?>
 
-        <!-- ═══ ROWS 13-20: Topic rails interleaved with remaining show rails ═══ -->
+        <!-- ═══ ROWS 13-20+: Topic rails (video + article interleaved) with show rails mixed in ═══ -->
         <?php ic_render_topic_rail('operations'); ?>
+        <?php ic_render_article_topic_rail('operations'); ?>
         <?php ic_render_topic_rail('customer-experience'); ?>
+        <?php ic_render_article_topic_rail('customer-experience'); ?>
         <?php ic_render_show_rail('day-in-the-life'); ?>
         <?php ic_render_topic_rail('culture'); ?>
+        <?php ic_render_article_topic_rail('culture'); ?>
         <?php ic_render_topic_rail('community'); ?>
+        <?php ic_render_article_topic_rail('community'); ?>
         <?php ic_render_show_rail('grit-to-gold'); ?>
         <?php ic_render_show_rail('inner-circle'); ?>
         <?php ic_render_show_rail('outside-the-lines'); ?>
