@@ -852,4 +852,86 @@ const getDrcStatus = async (req, res) => {
   }
 };
 
-module.exports = { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile, linkCompany, markPageLive, getDrcStatus };
+/**
+ * GET /api/expert-contributors/by-rep/:rankings_user_id
+ *
+ * Returns the EC pipeline owned by a given rankings rep — drives the
+ * "Your EC Pipeline" widget on the DRC dashboard. Auth: X-API-Key
+ * (TPX_SALES_AGENT_API_KEY), same pattern as /api/sales-agent/*.
+ *
+ * Rep attribution: `expert_contributors.assigned_rep_id` is a rankings_db
+ * user id, set by linkCompany() via rankingsDbService.getLastRepForCompany().
+ *
+ * Performance: single tpedb query (indexed on assigned_rep_id) + one batched
+ * companies lookup against rankings_db. DRC caches client-side ~60s.
+ *
+ * `days_in_stage` uses `updated_at` as a proxy. Stage transitions update the
+ * EC row, so this is accurate as long as nothing else mutates the row in a
+ * given stage. TODO: add a real `stage_changed_at` column for precision.
+ */
+const getEcsByRep = async (req, res) => {
+  try {
+    const repId = parseInt(req.params.rankings_user_id, 10);
+    if (!Number.isFinite(repId) || repId <= 0) {
+      return res.status(400).json({ success: false, error: 'Invalid rankings_user_id' });
+    }
+
+    const { rows: ecs } = await query(
+      `SELECT
+         id                  AS ec_id,
+         rankings_company_id,
+         pipeline_stage,
+         created_at          AS signup_date,
+         amount_cents,
+         wp_page_url         AS page_live_url,
+         updated_at,
+         GREATEST(0, FLOOR(EXTRACT(EPOCH FROM (NOW() - updated_at)) / 86400))::int
+                              AS days_in_stage
+       FROM expert_contributors
+       WHERE assigned_rep_id = $1
+       ORDER BY updated_at DESC`,
+      [repId]
+    );
+
+    // Batch-resolve company names from rankings_db (single query, not N).
+    const companyIds = ecs
+      .map(r => r.rankings_company_id)
+      .filter(id => Number.isFinite(id));
+    let nameById = {};
+    if (companyIds.length > 0) {
+      const { rankingsQuery } = require('../config/database.rankings');
+      const { rows: companies } = await rankingsQuery(
+        `SELECT id, company_name FROM companies WHERE id = ANY($1::int[])`,
+        [companyIds]
+      );
+      nameById = companies.reduce((acc, c) => { acc[c.id] = c.company_name; return acc; }, {});
+    }
+
+    const ecsOut = ecs.map(r => ({
+      ec_id: r.ec_id,
+      rankings_company_id: r.rankings_company_id,
+      company_name: r.rankings_company_id ? (nameById[r.rankings_company_id] || null) : null,
+      pipeline_stage: r.pipeline_stage,
+      days_in_stage: r.days_in_stage,
+      signup_date: r.signup_date ? new Date(r.signup_date).toISOString().slice(0, 10) : null,
+      monthly_rate: r.amount_cents != null ? Math.round(r.amount_cents / 100) : null,
+      page_live_url: r.page_live_url || null
+    }));
+
+    const counts_by_stage = ecsOut.reduce((acc, e) => {
+      if (e.pipeline_stage) acc[e.pipeline_stage] = (acc[e.pipeline_stage] || 0) + 1;
+      return acc;
+    }, {});
+
+    return res.json({
+      ecs: ecsOut,
+      counts_by_stage,
+      total: ecsOut.length
+    });
+  } catch (err) {
+    console.error('[EC by-rep] Error:', err);
+    return res.status(500).json({ success: false, error: 'Failed to fetch ECs by rep' });
+  }
+};
+
+module.exports = { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile, linkCompany, markPageLive, getDrcStatus, getEcsByRep };

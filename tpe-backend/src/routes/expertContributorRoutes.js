@@ -1,6 +1,21 @@
 const express = require('express');
 const router = express.Router();
-const { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile, linkCompany, markPageLive, getDrcStatus } = require('../controllers/expertContributorController');
+const { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile, linkCompany, markPageLive, getDrcStatus, getEcsByRep } = require('../controllers/expertContributorController');
+
+/**
+ * X-API-Key auth — mirrors /api/sales-agent/* (TPX_SALES_AGENT_API_KEY env).
+ * Used for DRC dashboard endpoints called by the rankings system.
+ */
+function drcApiKeyAuth(req, res, next) {
+  const apiKey = req.headers['x-api-key'];
+  if (!apiKey) {
+    return res.status(401).json({ success: false, error: 'API key required. Set X-API-Key header.' });
+  }
+  if (apiKey !== process.env.TPX_SALES_AGENT_API_KEY) {
+    return res.status(403).json({ success: false, error: 'Invalid API key.' });
+  }
+  next();
+}
 
 // Public - called from presentation page after Stripe payment
 router.post('/', createExpertContributor);
@@ -18,5 +33,8 @@ router.post('/delegate/:token/complete', completeDelegateProfile);
 router.post('/:id/link-company', linkCompany);
 router.post('/:id/page-live', markPageLive);
 router.get('/:id/drc-status', getDrcStatus);
+
+// DRC dashboard: rep's EC pipeline ("Your EC Pipeline" widget)
+router.get('/by-rep/:rankings_user_id', drcApiKeyAuth, getEcsByRep);
 
 module.exports = router;
