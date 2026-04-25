@@ -1118,4 +1118,47 @@ const createFromForm = async (req, res) => {
   }
 };
 
-module.exports = { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile, linkCompany, markPageLive, getDrcStatus, getEcsByRep, createFromForm };
+/**
+ * POST /api/expert-contributors/upsert-from-episode
+ *
+ * Called by the IC `ic_sync_speaker_taxonomies` PHP hook on every ic_content
+ * episode publish. Body shape (one POST per speaker):
+ *   { name, title, company, photo_url, episode_post_id }
+ *
+ * Behavior: ensures a minimal expert_contributors row exists (looked up by
+ * name+company, contributor_class='contributor'), then upserts the lander on
+ * staging.power100.io. Idempotent — safe to fire on every episode save.
+ *
+ * Auth: X-API-Key (TPX_SALES_AGENT_API_KEY) — same as DRC dashboard.
+ *
+ * Returns: { success, ec_id, wp_page_id, wp_page_url, action }
+ */
+const upsertFromEpisode = async (req, res) => {
+  try {
+    const { name, title, company, photo_url, episode_post_id } = req.body || {};
+    if (!name || !String(name).trim()) {
+      return res.status(400).json({ success: false, error: 'name is required' });
+    }
+    const enrich = require('../services/contributorEnrichmentService');
+    const row = await enrich.ensureContributorRowFromEpisode({
+      name: String(name).trim(),
+      title: title ? String(title).trim() : null,
+      company: company ? String(company).trim() : null,
+      photo_url: photo_url ? String(photo_url).trim() : null,
+      episode_post_id: episode_post_id || null,
+    });
+    const result = await enrich.upsertContributorLander(row, { source: 'episode_publish' });
+    return res.json({
+      success: true,
+      ec_id: row.id,
+      wp_page_id: result.wp_page_id,
+      wp_page_url: result.wp_page_url,
+      action: result.action,
+    });
+  } catch (err) {
+    console.error('[upsertFromEpisode] error:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
+module.exports = { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile, linkCompany, markPageLive, getDrcStatus, getEcsByRep, createFromForm, upsertFromEpisode };

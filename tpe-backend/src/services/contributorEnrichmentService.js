@@ -349,6 +349,244 @@ async function runFullEnrichment() {
   return report;
 }
 
+// ════════════════════════════════════════
+// 7. UPSERT CONTRIBUTOR LANDER on staging.power100.io (Phase B)
+// ════════════════════════════════════════
+//
+// Creates or updates a contributor lander page on staging.power100.io.
+// Idempotent: same fn safe to call from form submit AND episode publish.
+//
+// Lookup chain (first match wins):
+//   1. row.wp_page_id is set → PATCH that page's ACF (no search)
+//   2. else search staging by ec_name match → PATCH if found, link wp_page_id back
+//   3. else POST new draft page with template page-expert-contributor.php
+//
+// Returns: { wp_page_id, wp_page_url, created (bool), action ('created'|'updated'|'linked') }
+//
+// Auth: Basic auth via STAGING_P100_ADMIN_USER + STAGING_P100_ADMIN_APP_PWD env.
+// (Power100 user is read-only; needs admin user with create perms.)
+
+const STAGING_P100_BASE = process.env.STAGING_P100_BASE || 'https://staging.power100.io';
+const STAGING_P100_USER = process.env.STAGING_P100_ADMIN_USER || 'zkpower';
+const STAGING_P100_PWD  = process.env.STAGING_P100_ADMIN_APP_PWD || '';
+
+function stagingAuthHeader() {
+  if (!STAGING_P100_PWD) {
+    throw new Error('STAGING_P100_ADMIN_APP_PWD env var is missing');
+  }
+  return 'Basic ' + Buffer.from(STAGING_P100_USER + ':' + STAGING_P100_PWD).toString('base64');
+}
+
+// Map a contributor row → ec_* ACF schema. Used for both POST and PATCH bodies.
+function rowToAcfFields(row) {
+  const fullName  = `${row.first_name || ''} ${row.last_name || ''}`.trim();
+  const company   = row.company || '';
+  const titlePos  = row.title_position
+    ? (company && !row.title_position.includes(company) ? `${row.title_position}, ${company}` : row.title_position)
+    : (company ? `Leader at ${company}` : '');
+
+  // contributor_class drives ec_contributor_type. Paid ECs derive from contributor_type column.
+  let ecType = 'contributor';
+  if (row.contributor_class === 'expert_contributor') {
+    if (row.contributor_type === 'ec_partner' || row.contributor_type === 'ec_partner_plus') ecType = 'ranked_partner';
+    else if (row.contributor_type === 'ec_enterprise') ecType = 'industry_leader';
+    else ecType = 'industry_leader'; // ec_individual + anything else → industry_leader by default
+  }
+
+  // Stat slot mapping: form gives years_in_industry / revenue_value / geographic_reach + 1 custom.
+  const customStat = row.custom_stat || '';
+  let customLabel = '', customValue = '';
+  const m = customStat.match(/^([\d,]+\+?)\s+(.+)$/);
+  if (m) { customValue = m[1]; customLabel = m[2]; } else { customValue = customStat; }
+
+  // Videos / testimonials may arrive as JSONB array OR JSON string from postgres.
+  const parseJsonArr = (v) => {
+    if (Array.isArray(v)) return v;
+    if (typeof v === 'string' && v.trim()) { try { return JSON.parse(v); } catch (e) { return []; } }
+    return [];
+  };
+  const videos = parseJsonArr(row.videos).slice(0, 7);
+  const testis = parseJsonArr(row.testimonials).slice(0, 4);
+
+  const acf = {
+    ec_name:              fullName,
+    ec_title_position:    titlePos,
+    ec_contributor_type:  ecType,
+    ec_hero_quote:        row.hero_quote || '',
+    ec_linkedin_url:      row.linkedin_url || '',
+    ec_website_url:       row.website_url || '',
+    ec_expertise_bio:     row.bio || row.expertise_bio || '',
+    ec_credentials:       row.credentials || '',
+    ec_contrib_topics:    row.expertise_topics || '',
+    ec_recognition:       row.recognition || '',
+    ec_company_name:      company,
+    ec_company_desc:      row.company_description || '',
+    ec_stat_years:        row.years_in_industry || '',
+    ec_stat_revenue:      row.revenue_value || '',
+    ec_stat_markets:      row.geographic_reach || '',
+    ec_stat_custom_label: customLabel,
+    ec_stat_custom_value: customValue,
+  };
+  for (let i = 0; i < videos.length; i++) {
+    acf[`ec_video_${i + 1}_title`] = videos[i].title || '';
+    acf[`ec_video_${i + 1}_url`]   = videos[i].url || '';
+  }
+  for (let i = 0; i < testis.length; i++) {
+    acf[`ec_testi_${i + 1}_quote`] = testis[i].quote || '';
+    acf[`ec_testi_${i + 1}_name`]  = testis[i].name || '';
+    acf[`ec_testi_${i + 1}_role`]  = testis[i].role || '';
+  }
+  return { acf, fullName, ecType };
+}
+
+function contributorSlug(fullName, ecType) {
+  const slugLevel = {
+    ranked_ceo: 'ranked-ceo',
+    ranked_partner: 'ranked-partner',
+    industry_leader: 'industry-leader',
+    contributor: 'contributor',
+  }[ecType] || 'contributor';
+  const nameSlug = fullName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return `${nameSlug}-${slugLevel}`;
+}
+
+async function findStagingPageByName(fullName) {
+  // Search by title — WP returns matches anywhere in title. We filter by exact ec_name in ACF.
+  const url = `${STAGING_P100_BASE}/wp-json/wp/v2/pages`;
+  const res = await axios.get(url, {
+    params: { search: fullName, per_page: 5, status: 'publish,draft,pending,private', _fields: 'id,slug,acf,template' },
+    headers: { Authorization: stagingAuthHeader() },
+    timeout: 10000,
+  });
+  const matches = (res.data || []).filter(p =>
+    p.template === 'page-expert-contributor.php' &&
+    p.acf && typeof p.acf.ec_name === 'string' &&
+    p.acf.ec_name.trim().toLowerCase() === fullName.trim().toLowerCase()
+  );
+  return matches[0] || null;
+}
+
+async function upsertContributorLander(row, opts = {}) {
+  if (!row || !row.first_name || !row.last_name) {
+    throw new Error('upsertContributorLander: row.first_name + row.last_name required');
+  }
+  const source = opts.source || 'unknown';
+  const { acf, fullName, ecType } = rowToAcfFields(row);
+  const auth = stagingAuthHeader();
+
+  // 1. wp_page_id direct hit
+  if (row.wp_page_id && Number.isFinite(parseInt(row.wp_page_id, 10))) {
+    try {
+      const pageId = parseInt(row.wp_page_id, 10);
+      const url = `${STAGING_P100_BASE}/wp-json/wp/v2/pages/${pageId}`;
+      const res = await axios.post(url, { acf }, {
+        headers: { Authorization: auth, 'Content-Type': 'application/json' },
+        timeout: 12000,
+      });
+      const pageUrl = res.data.link || `${STAGING_P100_BASE}/?page_id=${pageId}`;
+      console.log(`[upsertContributorLander] Updated existing page ${pageId} for "${fullName}" (source=${source})`);
+      return { wp_page_id: pageId, wp_page_url: pageUrl, created: false, action: 'updated' };
+    } catch (err) {
+      // Fall through to lookup-by-name if the stored page_id is gone
+      console.warn(`[upsertContributorLander] Stored wp_page_id ${row.wp_page_id} stale for "${fullName}", falling back to name search`);
+    }
+  }
+
+  // 2. Name lookup
+  let existing = null;
+  try { existing = await findStagingPageByName(fullName); }
+  catch (err) { console.error(`[upsertContributorLander] Name search failed for "${fullName}":`, err.message); }
+  if (existing && existing.id) {
+    const pageId = existing.id;
+    const url = `${STAGING_P100_BASE}/wp-json/wp/v2/pages/${pageId}`;
+    const res = await axios.post(url, { acf }, {
+      headers: { Authorization: auth, 'Content-Type': 'application/json' },
+      timeout: 12000,
+    });
+    const pageUrl = res.data.link || `${STAGING_P100_BASE}/?page_id=${pageId}`;
+    if (row.id) {
+      await query(
+        'UPDATE expert_contributors SET wp_page_id = $1, wp_page_url = $2, updated_at = NOW() WHERE id = $3',
+        [pageId, pageUrl, row.id]
+      ).catch(e => console.warn(`[upsertContributorLander] Failed to back-link wp_page_id on row ${row.id}:`, e.message));
+    }
+    console.log(`[upsertContributorLander] Linked existing page ${pageId} for "${fullName}" (source=${source})`);
+    return { wp_page_id: pageId, wp_page_url: pageUrl, created: false, action: 'linked' };
+  }
+
+  // 3. Create new draft page
+  const slug = contributorSlug(fullName, ecType);
+  const url = `${STAGING_P100_BASE}/wp-json/wp/v2/pages`;
+  const res = await axios.post(url, {
+    title:    fullName,
+    slug,
+    status:   'draft',
+    template: 'page-expert-contributor.php',
+    acf,
+  }, {
+    headers: { Authorization: auth, 'Content-Type': 'application/json' },
+    timeout: 15000,
+  });
+  const pageId  = res.data.id;
+  const pageUrl = res.data.link || `${STAGING_P100_BASE}/${slug}/`;
+  if (row.id) {
+    await query(
+      'UPDATE expert_contributors SET wp_page_id = $1, wp_page_url = $2, updated_at = NOW() WHERE id = $3',
+      [pageId, pageUrl, row.id]
+    ).catch(e => console.warn(`[upsertContributorLander] Failed to back-link wp_page_id on row ${row.id}:`, e.message));
+  }
+  console.log(`[upsertContributorLander] Created new page ${pageId} for "${fullName}" (source=${source}, type=${ecType})`);
+  return { wp_page_id: pageId, wp_page_url: pageUrl, created: true, action: 'created' };
+}
+
+// Used by Trigger 2 (episode-publish): creates a minimal contributor row from
+// just speaker name+title+company+photo, then calls upsertContributorLander.
+// Idempotent on (lower(name), company) within contributor_class='contributor'.
+async function ensureContributorRowFromEpisode(speaker) {
+  const name    = (speaker.name || '').trim();
+  const company = (speaker.company || '').trim();
+  if (!name) throw new Error('ensureContributorRowFromEpisode: speaker.name required');
+
+  const parts = name.split(/\s+/);
+  const firstName = parts[0];
+  const lastName  = parts.slice(1).join(' ') || '(unknown)';
+  const sourceTag = speaker.episode_post_id ? `episode_publish:ic-${speaker.episode_post_id}` : 'episode_publish';
+
+  // Look up by name + company (no email — speakers don't have one). Match on contributor_class.
+  const existing = await query(
+    `SELECT id, first_name, last_name, email, phone, company, title_position, hero_quote, bio,
+            linkedin_url, website_url, headshot_url, years_in_industry, revenue_value, geographic_reach,
+            custom_stat, credentials, expertise_topics, recognition, company_description,
+            videos, testimonials, contributor_class, contributor_type, source, wp_page_id, wp_page_url
+       FROM expert_contributors
+      WHERE LOWER(first_name) = LOWER($1) AND LOWER(last_name) = LOWER($2)
+        AND (LOWER(COALESCE(company,'')) = LOWER($3) OR $3 = '')
+      LIMIT 1`,
+    [firstName, lastName, company]
+  );
+  if (existing.rows.length > 0) return existing.rows[0];
+
+  // Create a minimal row
+  const result = await query(
+    `INSERT INTO expert_contributors
+       (first_name, last_name, email, company, title_position, headshot_url,
+        contributor_class, contributor_type, source, status, created_at, updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, 'contributor', 'show_guest', $7, 'lead',
+             CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+     RETURNING *`,
+    [
+      firstName, lastName,
+      `episode-speaker+${firstName}.${lastName}@power100.io`.toLowerCase().replace(/\s+/g, ''),
+      company || null,
+      speaker.title || null,
+      speaker.photo_url || null,
+      sourceTag,
+    ]
+  );
+  console.log(`[ensureContributorRowFromEpisode] Created lead row for "${name}" from ${sourceTag}`);
+  return result.rows[0];
+}
+
 module.exports = {
   syncArticles,
   linkEcPages,
@@ -356,4 +594,6 @@ module.exports = {
   propagatePhotos,
   enrichSingleLeader,
   runFullEnrichment,
+  upsertContributorLander,
+  ensureContributorRowFromEpisode,
 };

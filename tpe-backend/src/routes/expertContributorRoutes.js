@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile, linkCompany, markPageLive, getDrcStatus, getEcsByRep, createFromForm } = require('../controllers/expertContributorController');
+const { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile, linkCompany, markPageLive, getDrcStatus, getEcsByRep, createFromForm, upsertFromEpisode } = require('../controllers/expertContributorController');
 
 /**
  * X-API-Key auth — mirrors /api/sales-agent/* (TPX_SALES_AGENT_API_KEY env).
@@ -39,5 +39,8 @@ router.get('/by-rep/:rankings_user_id', drcApiKeyAuth, getEcsByRep);
 
 // n8n EC intake adapter — called after WP draft page is created
 router.post('/from-form', drcApiKeyAuth, createFromForm);
+
+// IC speaker-sync hook — called once per speaker per episode publish
+router.post('/upsert-from-episode', drcApiKeyAuth, upsertFromEpisode);
 
 module.exports = router;

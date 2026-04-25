@@ -608,6 +608,18 @@ const submitShowGuestFormPublic = async (req, res) => {
     // Public /submit = guest self-fill (delegation uses /delegate/create, not
     // this endpoint). Send the guest their completion confirmation email.
     setImmediate(() => { sendGuestSelfCompletionEmail(row).catch(() => {}); });
+    // Auto-create / update the staging.power100.io contributor lander (non-blocking).
+    setImmediate(async () => {
+      try {
+        const enrich = require('../services/contributorEnrichmentService');
+        // Re-fetch the FULL row (controller's RETURNING clause is a partial projection).
+        const full = await query('SELECT * FROM expert_contributors WHERE id = $1', [row.id]);
+        if (!full.rows.length) return;
+        await enrich.upsertContributorLander(full.rows[0], { source: 'show_guest_form' });
+      } catch (e) {
+        console.error('[showGuest] upsertContributorLander failed:', e.message);
+      }
+    });
 
     return res.json({
       success: true,
