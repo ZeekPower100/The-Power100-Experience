@@ -101,6 +101,15 @@ function ic_register_rest_routes() {
         'callback'            => 'ic_rest_content_by_youtube_id',
         'permission_callback' => '__return_true',
     ));
+
+    // POST — Mirror expert contributor lander from staging.power100.io
+    // Idempotent on (_p100_source_id) OR slug. Body shape:
+    //   { p100_page_id, p100_page_url, slug, title, meta:{ec_*}, headshot_url? }
+    register_rest_route('ic/v1', '/expert-contributor/upsert', array(
+        'methods'             => 'POST',
+        'callback'            => 'ic_rest_upsert_expert_contributor',
+        'permission_callback' => 'ic_rest_auth_check',
+    ));
 }
 add_action('rest_api_init', 'ic_register_rest_routes');
 
@@ -1067,4 +1076,126 @@ function ic_rest_content_by_youtube_id($request) {
     }
 
     return new WP_REST_Response($results, 200);
+}
+
+/**
+ * POST /wp-json/ic/v1/expert-contributor/upsert
+ *
+ * Mirror an `ic_expert_contributor` post from a Power100 source. Idempotent
+ * on (_p100_source_id) → matched first, falls back to slug. Body shape:
+ *   {
+ *     p100_page_id:  int    (required — staging.power100.io page ID),
+ *     p100_page_url: string (required — full URL on staging, used as canonical),
+ *     slug:          string (required),
+ *     title:         string (required — full contributor name),
+ *     meta:          object (ec_* fields, written as raw post_meta),
+ *     headshot_url:  string (optional — sideloaded into IC media library),
+ *     pillar_terms:  array  (optional — ic_pillar slugs to assign),
+ *     function_terms: array (optional — ic_function slugs to assign)
+ *   }
+ *
+ * Status: drafts created as 'publish' (gated by ic_require_membership in
+ * the single template — so members see them, non-members hit the gate).
+ */
+function ic_rest_upsert_expert_contributor($request) {
+    $body = json_decode($request->get_body(), true);
+    if (!is_array($body)) {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Invalid JSON'), 400);
+    }
+
+    $p100_id   = isset($body['p100_page_id']) ? intval($body['p100_page_id']) : 0;
+    $p100_url  = isset($body['p100_page_url']) ? esc_url_raw($body['p100_page_url']) : '';
+    $slug      = isset($body['slug']) ? sanitize_title($body['slug']) : '';
+    $title     = isset($body['title']) ? sanitize_text_field($body['title']) : '';
+    $meta      = isset($body['meta']) && is_array($body['meta']) ? $body['meta'] : array();
+    $headshot  = isset($body['headshot_url']) ? esc_url_raw($body['headshot_url']) : '';
+
+    if ($p100_id <= 0 || !$p100_url || !$slug || !$title) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'error'   => 'p100_page_id, p100_page_url, slug, and title are required',
+        ), 400);
+    }
+
+    // 1. Lookup by _p100_source_id meta (idempotency key)
+    $existing = get_posts(array(
+        'post_type'      => 'ic_expert_contributor',
+        'post_status'    => array('publish', 'draft', 'pending', 'private'),
+        'meta_key'       => '_p100_source_id',
+        'meta_value'     => $p100_id,
+        'posts_per_page' => 1,
+        'fields'         => 'ids',
+    ));
+    $existing_id = !empty($existing) ? $existing[0] : 0;
+
+    // 2. Fallback: lookup by slug
+    if (!$existing_id) {
+        $by_slug = get_page_by_path($slug, OBJECT, 'ic_expert_contributor');
+        if ($by_slug) $existing_id = $by_slug->ID;
+    }
+
+    $action = '';
+    if ($existing_id) {
+        wp_update_post(array(
+            'ID'         => $existing_id,
+            'post_title' => $title,
+            'post_name'  => $slug,
+        ));
+        $post_id = $existing_id;
+        $action  = 'updated';
+    } else {
+        $post_id = wp_insert_post(array(
+            'post_type'   => 'ic_expert_contributor',
+            'post_title'  => $title,
+            'post_name'   => $slug,
+            'post_status' => 'publish',
+        ), true);
+        if (is_wp_error($post_id)) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error'   => 'wp_insert_post failed: ' . $post_id->get_error_message(),
+            ), 500);
+        }
+        $action = 'created';
+    }
+
+    // 3. Always set canonical-source meta
+    update_post_meta($post_id, '_p100_source_id', $p100_id);
+    update_post_meta($post_id, '_p100_source_url', $p100_url);
+
+    // 4. Write all ec_* meta keys (skip empties so PATCH doesn't blank fields)
+    foreach ($meta as $key => $val) {
+        if (strpos($key, 'ec_') !== 0) continue;  // safety: only ec_* keys
+        if ($val === null || $val === '') continue;
+        update_post_meta($post_id, $key, $val);
+    }
+
+    // 5. Sideload headshot if provided + not already set
+    if ($headshot && !has_post_thumbnail($post_id)) {
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+        require_once(ABSPATH . 'wp-admin/includes/media.php');
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        $att_id = media_sideload_image($headshot, $post_id, $title . ' headshot', 'id');
+        if (!is_wp_error($att_id) && $att_id) {
+            set_post_thumbnail($post_id, $att_id);
+            update_post_meta($post_id, 'ec_headshot', $att_id);
+        }
+    }
+
+    // 6. Optional taxonomy assignments
+    if (!empty($body['pillar_terms']) && is_array($body['pillar_terms'])) {
+        wp_set_object_terms($post_id, array_map('sanitize_title', $body['pillar_terms']), 'ic_pillar', false);
+    }
+    if (!empty($body['function_terms']) && is_array($body['function_terms'])) {
+        wp_set_object_terms($post_id, array_map('sanitize_title', $body['function_terms']), 'ic_function', false);
+    }
+
+    return new WP_REST_Response(array(
+        'success'  => true,
+        'action'   => $action,
+        'ic_id'    => $post_id,
+        'ic_url'   => get_permalink($post_id),
+        'p100_id'  => $p100_id,
+        'p100_url' => $p100_url,
+    ), 200);
 }

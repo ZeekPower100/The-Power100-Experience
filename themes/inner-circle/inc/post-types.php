@@ -128,6 +128,25 @@ function ic_register_post_types() {
         'rewrite' => array('slug' => 'company', 'with_front' => false),
     ));
 
+    // CPT: Expert Contributor — IC dark-themed mirror of staging.power100.io
+    // contributor landers. Canonical lives on Power100; IC mirrors so members
+    // can read profiles without leaving the gated portal.
+    // Source URL preserved in _p100_source_url meta (used as rel=canonical).
+    register_post_type('ic_expert_contributor', array(
+        'labels' => array(
+            'name' => 'Expert Contributors', 'singular_name' => 'Expert Contributor',
+            'add_new' => 'Add New', 'add_new_item' => 'Add New Expert Contributor',
+            'edit_item' => 'Edit Expert Contributor', 'view_item' => 'View Expert Contributor',
+            'search_items' => 'Search Expert Contributors', 'not_found' => 'No expert contributors found',
+            'all_items' => 'All Expert Contributors', 'menu_name' => 'Expert Contributors',
+        ),
+        'public' => true, 'has_archive' => 'expert-contributors',
+        'rewrite' => array('slug' => 'expert-contributor', 'with_front' => false),
+        'menu_icon' => 'dashicons-id-alt',
+        'supports' => array('title', 'thumbnail', 'custom-fields'),
+        'show_in_rest' => true, 'menu_position' => 7,
+    ));
+
     // CPT: Resources
     register_post_type('ic_resource', array(
         'labels' => array(
@@ -344,6 +363,43 @@ function ic_sync_speaker_taxonomies($post_id) {
             if (!$existing_photo) {
                 update_term_meta($term->term_id, 'leader_photo', $photo_id);
             }
+        }
+    }
+
+    // Phase B: notify TPE backend so each speaker auto-gets a Power100
+    // contributor lander (idempotent — safe to re-fire on every episode save).
+    // Fire-and-forget per speaker; failures are logged but never block the save.
+    $tpe_base    = defined('IC_TPE_BACKEND_URL') ? IC_TPE_BACKEND_URL : 'https://tpx.power100.io';
+    $tpe_api_key = defined('IC_TPE_API_KEY') ? IC_TPE_API_KEY : (defined('TPX_SALES_AGENT_API_KEY') ? TPX_SALES_AGENT_API_KEY : '');
+    if ($tpe_api_key) {
+        foreach ($speakers as $s) {
+            if (empty($s['name'])) continue;
+            $name    = trim($s['name']);
+            $title   = !empty($s['title']) ? trim($s['title']) : '';
+            $company = '';
+            if ($title && preg_match('/(?:,|·|\|)\s*(.+)$/', $title, $cm)) {
+                $company = trim($cm[1]);
+                $title   = trim(preg_replace('/(?:,|·|\|)\s*.+$/', '', $title));
+            }
+            $photo_url = '';
+            if (!empty($s['photo']) && is_numeric($s['photo'])) {
+                $photo_url = wp_get_attachment_url(intval($s['photo'])) ?: '';
+            }
+            wp_remote_post($tpe_base . '/api/expert-contributors/upsert-from-episode', array(
+                'timeout'  => 4,
+                'blocking' => false,  // fire-and-forget
+                'headers'  => array(
+                    'Content-Type' => 'application/json',
+                    'X-API-Key'    => $tpe_api_key,
+                ),
+                'body'     => wp_json_encode(array(
+                    'name'            => $name,
+                    'title'           => $title,
+                    'company'         => $company,
+                    'photo_url'       => $photo_url,
+                    'episode_post_id' => $post_id,
+                )),
+            ));
         }
     }
 }

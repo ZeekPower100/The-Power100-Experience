@@ -471,6 +471,35 @@ async function findStagingPageByName(fullName) {
   return matches[0] || null;
 }
 
+// Mirror the canonical Power100 lander into IC as an `ic_expert_contributor`
+// post (dark-themed gated copy). Idempotent on (_p100_source_id, slug).
+// Non-blocking — Power100 write is the source of truth; IC mirror failures
+// are logged but never surfaced to the caller.
+async function mirrorToInnerCircle({ p100PageId, p100PageUrl, slug, fullName, meta, headshotUrl }) {
+  if (!IC_API_KEY) {
+    console.warn('[mirrorToInnerCircle] IC_API_KEY missing, skipping IC mirror');
+    return null;
+  }
+  try {
+    const res = await axios.post(`${IC_WP_API}/expert-contributor/upsert`, {
+      p100_page_id:  p100PageId,
+      p100_page_url: p100PageUrl,
+      slug,
+      title:         fullName,
+      meta,
+      headshot_url:  headshotUrl || null,
+    }, {
+      headers: { 'X-IC-API-Key': IC_API_KEY, 'Content-Type': 'application/json' },
+      timeout: 25000, // image sideload can take a few seconds
+    });
+    console.log(`[mirrorToInnerCircle] ${res.data.action || 'synced'} ic_id=${res.data.ic_id} for "${fullName}"`);
+    return res.data;
+  } catch (err) {
+    console.error(`[mirrorToInnerCircle] failed for "${fullName}":`, err.response?.data || err.message);
+    return null;
+  }
+}
+
 async function upsertContributorLander(row, opts = {}) {
   if (!row || !row.first_name || !row.last_name) {
     throw new Error('upsertContributorLander: row.first_name + row.last_name required');
@@ -487,6 +516,9 @@ async function upsertContributorLander(row, opts = {}) {
     if (acf[k] !== undefined && acf[k] !== null && acf[k] !== '') meta[k] = acf[k];
   }
 
+  // Slug for use in IC mirror (same on both sites)
+  const slug = contributorSlug(fullName, ecType);
+
   // 1. wp_page_id direct hit
   if (row.wp_page_id && Number.isFinite(parseInt(row.wp_page_id, 10))) {
     try {
@@ -498,6 +530,7 @@ async function upsertContributorLander(row, opts = {}) {
       });
       const pageUrl = res.data.link || `${STAGING_P100_BASE}/?page_id=${pageId}`;
       console.log(`[upsertContributorLander] Updated existing page ${pageId} for "${fullName}" (source=${source})`);
+      mirrorToInnerCircle({ p100PageId: pageId, p100PageUrl: pageUrl, slug, fullName, meta, headshotUrl: row.headshot_url || null });
       return { wp_page_id: pageId, wp_page_url: pageUrl, created: false, action: 'updated' };
     } catch (err) {
       // Fall through to lookup-by-name if the stored page_id is gone
@@ -524,11 +557,11 @@ async function upsertContributorLander(row, opts = {}) {
       ).catch(e => console.warn(`[upsertContributorLander] Failed to back-link wp_page_id on row ${row.id}:`, e.message));
     }
     console.log(`[upsertContributorLander] Linked existing page ${pageId} for "${fullName}" (source=${source})`);
+    mirrorToInnerCircle({ p100PageId: pageId, p100PageUrl: pageUrl, slug, fullName, meta, headshotUrl: row.headshot_url || null });
     return { wp_page_id: pageId, wp_page_url: pageUrl, created: false, action: 'linked' };
   }
 
-  // 3. Create new draft page
-  const slug = contributorSlug(fullName, ecType);
+  // 3. Create new draft page (slug declared above for shared use with IC mirror)
   const url = `${STAGING_P100_BASE}/wp-json/wp/v2/pages`;
   const res = await axios.post(url, {
     title:    fullName,
@@ -549,6 +582,18 @@ async function upsertContributorLander(row, opts = {}) {
     ).catch(e => console.warn(`[upsertContributorLander] Failed to back-link wp_page_id on row ${row.id}:`, e.message));
   }
   console.log(`[upsertContributorLander] Created new page ${pageId} for "${fullName}" (source=${source}, type=${ecType})`);
+
+  // 4. Mirror to IC (non-blocking — IC failure does not affect Power100 truth).
+  // Always fired on first create; updated paths fire it too via the early-return branches.
+  mirrorToInnerCircle({
+    p100PageId:  pageId,
+    p100PageUrl: pageUrl,
+    slug,
+    fullName,
+    meta,
+    headshotUrl: row.headshot_url || null,
+  });
+
   return { wp_page_id: pageId, wp_page_url: pageUrl, created: true, action: 'created' };
 }
 
