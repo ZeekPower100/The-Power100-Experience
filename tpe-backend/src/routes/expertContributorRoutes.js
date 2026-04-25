@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile, linkCompany, markPageLive, getDrcStatus, getEcsByRep } = require('../controllers/expertContributorController');
+const { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile, linkCompany, markPageLive, getDrcStatus, getEcsByRep, createFromForm } = require('../controllers/expertContributorController');
 
 /**
  * X-API-Key auth — mirrors /api/sales-agent/* (TPX_SALES_AGENT_API_KEY env).
@@ -36,5 +36,8 @@ router.get('/:id/drc-status', getDrcStatus);
 
 // DRC dashboard: rep's EC pipeline ("Your EC Pipeline" widget)
 router.get('/by-rep/:rankings_user_id', drcApiKeyAuth, getEcsByRep);
+
+// n8n EC intake adapter — called after WP draft page is created
+router.post('/from-form', drcApiKeyAuth, createFromForm);
 
 module.exports = router;

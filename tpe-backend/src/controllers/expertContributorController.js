@@ -934,4 +934,186 @@ const getEcsByRep = async (req, res) => {
   }
 };
 
-module.exports = { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile, linkCompany, markPageLive, getDrcStatus, getEcsByRep };
+/**
+ * POST /api/expert-contributors/from-form
+ *
+ * Called by the n8n adapter (workflow C7z6043tUdhxrnhx "EC Intake Form Adapter")
+ * AFTER it has already created the WordPress draft page on power100.io. Closes
+ * the gap between the form-driven lander pipeline and the TPE backend, so
+ * form-submitted ECs land in tpedb and flow into the DRC pipeline like
+ * presentation-page signups do.
+ *
+ * Auth: X-API-Key (TPX_SALES_AGENT_API_KEY) — same as DRC dashboard endpoints.
+ *
+ * Body matches the form payload (first_name, last_name, email, etc.) plus:
+ *   - wp_page_id     (int)    — created by the page-creator workflow
+ *   - wp_page_url    (string) — derived from page_slug
+ *   - assigned_rep_id (int|null) — captured from ?rep=NN URL param on the form
+ *
+ * Behavior:
+ *   1. Creates the expert_contributors row (or updates if email already exists),
+ *      with contributor_class='expert_contributor', source='public_form',
+ *      pipeline_stage='page_live', payment_status='form_submitted'.
+ *   2. Fires handleSignup → company match + auto-assign rep (3-tier fallback)
+ *      + DRC tasks/notes. If assigned_rep_id was passed in, that one wins.
+ *   3. Fires handlePageLive → DRC page-live actions (since the page already
+ *      exists by the time we get here).
+ *   4. Auto-links IC leader term to the EC page (via contributorEnrichmentService).
+ *
+ * Returns: { success, ec_id, created|updated, contributor }
+ */
+const createFromForm = async (req, res) => {
+  try {
+    const {
+      first_name, last_name, email, phone, company, title_position,
+      contributor_type, form_tier, linkedin_url, website_url,
+      hero_quote, bio, years_in_industry, revenue_value, geographic_reach,
+      custom_stat, credentials, expertise_topics, recognition,
+      company_description, videos, testimonials,
+      headshot_url, wp_page_id, wp_page_url, assigned_rep_id
+    } = req.body;
+
+    if (!email) return res.status(400).json({ success: false, error: 'Email is required' });
+    if (!first_name || !last_name) return res.status(400).json({ success: false, error: 'first_name and last_name are required' });
+    if (!company) return res.status(400).json({ success: false, error: 'company is required' });
+
+    // Form's contributor_type is one of: 'ceo' | 'partner' | 'industry_leader'
+    // tpedb's contributor_type is one of: 'ec_individual' | 'ec_partner' | 'ec_partner_plus' | 'ec_enterprise'
+    // Map by form_tier (full|medium|lean) within the type, defaulting sensibly.
+    const tier = form_tier || 'full';
+    let internalType = 'ec_individual';
+    if (contributor_type === 'partner') internalType = 'ec_partner';
+    else if (tier === 'lean') internalType = 'ec_individual';
+    else if (tier === 'medium') internalType = 'ec_individual';
+    else internalType = 'ec_individual';
+
+    const repIdParam = assigned_rep_id != null && Number.isFinite(parseInt(assigned_rep_id, 10))
+      ? parseInt(assigned_rep_id, 10)
+      : null;
+
+    const existing = await query('SELECT id FROM expert_contributors WHERE email = $1', [email]);
+
+    let result;
+    let wasUpdate = false;
+
+    if (existing.rows.length > 0) {
+      wasUpdate = true;
+      result = await query(`
+        UPDATE expert_contributors SET
+          first_name = COALESCE($1, first_name),
+          last_name = COALESCE($2, last_name),
+          phone = COALESCE($3, phone),
+          company = COALESCE($4, company),
+          title_position = COALESCE($5, title_position),
+          contributor_type = COALESCE($6, contributor_type),
+          form_tier = COALESCE($7, form_tier),
+          linkedin_url = COALESCE($8, linkedin_url),
+          website_url = COALESCE($9, website_url),
+          hero_quote = COALESCE($10, hero_quote),
+          bio = COALESCE($11, bio),
+          years_in_industry = COALESCE($12, years_in_industry),
+          revenue_value = COALESCE($13, revenue_value),
+          geographic_reach = COALESCE($14, geographic_reach),
+          custom_stat = COALESCE($15, custom_stat),
+          credentials = COALESCE($16, credentials),
+          expertise_topics = COALESCE($17, expertise_topics),
+          recognition = COALESCE($18, recognition),
+          company_description = COALESCE($19, company_description),
+          videos = COALESCE($20, videos),
+          testimonials = COALESCE($21, testimonials),
+          headshot_url = COALESCE($22, headshot_url),
+          wp_page_id = COALESCE($23, wp_page_id),
+          wp_page_url = COALESCE($24, wp_page_url),
+          assigned_rep_id = COALESCE($25, assigned_rep_id),
+          contributor_class = 'expert_contributor',
+          source = COALESCE(source, 'public_form'),
+          pipeline_stage = 'page_live',
+          payment_status = COALESCE(payment_status, 'form_submitted'),
+          updated_at = NOW()
+        WHERE email = $26
+        RETURNING *
+      `, [
+        first_name, last_name, phone, company, title_position,
+        internalType, tier, linkedin_url, website_url,
+        hero_quote, bio, years_in_industry, revenue_value, geographic_reach,
+        custom_stat, credentials, expertise_topics, recognition,
+        company_description,
+        videos ? JSON.stringify(videos) : null,
+        testimonials ? JSON.stringify(testimonials) : null,
+        headshot_url || null,
+        wp_page_id || null, wp_page_url || null,
+        repIdParam,
+        email
+      ]);
+    } else {
+      result = await query(`
+        INSERT INTO expert_contributors (
+          first_name, last_name, email, phone, company, title_position,
+          contributor_type, form_tier, linkedin_url, website_url,
+          hero_quote, bio, years_in_industry, revenue_value, geographic_reach,
+          custom_stat, credentials, expertise_topics, recognition,
+          company_description, videos, testimonials, headshot_url,
+          wp_page_id, wp_page_url, assigned_rep_id,
+          contributor_class, source, pipeline_stage, payment_status
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6,
+          $7, $8, $9, $10,
+          $11, $12, $13, $14, $15,
+          $16, $17, $18, $19,
+          $20, $21, $22, $23,
+          $24, $25, $26,
+          'expert_contributor', 'public_form', 'page_live', 'form_submitted'
+        ) RETURNING *
+      `, [
+        first_name, last_name, email, phone, company, title_position,
+        internalType, tier, linkedin_url, website_url,
+        hero_quote, bio, years_in_industry, revenue_value, geographic_reach,
+        custom_stat, credentials, expertise_topics, recognition,
+        company_description,
+        videos ? JSON.stringify(videos) : '[]',
+        testimonials ? JSON.stringify(testimonials) : '[]',
+        headshot_url || null,
+        wp_page_id || null, wp_page_url || null,
+        repIdParam
+      ]);
+    }
+
+    const contributor = result.rows[0];
+
+    // DRC integration — company match + rep assignment + tasks/notes (non-blocking).
+    // If the form provided an explicit rep, handleSignup's auto-assignment will be
+    // overridden by the value already on the row (it only sets if null).
+    ecDrcIntegration.handleSignup(contributor).catch(e =>
+      console.error('[EC-DRC from-form] Signup integration error:', e.message)
+    );
+
+    // Page is already live by the time we hear about it — fire page-live actions.
+    if (wp_page_url) {
+      ecDrcIntegration.handlePageLive(contributor, wp_page_url).catch(e =>
+        console.error('[EC-DRC from-form] Page live integration error:', e.message)
+      );
+
+      // Auto-link IC leader term (non-blocking).
+      try {
+        const contributorEnrichment = require('../services/contributorEnrichmentService');
+        const fullName = `${contributor.first_name} ${contributor.last_name}`.trim();
+        contributorEnrichment.enrichSingleLeader(fullName).catch(e =>
+          console.error('[EC-IC from-form] Auto-link error:', e.message)
+        );
+      } catch (e) { /* enrichment service not critical */ }
+    }
+
+    return res.status(wasUpdate ? 200 : 201).json({
+      success: true,
+      ec_id: contributor.id,
+      created: !wasUpdate,
+      updated: wasUpdate,
+      contributor
+    });
+  } catch (err) {
+    console.error('Error creating EC from form:', err);
+    return res.status(500).json({ success: false, error: 'Failed to create EC from form' });
+  }
+};
+
+module.exports = { createExpertContributor, updatePaymentStatus, getDelegateProfile, completeDelegateProfile, linkCompany, markPageLive, getDrcStatus, getEcsByRep, createFromForm };
