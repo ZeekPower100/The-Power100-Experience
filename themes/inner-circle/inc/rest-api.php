@@ -1081,7 +1081,7 @@ function ic_rest_content_by_youtube_id($request) {
 /**
  * POST /wp-json/ic/v1/expert-contributor/upsert
  *
- * Mirror an `ic_expert_contributor` post from a Power100 source. Idempotent
+ * Mirror an `ic_contributor` post from a Power100 source. Idempotent
  * on (_p100_source_id) → matched first, falls back to slug. Body shape:
  *   {
  *     p100_page_id:  int    (required — staging.power100.io page ID),
@@ -1119,7 +1119,7 @@ function ic_rest_upsert_expert_contributor($request) {
 
     // 1. Lookup by _p100_source_id meta (idempotency key)
     $existing = get_posts(array(
-        'post_type'      => 'ic_expert_contributor',
+        'post_type'      => 'ic_contributor',
         'post_status'    => array('publish', 'draft', 'pending', 'private'),
         'meta_key'       => '_p100_source_id',
         'meta_value'     => $p100_id,
@@ -1130,7 +1130,7 @@ function ic_rest_upsert_expert_contributor($request) {
 
     // 2. Fallback: lookup by slug
     if (!$existing_id) {
-        $by_slug = get_page_by_path($slug, OBJECT, 'ic_expert_contributor');
+        $by_slug = get_page_by_path($slug, OBJECT, 'ic_contributor');
         if ($by_slug) $existing_id = $by_slug->ID;
     }
 
@@ -1145,7 +1145,7 @@ function ic_rest_upsert_expert_contributor($request) {
         $action  = 'updated';
     } else {
         $post_id = wp_insert_post(array(
-            'post_type'   => 'ic_expert_contributor',
+            'post_type'   => 'ic_contributor',
             'post_title'  => $title,
             'post_name'   => $slug,
             'post_status' => 'publish',

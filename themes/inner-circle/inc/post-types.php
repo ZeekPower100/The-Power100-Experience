@@ -132,7 +132,7 @@ function ic_register_post_types() {
     // contributor landers. Canonical lives on Power100; IC mirrors so members
     // can read profiles without leaving the gated portal.
     // Source URL preserved in _p100_source_url meta (used as rel=canonical).
-    register_post_type('ic_expert_contributor', array(
+    register_post_type('ic_contributor', array(
         'labels' => array(
             'name' => 'Expert Contributors', 'singular_name' => 'Expert Contributor',
             'add_new' => 'Add New', 'add_new_item' => 'Add New Expert Contributor',
