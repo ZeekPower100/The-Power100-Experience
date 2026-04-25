@@ -451,18 +451,23 @@ function contributorSlug(fullName, ecType) {
 }
 
 async function findStagingPageByName(fullName) {
-  // Search by title — WP returns matches anywhere in title. We filter by exact ec_name in ACF.
+  // Search by title — WP returns matches anywhere in title. We filter by exact title match
+  // (ec_name meta isn't always exposed pre-mu-plugin, but title === fullName for our pages).
   const url = `${STAGING_P100_BASE}/wp-json/wp/v2/pages`;
   const res = await axios.get(url, {
-    params: { search: fullName, per_page: 5, status: 'publish,draft,pending,private', _fields: 'id,slug,acf,template' },
+    params: { search: fullName, per_page: 5, status: 'publish,draft,pending,private', _fields: 'id,slug,title,template,meta' },
     headers: { Authorization: stagingAuthHeader() },
     timeout: 10000,
   });
-  const matches = (res.data || []).filter(p =>
-    p.template === 'page-expert-contributor.php' &&
-    p.acf && typeof p.acf.ec_name === 'string' &&
-    p.acf.ec_name.trim().toLowerCase() === fullName.trim().toLowerCase()
-  );
+  const target = fullName.trim().toLowerCase();
+  const matches = (res.data || []).filter(p => {
+    if (p.template !== 'page-expert-contributor.php') return false;
+    const titleMatch = (p.title && typeof p.title.rendered === 'string')
+      && p.title.rendered.trim().toLowerCase() === target;
+    const metaMatch = (p.meta && typeof p.meta.ec_name === 'string')
+      && p.meta.ec_name.trim().toLowerCase() === target;
+    return titleMatch || metaMatch;
+  });
   return matches[0] || null;
 }
 
@@ -474,12 +479,20 @@ async function upsertContributorLander(row, opts = {}) {
   const { acf, fullName, ecType } = rowToAcfFields(row);
   const auth = stagingAuthHeader();
 
+  // staging has no ACF field group — write to raw post_meta via the
+  // mu-register-ec-meta.php mu-plugin which exposes ec_* meta to REST.
+  // Empty values dropped so they don't blank existing data on PATCH.
+  const meta = {};
+  for (const k in acf) {
+    if (acf[k] !== undefined && acf[k] !== null && acf[k] !== '') meta[k] = acf[k];
+  }
+
   // 1. wp_page_id direct hit
   if (row.wp_page_id && Number.isFinite(parseInt(row.wp_page_id, 10))) {
     try {
       const pageId = parseInt(row.wp_page_id, 10);
       const url = `${STAGING_P100_BASE}/wp-json/wp/v2/pages/${pageId}`;
-      const res = await axios.post(url, { acf }, {
+      const res = await axios.post(url, { meta }, {
         headers: { Authorization: auth, 'Content-Type': 'application/json' },
         timeout: 12000,
       });
@@ -499,7 +512,7 @@ async function upsertContributorLander(row, opts = {}) {
   if (existing && existing.id) {
     const pageId = existing.id;
     const url = `${STAGING_P100_BASE}/wp-json/wp/v2/pages/${pageId}`;
-    const res = await axios.post(url, { acf }, {
+    const res = await axios.post(url, { meta }, {
       headers: { Authorization: auth, 'Content-Type': 'application/json' },
       timeout: 12000,
     });
@@ -522,7 +535,7 @@ async function upsertContributorLander(row, opts = {}) {
     slug,
     status:   'draft',
     template: 'page-expert-contributor.php',
-    acf,
+    meta,
   }, {
     headers: { Authorization: auth, 'Content-Type': 'application/json' },
     timeout: 15000,
