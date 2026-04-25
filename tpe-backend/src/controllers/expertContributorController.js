@@ -1080,28 +1080,30 @@ const createFromForm = async (req, res) => {
 
     const contributor = result.rows[0];
 
-    // DRC integration — company match + rep assignment + tasks/notes (non-blocking).
-    // If the form provided an explicit rep, handleSignup's auto-assignment will be
-    // overridden by the value already on the row (it only sets if null).
-    ecDrcIntegration.handleSignup(contributor).catch(e =>
-      console.error('[EC-DRC from-form] Signup integration error:', e.message)
-    );
-
-    // Page is already live by the time we hear about it — fire page-live actions.
-    if (wp_page_url) {
-      ecDrcIntegration.handlePageLive(contributor, wp_page_url).catch(e =>
-        console.error('[EC-DRC from-form] Page live integration error:', e.message)
-      );
-
-      // Auto-link IC leader term (non-blocking).
-      try {
-        const contributorEnrichment = require('../services/contributorEnrichmentService');
-        const fullName = `${contributor.first_name} ${contributor.last_name}`.trim();
-        contributorEnrichment.enrichSingleLeader(fullName).catch(e =>
-          console.error('[EC-IC from-form] Auto-link error:', e.message)
-        );
-      } catch (e) { /* enrichment service not critical */ }
-    }
+    // DRC integration — must run sequentially because handleSignup hardcodes
+    // pipeline_stage='signup' and handlePageLive sets it to 'page_live'. If they
+    // race, handleSignup wins last and the row gets stuck in 'signup' even
+    // though the page is already live. Chain via .then() so the endpoint still
+    // returns fast but stages settle in the correct order.
+    ecDrcIntegration.handleSignup(contributor)
+      .then(async () => {
+        if (!wp_page_url) return;
+        // Re-read contributor — handleSignup may have set rankings_company_id,
+        // which handlePageLive needs to fire its DRC actions.
+        const fresh = await query('SELECT * FROM expert_contributors WHERE id = $1', [contributor.id]);
+        if (fresh.rows.length > 0) {
+          await ecDrcIntegration.handlePageLive(fresh.rows[0], wp_page_url);
+        }
+      })
+      .then(() => {
+        if (!wp_page_url) return;
+        try {
+          const contributorEnrichment = require('../services/contributorEnrichmentService');
+          const fullName = `${contributor.first_name} ${contributor.last_name}`.trim();
+          return contributorEnrichment.enrichSingleLeader(fullName);
+        } catch (e) { /* enrichment service not critical */ }
+      })
+      .catch(e => console.error('[EC-DRC from-form] Integration chain error:', e.message));
 
     return res.status(wasUpdate ? 200 : 201).json({
       success: true,
