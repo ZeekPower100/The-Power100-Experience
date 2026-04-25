@@ -12,7 +12,11 @@ const { query } = require('../config/database');
 
 const P100_WP_API = 'https://power100.io/wp-json/wp/v2';
 const IC_WP_API = 'https://innercircle.power100.io/wp-json/ic/v1';
-const IC_API_KEY = process.env.TPX_IC_API_KEY;
+// IC_REST_API_KEY = the key TPX uses to call IC (outbound). Falls back to
+// TPX_IC_API_KEY for legacy compat, but that var is misnamed — it's actually
+// the inbound key IC uses to call TPX (see flexibleAuth.js:368). Always set
+// IC_REST_API_KEY explicitly on new deployments.
+const IC_API_KEY = process.env.IC_REST_API_KEY || process.env.TPX_IC_API_KEY;
 
 // ─── Helper: Call IC REST API ───
 async function icApiCall(method, endpoint, data = null) {
