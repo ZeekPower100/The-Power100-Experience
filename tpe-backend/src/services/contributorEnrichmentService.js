@@ -564,7 +564,7 @@ async function upsertContributorLander(row, opts = {}) {
       timeout: 12000,
     });
     const pageUrl = res.data.link || `${STAGING_P100_BASE}/?page_id=${pageId}`;
-    if (row.id && !preserveLegacy) {
+    if (row.id && !(preserveLegacy && row.wp_page_id)) {
       await query(
         'UPDATE expert_contributors SET wp_page_id = $1, wp_page_url = $2, updated_at = NOW() WHERE id = $3',
         [pageId, pageUrl, row.id]
@@ -589,7 +589,10 @@ async function upsertContributorLander(row, opts = {}) {
   });
   const pageId  = res.data.id;
   const pageUrl = res.data.link || `${STAGING_P100_BASE}/${slug}/`;
-  if (row.id) {
+  // Skip back-link only if preserveLegacy=true AND there's actually a legacy
+  // value to preserve. If row.wp_page_id is null, writing the staging ID is
+  // the helpful behavior (nothing to overwrite).
+  if (row.id && !(preserveLegacy && row.wp_page_id)) {
     await query(
       'UPDATE expert_contributors SET wp_page_id = $1, wp_page_url = $2, updated_at = NOW() WHERE id = $3',
       [pageId, pageUrl, row.id]
