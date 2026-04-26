@@ -508,6 +508,24 @@ const createExpertContributor = async (req, res) => {
       console.error('[EC-DRC] Signup integration error:', e.message)
     );
 
+    // Mirror to staging.power100.io + IC (non-blocking). Paid ECs already
+    // get a legacy power100.io page from the n8n adapter; this creates the
+    // canonical staging copy + IC mirror for the DNS-cutover future state.
+    // ignoreStoredWpPageId/preserveExistingPageLink keep the legacy URL on
+    // the tpedb row untouched so DRC dashboard links still work today.
+    setImmediate(async () => {
+      try {
+        const enrich = require('../services/contributorEnrichmentService');
+        await enrich.upsertContributorLander(result.rows[0], {
+          source: 'ec_signup',
+          ignoreStoredWpPageId: true,
+          preserveExistingPageLink: true,
+        });
+      } catch (e) {
+        console.error('[createExpertContributor] upsertContributorLander failed:', e.message);
+      }
+    });
+
     return res.status(201).json({ success: true, contributor: result.rows[0], created: true });
   } catch (err) {
     console.error('Error creating expert contributor:', err);
@@ -780,6 +798,22 @@ const markPageLive = async (req, res) => {
         console.error('[EC-IC] Auto-link error:', e.message)
       );
     } catch (e) { /* enrichment service not critical */ }
+
+    // Mirror to staging.power100.io + IC (non-blocking, same flags as createExpertContributor).
+    // Fires every time markPageLive is called so any payload changes that
+    // happen between signup and page-live get reflected on the canonical sites.
+    setImmediate(async () => {
+      try {
+        const enrich = require('../services/contributorEnrichmentService');
+        await enrich.upsertContributorLander(contributor, {
+          source: 'ec_page_live',
+          ignoreStoredWpPageId: true,
+          preserveExistingPageLink: true,
+        });
+      } catch (e) {
+        console.error('[markPageLive] upsertContributorLander failed:', e.message);
+      }
+    });
 
     return res.status(200).json({ success: true, message: 'Page marked as live', contributor });
   } catch (err) {

@@ -523,8 +523,18 @@ async function upsertContributorLander(row, opts = {}) {
   // Slug for use in IC mirror (same on both sites)
   const slug = contributorSlug(fullName, ecType);
 
+  // Paid EC controllers (createExpertContributor, markPageLive) pass
+  // ignoreStoredWpPageId=true because their row.wp_page_id refers to the
+  // legacy power100.io page, NOT a staging page — using it would 404 then
+  // fall through anyway. Skip path 1 to avoid the wasted REST call.
+  // preserveExistingPageLink=true prevents the back-link UPDATE that would
+  // overwrite the legacy URL with the staging URL (DRC dashboard still
+  // needs the legacy URL until DNS cutover).
+  const ignoreStoredId  = !!opts.ignoreStoredWpPageId;
+  const preserveLegacy  = !!opts.preserveExistingPageLink;
+
   // 1. wp_page_id direct hit
-  if (row.wp_page_id && Number.isFinite(parseInt(row.wp_page_id, 10))) {
+  if (!ignoreStoredId && row.wp_page_id && Number.isFinite(parseInt(row.wp_page_id, 10))) {
     try {
       const pageId = parseInt(row.wp_page_id, 10);
       const url = `${STAGING_P100_BASE}/wp-json/wp/v2/pages/${pageId}`;
@@ -554,7 +564,7 @@ async function upsertContributorLander(row, opts = {}) {
       timeout: 12000,
     });
     const pageUrl = res.data.link || `${STAGING_P100_BASE}/?page_id=${pageId}`;
-    if (row.id) {
+    if (row.id && !preserveLegacy) {
       await query(
         'UPDATE expert_contributors SET wp_page_id = $1, wp_page_url = $2, updated_at = NOW() WHERE id = $3',
         [pageId, pageUrl, row.id]
