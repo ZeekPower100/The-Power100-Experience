@@ -381,6 +381,35 @@ function stagingAuthHeader() {
   return 'Basic ' + Buffer.from(STAGING_P100_USER + ':' + STAGING_P100_PWD).toString('base64');
 }
 
+// Download a remote image URL and upload it into staging.power100.io's
+// media library. Returns the new attachment ID. Used to populate
+// ec_headshot (which is registered as an integer attachment ID).
+async function sideloadImageToStaging(imageUrl, filenameHint) {
+  const imgRes = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 20000 });
+  const buf = Buffer.from(imgRes.data);
+  const contentType = imgRes.headers['content-type'] || 'image/jpeg';
+  // Pull a sane extension from URL or content-type
+  const urlExt = (imageUrl.split('?')[0].split('.').pop() || '').toLowerCase();
+  const ext = ['jpg','jpeg','png','gif','webp'].includes(urlExt) ? urlExt :
+              (contentType.split('/')[1] || 'jpg').split(';')[0].toLowerCase();
+  const filename = `${filenameHint}-headshot.${ext}`;
+
+  const uploadRes = await axios.post(
+    `${STAGING_P100_BASE}/wp-json/wp/v2/media`,
+    buf,
+    {
+      headers: {
+        Authorization: stagingAuthHeader(),
+        'Content-Type': contentType,
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+      timeout: 30000,
+      maxBodyLength: Infinity,
+    }
+  );
+  return uploadRes.data.id;
+}
+
 // Map a contributor row → ec_* ACF schema. Used for both POST and PATCH bodies.
 function rowToAcfFields(row) {
   const fullName  = `${row.first_name || ''} ${row.last_name || ''}`.trim();
@@ -398,10 +427,16 @@ function rowToAcfFields(row) {
   }
 
   // Stat slot mapping: form gives years_in_industry / revenue_value / geographic_reach + 1 custom.
-  const customStat = row.custom_stat || '';
-  let customLabel = '', customValue = '';
-  const m = customStat.match(/^([\d,]+\+?)\s+(.+)$/);
-  if (m) { customValue = m[1]; customLabel = m[2]; } else { customValue = customStat; }
+  // Form's custom_stat is a single text field like "500+ Companies Trained" — parse value+label out.
+  // Backfill / programmatic callers can pass row.ec_stat_custom_label + row.ec_stat_custom_value
+  // directly to bypass the regex round-trip (which loses # prefix on rank values, etc.).
+  let customLabel = row.ec_stat_custom_label || '';
+  let customValue = row.ec_stat_custom_value || '';
+  if (!customLabel && !customValue) {
+    const customStat = row.custom_stat || '';
+    const m = customStat.match(/^([\d,]+\+?)\s+(.+)$/);
+    if (m) { customValue = m[1]; customLabel = m[2]; } else { customValue = customStat; }
+  }
 
   // Videos / testimonials may arrive as JSONB array OR JSON string from postgres.
   const parseJsonArr = (v) => {
@@ -522,6 +557,20 @@ async function upsertContributorLander(row, opts = {}) {
 
   // Slug for use in IC mirror (same on both sites)
   const slug = contributorSlug(fullName, ecType);
+
+  // If we have a headshot URL and meta.ec_headshot isn't already set,
+  // sideload to staging media library before any path runs. Result attaches
+  // to whichever path (create or update) writes the meta. Idempotent —
+  // re-sideloads only when meta.ec_headshot is empty.
+  if (row.headshot_url && !meta.ec_headshot) {
+    try {
+      const attId = await sideloadImageToStaging(row.headshot_url, slug);
+      meta.ec_headshot = attId;
+      console.log(`[upsertContributorLander] Sideloaded headshot ${attId} for "${fullName}"`);
+    } catch (e) {
+      console.warn(`[upsertContributorLander] Headshot sideload failed for "${fullName}":`, e.message);
+    }
+  }
 
   // Paid EC controllers (createExpertContributor, markPageLive) pass
   // ignoreStoredWpPageId=true because their row.wp_page_id refers to the
