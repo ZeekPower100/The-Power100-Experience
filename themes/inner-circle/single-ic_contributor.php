@@ -151,18 +151,32 @@ elseif ($contributor_type === 'industry_leader') $badge_text = 'Industry Leader 
 elseif ($is_contributor)                         $badge_text = 'Power100 Contributor';
 else                                             $badge_text = 'Power100 Expert Contributor';
 
-// Articles featuring this contributor — query IC's ic_article (mirrored from P100)
-$ec_articles = array();
-$last_name_only = $nm_parts[count($nm_parts) - 1] ?? $name;
-$article_posts = get_posts(array(
-    'post_type'      => array('ic_article', 'post'),
-    'posts_per_page' => 10,
-    's'              => $name,
+// Articles BY this contributor (authoritative — explicit ic_author_contributor_id link).
+// Joins to ic_article via the meta key our P100 → IC sync hook writes.
+$articles_by = get_posts(array(
+    'post_type'      => 'ic_article',
+    'posts_per_page' => -1,
+    'meta_key'       => 'ic_author_contributor_id',
+    'meta_value'     => get_the_ID(),
     'orderby'        => 'date',
     'order'          => 'DESC',
 ));
-foreach ($article_posts as $ap) {
-    if (stripos($ap->post_title, $last_name_only) !== false) $ec_articles[] = $ap;
+
+// Articles FEATURING this contributor (subject-mention based, last-name match in title).
+// Excludes anything already in the "by" list to avoid double display.
+$by_ids = array_map(function($a){ return $a->ID; }, $articles_by);
+$articles_featuring = array();
+$last_name_only = $nm_parts[count($nm_parts) - 1] ?? $name;
+$article_search = get_posts(array(
+    'post_type'      => array('ic_article', 'post'),
+    'posts_per_page' => 12,
+    's'              => $name,
+    'orderby'        => 'date',
+    'order'          => 'DESC',
+    'post__not_in'   => $by_ids,
+));
+foreach ($article_search as $ap) {
+    if (stripos($ap->post_title, $last_name_only) !== false) $articles_featuring[] = $ap;
 }
 
 // Episodes (IC-side via ic_leader taxonomy)
@@ -177,6 +191,83 @@ $episodes_query = new WP_Query(array(
 ));
 $episodes = $episodes_query->posts;
 wp_reset_postdata();
+
+// Connected contributors — co-appearances derived from shared episodes (ic_leader)
+// + co-mentions in articles (ic_author_contributor_id author's articles' other mentioned contributors).
+$current_pid = get_the_ID();
+$current_name_lower = strtolower($name);
+$connected_pids = array();
+
+// (1) Episode co-appearances: walk each episode's ic_leader terms, dedupe by ic_contributor post lookup
+foreach ($episodes as $ep) {
+    $ep_leaders = wp_get_object_terms($ep->ID, 'ic_leader', array('fields' => 'names'));
+    if (is_wp_error($ep_leaders)) continue;
+    foreach ($ep_leaders as $lname) {
+        if (strtolower($lname) === $current_name_lower) continue;
+        $found = get_page_by_title($lname, OBJECT, 'ic_contributor');
+        if ($found && $found->post_status === 'publish' && (int)$found->ID !== (int)$current_pid) {
+            $connected_pids[$found->ID] = $found->ID;
+        }
+    }
+}
+
+// (2) Article co-mentions: for each article authored by current contributor, scan first 4000 chars
+// for other contributor full-name matches and add to connected set.
+$authored = get_posts(array(
+    'post_type'      => 'ic_article',
+    'posts_per_page' => -1,
+    'meta_key'       => 'ic_author_contributor_id',
+    'meta_value'     => $current_pid,
+    'fields'         => 'ids',
+));
+if (!empty($authored)) {
+    // One-time fetch of every other ic_contributor's name + ID — small enough corpus (~150 rows).
+    static $all_contribs = null;
+    if ($all_contribs === null) {
+        $rows = get_posts(array('post_type' => 'ic_contributor', 'post_status' => 'publish', 'posts_per_page' => -1, 'fields' => 'ids'));
+        $all_contribs = array();
+        foreach ($rows as $rid) {
+            $title = get_the_title($rid);
+            if ($title && strlen($title) >= 4) $all_contribs[$rid] = $title;
+        }
+    }
+    foreach ($authored as $aid) {
+        $body = mb_substr(strval(get_post_field('post_content', $aid)), 0, 4000);
+        $body = strip_tags($body);
+        foreach ($all_contribs as $cid => $cname) {
+            if ((int)$cid === (int)$current_pid) continue;
+            if (isset($connected_pids[$cid])) continue;
+            if (stripos($body, $cname) !== false) $connected_pids[$cid] = $cid;
+        }
+    }
+}
+
+$connected_contributors = array();
+foreach ($connected_pids as $cid) {
+    $co_post = get_post($cid);
+    if (!$co_post) continue;
+    $cclass = (string) get_post_meta($cid, 'contributor_class', true);
+    $ctype  = (string) get_post_meta($cid, 'contributor_type', true);
+    $headshot_id = get_post_thumbnail_id($cid);
+    if (!$headshot_id) $headshot_id = (int) get_post_meta($cid, 'ec_headshot', true);
+    $is_ec_co = ($cclass === 'expert_contributor') || in_array($ctype, array('ranked_ceo', 'ranked_partner', 'industry_leader'), true);
+    $role = (string) get_post_meta($cid, 'ec_role_title', true);
+    $company = (string) get_post_meta($cid, 'ec_company_name', true);
+    $connected_contributors[] = array(
+        'id'       => $cid,
+        'name'     => $co_post->post_title,
+        'role'     => $role ?: ($is_ec_co ? 'Expert Contributor' : 'Contributor'),
+        'company'  => $company,
+        'headshot' => $headshot_id ? wp_get_attachment_image_url($headshot_id, 'thumbnail') : '',
+        'url'      => get_permalink($cid),
+        'is_ec'    => $is_ec_co,
+    );
+}
+// Sort: ECs first, then alphabetical
+usort($connected_contributors, function($a, $b) {
+    if ($a['is_ec'] !== $b['is_ec']) return $a['is_ec'] ? -1 : 1;
+    return strcasecmp($a['name'], $b['name']);
+});
 
 // URL helper — internal CTA links should go to Power100 main, NOT IC
 function ic_ec_p100_link($path) {
@@ -201,6 +292,17 @@ function ic_ec_p100_link($path) {
 include get_stylesheet_directory() . '/css/ec-lander.css';
 include get_stylesheet_directory() . '/css/ec-lander-dark.css';
 ?>
+/* Connected Contributors grid (cross-link guests ↔ ECs) */
+.ec-connected-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin-top: 32px; }
+.ec-connected-card { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 24px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 14px; text-decoration: none; transition: transform 0.2s, border-color 0.2s, background 0.2s; position: relative; }
+.ec-connected-card:hover { transform: translateY(-3px); border-color: rgba(251,4,1,0.4); background: rgba(255,255,255,0.05); }
+.ec-connected-photo { width: 96px; height: 96px; border-radius: 50%; background-size: cover; background-position: center; background-color: #2a2a2a; margin-bottom: 14px; flex-shrink: 0; border: 2px solid rgba(251,4,1,0.25); }
+.ec-connected-photo.placeholder { display:flex; align-items:center; justify-content:center; font-weight:700; color:#888; font-size:24px; font-family: var(--font-display); }
+.ec-connected-name { font-family: var(--font-body); font-weight: 700; font-size: 15px; color: #fff; margin-bottom: 4px; line-height: 1.25; }
+.ec-connected-role { font-size: 12px; color: rgba(255,255,255,0.55); line-height: 1.3; }
+.ec-connected-badge { position: absolute; top: 10px; right: 10px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 3px 7px; border-radius: 4px; }
+.ec-connected-badge.is-ec { background: rgba(251,4,1,0.18); color: #ff5d5b; border: 1px solid rgba(251,4,1,0.4); }
+.ec-connected-badge.is-guest { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.12); }
 </style>
 </head>
 <body <?php body_class('ic-ec-lander ec-lander-page'); ?>>
@@ -414,16 +516,16 @@ include get_stylesheet_directory() . '/css/ec-lander-dark.css';
     </section>
     <?php endif; ?>
 
-    <!-- ═══ PUBLISHED CONTENT (ic_article + post) ═══ -->
-    <?php if (!empty($ec_articles)) : ?>
+    <!-- ═══ ARTICLES BY ═══ -->
+    <?php if (!empty($articles_by)) : ?>
     <section class="ec-published-content">
         <div class="ec-inner">
             <div class="ec-fade-up">
                 <span class="ec-section-label">Published <span class="ec-red">Content</span></span>
-                <h2 style="font-family: var(--font-body); font-size: clamp(28px,3.5vw,44px); font-weight: 700; line-height: 1.1; margin-bottom: 40px;">Articles Featuring <?php echo esc_html($first_name); ?></h2>
+                <h2 style="font-family: var(--font-body); font-size: clamp(28px,3.5vw,44px); font-weight: 700; line-height: 1.1; margin-bottom: 40px;">Articles by <?php echo esc_html($first_name); ?></h2>
             </div>
             <div class="ec-articles-grid">
-                <?php foreach ($ec_articles as $article) :
+                <?php foreach ($articles_by as $article) :
                     $thumb = get_the_post_thumbnail_url($article->ID, 'medium_large');
                 ?>
                 <a href="<?php echo get_permalink($article); ?>" class="ec-article-card ec-fade-up">
@@ -434,6 +536,63 @@ include get_stylesheet_directory() . '/css/ec-lander-dark.css';
                         <span class="ec-article-date"><?php echo get_the_date('M j, Y', $article); ?></span>
                         <h3 class="ec-article-title"><?php echo esc_html($article->post_title); ?></h3>
                     </div>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+    <?php endif; ?>
+
+    <!-- ═══ ARTICLES FEATURING ═══ -->
+    <?php if (!empty($articles_featuring)) : ?>
+    <section class="ec-published-content" style="padding-top: 0;">
+        <div class="ec-inner">
+            <div class="ec-fade-up">
+                <span class="ec-section-label">Mentioned <span class="ec-red">In</span></span>
+                <h2 style="font-family: var(--font-body); font-size: clamp(28px,3.5vw,44px); font-weight: 700; line-height: 1.1; margin-bottom: 40px;">Articles Featuring <?php echo esc_html($first_name); ?></h2>
+            </div>
+            <div class="ec-articles-grid">
+                <?php foreach ($articles_featuring as $article) :
+                    $thumb = get_the_post_thumbnail_url($article->ID, 'medium_large');
+                ?>
+                <a href="<?php echo get_permalink($article); ?>" class="ec-article-card ec-fade-up">
+                    <?php if ($thumb) : ?>
+                    <div class="ec-article-thumb" style="background-image: url('<?php echo esc_url($thumb); ?>')"></div>
+                    <?php endif; ?>
+                    <div class="ec-article-body">
+                        <span class="ec-article-date"><?php echo get_the_date('M j, Y', $article); ?></span>
+                        <h3 class="ec-article-title"><?php echo esc_html($article->post_title); ?></h3>
+                    </div>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+    <?php endif; ?>
+
+    <!-- ═══ CONNECTED CONTRIBUTORS (cross-link guests ↔ ECs) ═══ -->
+    <?php if (!empty($connected_contributors)) : ?>
+    <section class="ec-published-content" style="padding-top: 0;">
+        <div class="ec-inner">
+            <div class="ec-fade-up">
+                <span class="ec-section-label"><?php echo $is_contributor ? 'Connected' : 'Featured'; ?> <span class="ec-red">Network</span></span>
+                <h2 style="font-family: var(--font-body); font-size: clamp(28px,3.5vw,44px); font-weight: 700; line-height: 1.1; margin-bottom: 16px;">Connected Contributors</h2>
+                <p style="color: rgba(255,255,255,0.55); font-size: 14px; margin-bottom: 8px;">Co-appearances on Power100 shows and articles.</p>
+            </div>
+            <div class="ec-connected-grid">
+                <?php foreach ($connected_contributors as $cc) :
+                    $initials = strtoupper(substr($cc['name'], 0, 1));
+                    if (strpos($cc['name'], ' ') !== false) $initials .= strtoupper(substr($cc['name'], strpos($cc['name'], ' ') + 1, 1));
+                ?>
+                <a href="<?php echo esc_url($cc['url']); ?>" class="ec-connected-card ec-fade-up">
+                    <span class="ec-connected-badge <?php echo $cc['is_ec'] ? 'is-ec' : 'is-guest'; ?>"><?php echo $cc['is_ec'] ? 'EC' : 'Guest'; ?></span>
+                    <?php if (!empty($cc['headshot'])) : ?>
+                        <div class="ec-connected-photo" style="background-image: url('<?php echo esc_url($cc['headshot']); ?>')"></div>
+                    <?php else : ?>
+                        <div class="ec-connected-photo placeholder"><?php echo esc_html($initials); ?></div>
+                    <?php endif; ?>
+                    <div class="ec-connected-name"><?php echo esc_html($cc['name']); ?></div>
+                    <div class="ec-connected-role"><?php echo esc_html($cc['company'] ?: $cc['role']); ?></div>
                 </a>
                 <?php endforeach; ?>
             </div>
@@ -638,6 +797,39 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
+
+<?php
+// ─── AI Persona Chat Panel (only for logged-in IC members) ────────────────
+$persona_user = wp_get_current_user();
+if ($persona_user && $persona_user->ID && defined('IC_PERSONA_BRIDGE_SECRET') && IC_PERSONA_BRIDGE_SECRET) {
+    $persona_ts    = time();
+    $persona_nonce = hash_hmac('sha256', $persona_user->ID . ':' . $persona_ts, IC_PERSONA_BRIDGE_SECRET);
+    $persona_api   = defined('IC_PERSONA_API_BASE') ? IC_PERSONA_API_BASE : 'https://tpx.power100.io';
+    $persona_headshot = '';
+    $hs_id = get_post_thumbnail_id($post_id);
+    if (!$hs_id) $hs_id = (int) get_post_meta($post_id, 'ec_headshot', true);
+    if ($hs_id) $persona_headshot = wp_get_attachment_image_url($hs_id, 'thumbnail');
+    $persona_role = (string) get_post_meta($post_id, 'ec_role_title', true);
+    $persona_cfg = array(
+        'icId'         => $post_id,
+        'p100Id'       => (int) get_post_meta($post_id, '_p100_source_id', true),
+        'name'         => $name,
+        'firstName'    => $first_name,
+        'role'         => $persona_role,
+        'headshot'     => $persona_headshot,
+        'memberWpId'   => (int) $persona_user->ID,
+        'memberEmail'  => $persona_user->user_email,
+        'bridgeTs'     => $persona_ts,
+        'bridgeNonce'  => $persona_nonce,
+        'apiBase'      => $persona_api,
+    );
+    ?>
+    <link rel="stylesheet" href="<?php echo esc_url(get_stylesheet_directory_uri() . '/css/persona-panel.css?v=' . filemtime(get_stylesheet_directory() . '/css/persona-panel.css')); ?>">
+    <script>window.ICPersonaConfig = <?php echo wp_json_encode($persona_cfg); ?>;</script>
+    <script src="<?php echo esc_url(get_stylesheet_directory_uri() . '/js/persona-panel.js?v=' . filemtime(get_stylesheet_directory() . '/js/persona-panel.js')); ?>" defer></script>
+    <?php
+}
+?>
 
 <?php wp_footer(); ?>
 </body>

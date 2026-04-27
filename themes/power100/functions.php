@@ -62,6 +62,7 @@ function p100_rest_auth_check($request) {
 $includes = array(
     'inc/homepage-options.php',         // Homepage ACF options page + spotlight fields
     'inc/ec-contributor-fields.php',    // Expert Contributor ACF field group (58 fields, all contributor variations)
+    'inc/article-author-fields.php',    // Article author attribution (pr_author_* fields)
     // 'inc/post-types.php',    // CPTs and taxonomies
     // 'inc/rest-api.php',      // REST API endpoints
     // 'inc/acf-fields.php',    // ACF field registration
@@ -171,6 +172,77 @@ function p100_normalize_unicode_for_slug($title, $raw_title = "", $context = "sa
 
 /* Power Articles REST endpoint lives in wp-content/mu-plugins/power100-articles-rest.php
    so it's always loaded for REST requests (not dependent on the page template). */
+
+// ============================================================================
+// AUTO-ATTRIBUTE article authorship on save
+// ============================================================================
+// Source of truth: the Drive folder of official contributor articles defines
+// `pr_author_ec`. Everything else defaults to staff. This hook normalizes both:
+//   - If pr_author_ec is set → pr_author_type = 'ec' (auto-flip on selection)
+//   - If pr_author_ec is empty → pr_author_type = 'staff' (safe default)
+// New contributor-authored articles must explicitly set pr_author_ec at publish
+// (admin UI ACF field, or programmatic via REST/intake form).
+// ============================================================================
+add_action('save_post_post', 'p100_auto_attribute_article_author', 20, 3);
+function p100_auto_attribute_article_author($post_id, $post, $update) {
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if (wp_is_post_revision($post_id)) return;
+
+    $ec = (int) get_post_meta($post_id, 'pr_author_ec', true);
+    if ($ec > 0) {
+        update_post_meta($post_id, 'pr_author_type', 'ec');
+    } else {
+        update_post_meta($post_id, 'pr_author_type', 'staff');
+    }
+}
+
+// ============================================================================
+// AUTO-MIRROR published articles to Inner Circle as ic_article
+// ============================================================================
+// Fires after our auto-attribution hook (priority 30 > 20). Pushes the article
+// payload to IC's /ic/v1/article/upsert endpoint. Idempotent on the IC side
+// via _p100_source_id, so re-publishes update in place.
+// Fire-and-forget (blocking=false) so the editor save isn't slowed by network.
+// ============================================================================
+add_action('save_post_post', 'p100_mirror_article_to_ic', 30, 3);
+function p100_mirror_article_to_ic($post_id, $post, $update) {
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if (wp_is_post_revision($post_id)) return;
+    if ($post->post_status !== 'publish') return;
+    if (!defined('IC_REST_API_KEY') || !IC_REST_API_KEY) return;
+
+    $author_ec_id = (int) get_post_meta($post_id, 'pr_author_ec', true);
+    $author_type  = (string) get_post_meta($post_id, 'pr_author_type', true);
+
+    $featured_url = '';
+    if (has_post_thumbnail($post_id)) {
+        $featured_url = (string) wp_get_attachment_image_url(get_post_thumbnail_id($post_id), 'full');
+    }
+
+    $payload = array(
+        'p100_post_id'       => $post_id,
+        'p100_url'           => get_permalink($post_id),
+        'slug'               => $post->post_name,
+        'title'              => get_the_title($post_id),
+        'content'            => $post->post_content,
+        'excerpt'            => $post->post_excerpt,
+        'date'               => $post->post_date,
+        'featured_url'       => $featured_url,
+        'p100_author_ec_id'  => $author_ec_id,
+        'author_type'        => $author_type,
+    );
+
+    wp_remote_post('https://innercircle.power100.io/wp-json/ic/v1/article/upsert', array(
+        'method'   => 'POST',
+        'timeout'  => 2,
+        'blocking' => false,
+        'headers'  => array(
+            'Content-Type'    => 'application/json',
+            'X-IC-API-Key'    => IC_REST_API_KEY,
+        ),
+        'body'     => wp_json_encode($payload),
+    ));
+}
 
 // Safety net: if anything non-ASCII somehow reaches the post_name field, strip it
 add_filter("wp_insert_post_data", "p100_strip_non_ascii_from_post_name", 99, 2);

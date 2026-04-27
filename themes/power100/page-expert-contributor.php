@@ -132,27 +132,103 @@ $articles_url       = get_field('ec_articles_url', $pid);
 
 // (scores, snapshots, videos, testimonials parsed above)
 
-// ── NEW: Published Content (articles about this EC) ──
-$ec_articles = array();
-$name_parts = explode(' ', $name);
-$search_name = count($name_parts) >= 2 ? $name_parts[0] . ' ' . end($name_parts) : $name;
-$article_posts = get_posts(array(
+// ── Published Content split: BY this contributor vs FEATURING ──
+// Articles BY: explicit pr_author_ec join (set by /pr_author_ec ACF on the post)
+$articles_by = get_posts(array(
     'post_type'      => 'post',
-    'posts_per_page' => 10,
-    's'              => $search_name,
+    'post_status'    => 'publish',
+    'posts_per_page' => -1,
+    'meta_key'       => 'pr_author_ec',
+    'meta_value'     => $pid,
     'orderby'        => 'date',
     'order'          => 'DESC',
 ));
-foreach ($article_posts as $ap) {
-    // Verify name actually appears in title (not just content match)
+// Articles FEATURING: subject mention in title, last-name match, excludes by-list
+$by_ids = array_map(function($a){ return $a->ID; }, $articles_by);
+$articles_featuring = array();
+$name_parts = explode(' ', $name);
+$search_name = count($name_parts) >= 2 ? $name_parts[0] . ' ' . end($name_parts) : $name;
+$article_search = get_posts(array(
+    'post_type'      => 'post',
+    'post_status'    => 'publish',
+    'posts_per_page' => 12,
+    's'              => $search_name,
+    'orderby'        => 'date',
+    'order'          => 'DESC',
+    'post__not_in'   => $by_ids,
+));
+foreach ($article_search as $ap) {
     if (stripos($ap->post_title, $name_parts[count($name_parts)-1]) !== false) {
-        $ec_articles[] = $ap;
+        $articles_featuring[] = $ap;
     }
 }
 
 // ── NEW: Network Mentions (IC contributors affiliated with this EC) ──
 // This will be populated via API call to IC or stored as ACF field
 $network_mentions = get_field('ec_network_mentions', $pid); // JSON array of {name, ic_url, episodes, photo_url}
+
+// ── Connected Contributors (auto-derived from article co-mentions) ──
+// For each article authored-by + featuring this EC, scan body for OTHER EC page names.
+$current_pid = $pid;
+$current_name_lower = strtolower($name);
+$connected_pids = array();
+$scan_articles = array_merge($articles_by, $articles_featuring);
+if (!empty($scan_articles)) {
+    // One-time fetch of every other EC's name + ID
+    $ec_pages_q = get_posts(array(
+        'post_type'      => 'page',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'fields'         => 'ids',
+        'meta_query'     => array(array('key' => '_wp_page_template', 'value' => 'page-expert-contributor.php')),
+    ));
+    $all_ecs = array();
+    foreach ($ec_pages_q as $rid) {
+        $title = get_the_title($rid);
+        if (!$title || strlen($title) < 4) continue;
+        // Strip "Expert Contributor" suffix variants for cleaner matching
+        $cleanName = preg_replace('/\s*[—-]\s*Expert Contributor\s*$/i', '', $title);
+        $cleanName = preg_replace('/\s+Expert Contributor\s*$/i', '', $cleanName);
+        $all_ecs[$rid] = trim($cleanName);
+    }
+    foreach ($scan_articles as $art) {
+        $body = mb_substr(strval($art->post_content), 0, 4000);
+        $body = strip_tags($body);
+        foreach ($all_ecs as $rid => $rname) {
+            if ((int)$rid === (int)$current_pid) continue;
+            if (isset($connected_pids[$rid])) continue;
+            if (stripos($body, $rname) !== false) $connected_pids[$rid] = $rid;
+        }
+    }
+}
+
+$connected_contributors = array();
+foreach ($connected_pids as $cid) {
+    $co_post = get_post($cid);
+    if (!$co_post) continue;
+    $cclass = (string) get_post_meta($cid, 'contributor_class', true);
+    $ctype  = (string) get_post_meta($cid, 'contributor_type', true);
+    $headshot_id = get_post_thumbnail_id($cid);
+    if (!$headshot_id) $headshot_id = (int) get_post_meta($cid, 'ec_headshot', true);
+    $is_ec_co = ($cclass === 'expert_contributor') || in_array($ctype, array('ranked_ceo', 'ranked_partner', 'industry_leader'), true);
+    $role = (string) get_post_meta($cid, 'ec_role_title', true);
+    $company = (string) get_post_meta($cid, 'ec_company_name', true);
+    $cleanName = preg_replace('/\s*[—-]\s*Expert Contributor\s*$/i', '', $co_post->post_title);
+    $cleanName = preg_replace('/\s+Expert Contributor\s*$/i', '', $cleanName);
+    $connected_contributors[] = array(
+        'id'       => $cid,
+        'name'     => trim($cleanName),
+        'role'     => $role ?: ($is_ec_co ? 'Expert Contributor' : 'Contributor'),
+        'company'  => $company,
+        'headshot' => $headshot_id ? wp_get_attachment_image_url($headshot_id, 'thumbnail') : '',
+        'url'      => get_permalink($cid),
+        'is_ec'    => $is_ec_co,
+    );
+}
+usort($connected_contributors, function($a, $b) {
+    if ($a['is_ec'] !== $b['is_ec']) return $a['is_ec'] ? -1 : 1;
+    return strcasecmp($a['name'], $b['name']);
+});
 
 // ── Split name for display ──
 $name_words = explode(' ', $name);
@@ -216,6 +292,17 @@ if ($recognition_raw) {
 <?php wp_head(); ?>
 <style>
 <?php include get_stylesheet_directory() . '/css/ec-lander.css'; ?>
+/* Connected Contributors grid (cross-link guests ↔ ECs) — light theme */
+.ec-connected-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; margin-top: 32px; }
+.ec-connected-card { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 24px 16px; background: #ffffff; border: 1px solid rgba(0,0,0,0.08); border-radius: 14px; text-decoration: none; transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s; position: relative; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+.ec-connected-card:hover { transform: translateY(-3px); border-color: rgba(251,4,1,0.4); box-shadow: 0 8px 18px rgba(0,0,0,0.08); }
+.ec-connected-photo { width: 96px; height: 96px; border-radius: 50%; background-size: cover; background-position: center; background-color: #f0f0f0; margin-bottom: 14px; flex-shrink: 0; border: 2px solid rgba(251,4,1,0.2); }
+.ec-connected-photo.placeholder { display:flex; align-items:center; justify-content:center; font-weight:700; color:#999; font-size:24px; font-family: var(--font-display); }
+.ec-connected-name { font-family: var(--font-body); font-weight: 700; font-size: 15px; color: #111; margin-bottom: 4px; line-height: 1.25; }
+.ec-connected-role { font-size: 12px; color: rgba(0,0,0,0.55); line-height: 1.3; }
+.ec-connected-badge { position: absolute; top: 10px; right: 10px; font-size: 9px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; padding: 3px 7px; border-radius: 4px; }
+.ec-connected-badge.is-ec { background: rgba(251,4,1,0.12); color: #fb0401; border: 1px solid rgba(251,4,1,0.3); }
+.ec-connected-badge.is-guest { background: rgba(0,0,0,0.05); color: rgba(0,0,0,0.6); border: 1px solid rgba(0,0,0,0.1); }
 </style>
 </head>
 <body <?php body_class('ec-lander-page'); ?>>
@@ -429,16 +516,16 @@ if ($recognition_raw) {
     if (file_exists($episodes_partial)) include $episodes_partial;
     ?>
 
-    <!-- ═══ PUBLISHED CONTENT (NEW) ═══ -->
-    <?php if (!empty($ec_articles)) : ?>
+    <!-- ═══ ARTICLES BY ═══ -->
+    <?php if (!empty($articles_by)) : ?>
     <section class="ec-published-content">
         <div class="ec-inner">
             <div class="ec-fade-up">
                 <span class="ec-section-label">Published <span class="ec-red">Content</span></span>
-                <h2 style="font-family: var(--font-body); font-size: clamp(28px,3.5vw,44px); font-weight: 700; line-height: 1.1; margin-bottom: 40px;">Articles Featuring <?php echo esc_html($first_name); ?></h2>
+                <h2 style="font-family: var(--font-body); font-size: clamp(28px,3.5vw,44px); font-weight: 700; line-height: 1.1; margin-bottom: 40px;">Articles by <?php echo esc_html($first_name); ?></h2>
             </div>
             <div class="ec-articles-grid">
-                <?php foreach ($ec_articles as $article) :
+                <?php foreach ($articles_by as $article) :
                     $thumb = get_the_post_thumbnail_url($article->ID, 'p100-card');
                 ?>
                 <a href="<?php echo get_permalink($article); ?>" class="ec-article-card ec-fade-up">
@@ -449,6 +536,63 @@ if ($recognition_raw) {
                         <span class="ec-article-date"><?php echo get_the_date('M j, Y', $article); ?></span>
                         <h3 class="ec-article-title"><?php echo esc_html($article->post_title); ?></h3>
                     </div>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+    <?php endif; ?>
+
+    <!-- ═══ ARTICLES FEATURING ═══ -->
+    <?php if (!empty($articles_featuring)) : ?>
+    <section class="ec-published-content" style="padding-top: 0;">
+        <div class="ec-inner">
+            <div class="ec-fade-up">
+                <span class="ec-section-label">Mentioned <span class="ec-red">In</span></span>
+                <h2 style="font-family: var(--font-body); font-size: clamp(28px,3.5vw,44px); font-weight: 700; line-height: 1.1; margin-bottom: 40px;">Articles Featuring <?php echo esc_html($first_name); ?></h2>
+            </div>
+            <div class="ec-articles-grid">
+                <?php foreach ($articles_featuring as $article) :
+                    $thumb = get_the_post_thumbnail_url($article->ID, 'p100-card');
+                ?>
+                <a href="<?php echo get_permalink($article); ?>" class="ec-article-card ec-fade-up">
+                    <?php if ($thumb) : ?>
+                    <div class="ec-article-thumb" style="background-image: url('<?php echo esc_url($thumb); ?>')"></div>
+                    <?php endif; ?>
+                    <div class="ec-article-body">
+                        <span class="ec-article-date"><?php echo get_the_date('M j, Y', $article); ?></span>
+                        <h3 class="ec-article-title"><?php echo esc_html($article->post_title); ?></h3>
+                    </div>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        </div>
+    </section>
+    <?php endif; ?>
+
+    <!-- ═══ CONNECTED CONTRIBUTORS (cross-link guests ↔ ECs) ═══ -->
+    <?php if (!empty($connected_contributors)) : ?>
+    <section class="ec-published-content" style="padding-top: 0;">
+        <div class="ec-inner">
+            <div class="ec-fade-up">
+                <span class="ec-section-label">Connected <span class="ec-red">Network</span></span>
+                <h2 style="font-family: var(--font-body); font-size: clamp(28px,3.5vw,44px); font-weight: 700; line-height: 1.1; margin-bottom: 16px;">Connected Contributors</h2>
+                <p style="color: rgba(0,0,0,0.55); font-size: 14px; margin-bottom: 8px;">Co-mentions across Power100 published articles.</p>
+            </div>
+            <div class="ec-connected-grid">
+                <?php foreach ($connected_contributors as $cc) :
+                    $initials = strtoupper(substr($cc['name'], 0, 1));
+                    if (strpos($cc['name'], ' ') !== false) $initials .= strtoupper(substr($cc['name'], strpos($cc['name'], ' ') + 1, 1));
+                ?>
+                <a href="<?php echo esc_url($cc['url']); ?>" class="ec-connected-card ec-fade-up">
+                    <span class="ec-connected-badge <?php echo $cc['is_ec'] ? 'is-ec' : 'is-guest'; ?>"><?php echo $cc['is_ec'] ? 'EC' : 'Guest'; ?></span>
+                    <?php if (!empty($cc['headshot'])) : ?>
+                        <div class="ec-connected-photo" style="background-image: url('<?php echo esc_url($cc['headshot']); ?>')"></div>
+                    <?php else : ?>
+                        <div class="ec-connected-photo placeholder"><?php echo esc_html($initials); ?></div>
+                    <?php endif; ?>
+                    <div class="ec-connected-name"><?php echo esc_html($cc['name']); ?></div>
+                    <div class="ec-connected-role"><?php echo esc_html($cc['company'] ?: $cc['role']); ?></div>
                 </a>
                 <?php endforeach; ?>
             </div>

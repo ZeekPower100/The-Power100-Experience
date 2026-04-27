@@ -110,6 +110,28 @@ function ic_register_rest_routes() {
         'callback'            => 'ic_rest_upsert_expert_contributor',
         'permission_callback' => 'ic_rest_auth_check',
     ));
+
+    // POST — Mirror P100 article (post) into IC as ic_article.
+    // Idempotent on _p100_source_id. Body shape:
+    //   { p100_post_id, p100_url, slug, title, content, excerpt, date,
+    //     featured_url, p100_author_ec_id (P100 page id, joins to ic_contributor._p100_source_id) }
+    register_rest_route('ic/v1', '/article/upsert', array(
+        'methods'             => 'POST',
+        'callback'            => 'ic_rest_upsert_article',
+        'permission_callback' => 'ic_rest_auth_check',
+    ));
+
+    // GET — Knowledge pack for AI persona Q&A. Returns assembled bio + voice samples
+    // + topics + episode/article excerpts so TPE backend can ground the chat.
+    // Param: ic_id (ic_contributor post id)
+    register_rest_route('ic/v1', '/contributor/(?P<id>\d+)/knowledge', array(
+        'methods'             => 'GET',
+        'callback'            => 'ic_rest_contributor_knowledge_pack',
+        'permission_callback' => 'ic_rest_auth_check',
+        'args'                => array(
+            'id' => array('validate_callback' => function($p){ return is_numeric($p); }),
+        ),
+    ));
 }
 add_action('rest_api_init', 'ic_register_rest_routes');
 
@@ -1270,4 +1292,237 @@ function ic_rest_upsert_expert_contributor($request) {
         'p100_id'  => $p100_id,
         'p100_url' => $p100_url,
     ), 200);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// POST /ic/v1/article/upsert
+// Mirror a P100 article into IC as ic_article. Idempotent on _p100_source_id.
+// Author mapping: p100_author_ec_id (P100 page ID) → ic_contributor._p100_source_id
+// → ic_article.ic_author_contributor_id (IC contributor post ID).
+// ─────────────────────────────────────────────────────────────────────────────
+function ic_rest_upsert_article($request) {
+    $body = json_decode($request->get_body(), true);
+    if (!is_array($body)) {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Invalid JSON'), 400);
+    }
+
+    $p100_id      = isset($body['p100_post_id']) ? intval($body['p100_post_id']) : 0;
+    $p100_url     = isset($body['p100_url']) ? esc_url_raw($body['p100_url']) : '';
+    $slug         = isset($body['slug']) ? sanitize_title($body['slug']) : '';
+    $title        = isset($body['title']) ? wp_kses_post($body['title']) : '';
+    $content      = isset($body['content']) ? $body['content'] : '';
+    $excerpt      = isset($body['excerpt']) ? wp_kses_post($body['excerpt']) : '';
+    $date         = isset($body['date']) ? $body['date'] : current_time('mysql');
+    $featured_url = isset($body['featured_url']) ? esc_url_raw($body['featured_url']) : '';
+    $author_ec_id = isset($body['p100_author_ec_id']) ? intval($body['p100_author_ec_id']) : 0;
+    $author_type  = isset($body['author_type']) ? sanitize_text_field($body['author_type']) : '';
+
+    if ($p100_id <= 0 || !$slug || !$title) {
+        return new WP_REST_Response(array(
+            'success' => false,
+            'error'   => 'p100_post_id, slug, and title are required',
+        ), 400);
+    }
+
+    // 1. Lookup by _p100_source_id (idempotency key)
+    $existing = get_posts(array(
+        'post_type'      => 'ic_article',
+        'post_status'    => array('publish', 'draft', 'pending', 'private'),
+        'meta_key'       => '_p100_source_id',
+        'meta_value'     => $p100_id,
+        'posts_per_page' => 1,
+        'fields'         => 'ids',
+    ));
+    $existing_id = !empty($existing) ? $existing[0] : 0;
+
+    $action = '';
+    $post_args = array(
+        'post_title'    => $title,
+        'post_name'     => $slug,
+        'post_content'  => $content,
+        'post_excerpt'  => $excerpt,
+        'post_date'     => $date,
+        'post_date_gmt' => get_gmt_from_date($date),
+    );
+
+    if ($existing_id) {
+        $post_args['ID'] = $existing_id;
+        wp_update_post($post_args);
+        $post_id = $existing_id;
+        $action  = 'updated';
+    } else {
+        $post_args['post_type']   = 'ic_article';
+        $post_args['post_status'] = 'publish';
+        $post_id = wp_insert_post($post_args, true);
+        if (is_wp_error($post_id)) {
+            return new WP_REST_Response(array(
+                'success' => false,
+                'error'   => 'wp_insert_post failed: ' . $post_id->get_error_message(),
+            ), 500);
+        }
+        $action = 'created';
+    }
+
+    // 2. Canonical-source meta
+    update_post_meta($post_id, '_p100_source_id', $p100_id);
+    if ($p100_url) update_post_meta($post_id, '_p100_source_url', $p100_url);
+
+    // 3. Author mapping — translate P100 lander id → IC contributor post id
+    if ($author_ec_id > 0) {
+        $ic_contrib = get_posts(array(
+            'post_type'      => 'ic_contributor',
+            'post_status'    => array('publish', 'draft', 'pending', 'private'),
+            'meta_key'       => '_p100_source_id',
+            'meta_value'     => $author_ec_id,
+            'posts_per_page' => 1,
+            'fields'         => 'ids',
+        ));
+        if (!empty($ic_contrib)) {
+            update_post_meta($post_id, 'ic_author_contributor_id', $ic_contrib[0]);
+            update_post_meta($post_id, 'ic_author_type', 'ec');
+        } else {
+            // Author EC exists on P100 but no IC mirror yet — record the P100 id
+            // so a later mirror creates the join automatically.
+            update_post_meta($post_id, 'ic_author_p100_pending', $author_ec_id);
+            update_post_meta($post_id, 'ic_author_type', 'ec_pending');
+        }
+    } else {
+        delete_post_meta($post_id, 'ic_author_contributor_id');
+        delete_post_meta($post_id, 'ic_author_p100_pending');
+        update_post_meta($post_id, 'ic_author_type', $author_type === 'staff' ? 'staff' : '');
+    }
+
+    // 4. Featured image sideload (only if not already set)
+    if ($featured_url && !has_post_thumbnail($post_id)) {
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+        require_once(ABSPATH . 'wp-admin/includes/media.php');
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        $att_id = media_sideload_image($featured_url, $post_id, $title . ' featured', 'id');
+        if (!is_wp_error($att_id) && $att_id) {
+            set_post_thumbnail($post_id, $att_id);
+        }
+    }
+
+    return new WP_REST_Response(array(
+        'success'        => true,
+        'action'         => $action,
+        'ic_id'          => $post_id,
+        'ic_url'         => get_permalink($post_id),
+        'p100_id'        => $p100_id,
+        'author_mapped'  => (int) get_post_meta($post_id, 'ic_author_contributor_id', true),
+        'author_pending' => (int) get_post_meta($post_id, 'ic_author_p100_pending', true),
+    ), 200);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /ic/v1/contributor/{id}/knowledge
+// Assemble the AI persona knowledge pack for a contributor.
+// Response shape (used by TPE backend's contributorPersonaService):
+//   {
+//     id, ic_id, p100_id, name, first_name, role, company, company_desc,
+//     hero_quote, bio, recognition[], topics[], contribution_desc, voice_samples[]
+//     (full article bodies authored by this contributor, capped),
+//     episode_excerpts[] (transcript snippets where this contributor speaks),
+//     contributor_class, ec_contributor_type
+//   }
+// Caps: voice_samples up to 3 articles × 4000 chars each;
+//       episode_excerpts up to 5 episodes × 1500 chars each.
+// ─────────────────────────────────────────────────────────────────────────────
+function ic_rest_contributor_knowledge_pack($request) {
+    $id = (int) $request->get_param('id');
+    $post = get_post($id);
+    if (!$post || $post->post_type !== 'ic_contributor') {
+        return new WP_REST_Response(array('success' => false, 'error' => 'Contributor not found'), 404);
+    }
+
+    $name      = get_the_title($id);
+    $name_parts = preg_split('/\s+/', trim($name));
+    $first_name = $name_parts[0] ?? $name;
+
+    $pack = array(
+        'success'             => true,
+        'ic_id'               => $id,
+        'p100_id'             => (int) get_post_meta($id, '_p100_source_id', true),
+        'name'                => $name,
+        'first_name'          => $first_name,
+        'permalink'           => get_permalink($id),
+        'role'                => (string) get_post_meta($id, 'ec_role_title', true),
+        'company'             => (string) get_post_meta($id, 'ec_company_name', true),
+        'company_desc'        => (string) get_post_meta($id, 'ec_company_desc', true),
+        'years_experience'    => (string) get_post_meta($id, 'ec_years_experience', true),
+        'hero_quote'          => (string) get_post_meta($id, 'ec_hero_quote', true),
+        'bio'                 => (string) get_post_meta($id, 'ec_bio_long', true) ?: (string) get_post_meta($id, 'ec_bio', true),
+        'contribution_desc'   => (string) get_post_meta($id, 'ec_contribution_desc', true),
+        'recognition'         => array(),
+        'topics'              => array(),
+        'voice_samples'       => array(),
+        'episode_excerpts'    => array(),
+        'contributor_class'   => (string) get_post_meta($id, 'contributor_class', true),
+        'ec_contributor_type' => (string) get_post_meta($id, 'ec_contributor_type', true),
+    );
+
+    // Recognition + topics — stored as repeater-ish meta (numbered keys)
+    for ($i = 1; $i <= 8; $i++) {
+        $rec = (string) get_post_meta($id, "ec_recognition_$i", true);
+        if ($rec) $pack['recognition'][] = $rec;
+        $topic = (string) get_post_meta($id, "ec_topic_$i", true);
+        if ($topic) $pack['topics'][] = $topic;
+    }
+
+    // Voice samples — full body of articles authored by this contributor (top 3 by recency)
+    $authored = get_posts(array(
+        'post_type'      => 'ic_article',
+        'posts_per_page' => 3,
+        'meta_key'       => 'ic_author_contributor_id',
+        'meta_value'     => $id,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+    ));
+    foreach ($authored as $a) {
+        $body = wp_strip_all_tags(strval($a->post_content));
+        $body = preg_replace('/\s+/', ' ', $body);
+        $pack['voice_samples'][] = array(
+            'title' => get_the_title($a->ID),
+            'date'  => get_the_date('F Y', $a->ID),
+            'body'  => mb_substr(trim($body), 0, 4000),
+        );
+    }
+
+    // Episode excerpts — transcripts of ic_content posts where this contributor is tagged via ic_leader
+    $episodes = get_posts(array(
+        'post_type'      => 'ic_content',
+        'posts_per_page' => 5,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+        'tax_query'      => array(array(
+            'taxonomy' => 'ic_leader',
+            'field'    => 'name',
+            'terms'    => $name,
+        )),
+    ));
+    foreach ($episodes as $ep) {
+        // Transcript may live in any of these meta keys depending on pipeline version
+        $transcript = '';
+        foreach (array('ic_transcript', 'transcript', 'ic_transcript_text') as $key) {
+            $v = (string) get_post_meta($ep->ID, $key, true);
+            if ($v) { $transcript = $v; break; }
+        }
+        if (!$transcript) continue;
+        $transcript = wp_strip_all_tags($transcript);
+        $transcript = preg_replace('/\s+/', ' ', $transcript);
+        $pack['episode_excerpts'][] = array(
+            'title'      => get_the_title($ep->ID),
+            'date'       => get_the_date('F Y', $ep->ID),
+            'transcript' => mb_substr(trim($transcript), 0, 1500),
+        );
+    }
+
+    // Hash the pack body so the chat client can detect changes / cache-bust
+    $pack['knowledge_hash'] = substr(md5(serialize(array(
+        $pack['bio'], $pack['hero_quote'],
+        array_map(function($s){ return $s['body']; }, $pack['voice_samples']),
+        array_map(function($e){ return $e['transcript']; }, $pack['episode_excerpts']),
+    ))), 0, 12);
+
+    return new WP_REST_Response($pack, 200);
 }

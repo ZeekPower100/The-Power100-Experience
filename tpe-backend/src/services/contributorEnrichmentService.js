@@ -529,11 +529,15 @@ async function mirrorToInnerCircle({ p100PageId, p100PageUrl, slug, fullName, me
     console.warn('[mirrorToInnerCircle] IC_API_KEY missing, skipping IC mirror');
     return null;
   }
+  // IC routes contributor landers via tier-aware paths (/contributor/{slug} OR
+  // /expert-contributor/{slug}); slugs are bare names with NO suffix. Strip any
+  // legacy -contributor / -expert-contributor suffix before sending.
+  const icSlug = String(slug || '').replace(/-(expert-contributor|contributor)$/i, '');
   try {
     const res = await axios.post(`${IC_WP_API}/expert-contributor/upsert`, {
       p100_page_id:  p100PageId,
       p100_page_url: p100PageUrl,
-      slug,
+      slug:          icSlug,
       title:         fullName,
       meta,
       headshot_url:  headshotUrl || null,

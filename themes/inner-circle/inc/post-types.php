@@ -140,8 +140,12 @@ function ic_register_post_types() {
             'search_items' => 'Search Expert Contributors', 'not_found' => 'No expert contributors found',
             'all_items' => 'All Expert Contributors', 'menu_name' => 'Expert Contributors',
         ),
-        'public' => true, 'has_archive' => 'expert-contributors',
-        'rewrite' => array('slug' => 'expert-contributor', 'with_front' => false),
+        'public' => true, 'has_archive' => false, // archive lives at the existing /contributors/ page template
+        // Routing is handled in inc/contributor-routing.php — two paths:
+        //   /contributor/{slug}         → for contributor_class != expert_contributor
+        //   /expert-contributor/{slug}  → for expert contributors (CEO/Partner/IL/paid)
+        'rewrite' => false,
+        'query_var' => 'ic_contributor',
         'menu_icon' => 'dashicons-id-alt',
         'supports' => array('title', 'thumbnail', 'custom-fields'),
         'show_in_rest' => true, 'menu_position' => 7,

@@ -20,6 +20,33 @@ $author    = get_post_meta($post_id, '_p100_author_name', true);
 $pub_date  = get_the_date('F j, Y');
 $reading_min = max(1, (int) ceil(str_word_count(wp_strip_all_tags(get_the_content())) / 220));
 
+// ── Contributor author resolution (P100 → IC mirror via ic_author_contributor_id) ──
+// When set, this overrides the legacy $author (which is the WP user name, usually "Power100").
+$contrib_id   = (int) get_post_meta($post_id, 'ic_author_contributor_id', true);
+$author_type  = (string) get_post_meta($post_id, 'ic_author_type', true);
+$contrib_data = null;
+if ($contrib_id) {
+    $contrib_post = get_post($contrib_id);
+    if ($contrib_post && $contrib_post->post_status === 'publish') {
+        $cclass = (string) get_post_meta($contrib_id, 'contributor_class', true);
+        $ctype  = (string) get_post_meta($contrib_id, 'contributor_type', true);
+        $is_ec  = ($cclass === 'expert_contributor') || in_array($ctype, array('ranked_ceo', 'ranked_partner', 'industry_leader'), true);
+        $headshot_id = get_post_thumbnail_id($contrib_id);
+        if (!$headshot_id) $headshot_id = (int) get_post_meta($contrib_id, 'ec_headshot', true);
+        $headshot_url = $headshot_id ? wp_get_attachment_image_url($headshot_id, 'thumbnail') : '';
+        $contrib_role = (string) get_post_meta($contrib_id, 'ec_role_title', true);
+        if (!$contrib_role) $contrib_role = $is_ec ? 'Expert Contributor' : 'Power100 Contributor';
+        $contrib_data = array(
+            'id'         => $contrib_id,
+            'name'       => get_the_title($contrib_id),
+            'role'       => $contrib_role,
+            'url'        => get_permalink($contrib_id),
+            'headshot'   => $headshot_url,
+            'is_ec'      => $is_ec,
+        );
+    }
+}
+
 // Featured image is only used for rail cards on the homepage/archive — NOT
 // rendered in the article hero (staging shows a video-thumbnail there;
 // those videos are IC-only now, so the hero image becomes a redundant
@@ -297,6 +324,21 @@ $related = get_posts(array(
 .ic-article-author-card-role {
     font-size: 13px; color: var(--ar-text-mute); margin-top: 4px;
 }
+.ic-article-author-card-name a {
+    color: inherit; text-decoration: none; transition: color 0.2s;
+}
+.ic-article-author-card-name a:hover { color: var(--ar-red); }
+.ic-article-author-card-link {
+    display: inline-block; margin-top: 12px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+    color: var(--ar-red); text-decoration: none;
+    transition: transform 0.2s;
+}
+.ic-article-author-card-link:hover { transform: translateX(3px); }
+.ic-article-hero-author-link {
+    color: inherit; text-decoration: none; transition: color 0.2s;
+}
+.ic-article-hero-author-link:hover { color: var(--ar-red); }
 
 /* RELATED */
 .ic-article-related {
@@ -409,16 +451,23 @@ get_header();
         <!-- Byline: author + meta + share -->
         <div class="ic-article-hero-byline">
             <?php
-            $initials = $author
-                ? strtoupper(substr($author, 0, 1) . (strpos($author, ' ') !== false ? substr($author, strpos($author, ' ') + 1, 1) : ''))
-                : 'IC';
+            // Display name + initials precedence: linked contributor > legacy _p100_author_name > Power100
+            $byline_name = $contrib_data ? $contrib_data['name'] : ($author ?: 'Power100 Staff');
+            $byline_role = $contrib_data ? $contrib_data['role'] : 'Power100 Staff';
+            $initials = strtoupper(substr($byline_name, 0, 1) . (strpos($byline_name, ' ') !== false ? substr($byline_name, strpos($byline_name, ' ') + 1, 1) : ''));
+            $author_link_open  = $contrib_data ? '<a href="' . esc_url($contrib_data['url']) . '" class="ic-article-hero-author-link">' : '';
+            $author_link_close = $contrib_data ? '</a>' : '';
             ?>
             <div class="ic-article-hero-author">
-                <div class="ic-article-hero-avatar"><?php echo esc_html($initials); ?></div>
+                <?php if ($contrib_data && !empty($contrib_data['headshot'])): ?>
+                    <a href="<?php echo esc_url($contrib_data['url']); ?>" class="ic-article-hero-avatar" style="background-image:url('<?php echo esc_url($contrib_data['headshot']); ?>'); background-size:cover; background-position:center; color:transparent;"><?php echo esc_html($initials); ?></a>
+                <?php else: ?>
+                    <div class="ic-article-hero-avatar"><?php echo esc_html($initials); ?></div>
+                <?php endif; ?>
                 <div class="ic-article-hero-author-info">
                     <span class="ic-article-hero-author-by">By</span>
-                    <span class="ic-article-hero-author-name"><?php echo esc_html($author ?: 'Power100'); ?></span>
-                    <span class="ic-article-hero-author-role">Power100 Contributor · <?php echo esc_html($pub_date); ?> · <?php echo $reading_min; ?> min read</span>
+                    <span class="ic-article-hero-author-name"><?php echo $author_link_open . esc_html($byline_name) . $author_link_close; ?></span>
+                    <span class="ic-article-hero-author-role"><?php echo esc_html($byline_role); ?> · <?php echo esc_html($pub_date); ?> · <?php echo $reading_min; ?> min read</span>
                 </div>
             </div>
 
@@ -460,14 +509,27 @@ get_header();
 </section>
 
 <!-- AUTHOR CARD -->
-<?php if ($author): ?>
+<?php if ($contrib_data || $author): ?>
 <section class="ic-article-author-section">
     <div class="ic-article-author-card">
-        <div class="ic-article-author-card-photo"><?php echo esc_html($initials); ?></div>
+        <?php if ($contrib_data && !empty($contrib_data['headshot'])): ?>
+            <a href="<?php echo esc_url($contrib_data['url']); ?>" class="ic-article-author-card-photo" style="background-image:url('<?php echo esc_url($contrib_data['headshot']); ?>'); background-size:cover; background-position:center; color:transparent;"><?php echo esc_html($initials); ?></a>
+        <?php else: ?>
+            <div class="ic-article-author-card-photo"><?php echo esc_html($initials); ?></div>
+        <?php endif; ?>
         <div class="ic-article-author-card-body">
             <div class="ic-article-author-card-label">Written By</div>
-            <div class="ic-article-author-card-name"><?php echo esc_html($author); ?></div>
-            <div class="ic-article-author-card-role">Power100 Contributor</div>
+            <div class="ic-article-author-card-name">
+                <?php if ($contrib_data): ?>
+                    <a href="<?php echo esc_url($contrib_data['url']); ?>"><?php echo esc_html($contrib_data['name']); ?></a>
+                <?php else: ?>
+                    <?php echo esc_html($byline_name); ?>
+                <?php endif; ?>
+            </div>
+            <div class="ic-article-author-card-role"><?php echo esc_html($byline_role); ?></div>
+            <?php if ($contrib_data): ?>
+                <a href="<?php echo esc_url($contrib_data['url']); ?>" class="ic-article-author-card-link">View profile →</a>
+            <?php endif; ?>
         </div>
     </div>
 </section>
