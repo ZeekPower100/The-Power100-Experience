@@ -10,6 +10,7 @@
 
 const { query } = require('../config/database');
 const rankingsDbService = require('./rankingsDbService');
+const { sendEcWelcomeEmail } = require('./ecWelcomeEmailService');
 
 const DEFAULT_REP_ID = 2; // Greg — fallback when no rep can be determined
 
@@ -191,6 +192,15 @@ const ecDrcIntegration = {
 
       console.log(`${label} DRC actions: ${drcCount}/4 succeeded`);
     }
+
+    // 6. Welcome email — fires for EVERY EC signup. Routed through unified
+    // communicationService (SendGrid primary → n8n+GHL fallback). Logs the
+    // send into DRC communications with provider + status. Non-blocking.
+    try {
+      const enriched = { ...contributor, rankings_company_id: companyId, assigned_rep_id: repId };
+      const r = await sendEcWelcomeEmail(enriched);
+      console.log(`${label} Welcome email: ${r.ok ? `sent via ${r.provider}` : `FAILED: ${r.error}`}`);
+    } catch (e) { console.error(`${label} Welcome email crashed:`, e.message); }
   },
 
   /**

@@ -384,6 +384,78 @@ function stagingAuthHeader() {
 // Download a remote image URL and upload it into staging.power100.io's
 // media library. Returns the new attachment ID. Used to populate
 // ec_headshot (which is registered as an integer attachment ID).
+// ─── Legacy company logo lookup ──────────────────────────────────────────
+// 60 unique company → logo URL map sourced from legacy power100.io contributor
+// pages (95% of which already have ec_company_logo populated). Built via
+// scripts/audit-legacy-company-logos.js. Refresh that script to update.
+let _logoMap = null;
+function getLogoMap() {
+  if (_logoMap) return _logoMap;
+  try {
+    _logoMap = require('../../data/legacy-company-logos.json');
+  } catch (e) {
+    console.warn('[contributorEnrichment] legacy-company-logos.json not loaded:', e.message);
+    _logoMap = {};
+  }
+  // Build a normalized lookup map (lowercase, stripped) for fuzzy matching
+  _logoMap.__normalized = {};
+  for (const [co, data] of Object.entries(_logoMap)) {
+    if (co === '__normalized') continue;
+    const key = co.toLowerCase().replace(/[^a-z0-9]/g, '');
+    _logoMap.__normalized[key] = data;
+  }
+  return _logoMap;
+}
+
+function getCompanyLogoFromLegacy(companyName) {
+  if (!companyName) return null;
+  const map = getLogoMap();
+  // Exact match first
+  if (map[companyName]) return map[companyName].url;
+  // Fuzzy: lowercase + alphanumeric only
+  const key = companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (map.__normalized[key]) return map.__normalized[key].url;
+  return null;
+}
+
+async function sideloadCompanyLogoToStaging(logoUrl, companyName) {
+  const safeSlug = (companyName || 'company').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return await sideloadImageToStagingGeneric(logoUrl, `${safeSlug}-logo`);
+}
+
+// Generic version used by both headshot + logo sideloads
+async function sideloadImageToStagingGeneric(imageUrl, filenameHint) {
+  const imgRes = await axios.get(imageUrl, {
+    responseType: 'arraybuffer',
+    timeout: 20000,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+  });
+  const buf = Buffer.from(imgRes.data);
+  const contentType = imgRes.headers['content-type'] || 'image/jpeg';
+  const urlExt = (imageUrl.split('?')[0].split('.').pop() || '').toLowerCase();
+  const ext = ['jpg','jpeg','png','gif','webp','svg','avif'].includes(urlExt) ? urlExt :
+              (contentType.split('/')[1] || 'jpg').split(';')[0].toLowerCase();
+  const filename = `${filenameHint}.${ext}`;
+  const uploadRes = await axios.post(
+    `${STAGING_P100_BASE}/wp-json/wp/v2/media`,
+    buf,
+    {
+      headers: {
+        Authorization: stagingAuthHeader(),
+        'Content-Type': contentType,
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+      timeout: 30000,
+      maxBodyLength: Infinity,
+    }
+  );
+  return uploadRes.data.id;
+}
+
 async function sideloadImageToStaging(imageUrl, filenameHint) {
   // LinkedIn CDN often 403s default axios UA — masquerade as a browser so it serves the image.
   const imgRes = await axios.get(imageUrl, {
@@ -524,7 +596,7 @@ async function findStagingPageByName(fullName) {
 // post (dark-themed gated copy). Idempotent on (_p100_source_id, slug).
 // Non-blocking — Power100 write is the source of truth; IC mirror failures
 // are logged but never surfaced to the caller.
-async function mirrorToInnerCircle({ p100PageId, p100PageUrl, slug, fullName, meta, headshotUrl }) {
+async function mirrorToInnerCircle({ p100PageId, p100PageUrl, slug, fullName, meta, headshotUrl, companyLogoUrl }) {
   if (!IC_API_KEY) {
     console.warn('[mirrorToInnerCircle] IC_API_KEY missing, skipping IC mirror');
     return null;
@@ -535,12 +607,13 @@ async function mirrorToInnerCircle({ p100PageId, p100PageUrl, slug, fullName, me
   const icSlug = String(slug || '').replace(/-(expert-contributor|contributor)$/i, '');
   try {
     const res = await axios.post(`${IC_WP_API}/expert-contributor/upsert`, {
-      p100_page_id:  p100PageId,
-      p100_page_url: p100PageUrl,
-      slug:          icSlug,
-      title:         fullName,
+      p100_page_id:     p100PageId,
+      p100_page_url:    p100PageUrl,
+      slug:             icSlug,
+      title:            fullName,
       meta,
-      headshot_url:  headshotUrl || null,
+      headshot_url:     headshotUrl || null,
+      company_logo_url: companyLogoUrl || null,
     }, {
       headers: { 'X-IC-API-Key': IC_API_KEY, 'Content-Type': 'application/json' },
       timeout: 25000, // image sideload can take a few seconds
@@ -718,6 +791,31 @@ async function upsertContributorLander(row, opts = {}) {
     }
   }
 
+  // ec_company_logo: lookup chain — legacy map → sideload to staging.
+  // Skip if already set on existing page (preserves manual overrides).
+  if (!meta.ec_company_logo && meta.ec_company_name) {
+    if (row.wp_page_id && Number.isFinite(parseInt(row.wp_page_id, 10))) {
+      try {
+        const pid = parseInt(row.wp_page_id, 10);
+        const ex = await axios.get(`${STAGING_P100_BASE}/wp-json/wp/v2/pages/${pid}?_fields=meta`,
+          { headers: { Authorization: auth }, timeout: 8000 });
+        if (ex.data?.meta?.ec_company_logo) meta.ec_company_logo = ex.data.meta.ec_company_logo;
+      } catch (e) { /* fall through */ }
+    }
+    if (!meta.ec_company_logo) {
+      const legacyLogoUrl = getCompanyLogoFromLegacy(meta.ec_company_name);
+      if (legacyLogoUrl) {
+        try {
+          const logoAttId = await sideloadCompanyLogoToStaging(legacyLogoUrl, meta.ec_company_name);
+          meta.ec_company_logo = logoAttId;
+          console.log(`[upsertContributorLander] Sideloaded company logo ${logoAttId} for "${meta.ec_company_name}" (from legacy)`);
+        } catch (e) {
+          console.warn(`[upsertContributorLander] Logo sideload failed for "${meta.ec_company_name}":`, e.message);
+        }
+      }
+    }
+  }
+
   // Paid EC controllers (createExpertContributor, markPageLive) pass
   // ignoreStoredWpPageId=true because their row.wp_page_id refers to the
   // legacy power100.io page, NOT a staging page — using it would 404 then
@@ -739,7 +837,7 @@ async function upsertContributorLander(row, opts = {}) {
       });
       const pageUrl = res.data.link || `${STAGING_P100_BASE}/?page_id=${pageId}`;
       console.log(`[upsertContributorLander] Updated existing page ${pageId} for "${fullName}" (source=${source})`);
-      mirrorToInnerCircle({ p100PageId: pageId, p100PageUrl: pageUrl, slug, fullName, meta, headshotUrl: row.headshot_url || null });
+      mirrorToInnerCircle({ p100PageId: pageId, p100PageUrl: pageUrl, slug, fullName, meta, headshotUrl: row.headshot_url || null, companyLogoUrl: getCompanyLogoFromLegacy(meta.ec_company_name) });
       return { wp_page_id: pageId, wp_page_url: pageUrl, created: false, action: 'updated' };
     } catch (err) {
       // Fall through to lookup-by-name if the stored page_id is gone
@@ -766,7 +864,7 @@ async function upsertContributorLander(row, opts = {}) {
       ).catch(e => console.warn(`[upsertContributorLander] Failed to back-link wp_page_id on row ${row.id}:`, e.message));
     }
     console.log(`[upsertContributorLander] Linked existing page ${pageId} for "${fullName}" (source=${source})`);
-    mirrorToInnerCircle({ p100PageId: pageId, p100PageUrl: pageUrl, slug, fullName, meta, headshotUrl: row.headshot_url || null });
+    mirrorToInnerCircle({ p100PageId: pageId, p100PageUrl: pageUrl, slug, fullName, meta, headshotUrl: row.headshot_url || null, companyLogoUrl: getCompanyLogoFromLegacy(meta.ec_company_name) });
     return { wp_page_id: pageId, wp_page_url: pageUrl, created: false, action: 'linked' };
   }
 

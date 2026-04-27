@@ -1276,6 +1276,19 @@ function ic_rest_upsert_expert_contributor($request) {
         }
     }
 
+    // 5b. Sideload company logo if provided + not already set
+    $company_logo_url = isset($body['company_logo_url']) ? esc_url_raw($body['company_logo_url']) : '';
+    $existing_logo = (int) get_post_meta($post_id, 'ec_company_logo', true);
+    if ($company_logo_url && !$existing_logo) {
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+        require_once(ABSPATH . 'wp-admin/includes/media.php');
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        $logo_att = media_sideload_image($company_logo_url, $post_id, $title . ' company logo', 'id');
+        if (!is_wp_error($logo_att) && $logo_att) {
+            update_post_meta($post_id, 'ec_company_logo', $logo_att);
+        }
+    }
+
     // 6. Optional taxonomy assignments
     if (!empty($body['pillar_terms']) && is_array($body['pillar_terms'])) {
         wp_set_object_terms($post_id, array_map('sanitize_title', $body['pillar_terms']), 'ic_pillar', false);
