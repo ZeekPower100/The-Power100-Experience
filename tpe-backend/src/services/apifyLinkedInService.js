@@ -80,14 +80,15 @@ async function scrapeLinkedInProfile(url) {
 }
 
 /**
- * Discover the most-likely LinkedIn URL for a person via Google search.
- * Strategy: run 3 queries in one search batch (CEO+company, owner+company, name+linkedin).
- * Returns first organic result that's a LinkedIn /in/ URL, or null.
+ * Discover candidate LinkedIn URLs for a person via Google search.
+ * Returns an ARRAY of candidate URLs ordered by relevance (most likely first).
+ * Caller is expected to scrape + verify by name match before trusting one.
  *
  * @param {object} opts { name: string, company?: string }
+ * @returns {Promise<string[]>}
  */
-async function discoverLinkedInUrl({ name, company }) {
-  if (!name || !name.trim()) return null;
+async function discoverLinkedInCandidates({ name, company }) {
+  if (!name || !name.trim()) return [];
   const n = name.trim();
   const queries = [];
   if (company) {
@@ -104,16 +105,72 @@ async function discoverLinkedInUrl({ name, company }) {
     saveHtmlToKeyValueStore: false,
   }, 90);
 
-  // items is an array of search-result objects; each has organicResults[].url
   const urls = [];
   for (const item of items) {
     for (const r of (item.organicResults || [])) {
       if (r.url && /linkedin\.com\/in\//i.test(r.url)) {
-        urls.push(r.url);
+        // Strip query params + fragments for deduping
+        const clean = r.url.split('?')[0].split('#')[0].replace(/\/$/, '');
+        if (!urls.includes(clean)) urls.push(clean);
       }
     }
   }
+  return urls;
+}
+
+// Backwards-compat: returns first candidate URL (no verification).
+async function discoverLinkedInUrl({ name, company }) {
+  const urls = await discoverLinkedInCandidates({ name, company });
   return urls[0] || null;
+}
+
+/**
+ * Generic Google SERP fetch — used as the "web search" lane for synthesis grounding
+ * when we want title+snippet+url for arbitrary queries (not just LinkedIn discovery).
+ * One Apify run handles all queries in a single billable call.
+ *
+ * @param {object} opts { queries: string[], resultsPerQuery?: number }
+ * @returns {Promise<Array<{ query, title, url, snippet }>>}
+ */
+async function googleSearchSnippets({ queries, resultsPerQuery = 5 } = {}) {
+  if (!Array.isArray(queries) || queries.length === 0) return [];
+  const items = await runActorSync(SEARCH_ACTOR, {
+    queries: queries.join('\n'),
+    resultsPerPage: resultsPerQuery,
+    maxPagesPerQuery: 1,
+    saveHtml: false,
+    saveHtmlToKeyValueStore: false,
+  }, 90);
+
+  const out = [];
+  for (const item of items) {
+    const q = item.searchQuery?.term || item.searchQuery?.query || '';
+    for (const r of (item.organicResults || [])) {
+      if (!r.url) continue;
+      out.push({
+        query: q,
+        title: (r.title || '').slice(0, 200),
+        url: r.url,
+        snippet: (r.description || r.descriptionHTML || '').replace(/<[^>]+>/g, '').slice(0, 400),
+      });
+    }
+  }
+  return out;
+}
+
+// Verify a scraped profile actually belongs to the expected person.
+// Returns true if firstName + lastName both substring-match (case-insensitive).
+function profileMatchesName(profile, expectedName) {
+  if (!profile || !expectedName) return false;
+  const parts = expectedName.trim().split(/\s+/);
+  const expFirst = (parts[0] || '').toLowerCase();
+  const expLast  = (parts[parts.length - 1] || '').toLowerCase();
+  const pFirst   = (profile.firstName || '').toLowerCase();
+  const pLast    = (profile.lastName || '').toLowerCase();
+  // Allow nicknames (Mike↔Michael etc.) by checking starts-with on first name
+  const firstOk = pFirst === expFirst || pFirst.startsWith(expFirst) || expFirst.startsWith(pFirst);
+  const lastOk  = pLast === expLast;
+  return firstOk && lastOk;
 }
 
 /**
@@ -127,18 +184,50 @@ async function discoverLinkedInUrl({ name, company }) {
  */
 async function enrichFromLinkedIn({ name, company, knownLinkedinUrl } = {}) {
   if (!name) return { error: 'name required' };
-  let url = knownLinkedinUrl || null;
-  let discovered = false;
-  if (!url) {
-    try { url = await discoverLinkedInUrl({ name, company }); discovered = !!url; }
-    catch (e) { return { error: `discoverLinkedInUrl failed: ${e.message}` }; }
-  }
-  if (!url) return { error: 'no LinkedIn URL found via discovery', discovered: false };
 
-  let profile;
-  try { profile = await scrapeLinkedInProfile(url); }
-  catch (e) { return { error: `scrapeLinkedInProfile failed: ${e.message}`, linkedin_url: url, discovered }; }
-  if (!profile) return { error: 'scrape returned no profile', linkedin_url: url, discovered };
+  let profile = null;
+  let url = null;
+  let discovered = false;
+  let candidatesTried = [];
+
+  // 1. If we have a known URL, scrape it directly. STILL verify name match — guard against
+  //    stale/wrong stored URLs.
+  if (knownLinkedinUrl) {
+    try {
+      const p = await scrapeLinkedInProfile(knownLinkedinUrl);
+      if (p && profileMatchesName(p, name)) {
+        profile = p; url = knownLinkedinUrl;
+      } else if (p) {
+        // Stored URL points to wrong person — fall through to discovery
+        candidatesTried.push({ url: knownLinkedinUrl, rejected: 'name-mismatch (stored)' });
+      }
+    } catch (e) { /* fall through to discovery */ }
+  }
+
+  // 2. Discovery + verification loop — try up to 3 candidates until one matches.
+  if (!profile) {
+    let candidates = [];
+    try { candidates = await discoverLinkedInCandidates({ name, company }); discovered = true; }
+    catch (e) { return { error: `discoverLinkedInCandidates failed: ${e.message}` }; }
+    if (candidates.length === 0) return { error: 'no LinkedIn URL found via discovery', discovered, candidatesTried };
+
+    for (const candidate of candidates.slice(0, 3)) {
+      try {
+        const p = await scrapeLinkedInProfile(candidate);
+        if (p && profileMatchesName(p, name)) {
+          profile = p; url = candidate; break;
+        } else if (p) {
+          candidatesTried.push({ url: candidate, rejected: `name-mismatch (got ${p.firstName} ${p.lastName})` });
+        } else {
+          candidatesTried.push({ url: candidate, rejected: 'scrape-empty' });
+        }
+      } catch (e) {
+        candidatesTried.push({ url: candidate, rejected: `error: ${e.message}` });
+      }
+    }
+  }
+
+  if (!profile) return { error: 'all candidates failed verification', discovered, candidatesTried };
 
   const current = (profile.currentPosition && profile.currentPosition[0]) || {};
   const exp = Array.isArray(profile.experience) ? profile.experience : [];
@@ -179,5 +268,8 @@ module.exports = {
   scrapeLinkedInProfile,
   scrapeLinkedInProfiles,
   discoverLinkedInUrl,
+  discoverLinkedInCandidates,
+  profileMatchesName,
   enrichFromLinkedIn,
+  googleSearchSnippets,
 };

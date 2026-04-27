@@ -1,11 +1,694 @@
 {
+  "28": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "29": {
+    "status": "success",
+    "ec_id": 75,
+    "p100_page_id": 1226,
+    "p100_page_url": "https://staging.power100.io/john-huxtable-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://ca.linkedin.com/in/john-huxtable-68b25715",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777215390160
+  },
   "30": {
     "status": "success",
     "ec_id": 29,
     "p100_page_id": 1129,
     "p100_page_url": "https://staging.power100.io/?page_id=1129",
     "p100_action": "updated",
-    "ts": 1777166096058
+    "ts": 1777171422270
+  },
+  "323": {
+    "status": "success",
+    "ec_id": 93,
+    "p100_page_id": 1160,
+    "p100_page_url": "https://staging.power100.io/nick-richmond-contributor/",
+    "p100_action": "linked",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777216589921
+  },
+  "324": {
+    "status": "success",
+    "ec_id": 88,
+    "p100_page_id": 1246,
+    "p100_page_url": "https://staging.power100.io/margaret-lynch-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://ca.linkedin.com/in/mmlynchwriter",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777216317005
+  },
+  "325": {
+    "status": "success",
+    "ec_id": 110,
+    "p100_page_id": 1274,
+    "p100_page_url": "https://staging.power100.io/terri-harvath-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217325810
+  },
+  "326": {
+    "status": "success",
+    "ec_id": 104,
+    "p100_page_id": 1267,
+    "p100_page_url": "https://staging.power100.io/sean-lutgen-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217060272
+  },
+  "327": {
+    "status": "success",
+    "ec_id": 84,
+    "p100_page_id": 1240,
+    "p100_page_url": "https://staging.power100.io/linda-morrow-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://ca.linkedin.com/in/linda-morrow-52981028",
+      "linkedin_verified": true,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777216065768
+  },
+  "328": {
+    "status": "success",
+    "ec_id": 64,
+    "p100_page_id": 1207,
+    "p100_page_url": "https://staging.power100.io/george-klein-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/george-klein-a33b4a128",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777214653044
+  },
+  "329": {
+    "status": "success",
+    "ec_id": 114,
+    "p100_page_id": 1279,
+    "p100_page_url": "https://staging.power100.io/toni-klein-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217549394
+  },
+  "330": {
+    "status": "success",
+    "ec_id": 86,
+    "p100_page_id": 1243,
+    "p100_page_url": "https://staging.power100.io/louie-byers-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/louie-byers-74bb991b0",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777216199525
+  },
+  "331": {
+    "status": "success",
+    "ec_id": 117,
+    "p100_page_id": 1282,
+    "p100_page_url": "https://staging.power100.io/valerie-charles-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217676096
+  },
+  "332": {
+    "status": "success",
+    "ec_id": 47,
+    "p100_page_id": 1178,
+    "p100_page_url": "https://staging.power100.io/bev-schwalbach-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": false,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 8
+      },
+      "linkedin_url": null,
+      "linkedin_verified": false,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777213352108
+  },
+  "333": {
+    "status": "success",
+    "ec_id": 92,
+    "p100_page_id": 1254,
+    "p100_page_url": "https://staging.power100.io/nathan-wisniewski-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/nathanwisniewski",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777216549051
+  },
+  "334": {
+    "status": "success",
+    "ec_id": 116,
+    "p100_page_id": 1281,
+    "p100_page_url": "https://staging.power100.io/ty-petersen-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217634581
+  },
+  "335": {
+    "status": "success",
+    "ec_id": 54,
+    "p100_page_id": 1190,
+    "p100_page_url": "https://staging.power100.io/chris-cusick-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/chris-cusick-73316965",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777213790920
+  },
+  "336": {
+    "status": "success",
+    "ec_id": 46,
+    "p100_page_id": 1177,
+    "p100_page_url": "https://staging.power100.io/ben-buckley-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/ben-buckley-110b55b",
+      "linkedin_verified": true,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777213246836
+  },
+  "337": {
+    "status": "success",
+    "ec_id": 40,
+    "p100_page_id": 1167,
+    "p100_page_url": "https://staging.power100.io/alexis-leavens-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 12
+      },
+      "linkedin_url": "https://www.linkedin.com/in/alexis-leavens-8ba8aa169",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777212852799
+  },
+  "338": {
+    "status": "success",
+    "ec_id": 41,
+    "p100_page_id": 1169,
+    "p100_page_url": "https://staging.power100.io/amanda-kleiman-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/amanda-kleiman-a565472",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777212913165
+  },
+  "339": {
+    "status": "success",
+    "ec_id": 51,
+    "p100_page_id": 1185,
+    "p100_page_url": "https://staging.power100.io/bridget-cramer-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/bridgetcramer",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777213618594
+  },
+  "340": {
+    "status": "success",
+    "ec_id": 69,
+    "p100_page_id": 1214,
+    "p100_page_url": "https://staging.power100.io/javier-pena-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/javier-pena-88bb5796",
+      "linkedin_verified": true,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777214974464
+  },
+  "341": {
+    "status": "success",
+    "ec_id": 68,
+    "p100_page_id": 1213,
+    "p100_page_url": "https://staging.power100.io/jason-phillips-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/jason-f-phillips",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777214922055
+  },
+  "342": {
+    "status": "success",
+    "ec_id": 79,
+    "p100_page_id": 1233,
+    "p100_page_url": "https://staging.power100.io/josh-coffey-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://uk.linkedin.com/in/joshecoffey",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777215675694
+  },
+  "343": {
+    "status": "success",
+    "ec_id": 81,
+    "p100_page_id": 1237,
+    "p100_page_url": "https://staging.power100.io/kelly-shearer-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/busdevdiva",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777215836735
+  },
+  "344": {
+    "status": "success",
+    "ec_id": 70,
+    "p100_page_id": 1216,
+    "p100_page_url": "https://staging.power100.io/jennifer-rems-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/jennifer-rems-684744338",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777215029856
+  },
+  "345": {
+    "status": "success",
+    "ec_id": 85,
+    "p100_page_id": 1241,
+    "p100_page_url": "https://staging.power100.io/lindsay-van-keuren-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": false,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 15
+      },
+      "linkedin_url": null,
+      "linkedin_verified": false,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777216150042
+  },
+  "346": {
+    "status": "success",
+    "ec_id": 82,
+    "p100_page_id": 1238,
+    "p100_page_url": "https://staging.power100.io/kira-chesak-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/kirachesak",
+      "linkedin_verified": true,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777215903271
+  },
+  "347": {
+    "status": "success",
+    "ec_id": 72,
+    "p100_page_id": 1220,
+    "p100_page_url": "https://staging.power100.io/jeremy-mckinney-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/jeremy-mckinney",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777215160723
+  },
+  "348": {
+    "status": "success",
+    "ec_id": 83,
+    "p100_page_id": 1239,
+    "p100_page_url": "https://staging.power100.io/krista-baker-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/krista-baker-67a515109",
+      "linkedin_verified": true,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777215960519
+  },
+  "349": {
+    "status": "success",
+    "ec_id": 78,
+    "p100_page_id": 1231,
+    "p100_page_url": "https://staging.power100.io/josh-chladek-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 12
+      },
+      "linkedin_url": "https://www.linkedin.com/in/josh-chladek-24ba988a",
+      "linkedin_verified": true,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777215588402
+  },
+  "350": {
+    "status": "success",
+    "ec_id": 97,
+    "p100_page_id": 1259,
+    "p100_page_url": "https://staging.power100.io/paul-sweeney-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777216756464
+  },
+  "351": {
+    "status": "success",
+    "ec_id": 95,
+    "p100_page_id": 1257,
+    "p100_page_url": "https://staging.power100.io/noah-lindus-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777216665836
+  },
+  "352": {
+    "status": "success",
+    "ec_id": 101,
+    "p100_page_id": 1264,
+    "p100_page_url": "https://staging.power100.io/rick-lindus-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777216945434
+  },
+  "353": {
+    "status": "success",
+    "ec_id": 109,
+    "p100_page_id": 1273,
+    "p100_page_url": "https://staging.power100.io/teresa-ernst-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217298439
+  },
+  "354": {
+    "status": "success",
+    "ec_id": 100,
+    "p100_page_id": 1263,
+    "p100_page_url": "https://staging.power100.io/richard-daskam-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777216907572
+  },
+  "355": {
+    "status": "success",
+    "ec_id": 102,
+    "p100_page_id": 1265,
+    "p100_page_url": "https://staging.power100.io/rob-johnson-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777216986581
+  },
+  "356": {
+    "status": "success",
+    "ec_id": 115,
+    "p100_page_id": 1280,
+    "p100_page_url": "https://staging.power100.io/travis-gibson-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217590410
+  },
+  "357": {
+    "status": "success",
+    "ec_id": 57,
+    "p100_page_id": 1157,
+    "p100_page_url": "https://staging.power100.io/chuck-thokey-contributor/",
+    "p100_action": "linked",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777218455836
+  },
+  "358": {
+    "status": "success",
+    "ec_id": 94,
+    "p100_page_id": 1256,
+    "p100_page_url": "https://staging.power100.io/nick-saban-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777216626094
+  },
+  "359": {
+    "status": "success",
+    "ec_id": 77,
+    "p100_page_id": 1230,
+    "p100_page_url": "https://staging.power100.io/jordy-collins-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/jordy-collins-ab200423",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777215530318
   },
   "360": {
     "status": "success",
@@ -13,7 +696,218 @@
     "p100_page_id": 1127,
     "p100_page_url": "https://staging.power100.io/?page_id=1127",
     "p100_action": "updated",
-    "ts": 1777166093199
+    "ts": 1777171418058
+  },
+  "361": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "362": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "363": {
+    "status": "success",
+    "ec_id": 60,
+    "p100_page_id": 1199,
+    "p100_page_url": "https://staging.power100.io/dashaun-bryant-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 12
+      },
+      "linkedin_url": "https://www.linkedin.com/in/dashaun-bryant-6368348a",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777214369156
+  },
+  "364": {
+    "status": "success",
+    "ec_id": 66,
+    "p100_page_id": 1210,
+    "p100_page_url": "https://staging.power100.io/jacob-brandstetter-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/jacob-brandstetter-715534235",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777214804729
+  },
+  "365": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "366": {
+    "status": "success",
+    "ec_id": 61,
+    "p100_page_id": 1201,
+    "p100_page_url": "https://staging.power100.io/dave-yoho-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/daveyoho",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777214425600
+  },
+  "367": {
+    "status": "success",
+    "ec_id": 96,
+    "p100_page_id": 1159,
+    "p100_page_url": "https://staging.power100.io/patrick-rinard-contributor/",
+    "p100_action": "linked",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777216710938
+  },
+  "368": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "369": {
+    "status": "success",
+    "ec_id": 42,
+    "p100_page_id": 1170,
+    "p100_page_url": "https://staging.power100.io/andy-knapp-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/andrewknapp1",
+      "linkedin_verified": true,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777212987827
+  },
+  "370": {
+    "status": "success",
+    "ec_id": 107,
+    "p100_page_id": 1271,
+    "p100_page_url": "https://staging.power100.io/sydney-goepferich-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217191758
+  },
+  "371": {
+    "status": "success",
+    "ec_id": 44,
+    "p100_page_id": 1174,
+    "p100_page_url": "https://staging.power100.io/anthony-ingrao-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/anthony-ingrao-477b2426",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777213122473
+  },
+  "372": {
+    "status": "success",
+    "ec_id": 122,
+    "p100_page_id": 1290,
+    "p100_page_url": "https://staging.power100.io/clint-klepp-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777218493541
+  },
+  "373": {
+    "status": "success",
+    "ec_id": 111,
+    "p100_page_id": 1275,
+    "p100_page_url": "https://staging.power100.io/terri-kruse-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217389132
+  },
+  "374": {
+    "status": "success",
+    "ec_id": 98,
+    "p100_page_id": 1260,
+    "p100_page_url": "https://staging.power100.io/rich-harshaw-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777216796628
+  },
+  "375": {
+    "status": "success",
+    "ec_id": 67,
+    "p100_page_id": 1211,
+    "p100_page_url": "https://staging.power100.io/jason-jones-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/jasonjoneslinkedin",
+      "linkedin_verified": true,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777214862828
   },
   "377": {
     "status": "success",
@@ -21,7 +915,127 @@
     "p100_page_id": 1126,
     "p100_page_url": "https://staging.power100.io/?page_id=1126",
     "p100_action": "updated",
-    "ts": 1777166091789
+    "ts": 1777171414820
+  },
+  "378": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "379": {
+    "status": "success",
+    "ec_id": 58,
+    "p100_page_id": 1195,
+    "p100_page_url": "https://staging.power100.io/coco-criste-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": false,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 15
+      },
+      "linkedin_url": null,
+      "linkedin_verified": false,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777214265939
+  },
+  "380": {
+    "status": "success",
+    "ec_id": 62,
+    "p100_page_id": 34,
+    "p100_page_url": "https://staging.power100.io/amanda-kelly-expert-contributor/",
+    "p100_action": "linked",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": false,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": null,
+      "linkedin_verified": false,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777214521475
+  },
+  "381": {
+    "status": "success",
+    "ec_id": 106,
+    "p100_page_id": 1270,
+    "p100_page_url": "https://staging.power100.io/shea-ross-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217152626
+  },
+  "382": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "383": {
+    "status": "success",
+    "ec_id": 50,
+    "p100_page_id": 1155,
+    "p100_page_url": "https://staging.power100.io/brad-yoho-contributor/",
+    "p100_action": "linked",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/bradyoho",
+      "linkedin_verified": true,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777213559639
+  },
+  "384": {
+    "status": "success",
+    "ec_id": 105,
+    "p100_page_id": 1269,
+    "p100_page_url": "https://staging.power100.io/sebastian-jiminez-industry-leader/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217115350
+  },
+  "385": {
+    "status": "success",
+    "ec_id": 90,
+    "p100_page_id": 183,
+    "p100_page_url": "https://staging.power100.io/mike-hollander-expert-contributor/",
+    "p100_action": "linked",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": true,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/michaelshollander",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777216426586
   },
   "386": {
     "status": "success",
@@ -29,7 +1043,62 @@
     "p100_page_id": 1128,
     "p100_page_url": "https://staging.power100.io/?page_id=1128",
     "p100_action": "updated",
-    "ts": 1777166094638
+    "ts": 1777171420848
+  },
+  "387": {
+    "status": "success",
+    "ec_id": 73,
+    "p100_page_id": 1222,
+    "p100_page_url": "https://staging.power100.io/jim-ziminski-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/jimziminski",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777215223804
+  },
+  "388": {
+    "status": "success",
+    "ec_id": 91,
+    "p100_page_id": 1252,
+    "p100_page_url": "https://staging.power100.io/mike-turek-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/mikehunssingerturek",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777216480764
+  },
+  "389": {
+    "status": "success",
+    "ec_id": 113,
+    "p100_page_id": 1278,
+    "p100_page_url": "https://staging.power100.io/tom-goldsmith-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217491409
   },
   "390": {
     "status": "success",
@@ -37,6 +1106,522 @@
     "p100_page_id": 1125,
     "p100_page_url": "https://staging.power100.io/abby-binder-contributor/",
     "p100_action": "updated",
-    "ts": 1777169161534
+    "ts": 1777171413392
+  },
+  "391": {
+    "status": "success",
+    "ec_id": 43,
+    "p100_page_id": 1172,
+    "p100_page_url": "https://staging.power100.io/anne-marshall-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/ann-marshall-037aa594",
+      "linkedin_verified": true,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777213061002
+  },
+  "392": {
+    "status": "success",
+    "ec_id": 55,
+    "p100_page_id": 1192,
+    "p100_page_url": "https://staging.power100.io/chris-pallatroni-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/chris-pallatroni-9bba3b22",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777213854220
+  },
+  "393": {
+    "status": "success",
+    "ec_id": 118,
+    "p100_page_id": 1284,
+    "p100_page_url": "https://staging.power100.io/vince-venditti-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217734795
+  },
+  "394": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "395": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "396": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "397": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "398": {
+    "status": "success",
+    "ec_id": 76,
+    "p100_page_id": 1228,
+    "p100_page_url": "https://staging.power100.io/jonathan-rodriguez-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": true,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/jrod88",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777215466516
+  },
+  "399": {
+    "status": "success",
+    "ec_id": 52,
+    "p100_page_id": 1186,
+    "p100_page_url": "https://staging.power100.io/bryan-bauman-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/bryanbauman",
+      "linkedin_verified": true,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777213675018
+  },
+  "400": {
+    "status": "success",
+    "ec_id": 103,
+    "p100_page_id": 1266,
+    "p100_page_url": "https://staging.power100.io/ryan-keene-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217016884
+  },
+  "401": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "402": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "403": {
+    "status": "success",
+    "ec_id": 71,
+    "p100_page_id": 1218,
+    "p100_page_url": "https://staging.power100.io/jeremy-atkinson-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/jeremy-atkinson-219601308",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777215107184
+  },
+  "404": {
+    "status": "success",
+    "ec_id": 120,
+    "p100_page_id": 1287,
+    "p100_page_url": "https://staging.power100.io/voitek-kaniewski-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217843670
+  },
+  "405": {
+    "status": "success",
+    "ec_id": 121,
+    "p100_page_id": 1288,
+    "p100_page_url": "https://staging.power100.io/yarek-ostaniewicz-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217929466
+  },
+  "406": {
+    "status": "success",
+    "ec_id": 108,
+    "p100_page_id": 1272,
+    "p100_page_url": "https://staging.power100.io/taylor-hanes-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217256781
+  },
+  "407": {
+    "status": "success",
+    "ec_id": 63,
+    "p100_page_id": 1205,
+    "p100_page_url": "https://staging.power100.io/dustin-rhoades-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/dustin-rhoades-9a110524",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777214598913
+  },
+  "408": {
+    "status": "success",
+    "ec_id": 87,
+    "p100_page_id": 1154,
+    "p100_page_url": "https://staging.power100.io/marcus-sheridan-contributor/",
+    "p100_action": "linked",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/marcussheridan",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777216257304
+  },
+  "409": {
+    "status": "success",
+    "ec_id": 48,
+    "p100_page_id": 1180,
+    "p100_page_url": "https://staging.power100.io/bill-conlon-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/bill-conlon-37884a77",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777213434183
+  },
+  "416": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "417": {
+    "status": "success",
+    "ec_id": 59,
+    "p100_page_id": 1197,
+    "p100_page_url": "https://staging.power100.io/dan-beckner-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/paradiseexteriors",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777214315558
+  },
+  "418": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "419": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "420": {
+    "status": "success",
+    "ec_id": 53,
+    "p100_page_id": 1188,
+    "p100_page_url": "https://staging.power100.io/charlie-greene-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/charlie-greene-2b649b23",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777213730974
+  },
+  "421": {
+    "status": "success",
+    "ec_id": 49,
+    "p100_page_id": 1182,
+    "p100_page_url": "https://staging.power100.io/bobby-wilder-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/bwilder",
+      "linkedin_verified": true,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777213493301
+  },
+  "422": {
+    "status": "success",
+    "ec_id": 119,
+    "p100_page_id": 1286,
+    "p100_page_url": "https://staging.power100.io/vinnie-faccinto-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217771871
+  },
+  "428": {
+    "status": "success",
+    "ec_id": 89,
+    "p100_page_id": 1248,
+    "p100_page_url": "https://staging.power100.io/mark-olsen-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": "https://www.linkedin.com/in/mark-olsen-086a05183",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777216374209
+  },
+  "431": {
+    "status": "success",
+    "ec_id": 99,
+    "p100_page_id": 1262,
+    "p100_page_url": "https://staging.power100.io/rich-hotea-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777216863812
+  },
+  "433": {
+    "status": "success",
+    "ec_id": 74,
+    "p100_page_id": 1224,
+    "p100_page_url": "https://staging.power100.io/john-depaola-jr-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": false,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": null,
+      "linkedin_verified": false,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777215314888
+  },
+  "434": {
+    "status": "success",
+    "ec_id": 80,
+    "p100_page_id": 1235,
+    "p100_page_url": "https://staging.power100.io/katie-depaola-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": false,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": null,
+      "linkedin_verified": false,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777215776143
+  },
+  "436": {
+    "status": "success",
+    "ec_id": 112,
+    "p100_page_id": 1277,
+    "p100_page_url": "https://staging.power100.io/tim-brown-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "error": "synthesis failed: Request failed with status code 400"
+    },
+    "needs_photo_review": false,
+    "ts": 1777217432926
+  },
+  "443": {
+    "status": "success",
+    "ec_id": 65,
+    "p100_page_id": 1208,
+    "p100_page_url": "https://staging.power100.io/greg-unknown-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": false,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 16
+      },
+      "linkedin_url": null,
+      "linkedin_verified": false,
+      "has_photo": false
+    },
+    "needs_photo_review": true,
+    "ts": 1777214744950
+  },
+  "444": {
+    "status": "success",
+    "ec_id": 56,
+    "p100_page_id": 1194,
+    "p100_page_url": "https://staging.power100.io/chris-scoville-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 14
+      },
+      "linkedin_url": "https://www.linkedin.com/in/christopher-scoville-0914685",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777213912700
+  },
+  "446": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
+  },
+  "451": {
+    "status": "success",
+    "ec_id": 45,
+    "p100_page_id": 1176,
+    "p100_page_url": "https://staging.power100.io/austin-killian-contributor/",
+    "p100_action": "created",
+    "enriched": true,
+    "research": {
+      "sources": {
+        "linkedin": true,
+        "ranked_lander": false,
+        "company_website": false,
+        "web_search": 15
+      },
+      "linkedin_url": "https://www.linkedin.com/in/austinkillian",
+      "linkedin_verified": true,
+      "has_photo": true
+    },
+    "needs_photo_review": false,
+    "ts": 1777213175975
+  },
+  "458": {
+    "status": "skip",
+    "reason": "already-has-ec-lander or duplicate",
+    "ts": 1777218425533
   }
 }

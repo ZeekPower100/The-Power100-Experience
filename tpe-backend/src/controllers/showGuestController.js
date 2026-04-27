@@ -615,7 +615,10 @@ const submitShowGuestFormPublic = async (req, res) => {
         // Re-fetch the FULL row (controller's RETURNING clause is a partial projection).
         const full = await query('SELECT * FROM expert_contributors WHERE id = $1', [row.id]);
         if (!full.rows.length) return;
-        await enrich.upsertContributorLander(full.rows[0], { source: 'show_guest_form' });
+        await enrich.upsertContributorLander(full.rows[0], {
+          source: 'show_guest_form',
+          enrichOnGap: true,    // adaptive: Apify+Sonnet fills any gaps the form left blank, never overwrites user data
+        });
       } catch (e) {
         console.error('[showGuest] upsertContributorLander failed:', e.message);
       }

@@ -1,0 +1,134 @@
+{
+  "generated_at": "2026-04-26T13:52:56.844Z",
+  "ec_count": 64,
+  "ic_count": 106,
+  "intersect_count": 18,
+  "skip": [
+    {
+      "term_id": 382,
+      "slug": "andy-lindus",
+      "name": "Andy Lindus",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/andy-lindus-expert-contributor/"
+    },
+    {
+      "term_id": 418,
+      "slug": "anthony-beckner",
+      "name": "Anthony Beckner",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/anthony-beckner-expert-contributor/"
+    },
+    {
+      "term_id": 365,
+      "slug": "brian-gottlieb",
+      "name": "Brian Gottlieb",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/brian-gottlieb-expert-contributor/"
+    },
+    {
+      "term_id": 362,
+      "slug": "caleb-nelson",
+      "name": "Caleb Nelson",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/caleb-nelson-expert-contributor/"
+    },
+    {
+      "term_id": 446,
+      "slug": "daniel-rahmon",
+      "name": "Daniel Rahmon",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/daniel-rahmon-expert-contributor/"
+    },
+    {
+      "term_id": 397,
+      "slug": "dean-curtis",
+      "name": "Dean Curtis",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/dean-curtis-expert-contributor/"
+    },
+    {
+      "term_id": 402,
+      "slug": "dominic-caminata",
+      "name": "Dominic Caminata",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/dominic-caminata-expert-contributor/"
+    },
+    {
+      "term_id": 419,
+      "slug": "greg-cummings",
+      "name": "Greg Cummings",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/greg-cummings-expert-contributor/"
+    },
+    {
+      "term_id": 28,
+      "slug": "james-freeman",
+      "name": "James Freeman",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/james-freeman-expert-contributor/"
+    },
+    {
+      "term_id": 394,
+      "slug": "jamey-vumback",
+      "name": "Jamey Vumback",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/jamey-vumback-expert-contributor/"
+    },
+    {
+      "term_id": 458,
+      "slug": "mike-hollander",
+      "name": "Mike Hollander",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/mike-hollander-expert-contributor/"
+    },
+    {
+      "term_id": 416,
+      "slug": "nick-zindel",
+      "name": "Nick Zindel",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/nick-zindel-expert-contributor/"
+    },
+    {
+      "term_id": 368,
+      "slug": "paul-burleson",
+      "name": "Paul Burleson",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/paul-burleson-expert-contributor/"
+    },
+    {
+      "term_id": 378,
+      "slug": "peter-svedin",
+      "name": "Peter Svedin",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/peter-svedin-expert-contributor/"
+    },
+    {
+      "term_id": 396,
+      "slug": "ryan-lococo",
+      "name": "Ryan Lococo",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/ryan-lococo-expert-contributor/"
+    },
+    {
+      "term_id": 395,
+      "slug": "scott-berman",
+      "name": "Scott Berman",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/scott-berman-expert-contributor/"
+    },
+    {
+      "term_id": 361,
+      "slug": "steve-spence",
+      "name": "Steve Spence",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/steve-spence-expert-contributor/"
+    },
+    {
+      "term_id": 401,
+      "slug": "vic-sun",
+      "name": "Vic Sun",
+      "reason": "slug matches existing EC lander",
+      "ec_url": "https://power100.io/vic-sun-expert-contributor/"
+    }
+  ]
+}

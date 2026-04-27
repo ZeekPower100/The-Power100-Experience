@@ -385,7 +385,16 @@ function stagingAuthHeader() {
 // media library. Returns the new attachment ID. Used to populate
 // ec_headshot (which is registered as an integer attachment ID).
 async function sideloadImageToStaging(imageUrl, filenameHint) {
-  const imgRes = await axios.get(imageUrl, { responseType: 'arraybuffer', timeout: 20000 });
+  // LinkedIn CDN often 403s default axios UA — masquerade as a browser so it serves the image.
+  const imgRes = await axios.get(imageUrl, {
+    responseType: 'arraybuffer',
+    timeout: 20000,
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      'Accept-Language': 'en-US,en;q=0.9',
+    },
+  });
   const buf = Buffer.from(imgRes.data);
   const contentType = imgRes.headers['content-type'] || 'image/jpeg';
   // Pull a sane extension from URL or content-type
@@ -458,6 +467,7 @@ function rowToAcfFields(row) {
     ec_credentials:       row.credentials || '',
     ec_contrib_topics:    row.expertise_topics || '',
     ec_recognition:       row.recognition || '',
+    ec_scores:            row.scores || row.ec_scores || '',
     ec_company_name:      company,
     ec_company_desc:      row.company_description || '',
     ec_stat_years:        row.years_in_industry || '',
@@ -539,11 +549,129 @@ async function mirrorToInnerCircle({ p100PageId, p100PageUrl, slug, fullName, me
   }
 }
 
+/**
+ * Score a contributor row 0-100 by which lander-critical fields are populated.
+ * Used by the gap-fill enrichment decision: form data scoring 70+ skips research
+ * entirely; below 70, researchContributor() runs in gap-fill mode to ONLY
+ * synthesize the empty fields, never touching what the user submitted.
+ *
+ * Weights are tuned so a "thin" row (just name + title + company) scores ~25,
+ * a "decent" row (name + title + company + bio + headshot) scores ~55, and a
+ * "form-complete" row (above + recognition + credentials) scores 75+.
+ */
+function completenessScore(row) {
+  if (!row) return 0;
+  const has = (v, minLen = 1) => {
+    if (v === null || v === undefined) return false;
+    const s = typeof v === 'string' ? v.trim() : String(v).trim();
+    return s.length >= minLen;
+  };
+  const lineCount = v => has(v) ? String(v).split(/[\n\r]+/).filter(l => l.trim()).length : 0;
+
+  let score = 0;
+  if (has(row.headshot_url))               score += 20;
+  if (has(row.bio, 120))                   score += 20;
+  if (has(row.title_position))             score += 15;
+  if (has(row.hero_quote))                 score += 10;
+  if (lineCount(row.recognition) >= 3)     score += 10;
+  if (lineCount(row.credentials) >= 3)     score += 10;
+  if (lineCount(row.expertise_topics) >= 3) score += 5;
+  if (has(row.company_description))        score += 5;
+  if (has(row.linkedin_url))               score += 5;
+  return score;
+}
+
+/**
+ * Compute the list of fields that are MISSING (empty) on a row — used by
+ * researchContributor() gap-fill mode to know what to synthesize.
+ * Returns an array of canonical field names; pass to research as
+ * `existingFields` (the inverse — fields TO PRESERVE) by omission.
+ */
+function missingFields(row) {
+  const has = v => v !== null && v !== undefined && String(v).trim() !== '';
+  const lineCount = v => has(v) ? String(v).split(/[\n\r]+/).filter(l => l.trim()).length : 0;
+  const out = [];
+  if (!has(row.bio))                       out.push('bio');
+  if (!has(row.hero_quote))                out.push('hero_quote');
+  if (!has(row.title_position))            out.push('title_position');
+  if (lineCount(row.recognition) < 3)      out.push('recognition');
+  if (lineCount(row.credentials) < 3)      out.push('credentials');
+  if (lineCount(row.expertise_topics) < 3) out.push('expertise_topics');
+  if (!has(row.scores))                    out.push('scores');
+  if (!has(row.company_description))       out.push('company_description');
+  if (!has(row.geographic_reach))          out.push('geographic_reach');
+  if (!has(row.years_in_industry))         out.push('stat_years');
+  if (!has(row.testimonials) || row.testimonials === '[]') out.push('testimonials');
+  return out;
+}
+
 async function upsertContributorLander(row, opts = {}) {
   if (!row || !row.first_name || !row.last_name) {
     throw new Error('upsertContributorLander: row.first_name + row.last_name required');
   }
   const source = opts.source || 'unknown';
+
+  // ── Optional gap-fill enrichment ──
+  // When the caller passes `enrichOnGap: true` (form controllers) we score the
+  // row's existing data density. If it's below threshold (default 70/100), we
+  // run researchContributor() in GAP-FILL mode to populate the missing fields
+  // ONLY. User-submitted form fields are never overwritten.
+  if (opts.enrichOnGap) {
+    const score = completenessScore(row);
+    const threshold = opts.gapFillThreshold ?? 70;
+    if (score < threshold) {
+      const gaps = missingFields(row);
+      if (gaps.length > 0) {
+        console.log(`[upsertContributorLander] Gap-fill enrichment for "${row.first_name} ${row.last_name}" (score=${score}/${threshold}, gaps=${gaps.length}): ${gaps.join(', ')}`);
+        try {
+          const research = require('./contributorResearchService');
+          const r = await research.researchContributor({
+            name: `${row.first_name} ${row.last_name}`.trim(),
+            company: row.company || undefined,
+            knownLinkedinUrl: row.linkedin_url || undefined,
+            websiteUrl: row.website_url || undefined,
+            contributorClass: row.contributor_class || 'contributor',
+            existingFields: gaps.reduce((acc, k) => {
+              // Tell research what's "owned" by user (NOT in gaps) so Sonnet preserves them
+              return acc;
+            }, {}),
+            gapFillFields: gaps,  // tell research which fields to synthesize
+          });
+          if (r.success && r.payload) {
+            const p = r.payload;
+            // Merge ONLY the gap fields back onto the row in-memory; never touch user-set data
+            const mergeIfGap = (rowKey, payloadKey, transform) => {
+              if (gaps.includes(payloadKey) || gaps.includes(rowKey)) {
+                const v = transform ? transform(p[payloadKey]) : p[payloadKey];
+                if (v !== undefined && v !== null && v !== '') row[rowKey] = v;
+              }
+            };
+            mergeIfGap('bio', 'bio');
+            mergeIfGap('hero_quote', 'hero_quote');
+            mergeIfGap('title_position', 'title_position');
+            mergeIfGap('recognition', 'recognition', v => Array.isArray(v) ? v.join('\n') : v);
+            mergeIfGap('credentials', 'credentials', v => Array.isArray(v) ? v.join('\n') : v);
+            mergeIfGap('expertise_topics', 'expertise_topics', v => Array.isArray(v) ? v.join('\n') : v);
+            mergeIfGap('scores', 'scores', v => Array.isArray(v) ? v.join('\n') : v);
+            mergeIfGap('company_description', 'company_description');
+            mergeIfGap('geographic_reach', 'geographic_reach');
+            mergeIfGap('years_in_industry', 'stat_years');
+            mergeIfGap('testimonials', 'testimonials', v => v ? JSON.stringify(v) : null);
+            // headshot: only fill if user didn't upload one
+            if (!row.headshot_url && p.headshot_url) row.headshot_url = p.headshot_url;
+            // linkedin_url: only fill if user didn't supply one
+            if (!row.linkedin_url && p.linkedin_url) row.linkedin_url = p.linkedin_url;
+            console.log(`[upsertContributorLander] Gap-fill complete (sources=${JSON.stringify(r.sources)}, li_verified=${r.linkedin_verified})`);
+          }
+        } catch (e) {
+          console.warn(`[upsertContributorLander] Gap-fill enrichment failed (non-blocking): ${e.message}`);
+        }
+      }
+    } else {
+      console.log(`[upsertContributorLander] Skipping gap-fill (score=${score}/${threshold}, form data sufficient)`);
+    }
+  }
+
   const { acf, fullName, ecType } = rowToAcfFields(row);
   const auth = stagingAuthHeader();
 
@@ -558,10 +686,24 @@ async function upsertContributorLander(row, opts = {}) {
   // Slug for use in IC mirror (same on both sites)
   const slug = contributorSlug(fullName, ecType);
 
-  // If we have a headshot URL and meta.ec_headshot isn't already set,
-  // sideload to staging media library before any path runs. Result attaches
-  // to whichever path (create or update) writes the meta. Idempotent —
-  // re-sideloads only when meta.ec_headshot is empty.
+  // Pre-fetch existing page's ec_headshot meta if we have a wp_page_id —
+  // this prevents the sideload from creating duplicate WP attachments on
+  // re-runs (every re-fire would otherwise sideload a fresh copy).
+  // Fail silently — if the GET fails, we fall through to maybe sideload.
+  if (row.wp_page_id && Number.isFinite(parseInt(row.wp_page_id, 10)) && !meta.ec_headshot) {
+    try {
+      const pid = parseInt(row.wp_page_id, 10);
+      const existing = await axios.get(
+        `${STAGING_P100_BASE}/wp-json/wp/v2/pages/${pid}?_fields=meta`,
+        { headers: { Authorization: auth }, timeout: 8000 }
+      );
+      if (existing.data && existing.data.meta && existing.data.meta.ec_headshot) {
+        meta.ec_headshot = existing.data.meta.ec_headshot;
+      }
+    } catch (e) { /* fall through to sideload */ }
+  }
+
+  // If still no ec_headshot and we have a URL, sideload it once.
   if (row.headshot_url && !meta.ec_headshot) {
     try {
       const attId = await sideloadImageToStaging(row.headshot_url, slug);
@@ -624,12 +766,16 @@ async function upsertContributorLander(row, opts = {}) {
     return { wp_page_id: pageId, wp_page_url: pageUrl, created: false, action: 'linked' };
   }
 
-  // 3. Create new draft page (slug declared above for shared use with IC mirror)
+  // 3. Create new page (slug declared above for shared use with IC mirror).
+  // Default is 'publish' — auto-enrichment is the primary path now and live
+  // landers are the desired outcome. Pass opts.publishOnCreate=false for the
+  // legacy operator-review-then-publish workflow.
+  const createStatus = opts.publishOnCreate === false ? 'draft' : 'publish';
   const url = `${STAGING_P100_BASE}/wp-json/wp/v2/pages`;
   const res = await axios.post(url, {
     title:    fullName,
     slug,
-    status:   'draft',
+    status:   createStatus,
     template: 'page-expert-contributor.php',
     meta,
   }, {
@@ -719,5 +865,7 @@ module.exports = {
   enrichSingleLeader,
   runFullEnrichment,
   upsertContributorLander,
+  completenessScore,
+  missingFields,
   ensureContributorRowFromEpisode,
 };

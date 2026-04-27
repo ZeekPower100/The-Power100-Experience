@@ -1,0 +1,207 @@
+/* ═══════════════════════════════════════════
+   IC EC LANDER — DARK THEME OVERRIDES
+   Overlay on top of ec-lander.css.
+   Many P100 styles hardcode #fff backgrounds and #222/#555 text colors that
+   don't follow the CSS variable swap — those need explicit overrides here.
+   Re-audit when ec-lander.css is updated on P100.
+   ═══════════════════════════════════════════ */
+
+/* ── Token redefine (still useful for variable-driven rules) ── */
+body.ic-ec-lander {
+    --p-white: #0c0c0c;
+    --p-black: #ececec;
+    --p-dark: #161616;
+    --p-dark2: #1f1f1f;
+    --p-lightgray: #141414;
+    --p-gray: #b3b3b3;
+    --p-gold: #C8A951;
+    --p-gold2: #b8983c;
+    --ic-stroke: rgba(255,255,255,0.10);
+    --ic-stroke-strong: rgba(255,255,255,0.20);
+}
+body.ic-ec-lander { background: #0c0c0c; }
+body.ic-ec-lander .ec-page { background: #0c0c0c; color: #ececec; }
+
+/* ═════════════════════════════════════════════
+   HERO — already dark-styled in base, just bump quote + outline buttons
+   ═════════════════════════════════════════════ */
+body.ic-ec-lander .ec-hero-quote {
+    color: #ffffff;
+    border-left-color: #C8A951;
+}
+/* Hero outline buttons (LinkedIn / Website / View Ranked Profile) need full-white text
+   — base sets color:rgba(255,255,255,.7) which reads dim on the dark hero. */
+body.ic-ec-lander .ec-hero-links .ec-btn--outline {
+    color: #ffffff;
+    border-color: rgba(255,255,255,0.45);
+}
+body.ic-ec-lander .ec-hero-links .ec-btn--outline:hover {
+    color: #ffffff;
+    border-color: var(--p-red);
+    background: rgba(251,4,1,0.08);
+}
+
+/* ═════════════════════════════════════════════
+   STAT BAR — base uses red bg (var(--p-red)). Keep that.
+   Bump label opacity for legibility on red bg.
+   ═════════════════════════════════════════════ */
+body.ic-ec-lander .ec-stat-label { color: rgba(255,255,255,0.95); }
+
+/* ═════════════════════════════════════════════
+   WHY / BIO section (was light bg #fff with #222 body text)
+   ═════════════════════════════════════════════ */
+body.ic-ec-lander .ec-why { background: #0c0c0c; color: #ececec; }
+body.ic-ec-lander .ec-why-headline { color: #ffffff; }
+body.ic-ec-lander .ec-why-bio { color: #cfcfcf; }
+body.ic-ec-lander .ec-why-bio strong { color: #ffffff; }
+
+/* ═════════════════════════════════════════════
+   DOMAIN MASTERY SCORES — was light grey bg with white card rows
+   ═════════════════════════════════════════════ */
+body.ic-ec-lander .ec-scores { background: #141414; }
+body.ic-ec-lander .ec-scores-headline { color: #ffffff; }
+body.ic-ec-lander .ec-scores-desc { color: #b8b8b8; }
+body.ic-ec-lander .ec-score-row {
+    background: #1f1f1f;
+    border: 1px solid var(--ic-stroke);
+}
+body.ic-ec-lander .ec-score-domain { color: #ffffff; }
+body.ic-ec-lander .ec-score-num { color: #C8A951; }
+body.ic-ec-lander .ec-score-denom { color: #888; }
+body.ic-ec-lander .ec-score-bar-track { background: rgba(255,255,255,0.10); }
+body.ic-ec-lander .ec-score-bar-fill {
+    background: linear-gradient(90deg, var(--p-red), #C8A951);
+}
+
+/* ═════════════════════════════════════════════
+   VIDEOS — base already dark-styled, no override needed
+   ═════════════════════════════════════════════ */
+
+/* ═════════════════════════════════════════════
+   EPISODES — base uses #0c0c0c bg, base looks ok. Tighten contrast.
+   ═════════════════════════════════════════════ */
+body.ic-ec-lander .ec-episodes-title { color: #ffffff; }
+body.ic-ec-lander .ec-episode-card {
+    background: #1f1f1f;
+    border: 1px solid var(--ic-stroke);
+}
+body.ic-ec-lander .ec-episode-card:hover {
+    border-color: var(--p-red);
+}
+
+/* ═════════════════════════════════════════════
+   PUBLISHED CONTENT (Articles Featuring X) — was light bg
+   ═════════════════════════════════════════════ */
+body.ic-ec-lander .ec-published-content {
+    background: #0c0c0c;
+}
+body.ic-ec-lander .ec-published-content h2 { color: #ffffff !important; }
+body.ic-ec-lander .ec-article-card {
+    background: #1f1f1f;
+    border: 1px solid var(--ic-stroke);
+    transition: transform 0.2s, border-color 0.2s;
+}
+body.ic-ec-lander .ec-article-card:hover {
+    border-color: var(--p-red);
+    transform: translateY(-2px);
+}
+body.ic-ec-lander .ec-article-body { color: #cfcfcf; }
+body.ic-ec-lander .ec-article-date { color: #888; }
+body.ic-ec-lander .ec-article-title { color: #ffffff; }
+
+/* ═════════════════════════════════════════════
+   RECOGNITION — was light bg, dark cards
+   ═════════════════════════════════════════════ */
+body.ic-ec-lander .ec-recognition { background: #141414; }
+body.ic-ec-lander .ec-rec-headline { color: #ffffff; }
+body.ic-ec-lander .ec-rec-item {
+    background: #1f1f1f;
+    border: 1px solid var(--ic-stroke);
+}
+body.ic-ec-lander .ec-rec-text { color: #d8d8d8; }
+body.ic-ec-lander .ec-rec-icon { color: #C8A951; }
+
+/* ═════════════════════════════════════════════
+   CONTRIBUTIONS — was light bg with dark text on right
+   ═════════════════════════════════════════════ */
+body.ic-ec-lander .ec-contributions { background: #0c0c0c; }
+body.ic-ec-lander .ec-contrib-right strong { color: #ffffff; }
+body.ic-ec-lander .ec-contrib-right p { color: #cfcfcf; }
+body.ic-ec-lander .ec-topic-pill {
+    background: rgba(200,169,81,0.10);
+    color: #C8A951;
+    border: 1px solid rgba(200,169,81,0.35);
+}
+
+/* ═════════════════════════════════════════════
+   TESTIMONIALS — was light bg with dark text
+   ═════════════════════════════════════════════ */
+body.ic-ec-lander .ec-testimonials { background: #141414; }
+body.ic-ec-lander .ec-testimonials-title { color: #ffffff; }
+body.ic-ec-lander .ec-testi-card {
+    background: #1f1f1f;
+    border: 1px solid var(--ic-stroke);
+    color: #ececec;
+}
+body.ic-ec-lander .ec-testi-quote { color: #ececec; }
+body.ic-ec-lander .ec-testi-quote::before { color: #C8A951; }
+body.ic-ec-lander .ec-testi-name { color: #ffffff; }
+body.ic-ec-lander .ec-testi-role { color: #999; }
+
+/* ═════════════════════════════════════════════
+   COMPANY — was light bg with dark text
+   ═════════════════════════════════════════════ */
+body.ic-ec-lander .ec-company { background: #141414; }
+body.ic-ec-lander .ec-company-card {
+    background: #1f1f1f;
+    border: 1px solid var(--ic-stroke);
+    color: #ececec;
+}
+body.ic-ec-lander .ec-company-name-lbl { color: #ffffff; }
+body.ic-ec-lander .ec-company-desc-text { color: #cfcfcf; }
+body.ic-ec-lander .ec-btn--outline-dark {
+    background: transparent;
+    color: #ececec;
+    border: 1px solid var(--ic-stroke-strong);
+}
+body.ic-ec-lander .ec-btn--outline-dark:hover {
+    border-color: var(--p-red);
+    color: var(--p-red);
+}
+
+/* ═════════════════════════════════════════════
+   SECTION LABELS — keep red but force readable on any bg
+   ═════════════════════════════════════════════ */
+body.ic-ec-lander .ec-section-label { color: #FB0401; }
+body.ic-ec-lander .ec-section-label::after { background: #FB0401; opacity: 0.4; }
+
+/* ═════════════════════════════════════════════
+   CTA — base already dark, just confirm
+   ═════════════════════════════════════════════ */
+body.ic-ec-lander .ec-cta { background: linear-gradient(180deg, #0a0a0a, #161616); }
+body.ic-ec-lander .ec-cta-headline { color: #ffffff; }
+body.ic-ec-lander .ec-cta-sub { color: #b3b3b3; }
+body.ic-ec-lander .ec-btn--white {
+    background: #ffffff;
+    color: var(--p-red);
+}
+body.ic-ec-lander .ec-btn--ghost {
+    background: rgba(255,255,255,0.08);
+    color: #ffffff;
+    border: 1px solid rgba(255,255,255,0.4);
+}
+body.ic-ec-lander .ec-btn--ghost:hover {
+    background: rgba(255,255,255,0.18);
+    border-color: #ffffff;
+}
+
+/* ═════════════════════════════════════════════
+   MODAL (video player) - base already dark
+   ═════════════════════════════════════════════ */
+
+/* ═════════════════════════════════════════════
+   PLACEHOLDER fallback when no headshot
+   ═════════════════════════════════════════════ */
+body.ic-ec-lander .ec-hero-photo[style*="linear-gradient"] {
+    background: linear-gradient(135deg, var(--p-red), #C8A951) !important;
+}

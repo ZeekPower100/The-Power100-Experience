@@ -520,6 +520,7 @@ const createExpertContributor = async (req, res) => {
           source: 'ec_signup',
           ignoreStoredWpPageId: true,
           preserveExistingPageLink: true,
+          enrichOnGap: true,    // adaptive: Apify+Sonnet fills any blank fields, never overwrites form-submitted ones
         });
       } catch (e) {
         console.error('[createExpertContributor] upsertContributorLander failed:', e.message);
@@ -809,6 +810,7 @@ const markPageLive = async (req, res) => {
           source: 'ec_page_live',
           ignoreStoredWpPageId: true,
           preserveExistingPageLink: true,
+          enrichOnGap: true,    // adaptive: fills blanks, never overwrites form-submitted fields
         });
       } catch (e) {
         console.error('[markPageLive] upsertContributorLander failed:', e.message);

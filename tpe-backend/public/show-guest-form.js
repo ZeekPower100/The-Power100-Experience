@@ -4,9 +4,9 @@ var SG_FORM_HTML = `<div style="min-height:100vh;background:#0c0c0c;color:#d4d4d
 
   <div id="sgHeader" class="header">
     <img decoding="async" src="https://power100.io/wp-content/uploads/2026/01/Power100-Icon-Hi-Res-and-Large-1.png" alt="Power100">
-    <div class="show-badge">Outside The Lines Podcast</div>
+    <div class="show-badge">Outside The Lines Episode</div>
     <h1 id="sgHeaderTitle">Guest Onboarding</h1>
-    <p id="sgHeaderSub">Tell us about yourself so we can build your Inner Circle contributor page.</p>
+    <p id="sgHeaderSub">Tell us about yourself so we can optimize your campaign reach post-production.</p>
   </div>
 
   <div id="sgLeaderInfo" class="leader-info" style="display:none;">

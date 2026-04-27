@@ -401,6 +401,21 @@ function ic_rest_set_acf_fields($post_id, $data) {
                     }
                 }
             }
+            // Final fallback: hunt for a headshot on the speaker's Power100 EC /
+            // contributor lander and sideload it. Closes the gap where TPX delivers
+            // a new speaker we haven't seen on IC before — the EC tpedb / lander
+            // chain almost always has a photo even when the IC payload doesn't.
+            if (empty($photo_value) && !empty($speaker_name)) {
+                $remote_url = ic_rest_lookup_p100_headshot($speaker_name);
+                if ($remote_url) {
+                    $sideloaded = ic_rest_sideload_image($remote_url, $speaker_name);
+                    if (!is_wp_error($sideloaded)) {
+                        $photo_value = $sideloaded;
+                    } else {
+                        error_log('IC REST: P100 headshot sideload failed for "' . $speaker_name . '": ' . $sideloaded->get_error_message());
+                    }
+                }
+            }
 
             // Log if still empty
             if (empty($speaker_name) && defined('WP_DEBUG') && WP_DEBUG) {
@@ -682,6 +697,59 @@ function ic_rest_sideload_image($url, $title = 'image') {
     }
 
     return $attachment_id;
+}
+
+/**
+ * Look up a speaker's headshot URL on Power100 by name.
+ *
+ * Tries the EC lander first (`{slug}-expert-contributor`), then the contributor
+ * lander (`{slug}-contributor`) on production power100.io. Returns the full
+ * media URL of the page's `ec_headshot` meta, or empty string if not found.
+ *
+ * Cached per-name for 12h via transients to avoid re-fetching for repeated
+ * appearances of the same speaker.
+ *
+ * @param string $name Full speaker name (e.g., "Brian Gottlieb")
+ * @return string Media URL or '' if not resolvable
+ */
+function ic_rest_lookup_p100_headshot($name) {
+    $name = trim($name);
+    if (!$name) return '';
+
+    $cache_key = 'ic_p100_headshot_' . md5(strtolower($name));
+    $cached = get_transient($cache_key);
+    if ($cached !== false) return $cached;  // includes intentional '' miss-cache
+
+    $slug = sanitize_title($name);
+    $base = 'https://power100.io/wp-json/wp/v2/pages';
+    $candidate_slugs = array(
+        $slug . '-expert-contributor',
+        $slug . '-contributor',
+    );
+
+    $resolved = '';
+    foreach ($candidate_slugs as $candidate) {
+        $url = add_query_arg(array('slug' => $candidate, '_fields' => 'id,meta'), $base);
+        $response = wp_remote_get($url, array('timeout' => 12));
+        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) continue;
+        $body = json_decode(wp_remote_retrieve_body($response), true);
+        if (!is_array($body) || empty($body[0])) continue;
+        $page = $body[0];
+        $att_id = isset($page['meta']['ec_headshot']) ? intval($page['meta']['ec_headshot']) : 0;
+        if (!$att_id) continue;
+        // Resolve attachment ID to URL via the parent site's media endpoint
+        $media_url = add_query_arg(array('_fields' => 'source_url'), 'https://power100.io/wp-json/wp/v2/media/' . $att_id);
+        $media_response = wp_remote_get($media_url, array('timeout' => 12));
+        if (is_wp_error($media_response) || wp_remote_retrieve_response_code($media_response) !== 200) continue;
+        $media_body = json_decode(wp_remote_retrieve_body($media_response), true);
+        if (!empty($media_body['source_url'])) {
+            $resolved = $media_body['source_url'];
+            break;
+        }
+    }
+
+    set_transient($cache_key, $resolved, 12 * HOUR_IN_SECONDS);
+    return $resolved;
 }
 
 
@@ -1163,9 +1231,13 @@ function ic_rest_upsert_expert_contributor($request) {
     update_post_meta($post_id, '_p100_source_id', $p100_id);
     update_post_meta($post_id, '_p100_source_url', $p100_url);
 
-    // 4. Write all ec_* meta keys (skip empties so PATCH doesn't blank fields)
+    // 4. Write all ec_* meta keys (skip empties so PATCH doesn't blank fields).
+    // CRITICAL: skip ec_headshot — the inbound value is a P100 attachment ID
+    // that resolves to a different (wrong) attachment on IC's media library.
+    // The headshot block below sets ec_headshot to the IC-side sideloaded id.
     foreach ($meta as $key => $val) {
         if (strpos($key, 'ec_') !== 0) continue;  // safety: only ec_* keys
+        if ($key === 'ec_headshot') continue;     // managed by the headshot block, not the meta loop
         if ($val === null || $val === '') continue;
         update_post_meta($post_id, $key, $val);
     }
