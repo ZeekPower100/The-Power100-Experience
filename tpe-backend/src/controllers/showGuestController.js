@@ -80,60 +80,28 @@ async function sendDelegateInviteEmail(contributor, token, inviter) {
 }
 
 async function notifyStaffOfNewGuest(contributor, isDelegateSubmission) {
-  const fullName = ((contributor.first_name || '') + ' ' + (contributor.last_name || '')).trim();
-  const company = contributor.company || '';
-  const title = contributor.title_position || '';
-  const show = 'Outside The Lines';
-
-  // Email to staff
-  const header = '<div style="background:#000;padding:24px;text-align:center;border-radius:12px 12px 0 0;"><img src="https://power100.io/wp-content/uploads/2026/01/Power100-Icon-Hi-Res-and-Large-1.png" alt="Power100" style="width:48px;margin-bottom:8px;"><h1 style="color:#FB0401;margin:0;font-size:24px;">POWER100</h1><p style="color:#fff;margin:6px 0 0;font-size:13px;">New Show Guest Onboarding</p></div>';
-  const footer = '<div style="background:#f8f9fa;padding:12px;text-align:center;border-radius:0 0 12px 12px;border:1px solid #eee;border-top:none;"><p style="margin:0;font-size:11px;color:#999;">Power100 Internal Notification</p></div>';
-  const body = `<p style="font-size:16px;margin-bottom:16px;font-weight:600;">New show guest onboarding ${isDelegateSubmission ? '(delegate submission)' : ''}</p>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#333;">
-      <tr><td style="padding:8px 0;color:#666;width:140px;">Name</td><td style="padding:8px 0;font-weight:600;">${fullName}</td></tr>
-      <tr><td style="padding:8px 0;color:#666;">Email</td><td style="padding:8px 0;">${contributor.email || ''}</td></tr>
-      <tr><td style="padding:8px 0;color:#666;">Phone</td><td style="padding:8px 0;">${contributor.phone || ''}</td></tr>
-      <tr><td style="padding:8px 0;color:#666;">Company</td><td style="padding:8px 0;">${company}</td></tr>
-      <tr><td style="padding:8px 0;color:#666;">Title</td><td style="padding:8px 0;">${title}</td></tr>
-      <tr><td style="padding:8px 0;color:#666;">Show</td><td style="padding:8px 0;">${show}</td></tr>
-      <tr><td style="padding:8px 0;color:#666;">Contributor ID</td><td style="padding:8px 0;">${contributor.id}</td></tr>
-    </table>
-    <p style="font-size:13px;color:#555;line-height:1.7;margin-top:16px;">Submitted at ${new Date().toISOString()}. The Power100 team can start building the Inner Circle contributor page and prep for the interview.</p>`;
-
-  for (const toEmail of STAFF_EMAILS) {
-    try {
-      await axios.post(N8N_EMAIL_WEBHOOK, {
-        message_id: 'sg-staff-' + contributor.id + '-' + toEmail.split('@')[0],
-        to_email: toEmail,
-        to_name: 'Power100 Team',
-        subject: `New Show Guest: ${fullName}${company ? ' (' + company + ')' : ''}`,
-        body: `<div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif;color:#333;">${header}<div style="padding:28px;background:#fff;border:1px solid #eee;">${body}</div>${footer}</div>`,
-        template: 'sg_staff_notification',
-        from_name: 'Power100',
-        from_email: 'info@power100.io'
-      }, { timeout: 10000 });
-      console.log('[showGuest] Staff notification email sent to ' + toEmail);
-    } catch (err) {
-      console.error('[showGuest] Staff email to ' + toEmail + ' failed:', err.message);
-    }
-  }
-
-  // SMS to staff
-  const smsMsg = `New Power100 show guest onboarding: ${fullName}${company ? ' @ ' + company : ''}. View in admin. — Power100`;
-  for (const phone of STAFF_SMS_PHONES) {
-    try {
-      await axios.post(N8N_SMS_WEBHOOK, {
-        send_via_ghl: {
-          phone: phone,
-          message: smsMsg,
-          message_type: 'sg_new_onboarding',
-          contractor_id: contributor.id
-        }
-      }, { timeout: 10000 });
-      console.log('[showGuest] Staff notification SMS sent to ' + phone);
-    } catch (err) {
-      console.error('[showGuest] Staff SMS to ' + phone + ' failed:', err.message);
-    }
+  // Routed through unified sendOperatorAlert() — single canonical code path
+  // for all operator alerts (EC signups, show-guest forms, future events).
+  // SendGrid primary + n8n fallback, auto-DRC log, default Greg+Zeek recipients.
+  try {
+    const { sendOperatorAlert } = require('../services/communicationService');
+    const fullName = ((contributor.first_name || '') + ' ' + (contributor.last_name || '')).trim();
+    await sendOperatorAlert({
+      event: isDelegateSubmission ? 'show_guest_form_delegate' : 'show_guest_form',
+      title: `New Show Guest: ${fullName}${contributor.company ? ` (${contributor.company})` : ''}`,
+      fields: {
+        'Name':           fullName,
+        'Email':          contributor.email || '(not set)',
+        'Phone':          contributor.phone || '(not set)',
+        'Company':        contributor.company || '(not set)',
+        'Title':          contributor.title_position || '(not set)',
+        'Show':           'Outside The Lines',
+        'Submission':     isDelegateSubmission ? 'Delegate' : 'Self-fill',
+        'Contributor ID': contributor.id,
+      },
+    });
+  } catch (err) {
+    console.error('[showGuest] notifyStaffOfNewGuest non-fatal:', err.message);
   }
 }
 

@@ -62,6 +62,29 @@ curl http://localhost:5000/api/ai-concierge/schema/summary | jq
 - Frontend: **3002** (Next.js on http://localhost:3002)
 - Backend: **5000** (Express.js API on http://localhost:5000)
 
+## 🌐 LIVE INTEGRATIONS NOT IN THIS REPO
+
+Several critical integrations live OUTSIDE this codebase. Searching the repo alone will NOT find them. Always check the live source when investigating system behavior:
+
+| System | Where it lives | How to query |
+|---|---|---|
+| **n8n workflows** | `n8n.srv918843.hstgr.cloud` (Hostinger) | `mcp__n8n-mcp__n8n_list_workflows`, `n8n_get_workflow_details` |
+| **WordPress (power100.io)** | Vultr server | `curl https://power100.io/wp-json/...` (Basic auth in `.env.production`) |
+| **WordPress (innercircle.power100.io)** | Vultr server `runcloud@45.76.62.153` | `curl https://innercircle.power100.io/wp-json/ic/v1/...` (X-IC-API-Key) |
+| **Production DB (tpedb)** | AWS RDS | `mcp__aws-production__exec` + `psql -h $DB_HOST -d $DB_NAME` |
+| **Production DB (rankings)** | Same RDS, different DB | Same MCP, `-d $RANKINGS_DB_NAME` |
+| **TPE backend live** | AWS EC2 | `curl https://tpx.power100.io/api/...` |
+
+**Key live workflow IDs to know:**
+- `C7z6043tUdhxrnhx` — EC Intake Form Adapter (form → page → tpedb sync)
+- `7Uqz2ZbfVpZJxWeY` — Power100 Expert Contributor Page Creator
+- `C7dNfvdrj87wXWOJ` — IC YouTube Playlist Poller (hourly)
+- `BnMXwjAMlqhIUr0D` — IC WordPress Sync
+- `1REBas9VnsPivWTA` — IC Telegram Approval Handler
+- `WhPpI39eEusw7K6V` / `R91gvvLmF8RBG3zO` — TPX Email Backend → GHL (prod / dev)
+
+**Cost incident (2026-04-25):** Two subagents in a row failed to find the live n8n adapter because their prompts only said "search the codebase". Truth was in `mcp__n8n-mcp__n8n_list_workflows`. Always check external systems before declaring "doesn't exist."
+
 ## 🔴 CRITICAL: DATABASE IS THE SOURCE OF TRUTH
 **MANDATORY READING: `DATABASE-SOURCE-OF-TRUTH.md`**
 
@@ -102,6 +125,44 @@ Critical documents:
 - `docs/STORAGE-AND-JSON-GUIDELINES.md` - Complete development patterns
 - `JSON-MIGRATION-SPECIAL-CASES.md` - Edge cases and solutions
 - `JSON-MIGRATION-SYNTAX-GUIDE.md` - Backend vs Frontend syntax
+
+## 📣 OPERATOR ALERTS — DEFAULT POLICY (every signup/conversion notifies Greg + Zeek)
+
+**Codified 2026-04-29.** Whenever you build a feature that brings in members, clients, ECs, contractors, partners, or content — i.e. **anything where a real person signs up, completes onboarding, converts, pays, or otherwise crosses a meaningful pipeline boundary** — you MUST fire `sendOperatorAlert()` so Greg and Zeek get a real-time email + SMS.
+
+**Default recipients (canonical):**
+- Greg Cummings — `greg@power100.io` / `+1 727-430-4341`
+- Zeek         — `zeek@power100.io` / `+1 810-893-4075`
+
+These defaults live in `tpe-backend/src/services/communicationService.js` (`DEFAULT_EMAILS` / `DEFAULT_PHONES`). Override via `OPERATOR_ALERT_EMAILS` / `OPERATOR_ALERT_PHONES` env vars (CSV) or per-call `args.recipients` if a specific event needs different routing.
+
+**Usage:**
+```js
+const { sendOperatorAlert } = require('./services/communicationService');
+sendOperatorAlert({
+  event: 'ec_signup',                            // short slug
+  title: `New EC Signup: ${name}`,               // one-line headline
+  fields: { Email, Phone, Company, Tier, ... },  // key/value table
+  cta_url: wpPageUrl,                            // optional admin link
+  drc: { company_id, user_id }                   // optional DRC audit log
+}).catch(e => console.warn('non-fatal:', e.message));   // ALWAYS fire-and-forget
+```
+
+**Events that already emit operator alerts** (don't duplicate):
+- `ec_signup` / `ec_form_resubmit` — EC public form via `/api/expert-contributors/from-form`
+- `show_guest_form` / `show_guest_form_delegate` — Show Guest onboarding form
+
+**Events that should but don't yet** (build the alert when you touch them):
+- Contractor flow completion / partner-match success
+- Stripe payment success on EC tiers
+- IC member signup (when that flow exists)
+- Demo booking / partner introduction confirmed
+
+**Non-negotiable rules:**
+- ALWAYS use `sendOperatorAlert()` — never reinvent SendGrid+Twilio fanout per controller.
+- ALWAYS fire-and-forget (`.catch(...)` log) so a failed alert doesn't block the request.
+- NEVER skip the alert when adding a new signup/conversion endpoint. If you're tempted to skip ("it's just a test"), the bar is: would Greg/Zeek want to know in real time? Then fire it.
+- The contributor-facing email/SMS is SEPARATE from the operator alert. Both fire on the same event — the operator alert is for us, the welcome email is for them.
 
 ## ⚠️ IMPORTANT: DATABASE CONFIGURATION
 **BOTH Development AND Production use PostgreSQL** 

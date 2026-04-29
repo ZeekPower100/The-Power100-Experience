@@ -1116,6 +1116,31 @@ const createFromForm = async (req, res) => {
 
     const contributor = result.rows[0];
 
+    // Operator alert — fire-and-forget email + SMS to Greg + Zeek so a human
+    // sees every new EC signup in real time. NOT contingent on DRC chain
+    // succeeding; we want this even if DRC integration falters downstream.
+    try {
+      const { sendOperatorAlert } = require('../services/communicationService');
+      const formTierLabel = (contributor.form_tier || 'full').toUpperCase();
+      const typeLabel = (contributor.contributor_type || 'ec_individual').replace(/_/g, ' ').toUpperCase();
+      sendOperatorAlert({
+        event: wasUpdate ? 'ec_form_resubmit' : 'ec_signup',
+        title: `${wasUpdate ? 'EC Form Resubmit' : 'New EC Signup'}: ${contributor.first_name} ${contributor.last_name}`,
+        fields: {
+          'Company':       contributor.company,
+          'Title':         contributor.title_position || '(not set)',
+          'Email':         contributor.email,
+          'Phone':         contributor.phone || '(not set)',
+          'Type / Tier':   `${typeLabel} · ${formTierLabel}`,
+          'Pipeline':      contributor.pipeline_stage,
+          'Assigned Rep':  contributor.assigned_rep_id ? `rep#${contributor.assigned_rep_id}` : 'unassigned (auto-match pending)',
+          'Lander URL':    wp_page_url || '(pending page-live)',
+          'EC ID':         contributor.id,
+        },
+        cta_url: wp_page_url || null,
+      }).catch(e => console.warn('[EC operator alert] non-fatal:', e.message));
+    } catch (e) { console.warn('[EC operator alert] init failed:', e.message); }
+
     // DRC integration — must run sequentially because handleSignup hardcodes
     // pipeline_stage='signup' and handlePageLive sets it to 'page_live'. If they
     // race, handleSignup wins last and the row gets stuck in 'signup' even
