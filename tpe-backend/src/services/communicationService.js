@@ -39,7 +39,12 @@ const EMAIL_PRIMARY = (process.env.EMAIL_PROVIDER_PRIMARY || 'sendgrid').toLower
 const SMS_PRIMARY   = (process.env.SMS_PROVIDER_PRIMARY   || 'twilio').toLowerCase();
 
 if (SG_KEY) sgMail.setApiKey(SG_KEY);
-const _twilioClient = (TW_SID && TW_TOKEN) ? twilio(TW_SID, TW_TOKEN) : null;
+// Twilio SDK throws on construction if SID doesn't start with "AC" — guard against placeholder envs
+let _twilioClient = null;
+if (TW_SID && TW_TOKEN && TW_SID.startsWith('AC')) {
+  try { _twilioClient = twilio(TW_SID, TW_TOKEN); }
+  catch (e) { console.warn('[communicationService] Twilio init failed, falling back to n8n SMS:', e.message); }
+}
 
 /**
  * Send an email through the unified pipeline.
