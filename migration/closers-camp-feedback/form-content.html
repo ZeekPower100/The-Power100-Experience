@@ -1,72 +1,118 @@
 <style>
+html, body { background: #0a0a0a !important; min-height: 100vh; margin: 0; }
+body { color: #d4d4d4 !important; }
 .p100-fb * { box-sizing: border-box; }
-.p100-fb { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; font-family: Poppins, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1a1a1a; }
-.p100-fb .header { text-align: center; margin-bottom: 36px; }
-.p100-fb .header img { width: 56px; margin-bottom: 18px; }
-.p100-fb .header .partner-badge { display: inline-block; background: rgba(251,4,1,0.1); color: #FB0401; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 6px 14px; border-radius: 20px; margin-bottom: 18px; border: 1px solid rgba(251,4,1,0.25); }
-.p100-fb .header h1 { font-size: 32px; font-weight: 800; color: #000; margin: 0 0 10px; letter-spacing: -0.5px; line-height: 1.2; }
-.p100-fb .header .sub { font-size: 15px; color: #6c757d; margin: 0; line-height: 1.6; }
-.p100-fb .anon-banner { background: #f8f9fa; border: 1px solid #e9ecef; border-left: 3px solid #FB0401; border-radius: 8px; padding: 14px 18px; margin-bottom: 32px; font-size: 13px; color: #495057; line-height: 1.55; }
-.p100-fb .anon-banner strong { color: #000; }
-.p100-fb form { background: #fff; }
-.p100-fb .section { margin-bottom: 36px; padding-bottom: 28px; border-bottom: 1px solid #e9ecef; }
-.p100-fb .section:last-of-type { border-bottom: none; }
-.p100-fb .section-head { margin-bottom: 20px; }
-.p100-fb .section-head h2 { font-size: 18px; font-weight: 700; color: #000; margin: 0 0 4px; }
-.p100-fb .section-head p { font-size: 13px; color: #6c757d; margin: 0; }
+.p100-fb { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; font-family: Poppins, sans-serif; color: #d4d4d4; background: #0a0a0a; }
+.p100-fb .header { text-align: center; margin-bottom: 24px; }
+.p100-fb .header img { width: 48px; margin-bottom: 16px; }
+.p100-fb .header .partner-badge { display: inline-block; background: rgba(251,4,1,0.1); color: #FB0401; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 6px 14px; border-radius: 20px; margin-bottom: 16px; border: 1px solid rgba(251,4,1,0.25); }
+.p100-fb .header h1 { font-size: 28px; font-weight: 800; color: #fff; margin: 0 0 8px; letter-spacing: -0.5px; line-height: 1.25; }
+.p100-fb .header p { font-size: 14px; color: rgba(255,255,255,0.5); margin: 0; }
+
+.p100-fb .anon-banner { background: rgba(40,167,69,0.08); border: 1px solid rgba(40,167,69,0.3); border-left: 3px solid #28a745; border-radius: 10px; padding: 14px 18px; margin-bottom: 24px; font-size: 12.5px; color: rgba(255,255,255,0.75); line-height: 1.6; }
+.p100-fb .anon-banner strong { color: #fff; }
+.p100-fb .anon-banner .tp-tag { display: inline-block; background: rgba(40,167,69,0.2); color: #5cb874; font-size: 10px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; padding: 3px 8px; border-radius: 4px; margin-bottom: 6px; }
+
+.p100-fb .progress-wrap { margin: 0 0 28px; }
+.p100-fb .progress-labels { display: flex; justify-content: space-between; font-size: 11px; color: rgba(255,255,255,0.4); margin-bottom: 8px; letter-spacing: 1px; text-transform: uppercase; font-weight: 600; }
+.p100-fb .progress-bar { height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+.p100-fb .progress-fill { height: 100%; background: #FB0401; width: 20%; transition: width 0.35s ease; }
+
+.p100-fb .step { display: none; animation: sg-fade 0.25s ease; }
+.p100-fb .step.active { display: block; }
+@keyframes sg-fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+.p100-fb .step-head { margin-bottom: 24px; }
+.p100-fb .step-head h2 { font-size: 22px; font-weight: 700; color: #fff; margin: 0 0 6px; }
+.p100-fb .step-head p { font-size: 13px; color: rgba(255,255,255,0.5); margin: 0; line-height: 1.6; }
+
 .p100-fb .field { margin-bottom: 18px; }
-.p100-fb .field label { display: block; font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 8px; }
+.p100-fb .field label { display: block; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.75); margin-bottom: 7px; letter-spacing: 0.3px; }
 .p100-fb .field label .req { color: #FB0401; margin-left: 3px; }
-.p100-fb .field input[type=text], .p100-fb .field select { width: 100%; padding: 13px 15px; background: #fff; border: 1px solid #ced4da; border-radius: 8px; color: #1a1a1a; font-family: inherit; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
-.p100-fb .field input[type=text]:focus, .p100-fb .field select:focus { outline: none; border-color: #FB0401; box-shadow: 0 0 0 3px rgba(251,4,1,0.12); }
-.p100-fb .rating-row { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; padding: 14px 0; border-bottom: 1px solid #f1f3f5; }
-.p100-fb .rating-row:last-child { border-bottom: none; }
-.p100-fb .rating-label { font-size: 14px; font-weight: 600; color: #1a1a1a; }
-.p100-fb .rating-label .desc { display: block; font-size: 12px; font-weight: 400; color: #6c757d; margin-top: 2px; }
-.p100-fb .rating-buttons { display: flex; gap: 6px; }
+.p100-fb .field input[type=text], .p100-fb .field select { width: 100%; padding: 13px 15px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: #fff; font-family: Poppins, sans-serif; font-size: 14px; transition: border-color 0.2s, background 0.2s; }
+.p100-fb .field input[type=text]:focus, .p100-fb .field select:focus { outline: none; border-color: rgba(251,4,1,0.55); background: rgba(255,255,255,0.06); }
+.p100-fb .field select { appearance: none; background-image: url("data:image/svg+xml;utf8,<svg fill='%23bbb' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M7 10l5 5 5-5z'/></svg>"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 40px; }
+.p100-fb .field select option { background: #1a1a1a; color: #fff; }
+
+.p100-fb .rating-row { padding: 18px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+.p100-fb .rating-row:last-of-type { border-bottom: none; }
+.p100-fb .rating-row .rating-label { font-size: 15px; font-weight: 600; color: #fff; margin-bottom: 4px; }
+.p100-fb .rating-row .rating-desc { font-size: 12px; font-weight: 400; color: rgba(255,255,255,0.5); margin-bottom: 12px; }
+.p100-fb .rating-buttons { display: flex; gap: 8px; }
 .p100-fb .rating-buttons input[type=radio] { display: none; }
-.p100-fb .rating-buttons label { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 1px solid #ced4da; border-radius: 50%; font-size: 14px; font-weight: 600; color: #6c757d; cursor: pointer; transition: all 0.15s; user-select: none; }
-.p100-fb .rating-buttons label:hover { border-color: #FB0401; color: #FB0401; }
+.p100-fb .rating-buttons label { flex: 1; max-width: 60px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.03); border-radius: 8px; font-size: 15px; font-weight: 600; color: rgba(255,255,255,0.7); cursor: pointer; transition: all 0.15s; user-select: none; }
+.p100-fb .rating-buttons label:hover { border-color: rgba(251,4,1,0.6); color: #fff; background: rgba(251,4,1,0.08); }
 .p100-fb .rating-buttons input[type=radio]:checked + label { background: #FB0401; border-color: #FB0401; color: #fff; }
-.p100-fb .scale-hint { font-size: 11px; color: #adb5bd; margin: 6px 0 0; text-align: right; }
-.p100-fb .consent { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 16px 20px; margin: 24px 0; }
-.p100-fb .consent label { display: flex; align-items: flex-start; gap: 12px; font-size: 13px; color: #495057; line-height: 1.55; cursor: pointer; }
-.p100-fb .consent input[type=checkbox] { margin-top: 3px; flex-shrink: 0; }
-.p100-fb .submit-row { text-align: center; margin-top: 32px; }
-.p100-fb .submit-btn { background: #FB0401; color: #fff; border: none; padding: 16px 56px; border-radius: 50px; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; transition: background 0.2s, transform 0.1s; box-shadow: 0 4px 16px rgba(251,4,1,0.25); }
-.p100-fb .submit-btn:hover { background: #e00301; transform: translateY(-1px); }
-.p100-fb .submit-btn:disabled { background: #adb5bd; cursor: not-allowed; box-shadow: none; transform: none; }
-.p100-fb .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; display: none; }
-.p100-fb .alert.error { background: #fff5f5; border: 1px solid #ffd6d6; color: #c92a2a; display: block; }
-.p100-fb .thanks { display: none; text-align: center; padding: 60px 24px; }
+.p100-fb .scale-hint { font-size: 11px; color: rgba(255,255,255,0.35); margin: 14px 0 0; text-align: center; letter-spacing: 0.5px; text-transform: uppercase; }
+
+.p100-fb .consent { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 18px 20px; margin: 8px 0 24px; }
+.p100-fb .consent label { display: flex; align-items: flex-start; gap: 12px; font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.6; cursor: pointer; }
+.p100-fb .consent input[type=checkbox] { margin-top: 4px; flex-shrink: 0; width: 16px; height: 16px; accent-color: #FB0401; }
+
+.p100-fb .nav-row { display: flex; gap: 12px; margin-top: 28px; align-items: center; }
+.p100-fb .nav-row .back { background: transparent; color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.15); padding: 12px 22px; border-radius: 50px; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+.p100-fb .nav-row .back:hover { color: #fff; border-color: rgba(255,255,255,0.3); }
+.p100-fb .nav-row .next, .p100-fb .nav-row .submit { background: #FB0401; color: #fff; border: none; padding: 14px 36px; border-radius: 50px; font-family: inherit; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; margin-left: auto; box-shadow: 0 4px 16px rgba(251,4,1,0.25); letter-spacing: 0.3px; }
+.p100-fb .nav-row .next:hover, .p100-fb .nav-row .submit:hover { background: #e00301; transform: translateY(-1px); }
+.p100-fb .nav-row .submit:disabled { background: rgba(255,255,255,0.15); cursor: not-allowed; box-shadow: none; transform: none; }
+
+.p100-fb .alert { padding: 12px 16px; border-radius: 8px; margin: 0 0 18px; font-size: 13px; display: none; }
+.p100-fb .alert.error { background: rgba(220,53,69,0.1); border: 1px solid rgba(220,53,69,0.4); color: #ff6b75; display: block; }
+
+.p100-fb .summary-box { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; padding: 20px; margin: 8px 0 16px; }
+.p100-fb .summary-box .row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 13px; }
+.p100-fb .summary-box .row:last-child { border-bottom: none; }
+.p100-fb .summary-box .row .k { color: rgba(255,255,255,0.55); }
+.p100-fb .summary-box .row .v { color: #fff; font-weight: 600; }
+
+.p100-fb .thanks { display: none; text-align: center; padding: 40px 0; }
 .p100-fb .thanks.show { display: block; }
-.p100-fb .thanks-check { width: 80px; height: 80px; background: #28a745; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 24px; }
-.p100-fb .thanks-check svg { width: 40px; height: 40px; }
-.p100-fb .thanks h2 { font-size: 28px; font-weight: 800; color: #000; margin: 0 0 12px; }
-.p100-fb .thanks .lead { font-size: 16px; color: #495057; margin: 0 0 36px; line-height: 1.6; }
-.p100-fb .ic-cta { background: linear-gradient(135deg, #000 0%, #1a1a1a 100%); border-radius: 16px; padding: 36px 28px; margin-top: 32px; color: #fff; }
+.p100-fb .thanks-check { width: 72px; height: 72px; background: #28a745; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 22px; box-shadow: 0 0 0 12px rgba(40,167,69,0.12); }
+.p100-fb .thanks-check svg { width: 36px; height: 36px; }
+.p100-fb .thanks h2 { font-size: 28px; font-weight: 800; color: #fff; margin: 0 0 12px; letter-spacing: -0.4px; }
+.p100-fb .thanks .lead { font-size: 14px; color: rgba(255,255,255,0.6); margin: 0 auto 32px; max-width: 480px; line-height: 1.65; }
+
+.p100-fb .ic-cta { background: linear-gradient(135deg, #1a1a1a 0%, #0a0a0a 100%); border: 1px solid rgba(200,169,81,0.25); border-radius: 16px; padding: 36px 28px; margin-top: 28px; }
 .p100-fb .ic-cta .ic-badge { display: inline-block; background: rgba(200,169,81,0.15); color: #c8a951; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 6px 14px; border-radius: 20px; margin-bottom: 16px; border: 1px solid rgba(200,169,81,0.4); }
-.p100-fb .ic-cta h3 { font-size: 22px; font-weight: 700; color: #fff; margin: 0 0 10px; }
-.p100-fb .ic-cta p { font-size: 14px; color: rgba(255,255,255,0.75); margin: 0 0 22px; line-height: 1.6; }
+.p100-fb .ic-cta h3 { font-size: 22px; font-weight: 700; color: #fff; margin: 0 0 10px; line-height: 1.3; }
+.p100-fb .ic-cta p { font-size: 14px; color: rgba(255,255,255,0.7); margin: 0 0 22px; line-height: 1.6; }
 .p100-fb .ic-cta ul { text-align: left; max-width: 380px; margin: 0 auto 24px; padding: 0; list-style: none; }
 .p100-fb .ic-cta ul li { font-size: 13px; color: rgba(255,255,255,0.85); padding: 6px 0 6px 24px; position: relative; }
 .p100-fb .ic-cta ul li::before { content: "✓"; position: absolute; left: 0; color: #c8a951; font-weight: 700; }
-.p100-fb .ic-cta a.ic-btn { display: inline-block; background: #c8a951; color: #000; padding: 14px 36px; border-radius: 50px; font-size: 15px; font-weight: 700; text-decoration: none; transition: background 0.2s; }
-.p100-fb .ic-cta a.ic-btn:hover { background: #d4b765; }
-@media (max-width: 600px) { .p100-fb { padding: 32px 16px 60px; } .p100-fb .header h1 { font-size: 26px; } .p100-fb .rating-row { grid-template-columns: 1fr; gap: 10px; } .p100-fb .rating-buttons { justify-content: flex-start; } }
+.p100-fb .ic-cta a.ic-btn { display: inline-block; background: #c8a951; color: #000; padding: 14px 36px; border-radius: 50px; font-size: 15px; font-weight: 700; text-decoration: none; transition: all 0.2s; }
+.p100-fb .ic-cta a.ic-btn:hover { background: #d4b765; transform: translateY(-1px); }
+
+@media (max-width: 600px) {
+  .p100-fb { padding: 32px 16px 60px; }
+  .p100-fb .header h1 { font-size: 24px; }
+  .p100-fb .nav-row { flex-direction: column-reverse; gap: 10px; }
+  .p100-fb .nav-row .next, .p100-fb .nav-row .submit, .p100-fb .nav-row .back { width: 100%; margin-left: 0; }
+  .p100-fb .rating-buttons label { max-width: 100%; }
+}
 </style>
 
 <div class="p100-fb">
   <div id="p100-fb-form-state">
     <div class="header">
-      <img src="https://power100.io/wp-content/uploads/2025/03/Power100-Logo.png" alt="Power100">
+      <img src="https://power100.io/wp-content/uploads/2026/02/Power100-Logo-4x-scaled.png" alt="Power100">
       <div class="partner-badge">Closer's Camp 2026 · Grosso University</div>
       <h1>Help us evaluate Grosso University</h1>
-      <p class="sub">Your honest, anonymous feedback shapes Power100's ongoing partner rankings.</p>
+      <p>Your honest, anonymous feedback shapes Power100's preferred-partner rankings.</p>
     </div>
 
     <div class="anon-banner">
-      <strong>This survey is fully anonymous.</strong> We do not collect your name, email, phone, or company name. Per consumer protection guidelines, your responses are used solely for evaluating Grosso University as a Power100 preferred partner. Aggregate data may inform PowerConfidence scores; individual responses are never shared back to Grosso.
+      <span class="tp-tag">3rd-Party Evaluation</span><br>
+      <strong>Power100 conducts this survey as an independent third party.</strong> Your identity, company name, and individual responses will <strong>never</strong> be shared with Grosso University. Per consumer protection guidelines, only aggregate data may inform our PowerConfidence rankings.
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-labels">
+        <span id="p100-step-label">Step 1 of 5</span>
+        <span id="p100-step-name">About You</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="p100-progress-fill"></div>
+      </div>
     </div>
 
     <div id="p100-fb-error" class="alert error"></div>
@@ -75,20 +121,21 @@
       <input type="hidden" name="partner_id" value="40">
       <input type="hidden" name="event_name" value="Closer's Camp 2026">
 
-      <div class="section">
-        <div class="section-head">
-          <h2>About You (Anonymous)</h2>
-          <p>Helps us understand who attended, without identifying you personally.</p>
+      <!-- STEP 1: About You (Anonymous) -->
+      <div class="step active" data-step="1">
+        <div class="step-head">
+          <h2>About you (anonymous)</h2>
+          <p>Helps us understand who attended — without identifying you personally.</p>
         </div>
 
         <div class="field">
           <label>Your position / title <span class="req">*</span></label>
-          <input type="text" name="position" required maxlength="100" placeholder="e.g. CEO, VP Sales, Sales Manager">
+          <input type="text" name="position" maxlength="100" placeholder="e.g. CEO, VP Sales, Sales Manager">
         </div>
 
         <div class="field">
           <label>Your company size (annual revenue) <span class="req">*</span></label>
-          <select name="company_size" required>
+          <select name="company_size">
             <option value="">Select revenue range…</option>
             <option value="0_1m">$0 – $1M</option>
             <option value="1m_5m">$1M – $5M</option>
@@ -97,18 +144,24 @@
             <option value="25m_plus">$25M+</option>
           </select>
         </div>
+
+        <div class="nav-row">
+          <button type="button" class="next" data-next="2">Next →</button>
+        </div>
       </div>
 
-      <div class="section">
-        <div class="section-head">
-          <h2>Rate Your Experience</h2>
-          <p>1 = Poor &nbsp;·&nbsp; 5 = Excellent</p>
+      <!-- STEP 2: Ratings -->
+      <div class="step" data-step="2">
+        <div class="step-head">
+          <h2>Rate your experience</h2>
+          <p>Tap a number for each — <strong style="color: rgba(255,255,255,0.85);">1 = Poor · 5 = Excellent</strong></p>
         </div>
 
         <div class="rating-row">
-          <div class="rating-label">Vibe<span class="desc">Overall feel of the event</span></div>
-          <div class="rating-buttons" data-name="rating_vibe">
-            <input type="radio" id="vibe-1" name="rating_vibe" value="1" required><label for="vibe-1">1</label>
+          <div class="rating-label">Vibe</div>
+          <div class="rating-desc">Overall feel of the event</div>
+          <div class="rating-buttons">
+            <input type="radio" id="vibe-1" name="rating_vibe" value="1"><label for="vibe-1">1</label>
             <input type="radio" id="vibe-2" name="rating_vibe" value="2"><label for="vibe-2">2</label>
             <input type="radio" id="vibe-3" name="rating_vibe" value="3"><label for="vibe-3">3</label>
             <input type="radio" id="vibe-4" name="rating_vibe" value="4"><label for="vibe-4">4</label>
@@ -117,9 +170,10 @@
         </div>
 
         <div class="rating-row">
-          <div class="rating-label">Value<span class="desc">Return on time spent</span></div>
-          <div class="rating-buttons" data-name="rating_value">
-            <input type="radio" id="value-1" name="rating_value" value="1" required><label for="value-1">1</label>
+          <div class="rating-label">Value</div>
+          <div class="rating-desc">Return on time spent</div>
+          <div class="rating-buttons">
+            <input type="radio" id="value-1" name="rating_value" value="1"><label for="value-1">1</label>
             <input type="radio" id="value-2" name="rating_value" value="2"><label for="value-2">2</label>
             <input type="radio" id="value-3" name="rating_value" value="3"><label for="value-3">3</label>
             <input type="radio" id="value-4" name="rating_value" value="4"><label for="value-4">4</label>
@@ -128,9 +182,10 @@
         </div>
 
         <div class="rating-row">
-          <div class="rating-label">Content<span class="desc">Quality of the training material</span></div>
-          <div class="rating-buttons" data-name="rating_content">
-            <input type="radio" id="content-1" name="rating_content" value="1" required><label for="content-1">1</label>
+          <div class="rating-label">Content</div>
+          <div class="rating-desc">Quality of the training material</div>
+          <div class="rating-buttons">
+            <input type="radio" id="content-1" name="rating_content" value="1"><label for="content-1">1</label>
             <input type="radio" id="content-2" name="rating_content" value="2"><label for="content-2">2</label>
             <input type="radio" id="content-3" name="rating_content" value="3"><label for="content-3">3</label>
             <input type="radio" id="content-4" name="rating_content" value="4"><label for="content-4">4</label>
@@ -139,9 +194,10 @@
         </div>
 
         <div class="rating-row">
-          <div class="rating-label">Facility<span class="desc">Venue and accommodations</span></div>
-          <div class="rating-buttons" data-name="rating_facility">
-            <input type="radio" id="facility-1" name="rating_facility" value="1" required><label for="facility-1">1</label>
+          <div class="rating-label">Facility</div>
+          <div class="rating-desc">Venue and accommodations</div>
+          <div class="rating-buttons">
+            <input type="radio" id="facility-1" name="rating_facility" value="1"><label for="facility-1">1</label>
             <input type="radio" id="facility-2" name="rating_facility" value="2"><label for="facility-2">2</label>
             <input type="radio" id="facility-3" name="rating_facility" value="3"><label for="facility-3">3</label>
             <input type="radio" id="facility-4" name="rating_facility" value="4"><label for="facility-4">4</label>
@@ -150,25 +206,33 @@
         </div>
 
         <div class="rating-row">
-          <div class="rating-label">Energy<span class="desc">Engagement and atmosphere</span></div>
-          <div class="rating-buttons" data-name="rating_energy">
-            <input type="radio" id="energy-1" name="rating_energy" value="1" required><label for="energy-1">1</label>
+          <div class="rating-label">Energy</div>
+          <div class="rating-desc">Engagement and atmosphere</div>
+          <div class="rating-buttons">
+            <input type="radio" id="energy-1" name="rating_energy" value="1"><label for="energy-1">1</label>
             <input type="radio" id="energy-2" name="rating_energy" value="2"><label for="energy-2">2</label>
             <input type="radio" id="energy-3" name="rating_energy" value="3"><label for="energy-3">3</label>
             <input type="radio" id="energy-4" name="rating_energy" value="4"><label for="energy-4">4</label>
             <input type="radio" id="energy-5" name="rating_energy" value="5"><label for="energy-5">5</label>
           </div>
         </div>
+
+        <div class="nav-row">
+          <button type="button" class="back" data-back="1">← Back</button>
+          <button type="button" class="next" data-next="3">Next →</button>
+        </div>
       </div>
 
-      <div class="section">
-        <div class="section-head">
-          <h2>Your Relationship with Grosso University</h2>
+      <!-- STEP 3: Tenure -->
+      <div class="step" data-step="3">
+        <div class="step-head">
+          <h2>Your relationship with Grosso University</h2>
+          <p>One quick question to give your feedback context.</p>
         </div>
 
         <div class="field">
           <label>How long have you been a Grosso University client? <span class="req">*</span></label>
-          <select name="client_tenure" required>
+          <select name="client_tenure">
             <option value="">Select tenure…</option>
             <option value="over_2_years">Over 2 years</option>
             <option value="1_to_2_years">Between 1 and 2 years</option>
@@ -177,27 +241,44 @@
             <option value="not_currently_client">Not currently a client</option>
           </select>
         </div>
+
+        <div class="nav-row">
+          <button type="button" class="back" data-back="2">← Back</button>
+          <button type="button" class="next" data-next="4">Next →</button>
+        </div>
       </div>
 
-      <div class="consent">
-        <label>
-          <input type="checkbox" name="consent_given" value="1" required>
-          <span>I confirm my responses are voluntary and anonymous. I understand Power100 collects this feedback solely to evaluate Grosso University as a preferred partner, and that aggregate (not individual) data may inform PowerConfidence scores.</span>
-        </label>
-      </div>
+      <!-- STEP 4: Confirm + Consent -->
+      <div class="step" data-step="4">
+        <div class="step-head">
+          <h2>Review &amp; confirm</h2>
+          <p>Quick check before we lock it in. We collect <strong style="color:#fff;">no PII</strong> — no name, email, phone, IP, or company name.</p>
+        </div>
 
-      <div class="submit-row">
-        <button type="submit" class="submit-btn" id="p100-fb-submit">Submit Anonymous Feedback</button>
+        <div class="summary-box" id="p100-fb-summary"></div>
+
+        <div class="consent">
+          <label>
+            <input type="checkbox" name="consent_given" value="1">
+            <span>I confirm my responses are voluntary and anonymous. I understand <strong style="color:#fff;">Power100 conducts this evaluation as an independent third party</strong>, my identity will never be shared with Grosso University, and only aggregate data may inform Grosso's PowerConfidence ranking.</span>
+          </label>
+        </div>
+
+        <div class="nav-row">
+          <button type="button" class="back" data-back="3">← Back</button>
+          <button type="submit" class="submit" id="p100-fb-submit">Submit Anonymous Feedback</button>
+        </div>
       </div>
     </form>
   </div>
 
+  <!-- STEP 5: Thank You -->
   <div id="p100-fb-thanks-state" class="thanks">
     <div class="thanks-check">
       <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
     </div>
     <h2>Thank you for your feedback!</h2>
-    <p class="lead">Your honest input helps us continually evaluate our preferred partners. Aggregate insights from this survey will inform Grosso University's PowerConfidence ranking on Power100.</p>
+    <p class="lead">Your honest input helps Power100 evaluate our preferred partners objectively. Aggregate insights from this survey will inform Grosso University's PowerConfidence ranking.</p>
 
     <div class="ic-cta">
       <div class="ic-badge">Power100 Inner Circle</div>
@@ -217,28 +298,110 @@
 <script>
 (function() {
   var form = document.getElementById('p100-fb-form');
-  var submitBtn = document.getElementById('p100-fb-submit');
+  if (!form) return;
   var errorBox = document.getElementById('p100-fb-error');
   var formState = document.getElementById('p100-fb-form-state');
   var thanksState = document.getElementById('p100-fb-thanks-state');
-  if (!form) return;
+  var submitBtn = document.getElementById('p100-fb-submit');
+  var progressFill = document.getElementById('p100-progress-fill');
+  var stepLabel = document.getElementById('p100-step-label');
+  var stepName = document.getElementById('p100-step-name');
+  var summaryBox = document.getElementById('p100-fb-summary');
+
+  var STEPS = 5; // step 5 = thank-you
+  var STEP_NAMES = { 1: 'About You', 2: 'Rate Experience', 3: 'Your Relationship', 4: 'Review & Submit', 5: 'Thank You' };
+  var current = 1;
+
+  var COMPANY_LABELS = { '0_1m':'$0–$1M', '1m_5m':'$1M–$5M', '5m_10m':'$5M–$10M', '10m_25m':'$10M–$25M', '25m_plus':'$25M+' };
+  var TENURE_LABELS = { 'over_2_years':'Over 2 years', '1_to_2_years':'1–2 years', '6_to_12_months':'6–12 months', '0_to_6_months':'0–6 months', 'not_currently_client':'Not currently a client' };
 
   function showError(msg) {
     errorBox.textContent = msg;
     errorBox.style.display = 'block';
-    window.scrollTo({ top: errorBox.offsetTop - 60, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+  function clearError() { errorBox.style.display = 'none'; }
+
+  function goTo(n) {
+    document.querySelectorAll('.p100-fb .step').forEach(function(s) { s.classList.remove('active'); });
+    var target = document.querySelector('.p100-fb .step[data-step="' + n + '"]');
+    if (target) target.classList.add('active');
+    current = n;
+    progressFill.style.width = (n / STEPS * 100) + '%';
+    stepLabel.textContent = 'Step ' + n + ' of ' + STEPS;
+    stepName.textContent = STEP_NAMES[n] || '';
+    clearError();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function validateStep(n) {
+    if (n === 1) {
+      var pos = form.position.value.trim();
+      var size = form.company_size.value;
+      if (!pos) return 'Please enter your position / title.';
+      if (!size) return 'Please select your company size.';
+    } else if (n === 2) {
+      var keys = ['rating_vibe','rating_value','rating_content','rating_facility','rating_energy'];
+      for (var i = 0; i < keys.length; i++) {
+        if (!form.querySelector('input[name="' + keys[i] + '"]:checked')) {
+          return 'Please rate ' + keys[i].replace('rating_','') + ' (1–5).';
+        }
+      }
+    } else if (n === 3) {
+      if (!form.client_tenure.value) return 'Please select how long you\'ve been a Grosso client.';
+    } else if (n === 4) {
+      if (!form.consent_given.checked) return 'Please confirm the anonymous-feedback consent.';
+    }
+    return null;
+  }
+
+  function buildSummary() {
+    var pos = form.position.value.trim();
+    var size = form.company_size.value;
+    var tenure = form.client_tenure.value;
+    var ratings = {};
+    ['vibe','value','content','facility','energy'].forEach(function(k) {
+      var sel = form.querySelector('input[name="rating_' + k + '"]:checked');
+      ratings[k] = sel ? sel.value : '—';
+    });
+    var html = '';
+    function row(k, v) { return '<div class="row"><span class="k">' + k + '</span><span class="v">' + v + '</span></div>'; }
+    html += row('Position', pos || '—');
+    html += row('Company Size', COMPANY_LABELS[size] || '—');
+    html += row('Vibe', ratings.vibe + ' / 5');
+    html += row('Value', ratings.value + ' / 5');
+    html += row('Content', ratings.content + ' / 5');
+    html += row('Facility', ratings.facility + ' / 5');
+    html += row('Energy', ratings.energy + ' / 5');
+    html += row('Client Tenure', TENURE_LABELS[tenure] || '—');
+    summaryBox.innerHTML = html;
+  }
+
+  document.querySelectorAll('.p100-fb .next').forEach(function(b) {
+    b.addEventListener('click', function() {
+      var err = validateStep(current);
+      if (err) return showError(err);
+      var nextN = parseInt(b.getAttribute('data-next'), 10);
+      if (nextN === 4) buildSummary();
+      goTo(nextN);
+    });
+  });
+  document.querySelectorAll('.p100-fb .back').forEach(function(b) {
+    b.addEventListener('click', function() { goTo(parseInt(b.getAttribute('data-back'), 10)); });
+  });
 
   form.addEventListener('submit', function(e) {
     e.preventDefault();
-    errorBox.style.display = 'none';
+    var err = validateStep(4);
+    if (err) return showError(err);
+    clearError();
     submitBtn.disabled = true;
     submitBtn.textContent = 'Submitting…';
 
     var data = new FormData(form);
     var payload = {};
     data.forEach(function(v, k) { payload[k] = v; });
-    payload.consent_given = !!payload.consent_given;
+    payload.consent_given = !!form.consent_given.checked;
     payload.partner_id = parseInt(payload.partner_id, 10);
 
     fetch('https://tpx.power100.io/api/event-feedback', {
@@ -251,6 +414,9 @@
       if (res.ok && res.body.success) {
         formState.style.display = 'none';
         thanksState.classList.add('show');
+        progressFill.style.width = '100%';
+        stepLabel.textContent = 'Step 5 of 5';
+        stepName.textContent = 'Thank You';
         window.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
         showError(res.body.error || 'Submission failed. Please try again.');
@@ -264,5 +430,8 @@
       submitBtn.textContent = 'Submit Anonymous Feedback';
     });
   });
+
+  // Initialize progress
+  goTo(1);
 })();
 </script>
