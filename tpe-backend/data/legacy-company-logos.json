@@ -601,5 +601,121 @@
     "attachment_id": 1520,
     "source": "local-upload",
     "updated": "2026-04-30"
+  },
+  "ABBY Home (Abby Windows & Exteriors)": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/abby-home-abby-windows-exteriors-logo-2.png",
+    "attachment_id": 1603,
+    "aliases": [
+      "ABBY Home",
+      "Abby Windows & Exteriors",
+      "Abby Windows",
+      "Abby Home"
+    ],
+    "source": "remote-scrape",
+    "updated": "2026-04-30"
+  },
+  "ContractingPRO": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/contractingpro-logo-2.png",
+    "attachment_id": 1604,
+    "aliases": [
+      "Contracting Pro",
+      "Contracting PRO",
+      "My Contracting Pro"
+    ],
+    "source": "remote-scrape",
+    "updated": "2026-04-30"
+  },
+  "James Hardie Building Products": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/james-hardie-building-products-logo-2.png",
+    "attachment_id": 1605,
+    "aliases": [
+      "James Hardie"
+    ],
+    "source": "remote-scrape",
+    "updated": "2026-04-30"
+  },
+  "Marcus Sheridan International": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/marcus-sheridan-international-logo-2.png",
+    "attachment_id": 1606,
+    "url_dark": "https://staging.power100.io/wp-content/uploads/2026/04/marcus-sheridan-international-logo-dark-2.png",
+    "attachment_id_dark": 1607,
+    "aliases": [
+      "Marcus Sheridan"
+    ],
+    "source": "remote-scrape",
+    "updated": "2026-04-30"
+  },
+  "Redo Cabinets": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/redo-cabinets-logo-2.png",
+    "attachment_id": 1608,
+    "aliases": [
+      "Redo Cabinet Refacing"
+    ],
+    "source": "remote-scrape",
+    "updated": "2026-04-30"
+  },
+  "Tennessee Tech University": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/tennessee-tech-university-logo-2.png",
+    "attachment_id": 1609,
+    "aliases": [
+      "Tennessee Tech",
+      "TN Tech",
+      "Tenn Tech"
+    ],
+    "source": "remote-scrape",
+    "updated": "2026-04-30"
+  },
+  "KangaRoof": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/kangaroof-logo-1.png",
+    "attachment_id": 1610,
+    "aliases": [
+      "Kanga Roof",
+      "A1 Roofing",
+      "A1 Roofing's Kanga Roof"
+    ],
+    "source": "remote-scrape",
+    "updated": "2026-04-30"
+  },
+  "Marshall Building & Remodeling": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/marshall-building-remodeling-logo-1.png",
+    "attachment_id": 1611,
+    "aliases": [
+      "Marshall Building and Remodeling"
+    ],
+    "source": "remote-scrape",
+    "updated": "2026-04-30"
+  },
+  "Monopolize Your Marketplace": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/monopolize-your-marketplace-logo-1.jpg",
+    "attachment_id": 1612,
+    "source": "remote-scrape",
+    "updated": "2026-04-30"
+  },
+  "New Heights Roofing": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/new-heights-roofing-logo-1.png",
+    "attachment_id": 1613,
+    "source": "remote-scrape",
+    "updated": "2026-04-30"
+  },
+  "Roof Hustlers": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/roof-hustlers-logo-1.png",
+    "attachment_id": 1614,
+    "source": "remote-scrape",
+    "updated": "2026-04-30"
+  },
+  "Smart Cremation LLC": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/smart-cremation-llc-logo-1.png",
+    "attachment_id": 1615,
+    "aliases": [
+      "Smart Cremation"
+    ],
+    "source": "remote-scrape",
+    "updated": "2026-04-30"
+  },
+  "ASP Superhome": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/asp-superhome-logo.png",
+    "attachment_id": 1616,
+    "source": "remote-scrape",
+    "updated": "2026-04-30"
   }
 }
