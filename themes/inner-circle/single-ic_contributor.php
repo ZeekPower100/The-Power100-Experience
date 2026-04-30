@@ -65,8 +65,10 @@ if ($thumb_url) {
 // Company
 $company_name      = get_post_meta($pid, 'ec_company_name', true);
 $company_desc      = get_post_meta($pid, 'ec_company_desc', true);
-$company_logo_id   = get_post_meta($pid, 'ec_company_logo', true);
-$company_logo_url  = $company_logo_id ? wp_get_attachment_url($company_logo_id) : '';
+// IC is dark-themed: prefer the dark variant, fall back to the light variant if not set.
+$company_logo_id_dark = get_post_meta($pid, 'ec_company_logo_dark', true);
+$company_logo_id      = $company_logo_id_dark ?: get_post_meta($pid, 'ec_company_logo', true);
+$company_logo_url     = $company_logo_id ? wp_get_attachment_url($company_logo_id) : '';
 
 // Linked pages on Power100
 $ceo_lander_url     = get_post_meta($pid, 'ec_ceo_lander_url', true);
@@ -799,36 +801,10 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <?php
-// ─── AI Persona Chat Panel (only for logged-in IC members) ────────────────
-$persona_user = wp_get_current_user();
-if ($persona_user && $persona_user->ID && defined('IC_PERSONA_BRIDGE_SECRET') && IC_PERSONA_BRIDGE_SECRET) {
-    $persona_ts    = time();
-    $persona_nonce = hash_hmac('sha256', $persona_user->ID . ':' . $persona_ts, IC_PERSONA_BRIDGE_SECRET);
-    $persona_api   = defined('IC_PERSONA_API_BASE') ? IC_PERSONA_API_BASE : 'https://tpx.power100.io';
-    $persona_headshot = '';
-    $hs_id = get_post_thumbnail_id($post_id);
-    if (!$hs_id) $hs_id = (int) get_post_meta($post_id, 'ec_headshot', true);
-    if ($hs_id) $persona_headshot = wp_get_attachment_image_url($hs_id, 'thumbnail');
-    $persona_role = (string) get_post_meta($post_id, 'ec_role_title', true);
-    $persona_cfg = array(
-        'icId'         => $post_id,
-        'p100Id'       => (int) get_post_meta($post_id, '_p100_source_id', true),
-        'name'         => $name,
-        'firstName'    => $first_name,
-        'role'         => $persona_role,
-        'headshot'     => $persona_headshot,
-        'memberWpId'   => (int) $persona_user->ID,
-        'memberEmail'  => $persona_user->user_email,
-        'bridgeTs'     => $persona_ts,
-        'bridgeNonce'  => $persona_nonce,
-        'apiBase'      => $persona_api,
-    );
-    ?>
-    <link rel="stylesheet" href="<?php echo esc_url(get_stylesheet_directory_uri() . '/css/persona-panel.css?v=' . filemtime(get_stylesheet_directory() . '/css/persona-panel.css')); ?>">
-    <script>window.ICPersonaConfig = <?php echo wp_json_encode($persona_cfg); ?>;</script>
-    <script src="<?php echo esc_url(get_stylesheet_directory_uri() . '/js/persona-panel.js?v=' . filemtime(get_stylesheet_directory() . '/js/persona-panel.js')); ?>" defer></script>
-    <?php
-}
+// AI Persona Panel assets enqueue lives in inc/persona-panel-enqueue.php
+// (uses wp_enqueue_script + wp_localize_script — bypasses any inline-script
+// content filtering that was silently dropping the previous template-bottom
+// approach. Fixed 2026-04-28.)
 ?>
 
 <?php wp_footer(); ?>

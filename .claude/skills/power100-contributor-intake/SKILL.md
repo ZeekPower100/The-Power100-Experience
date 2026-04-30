@@ -130,6 +130,25 @@ const IC_KEY = process.env.IC_REST_API_KEY || process.env.TPX_IC_API_KEY;
 "
 ```
 
+## Company logo — scrape BOTH light + dark variants when available
+
+Two fields exist (codified 2026-04-29):
+- `ec_company_logo` — light-bg variant (dark text). Used by power100.io (light theme).
+- `ec_company_logo_dark` — dark-bg variant (white text). Used by the IC mirror (dark theme). Falls back to `ec_company_logo` if blank.
+
+When researching a new contributor's company, always look for both variants on the company website press kit / brand page. Many homebuilder brands publish both "primary" + "reversed/inverted" logos. If you only find one variant, that's fine — the IC template falls back.
+
+Add new entries to `tpe-backend/data/legacy-company-logos.json` with both URLs:
+```json
+"Company Name": {
+  "url": "https://...light-bg-logo.png",
+  "url_dark": "https://...dark-bg-logo.png",
+  "attachment_id": 12345
+}
+```
+
+For local files on disk (operator dropped logos in Downloads), use `migration/contributor-backfill/apply-local-company-logos.js` — edit the MANIFEST array with `{ company, light, dark, aliases }` and run.
+
 ## What NOT to do
 
 - **Don't use the n8n MCP** (`mcp__n8n-mcp__n8n_trigger_webhook_workflow`) — disconnected as of 2026-04-26

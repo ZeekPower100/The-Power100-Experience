@@ -1254,12 +1254,13 @@ function ic_rest_upsert_expert_contributor($request) {
     update_post_meta($post_id, '_p100_source_url', $p100_url);
 
     // 4. Write all ec_* meta keys (skip empties so PATCH doesn't blank fields).
-    // CRITICAL: skip ec_headshot — the inbound value is a P100 attachment ID
-    // that resolves to a different (wrong) attachment on IC's media library.
-    // The headshot block below sets ec_headshot to the IC-side sideloaded id.
+    // CRITICAL: skip image-attachment-ID keys — inbound values are P100 attachment IDs
+    // that resolve to wrong (or missing) attachments on IC's media library. The dedicated
+    // sideload blocks below set the IC-side ID after fetching the source URL.
+    $sideloaded_image_keys = array('ec_headshot', 'ec_company_logo', 'ec_company_logo_dark');
     foreach ($meta as $key => $val) {
-        if (strpos($key, 'ec_') !== 0) continue;  // safety: only ec_* keys
-        if ($key === 'ec_headshot') continue;     // managed by the headshot block, not the meta loop
+        if (strpos($key, 'ec_') !== 0) continue;       // safety: only ec_* keys
+        if (in_array($key, $sideloaded_image_keys)) continue;  // managed by sideload blocks
         if ($val === null || $val === '') continue;
         update_post_meta($post_id, $key, $val);
     }
@@ -1276,7 +1277,7 @@ function ic_rest_upsert_expert_contributor($request) {
         }
     }
 
-    // 5b. Sideload company logo if provided + not already set
+    // 5b. Sideload company logo (light variant) if provided + not already set
     $company_logo_url = isset($body['company_logo_url']) ? esc_url_raw($body['company_logo_url']) : '';
     $existing_logo = (int) get_post_meta($post_id, 'ec_company_logo', true);
     if ($company_logo_url && !$existing_logo) {
@@ -1286,6 +1287,20 @@ function ic_rest_upsert_expert_contributor($request) {
         $logo_att = media_sideload_image($company_logo_url, $post_id, $title . ' company logo', 'id');
         if (!is_wp_error($logo_att) && $logo_att) {
             update_post_meta($post_id, 'ec_company_logo', $logo_att);
+        }
+    }
+
+    // 5c. Sideload company logo (DARK variant) if provided + not already set.
+    // Used by the IC dark-themed lander; template falls back to ec_company_logo when empty.
+    $company_logo_url_dark = isset($body['company_logo_url_dark']) ? esc_url_raw($body['company_logo_url_dark']) : '';
+    $existing_logo_dark = (int) get_post_meta($post_id, 'ec_company_logo_dark', true);
+    if ($company_logo_url_dark && !$existing_logo_dark) {
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+        require_once(ABSPATH . 'wp-admin/includes/media.php');
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        $logo_att_dark = media_sideload_image($company_logo_url_dark, $post_id, $title . ' company logo (dark)', 'id');
+        if (!is_wp_error($logo_att_dark) && $logo_att_dark) {
+            update_post_meta($post_id, 'ec_company_logo_dark', $logo_att_dark);
         }
     }
 

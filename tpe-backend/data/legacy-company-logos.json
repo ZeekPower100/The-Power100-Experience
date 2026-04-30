@@ -420,5 +420,94 @@
     "sample_pages": [
       "james-freeman-expert-contributor"
     ]
+  },
+  "Cornerstone Building Brands": {
+    "attachment_id": 10132,
+    "url": "https://power100.io/wp-content/uploads/2023/11/Cornerstone-Building-Brands-logo-1.png",
+    "title": "Cornerstone Building Brands logo 1",
+    "sample_pages": [],
+    "source": "media-library-search",
+    "alt_hits": []
+  },
+  "First Call Closer": {
+    "attachment_id": 23036,
+    "url": "https://power100.io/wp-content/uploads/2025/11/First-call-closer-white-logo-1.webp",
+    "title": "First call closer white logo 1",
+    "sample_pages": [],
+    "source": "media-library-search",
+    "alt_hits": []
+  },
+  "Get The Referral": {
+    "attachment_id": 23575,
+    "url": "https://power100.io/wp-content/uploads/2026/01/GTR-Get-the-Referral-Logo-1.webp",
+    "title": "GTR-Get-the-Referral-Logo-1.webp",
+    "sample_pages": [],
+    "source": "media-library-search",
+    "alt_hits": []
+  },
+  "OKNA Windows & Doors": {
+    "attachment_id": 9811,
+    "url": "https://power100.io/wp-content/uploads/2023/11/OKNA-windows-Logo.jpg",
+    "title": "OKNA windows-Logo",
+    "sample_pages": [],
+    "source": "media-library-search",
+    "alt_hits": []
+  },
+  "Great Day Improvements": {
+    "attachment_id": 13455,
+    "url": "https://power100.io/wp-content/uploads/2024/01/Great-Day-Home-Improvements-logo-1.svg",
+    "title": "Great Day Home Improvements logo 1",
+    "sample_pages": [],
+    "source": "media-library-search",
+    "alt_hits": []
+  },
+  "Modernize Home Services": {
+    "attachment_id": 10768,
+    "url": "https://power100.io/wp-content/uploads/2023/12/Modernize-logo-2.svg",
+    "title": "Modernize logo 2",
+    "sample_pages": [],
+    "source": "media-library-search",
+    "alt_hits": []
+  },
+  "One Click Contractor": {
+    "url": "https://power100.io/wp-content/uploads/2023/10/One-Click-Contractor-logo-1.webp",
+    "attachment_id": null,
+    "sample_pages": [
+      "ryan-lococo-expert-contributor"
+    ],
+    "source": "legacy-contrib-page-direct"
+  },
+  "Dave Yoho Associates": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/dave-yoho-associates-logo-2.png",
+    "attachment_id": 1402,
+    "url_dark": "https://staging.power100.io/wp-content/uploads/2026/04/dave-yoho-associates-logo-dark-2.png",
+    "attachment_id_dark": 1403,
+    "aliases": [
+      "Dave Yoho"
+    ],
+    "source": "local-upload",
+    "updated": "2026-04-30"
+  },
+  "Bee Window": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/bee-window-logo-2.png",
+    "attachment_id": 1404,
+    "source": "local-upload",
+    "updated": "2026-04-30"
+  },
+  "Matrix Home Solutions": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/matrix-home-solutions-logo-2.png",
+    "attachment_id": 1405,
+    "aliases": [
+      "Matrix Basement Finishing",
+      "Matrix Basement Systems"
+    ],
+    "source": "local-upload",
+    "updated": "2026-04-30"
+  },
+  "Lifetime Home Remodeling": {
+    "url": "https://staging.power100.io/wp-content/uploads/2026/04/lifetime-home-remodeling-logo-2.png",
+    "attachment_id": 1406,
+    "source": "local-upload",
+    "updated": "2026-04-30"
   }
 }

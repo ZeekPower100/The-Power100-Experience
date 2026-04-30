@@ -177,7 +177,8 @@ function ic_register_acf_fields() {
     $ec_fields[] = array('key' => 'field_ec_tab_company', 'label' => 'Company', 'type' => 'tab');
     $ec_fields[] = array('key' => 'field_ec_company_name',         'label' => 'Company Name',         'name' => 'ec_company_name',         'type' => 'text');
     $ec_fields[] = array('key' => 'field_ec_company_desc',         'label' => 'Company Description',  'name' => 'ec_company_desc',         'type' => 'textarea', 'rows' => 4);
-    $ec_fields[] = array('key' => 'field_ec_company_logo',         'label' => 'Company Logo',         'name' => 'ec_company_logo',         'type' => 'image', 'return_format' => 'id', 'preview_size' => 'thumbnail');
+    $ec_fields[] = array('key' => 'field_ec_company_logo',         'label' => 'Company Logo (Light bg)', 'name' => 'ec_company_logo',         'type' => 'image', 'return_format' => 'id', 'preview_size' => 'thumbnail', 'instructions' => 'Light-background variant. Mirrored from P100 staging.');
+    $ec_fields[] = array('key' => 'field_ec_company_logo_dark',    'label' => 'Company Logo (Dark bg)',  'name' => 'ec_company_logo_dark',    'type' => 'image', 'return_format' => 'id', 'preview_size' => 'thumbnail', 'instructions' => 'Dark-background variant — what the IC lander prefers. Falls back to light if blank.');
     $ec_fields[] = array('key' => 'field_ec_company_url',          'label' => 'Company URL',          'name' => 'ec_company_url',          'type' => 'url');
     $ec_fields[] = array('key' => 'field_ec_company_lander_url',   'label' => 'Company Lander URL',   'name' => 'ec_company_lander_url',   'type' => 'url');
     $ec_fields[] = array('key' => 'field_ec_ceo_lander_url',       'label' => 'CEO Lander URL',       'name' => 'ec_ceo_lander_url',       'type' => 'url');

@@ -407,15 +407,25 @@ function getLogoMap() {
   return _logoMap;
 }
 
-function getCompanyLogoFromLegacy(companyName) {
-  if (!companyName) return null;
+// Returns { light, dark } variants for a company. `light` is the primary
+// (also written to `ec_company_logo`); `dark` is optional, used by the IC
+// dark-themed mirror (`ec_company_logo_dark`). Either may be null if the
+// legacy map has no entry / no dark variant.
+function getCompanyLogoVariants(companyName) {
+  if (!companyName) return { light: null, dark: null };
   const map = getLogoMap();
-  // Exact match first
-  if (map[companyName]) return map[companyName].url;
-  // Fuzzy: lowercase + alphanumeric only
-  const key = companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (map.__normalized[key]) return map.__normalized[key].url;
-  return null;
+  let data = map[companyName] || null;
+  if (!data) {
+    const key = companyName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    data = map.__normalized[key] || null;
+  }
+  if (!data) return { light: null, dark: null };
+  return { light: data.url || null, dark: data.url_dark || null };
+}
+
+// Back-compat: legacy callers expect just the light URL string.
+function getCompanyLogoFromLegacy(companyName) {
+  return getCompanyLogoVariants(companyName).light;
 }
 
 async function sideloadCompanyLogoToStaging(logoUrl, companyName) {
@@ -596,7 +606,7 @@ async function findStagingPageByName(fullName) {
 // post (dark-themed gated copy). Idempotent on (_p100_source_id, slug).
 // Non-blocking — Power100 write is the source of truth; IC mirror failures
 // are logged but never surfaced to the caller.
-async function mirrorToInnerCircle({ p100PageId, p100PageUrl, slug, fullName, meta, headshotUrl, companyLogoUrl }) {
+async function mirrorToInnerCircle({ p100PageId, p100PageUrl, slug, fullName, meta, headshotUrl, companyLogoUrl, companyLogoUrlDark }) {
   if (!IC_API_KEY) {
     console.warn('[mirrorToInnerCircle] IC_API_KEY missing, skipping IC mirror');
     return null;
@@ -612,8 +622,9 @@ async function mirrorToInnerCircle({ p100PageId, p100PageUrl, slug, fullName, me
       slug:             icSlug,
       title:            fullName,
       meta,
-      headshot_url:     headshotUrl || null,
-      company_logo_url: companyLogoUrl || null,
+      headshot_url:          headshotUrl || null,
+      company_logo_url:      companyLogoUrl || null,
+      company_logo_url_dark: companyLogoUrlDark || null,
     }, {
       headers: { 'X-IC-API-Key': IC_API_KEY, 'Content-Type': 'application/json' },
       timeout: 25000, // image sideload can take a few seconds
@@ -791,26 +802,44 @@ async function upsertContributorLander(row, opts = {}) {
     }
   }
 
-  // ec_company_logo: lookup chain — legacy map → sideload to staging.
-  // Skip if already set on existing page (preserves manual overrides).
-  if (!meta.ec_company_logo && meta.ec_company_name) {
-    if (row.wp_page_id && Number.isFinite(parseInt(row.wp_page_id, 10))) {
+  // ec_company_logo + ec_company_logo_dark: lookup chain — legacy map → sideload to staging.
+  // Skip each variant if already set on existing page (preserves manual overrides).
+  // Light variant powers P100 (light bg). Dark variant powers IC mirror (dark bg).
+  if (meta.ec_company_name) {
+    // Pull both existing variants from staging if we have a page reference
+    if ((!meta.ec_company_logo || !meta.ec_company_logo_dark) &&
+        row.wp_page_id && Number.isFinite(parseInt(row.wp_page_id, 10))) {
       try {
         const pid = parseInt(row.wp_page_id, 10);
         const ex = await axios.get(`${STAGING_P100_BASE}/wp-json/wp/v2/pages/${pid}?_fields=meta`,
           { headers: { Authorization: auth }, timeout: 8000 });
-        if (ex.data?.meta?.ec_company_logo) meta.ec_company_logo = ex.data.meta.ec_company_logo;
+        if (!meta.ec_company_logo && ex.data?.meta?.ec_company_logo) {
+          meta.ec_company_logo = ex.data.meta.ec_company_logo;
+        }
+        if (!meta.ec_company_logo_dark && ex.data?.meta?.ec_company_logo_dark) {
+          meta.ec_company_logo_dark = ex.data.meta.ec_company_logo_dark;
+        }
       } catch (e) { /* fall through */ }
     }
-    if (!meta.ec_company_logo) {
-      const legacyLogoUrl = getCompanyLogoFromLegacy(meta.ec_company_name);
-      if (legacyLogoUrl) {
+    // Sideload missing variants from the legacy map
+    if (!meta.ec_company_logo || !meta.ec_company_logo_dark) {
+      const variants = getCompanyLogoVariants(meta.ec_company_name);
+      if (!meta.ec_company_logo && variants.light) {
         try {
-          const logoAttId = await sideloadCompanyLogoToStaging(legacyLogoUrl, meta.ec_company_name);
-          meta.ec_company_logo = logoAttId;
-          console.log(`[upsertContributorLander] Sideloaded company logo ${logoAttId} for "${meta.ec_company_name}" (from legacy)`);
+          const id = await sideloadCompanyLogoToStaging(variants.light, meta.ec_company_name);
+          meta.ec_company_logo = id;
+          console.log(`[upsertContributorLander] Sideloaded company logo (light) ${id} for "${meta.ec_company_name}"`);
         } catch (e) {
-          console.warn(`[upsertContributorLander] Logo sideload failed for "${meta.ec_company_name}":`, e.message);
+          console.warn(`[upsertContributorLander] Logo (light) sideload failed for "${meta.ec_company_name}":`, e.message);
+        }
+      }
+      if (!meta.ec_company_logo_dark && variants.dark) {
+        try {
+          const id = await sideloadCompanyLogoToStaging(variants.dark, `${meta.ec_company_name} dark`);
+          meta.ec_company_logo_dark = id;
+          console.log(`[upsertContributorLander] Sideloaded company logo (dark) ${id} for "${meta.ec_company_name}"`);
+        } catch (e) {
+          console.warn(`[upsertContributorLander] Logo (dark) sideload failed for "${meta.ec_company_name}":`, e.message);
         }
       }
     }
@@ -837,7 +866,8 @@ async function upsertContributorLander(row, opts = {}) {
       });
       const pageUrl = res.data.link || `${STAGING_P100_BASE}/?page_id=${pageId}`;
       console.log(`[upsertContributorLander] Updated existing page ${pageId} for "${fullName}" (source=${source})`);
-      mirrorToInnerCircle({ p100PageId: pageId, p100PageUrl: pageUrl, slug, fullName, meta, headshotUrl: row.headshot_url || null, companyLogoUrl: getCompanyLogoFromLegacy(meta.ec_company_name) });
+      const _v1 = getCompanyLogoVariants(meta.ec_company_name);
+      mirrorToInnerCircle({ p100PageId: pageId, p100PageUrl: pageUrl, slug, fullName, meta, headshotUrl: row.headshot_url || null, companyLogoUrl: _v1.light, companyLogoUrlDark: _v1.dark });
       return { wp_page_id: pageId, wp_page_url: pageUrl, created: false, action: 'updated' };
     } catch (err) {
       // Fall through to lookup-by-name if the stored page_id is gone
@@ -864,7 +894,8 @@ async function upsertContributorLander(row, opts = {}) {
       ).catch(e => console.warn(`[upsertContributorLander] Failed to back-link wp_page_id on row ${row.id}:`, e.message));
     }
     console.log(`[upsertContributorLander] Linked existing page ${pageId} for "${fullName}" (source=${source})`);
-    mirrorToInnerCircle({ p100PageId: pageId, p100PageUrl: pageUrl, slug, fullName, meta, headshotUrl: row.headshot_url || null, companyLogoUrl: getCompanyLogoFromLegacy(meta.ec_company_name) });
+    const _v2 = getCompanyLogoVariants(meta.ec_company_name);
+    mirrorToInnerCircle({ p100PageId: pageId, p100PageUrl: pageUrl, slug, fullName, meta, headshotUrl: row.headshot_url || null, companyLogoUrl: _v2.light, companyLogoUrlDark: _v2.dark });
     return { wp_page_id: pageId, wp_page_url: pageUrl, created: false, action: 'linked' };
   }
 
@@ -899,13 +930,16 @@ async function upsertContributorLander(row, opts = {}) {
 
   // 4. Mirror to IC (non-blocking — IC failure does not affect Power100 truth).
   // Always fired on first create; updated paths fire it too via the early-return branches.
+  const _v3 = getCompanyLogoVariants(meta.ec_company_name);
   mirrorToInnerCircle({
-    p100PageId:  pageId,
-    p100PageUrl: pageUrl,
+    p100PageId:        pageId,
+    p100PageUrl:       pageUrl,
     slug,
     fullName,
     meta,
-    headshotUrl: row.headshot_url || null,
+    headshotUrl:       row.headshot_url || null,
+    companyLogoUrl:    _v3.light,
+    companyLogoUrlDark: _v3.dark,
   });
 
   return { wp_page_id: pageId, wp_page_url: pageUrl, created: true, action: 'created' };

@@ -47,8 +47,9 @@ add_action('init', function () {
         ));
     }
 
-    // Image attachment IDs (integer)
-    foreach (array('ec_headshot', 'ec_company_logo') as $key) {
+    // Image attachment IDs (integer). ec_company_logo_dark is the dark-bg
+    // variant used by the IC mirror; staging (light bg) uses ec_company_logo.
+    foreach (array('ec_headshot', 'ec_company_logo', 'ec_company_logo_dark') as $key) {
         register_post_meta('page', $key, array(
             'show_in_rest' => true,
             'single'       => true,

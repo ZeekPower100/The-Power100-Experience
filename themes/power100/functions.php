@@ -63,6 +63,7 @@ $includes = array(
     'inc/homepage-options.php',         // Homepage ACF options page + spotlight fields
     'inc/ec-contributor-fields.php',    // Expert Contributor ACF field group (58 fields, all contributor variations)
     'inc/article-author-fields.php',    // Article author attribution (pr_author_* fields)
+    'mu-register-ec-meta.php',          // Registers ec_* post meta with show_in_rest=true (so REST PATCH writes them)
     // 'inc/post-types.php',    // CPTs and taxonomies
     // 'inc/rest-api.php',      // REST API endpoints
     // 'inc/acf-fields.php',    // ACF field registration
