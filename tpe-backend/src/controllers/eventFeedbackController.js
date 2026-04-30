@@ -81,20 +81,46 @@ async function submitEventFeedback(req, res) {
     const submissionHash = crypto.createHash('sha256').update(rawSig).digest('hex');
     const userAgent = (req.get('user-agent') || '').slice(0, 500);
 
+    // Speaker ratings — optional. Expects { "<speaker_id>": 1-5, ... }
+    let speakerRatings = {};
+    if (b.speaker_ratings && typeof b.speaker_ratings === 'object' && !Array.isArray(b.speaker_ratings)) {
+      for (const [sid, rating] of Object.entries(b.speaker_ratings)) {
+        const sidInt = parseInt(sid, 10);
+        const r = asInt15(rating);
+        if (Number.isFinite(sidInt) && r !== null) speakerRatings[String(sidInt)] = r;
+      }
+    }
+
     const ins = await query(
       `INSERT INTO event_feedback_responses (
         partner_id, event_name, position, company_size,
         rating_vibe, rating_value, rating_content, rating_facility, rating_energy,
-        client_tenure, consent_given, submission_hash, user_agent, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11, $12, NOW())
+        client_tenure, consent_given, submission_hash, user_agent, speaker_ratings, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, true, $11, $12, $13, NOW())
       RETURNING id`,
       [
         partnerId, eventName, position, companySize || null,
         ratings.vibe, ratings.value, ratings.content, ratings.facility, ratings.energy,
-        tenure, submissionHash, userAgent,
+        tenure, submissionHash, userAgent, JSON.stringify(speakerRatings),
       ]
     );
     const responseId = ins.rows[0].id;
+
+    // Update aggregate ratings on event_speakers for any rated speakers (fire-and-forget)
+    if (Object.keys(speakerRatings).length) {
+      try {
+        for (const [sidStr, rating] of Object.entries(speakerRatings)) {
+          await query(
+            `UPDATE event_speakers
+             SET total_ratings = COALESCE(total_ratings, 0) + 1,
+                 average_rating = ((COALESCE(average_rating, 0) * COALESCE(total_ratings, 0)) + $1) / (COALESCE(total_ratings, 0) + 1),
+                 updated_at = NOW()
+             WHERE id = $2`,
+            [rating, parseInt(sidStr, 10)]
+          );
+        }
+      } catch (e) { console.warn('[eventFeedback] speaker aggregate update failed:', e.message); }
+    }
 
     // Look up partner name for the operator alert
     const partnerRow = await query('SELECT company_name FROM strategic_partners WHERE id = $1', [partnerId]).catch(() => ({ rows: [] }));
