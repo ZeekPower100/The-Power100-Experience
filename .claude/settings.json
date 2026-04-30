@@ -9,6 +9,15 @@
             "command": "bash .claude/hooks/check-contributor-docs.sh"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check-urls-before-write.sh"
+          }
+        ]
       }
     ]
   }

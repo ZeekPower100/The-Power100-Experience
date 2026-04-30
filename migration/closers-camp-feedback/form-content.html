@@ -350,6 +350,18 @@ body { color: #d4d4d4 !important; }
           </div>
         </div>
 
+        <div class="rating-row" data-speaker-id="38">
+          <div class="rating-label">Spencer Havemann</div>
+          <div class="rating-desc">Siro</div>
+          <div class="rating-buttons">
+            <input type="radio" id="sp38-1" name="sp_38" value="1"><label for="sp38-1">1</label>
+            <input type="radio" id="sp38-2" name="sp_38" value="2"><label for="sp38-2">2</label>
+            <input type="radio" id="sp38-3" name="sp_38" value="3"><label for="sp38-3">3</label>
+            <input type="radio" id="sp38-4" name="sp_38" value="4"><label for="sp38-4">4</label>
+            <input type="radio" id="sp38-5" name="sp_38" value="5"><label for="sp38-5">5</label>
+          </div>
+        </div>
+
         <div class="nav-row">
           <button type="button" class="back" data-back="2">← Back</button>
           <button type="button" class="next" data-next="4">Next →</button>
@@ -423,7 +435,7 @@ body { color: #d4d4d4 !important; }
         <li>AI-powered insights tailored to operators like you</li>
         <li>Early access to industry events &amp; rankings</li>
       </ul>
-      <a href="https://innercircle.power100.io/sign-up/" class="ic-btn" target="_blank" rel="noopener">Join Inner Circle Free →</a>
+      <a href="https://innercircle.power100.io/register/" class="ic-btn" target="_blank" rel="noopener">Join Inner Circle Free →</a>
     </div>
   </div>
 </div>
@@ -448,14 +460,24 @@ body { color: #d4d4d4 !important; }
   var COMPANY_LABELS = { '0_1m':'$0–$1M', '1m_5m':'$1M–$5M', '5m_10m':'$5M–$10M', '10m_25m':'$10M–$25M', '25m_plus':'$25M+' };
   var TENURE_LABELS = { 'over_2_years':'Over 2 years', '1_to_2_years':'1–2 years', '6_to_12_months':'6–12 months', '0_to_6_months':'0–6 months', 'not_currently_client':'Not currently a client' };
 
+  var scrollAnchor = document.querySelector('.p100-fb .anon-banner') || document.querySelector('.p100-fb');
+  function scrollFormIntoView() {
+    if (!scrollAnchor) { return; }
+    var rect = scrollAnchor.getBoundingClientRect();
+    var target = window.scrollY + rect.top - 12;
+    if (target < 0) { target = 0; }
+    window.scrollTo({ top: target, behavior: 'smooth' });
+  }
+
   function showError(msg) {
     errorBox.textContent = msg;
     errorBox.style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    scrollFormIntoView();
   }
   function clearError() { errorBox.style.display = 'none'; }
 
   function goTo(n) {
+    var fromStep = current;
     document.querySelectorAll('.p100-fb .step').forEach(function(s) { s.classList.remove('active'); });
     var target = document.querySelector('.p100-fb .step[data-step="' + n + '"]');
     if (target) target.classList.add('active');
@@ -464,7 +486,7 @@ body { color: #d4d4d4 !important; }
     stepLabel.textContent = 'Step ' + n + ' of ' + STEPS;
     stepName.textContent = STEP_NAMES[n] || '';
     clearError();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (fromStep >= 2) { scrollFormIntoView(); }
   }
 
   function validateStep(n) {
@@ -571,7 +593,7 @@ body { color: #d4d4d4 !important; }
         progressFill.style.width = '100%';
         stepLabel.textContent = 'Step 6 of 6';
         stepName.textContent = 'Thank You';
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        scrollFormIntoView();
       } else {
         showError(res.body.error || 'Submission failed. Please try again.');
         submitBtn.disabled = false;
