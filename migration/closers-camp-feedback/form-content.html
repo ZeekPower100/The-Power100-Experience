@@ -1,0 +1,268 @@
+<style>
+.p100-fb * { box-sizing: border-box; }
+.p100-fb { max-width: 720px; margin: 0 auto; padding: 48px 24px 80px; font-family: Poppins, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #1a1a1a; }
+.p100-fb .header { text-align: center; margin-bottom: 36px; }
+.p100-fb .header img { width: 56px; margin-bottom: 18px; }
+.p100-fb .header .partner-badge { display: inline-block; background: rgba(251,4,1,0.1); color: #FB0401; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 6px 14px; border-radius: 20px; margin-bottom: 18px; border: 1px solid rgba(251,4,1,0.25); }
+.p100-fb .header h1 { font-size: 32px; font-weight: 800; color: #000; margin: 0 0 10px; letter-spacing: -0.5px; line-height: 1.2; }
+.p100-fb .header .sub { font-size: 15px; color: #6c757d; margin: 0; line-height: 1.6; }
+.p100-fb .anon-banner { background: #f8f9fa; border: 1px solid #e9ecef; border-left: 3px solid #FB0401; border-radius: 8px; padding: 14px 18px; margin-bottom: 32px; font-size: 13px; color: #495057; line-height: 1.55; }
+.p100-fb .anon-banner strong { color: #000; }
+.p100-fb form { background: #fff; }
+.p100-fb .section { margin-bottom: 36px; padding-bottom: 28px; border-bottom: 1px solid #e9ecef; }
+.p100-fb .section:last-of-type { border-bottom: none; }
+.p100-fb .section-head { margin-bottom: 20px; }
+.p100-fb .section-head h2 { font-size: 18px; font-weight: 700; color: #000; margin: 0 0 4px; }
+.p100-fb .section-head p { font-size: 13px; color: #6c757d; margin: 0; }
+.p100-fb .field { margin-bottom: 18px; }
+.p100-fb .field label { display: block; font-size: 13px; font-weight: 600; color: #1a1a1a; margin-bottom: 8px; }
+.p100-fb .field label .req { color: #FB0401; margin-left: 3px; }
+.p100-fb .field input[type=text], .p100-fb .field select { width: 100%; padding: 13px 15px; background: #fff; border: 1px solid #ced4da; border-radius: 8px; color: #1a1a1a; font-family: inherit; font-size: 14px; transition: border-color 0.2s, box-shadow 0.2s; }
+.p100-fb .field input[type=text]:focus, .p100-fb .field select:focus { outline: none; border-color: #FB0401; box-shadow: 0 0 0 3px rgba(251,4,1,0.12); }
+.p100-fb .rating-row { display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: center; padding: 14px 0; border-bottom: 1px solid #f1f3f5; }
+.p100-fb .rating-row:last-child { border-bottom: none; }
+.p100-fb .rating-label { font-size: 14px; font-weight: 600; color: #1a1a1a; }
+.p100-fb .rating-label .desc { display: block; font-size: 12px; font-weight: 400; color: #6c757d; margin-top: 2px; }
+.p100-fb .rating-buttons { display: flex; gap: 6px; }
+.p100-fb .rating-buttons input[type=radio] { display: none; }
+.p100-fb .rating-buttons label { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border: 1px solid #ced4da; border-radius: 50%; font-size: 14px; font-weight: 600; color: #6c757d; cursor: pointer; transition: all 0.15s; user-select: none; }
+.p100-fb .rating-buttons label:hover { border-color: #FB0401; color: #FB0401; }
+.p100-fb .rating-buttons input[type=radio]:checked + label { background: #FB0401; border-color: #FB0401; color: #fff; }
+.p100-fb .scale-hint { font-size: 11px; color: #adb5bd; margin: 6px 0 0; text-align: right; }
+.p100-fb .consent { background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 16px 20px; margin: 24px 0; }
+.p100-fb .consent label { display: flex; align-items: flex-start; gap: 12px; font-size: 13px; color: #495057; line-height: 1.55; cursor: pointer; }
+.p100-fb .consent input[type=checkbox] { margin-top: 3px; flex-shrink: 0; }
+.p100-fb .submit-row { text-align: center; margin-top: 32px; }
+.p100-fb .submit-btn { background: #FB0401; color: #fff; border: none; padding: 16px 56px; border-radius: 50px; font-family: inherit; font-size: 16px; font-weight: 700; cursor: pointer; transition: background 0.2s, transform 0.1s; box-shadow: 0 4px 16px rgba(251,4,1,0.25); }
+.p100-fb .submit-btn:hover { background: #e00301; transform: translateY(-1px); }
+.p100-fb .submit-btn:disabled { background: #adb5bd; cursor: not-allowed; box-shadow: none; transform: none; }
+.p100-fb .alert { padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; display: none; }
+.p100-fb .alert.error { background: #fff5f5; border: 1px solid #ffd6d6; color: #c92a2a; display: block; }
+.p100-fb .thanks { display: none; text-align: center; padding: 60px 24px; }
+.p100-fb .thanks.show { display: block; }
+.p100-fb .thanks-check { width: 80px; height: 80px; background: #28a745; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 24px; }
+.p100-fb .thanks-check svg { width: 40px; height: 40px; }
+.p100-fb .thanks h2 { font-size: 28px; font-weight: 800; color: #000; margin: 0 0 12px; }
+.p100-fb .thanks .lead { font-size: 16px; color: #495057; margin: 0 0 36px; line-height: 1.6; }
+.p100-fb .ic-cta { background: linear-gradient(135deg, #000 0%, #1a1a1a 100%); border-radius: 16px; padding: 36px 28px; margin-top: 32px; color: #fff; }
+.p100-fb .ic-cta .ic-badge { display: inline-block; background: rgba(200,169,81,0.15); color: #c8a951; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 6px 14px; border-radius: 20px; margin-bottom: 16px; border: 1px solid rgba(200,169,81,0.4); }
+.p100-fb .ic-cta h3 { font-size: 22px; font-weight: 700; color: #fff; margin: 0 0 10px; }
+.p100-fb .ic-cta p { font-size: 14px; color: rgba(255,255,255,0.75); margin: 0 0 22px; line-height: 1.6; }
+.p100-fb .ic-cta ul { text-align: left; max-width: 380px; margin: 0 auto 24px; padding: 0; list-style: none; }
+.p100-fb .ic-cta ul li { font-size: 13px; color: rgba(255,255,255,0.85); padding: 6px 0 6px 24px; position: relative; }
+.p100-fb .ic-cta ul li::before { content: "✓"; position: absolute; left: 0; color: #c8a951; font-weight: 700; }
+.p100-fb .ic-cta a.ic-btn { display: inline-block; background: #c8a951; color: #000; padding: 14px 36px; border-radius: 50px; font-size: 15px; font-weight: 700; text-decoration: none; transition: background 0.2s; }
+.p100-fb .ic-cta a.ic-btn:hover { background: #d4b765; }
+@media (max-width: 600px) { .p100-fb { padding: 32px 16px 60px; } .p100-fb .header h1 { font-size: 26px; } .p100-fb .rating-row { grid-template-columns: 1fr; gap: 10px; } .p100-fb .rating-buttons { justify-content: flex-start; } }
+</style>
+
+<div class="p100-fb">
+  <div id="p100-fb-form-state">
+    <div class="header">
+      <img src="https://power100.io/wp-content/uploads/2025/03/Power100-Logo.png" alt="Power100">
+      <div class="partner-badge">Closer's Camp 2026 · Grosso University</div>
+      <h1>Help us evaluate Grosso University</h1>
+      <p class="sub">Your honest, anonymous feedback shapes Power100's ongoing partner rankings.</p>
+    </div>
+
+    <div class="anon-banner">
+      <strong>This survey is fully anonymous.</strong> We do not collect your name, email, phone, or company name. Per consumer protection guidelines, your responses are used solely for evaluating Grosso University as a Power100 preferred partner. Aggregate data may inform PowerConfidence scores; individual responses are never shared back to Grosso.
+    </div>
+
+    <div id="p100-fb-error" class="alert error"></div>
+
+    <form id="p100-fb-form">
+      <input type="hidden" name="partner_id" value="40">
+      <input type="hidden" name="event_name" value="Closer's Camp 2026">
+
+      <div class="section">
+        <div class="section-head">
+          <h2>About You (Anonymous)</h2>
+          <p>Helps us understand who attended, without identifying you personally.</p>
+        </div>
+
+        <div class="field">
+          <label>Your position / title <span class="req">*</span></label>
+          <input type="text" name="position" required maxlength="100" placeholder="e.g. CEO, VP Sales, Sales Manager">
+        </div>
+
+        <div class="field">
+          <label>Your company size (annual revenue) <span class="req">*</span></label>
+          <select name="company_size" required>
+            <option value="">Select revenue range…</option>
+            <option value="0_1m">$0 – $1M</option>
+            <option value="1m_5m">$1M – $5M</option>
+            <option value="5m_10m">$5M – $10M</option>
+            <option value="10m_25m">$10M – $25M</option>
+            <option value="25m_plus">$25M+</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2>Rate Your Experience</h2>
+          <p>1 = Poor &nbsp;·&nbsp; 5 = Excellent</p>
+        </div>
+
+        <div class="rating-row">
+          <div class="rating-label">Vibe<span class="desc">Overall feel of the event</span></div>
+          <div class="rating-buttons" data-name="rating_vibe">
+            <input type="radio" id="vibe-1" name="rating_vibe" value="1" required><label for="vibe-1">1</label>
+            <input type="radio" id="vibe-2" name="rating_vibe" value="2"><label for="vibe-2">2</label>
+            <input type="radio" id="vibe-3" name="rating_vibe" value="3"><label for="vibe-3">3</label>
+            <input type="radio" id="vibe-4" name="rating_vibe" value="4"><label for="vibe-4">4</label>
+            <input type="radio" id="vibe-5" name="rating_vibe" value="5"><label for="vibe-5">5</label>
+          </div>
+        </div>
+
+        <div class="rating-row">
+          <div class="rating-label">Value<span class="desc">Return on time spent</span></div>
+          <div class="rating-buttons" data-name="rating_value">
+            <input type="radio" id="value-1" name="rating_value" value="1" required><label for="value-1">1</label>
+            <input type="radio" id="value-2" name="rating_value" value="2"><label for="value-2">2</label>
+            <input type="radio" id="value-3" name="rating_value" value="3"><label for="value-3">3</label>
+            <input type="radio" id="value-4" name="rating_value" value="4"><label for="value-4">4</label>
+            <input type="radio" id="value-5" name="rating_value" value="5"><label for="value-5">5</label>
+          </div>
+        </div>
+
+        <div class="rating-row">
+          <div class="rating-label">Content<span class="desc">Quality of the training material</span></div>
+          <div class="rating-buttons" data-name="rating_content">
+            <input type="radio" id="content-1" name="rating_content" value="1" required><label for="content-1">1</label>
+            <input type="radio" id="content-2" name="rating_content" value="2"><label for="content-2">2</label>
+            <input type="radio" id="content-3" name="rating_content" value="3"><label for="content-3">3</label>
+            <input type="radio" id="content-4" name="rating_content" value="4"><label for="content-4">4</label>
+            <input type="radio" id="content-5" name="rating_content" value="5"><label for="content-5">5</label>
+          </div>
+        </div>
+
+        <div class="rating-row">
+          <div class="rating-label">Facility<span class="desc">Venue and accommodations</span></div>
+          <div class="rating-buttons" data-name="rating_facility">
+            <input type="radio" id="facility-1" name="rating_facility" value="1" required><label for="facility-1">1</label>
+            <input type="radio" id="facility-2" name="rating_facility" value="2"><label for="facility-2">2</label>
+            <input type="radio" id="facility-3" name="rating_facility" value="3"><label for="facility-3">3</label>
+            <input type="radio" id="facility-4" name="rating_facility" value="4"><label for="facility-4">4</label>
+            <input type="radio" id="facility-5" name="rating_facility" value="5"><label for="facility-5">5</label>
+          </div>
+        </div>
+
+        <div class="rating-row">
+          <div class="rating-label">Energy<span class="desc">Engagement and atmosphere</span></div>
+          <div class="rating-buttons" data-name="rating_energy">
+            <input type="radio" id="energy-1" name="rating_energy" value="1" required><label for="energy-1">1</label>
+            <input type="radio" id="energy-2" name="rating_energy" value="2"><label for="energy-2">2</label>
+            <input type="radio" id="energy-3" name="rating_energy" value="3"><label for="energy-3">3</label>
+            <input type="radio" id="energy-4" name="rating_energy" value="4"><label for="energy-4">4</label>
+            <input type="radio" id="energy-5" name="rating_energy" value="5"><label for="energy-5">5</label>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <h2>Your Relationship with Grosso University</h2>
+        </div>
+
+        <div class="field">
+          <label>How long have you been a Grosso University client? <span class="req">*</span></label>
+          <select name="client_tenure" required>
+            <option value="">Select tenure…</option>
+            <option value="over_2_years">Over 2 years</option>
+            <option value="1_to_2_years">Between 1 and 2 years</option>
+            <option value="6_to_12_months">6 to 12 months</option>
+            <option value="0_to_6_months">0 to 6 months</option>
+            <option value="not_currently_client">Not currently a client</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="consent">
+        <label>
+          <input type="checkbox" name="consent_given" value="1" required>
+          <span>I confirm my responses are voluntary and anonymous. I understand Power100 collects this feedback solely to evaluate Grosso University as a preferred partner, and that aggregate (not individual) data may inform PowerConfidence scores.</span>
+        </label>
+      </div>
+
+      <div class="submit-row">
+        <button type="submit" class="submit-btn" id="p100-fb-submit">Submit Anonymous Feedback</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="p100-fb-thanks-state" class="thanks">
+    <div class="thanks-check">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    </div>
+    <h2>Thank you for your feedback!</h2>
+    <p class="lead">Your honest input helps us continually evaluate our preferred partners. Aggregate insights from this survey will inform Grosso University's PowerConfidence ranking on Power100.</p>
+
+    <div class="ic-cta">
+      <div class="ic-badge">Power100 Inner Circle</div>
+      <h3>Get exclusive access to the industry's top operators</h3>
+      <p>Free membership to the Power100 Inner Circle — the gated portal for serious home-improvement leaders.</p>
+      <ul>
+        <li>PowerChats with the nation's top-ranked CEOs</li>
+        <li>Exclusive content from preferred partners like Grosso University</li>
+        <li>AI-powered insights tailored to operators like you</li>
+        <li>Early access to industry events &amp; rankings</li>
+      </ul>
+      <a href="https://innercircle.power100.io/sign-up/" class="ic-btn" target="_blank" rel="noopener">Join Inner Circle Free →</a>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var form = document.getElementById('p100-fb-form');
+  var submitBtn = document.getElementById('p100-fb-submit');
+  var errorBox = document.getElementById('p100-fb-error');
+  var formState = document.getElementById('p100-fb-form-state');
+  var thanksState = document.getElementById('p100-fb-thanks-state');
+  if (!form) return;
+
+  function showError(msg) {
+    errorBox.textContent = msg;
+    errorBox.style.display = 'block';
+    window.scrollTo({ top: errorBox.offsetTop - 60, behavior: 'smooth' });
+  }
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    errorBox.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting…';
+
+    var data = new FormData(form);
+    var payload = {};
+    data.forEach(function(v, k) { payload[k] = v; });
+    payload.consent_given = !!payload.consent_given;
+    payload.partner_id = parseInt(payload.partner_id, 10);
+
+    fetch('https://tpx.power100.io/api/event-feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, body: j }; }); })
+    .then(function(res) {
+      if (res.ok && res.body.success) {
+        formState.style.display = 'none';
+        thanksState.classList.add('show');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        showError(res.body.error || 'Submission failed. Please try again.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Anonymous Feedback';
+      }
+    })
+    .catch(function(err) {
+      showError('Network error. Please check your connection and try again.');
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Anonymous Feedback';
+    });
+  });
+})();
+</script>
