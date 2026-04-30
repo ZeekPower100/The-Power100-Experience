@@ -41,8 +41,18 @@ test.describe('Contractor Flow', () => {
       await expect(page.getByRole('heading', { name: 'The Power100 Experience' })).toBeVisible();
       await expect(page.locator('text=verify your information')).toBeVisible();
 
+      // Wait for first input to be attached AND interactable.
+      // Fixes flake where page.fill fires before React hydration completes
+      // and the controlled-input's onChange isn't bound yet — only the FIRST
+      // fill drops silently, subsequent ones work, leaving name empty.
+      await page.locator('input#name').waitFor({ state: 'visible', timeout: 15000 });
+      await page.locator('input#name').click();
+
       // Fill in verification details with unique data
       await page.fill('input#name', testData.name);
+      // Verify name actually persisted before continuing — re-fill once if not.
+      const nameVal = await page.locator('input#name').inputValue();
+      if (!nameVal) await page.fill('input#name', testData.name);
       await page.fill('input#email', testData.email);
       await page.fill('input#phone', testData.phone);
       await page.fill('input#company_name', testData.company);
