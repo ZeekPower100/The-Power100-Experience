@@ -20,27 +20,48 @@ $title_position  = get_field('ec_title_position', $pid);
 $hero_quote      = get_field('ec_hero_quote', $pid);
 $linkedin_url    = get_field('ec_linkedin_url', $pid);
 $website_url     = get_field('ec_website_url', $pid);
+// Two-axis model (locked 2026-04-30 — see memory/reference_two_axis_contributor_model.md):
+// - Ranking axis: ec_rank_status ('ranked_ceo' | 'ranked_partner' | NULL) + ec_rank_number (int)
+// - Contributor axis: ec_contributor_type ('contributor' | etc.). NEVER mix the two.
+// Backward compat: if ec_rank_status not set, fall back to legacy ec_contributor_type values
+// ('ranked_ceo' / 'ranked_partner' / 'ceo' / 'partner') + ec_power_rank.
+$rank_status_raw = get_field('ec_rank_status', $pid);
+$rank_number     = get_field('ec_rank_number', $pid);
 $power_rank      = get_field('ec_power_rank', $pid);
-$contributor_type_raw = get_field('ec_contributor_type', $pid) ?: 'ranked_ceo';
+$contributor_type_raw = get_field('ec_contributor_type', $pid) ?: 'contributor';
 
-// Normalize legacy values to the canonical 4-variation set.
-// Legacy 'ceo' / 'partner' rows from before the rename map to ranked_*.
+if (empty($rank_status_raw)) {
+    // Fallback: derive from legacy contributor_type
+    if (in_array($contributor_type_raw, array('ranked_ceo', 'ceo'), true)) {
+        $rank_status_raw = 'ranked_ceo';
+        if (!$rank_number && $power_rank) $rank_number = (int) $power_rank;
+    } elseif (in_array($contributor_type_raw, array('ranked_partner', 'partner'), true)) {
+        $rank_status_raw = 'ranked_partner';
+        if (!$rank_number && $power_rank) $rank_number = (int) $power_rank;
+    }
+}
+
+// Normalize legacy contributor_type. industry_leader collapses into contributor (Zeek 2026-04-30).
 $variation_map = array(
-    'ceo'             => 'ranked_ceo',
-    'ranked_ceo'      => 'ranked_ceo',
-    'partner'         => 'ranked_partner',
-    'ranked_partner'  => 'ranked_partner',
-    'industry_leader' => 'industry_leader',
-    'advisory_board'  => 'industry_leader',  // legacy → fold into industry_leader
+    'ceo'             => 'contributor',  // legacy mixed-axis — strip the rank meaning
+    'ranked_ceo'      => 'contributor',  // legacy mixed-axis
+    'partner'         => 'contributor',
+    'ranked_partner'  => 'contributor',
+    'industry_leader' => 'contributor',  // collapsed
+    'advisory_board'  => 'contributor',
     'contributor'     => 'contributor',
 );
-$contributor_type = isset($variation_map[$contributor_type_raw]) ? $variation_map[$contributor_type_raw] : 'industry_leader';
+$contributor_type = isset($variation_map[$contributor_type_raw]) ? $variation_map[$contributor_type_raw] : 'contributor';
 
-// Variation flags used throughout the template
-$is_paid_ec     = in_array($contributor_type, array('ranked_ceo', 'ranked_partner', 'industry_leader'), true);
-$is_contributor = ($contributor_type === 'contributor');
-$is_ranked_ceo  = ($contributor_type === 'ranked_ceo');
-$is_partner     = ($contributor_type === 'ranked_partner');
+// Two-axis flags
+$is_ranked_ceo     = ($rank_status_raw === 'ranked_ceo');
+$is_ranked_partner = ($rank_status_raw === 'ranked_partner');
+$is_ranked         = $is_ranked_ceo || $is_ranked_partner;
+// EC status is now driven by tpedb's contributor_class — read from a separate meta if present
+$is_paid_ec        = in_array(get_field('ec_is_expert_contributor', $pid), array(true, '1', 1, 'true'), true)
+                  || in_array($contributor_type_raw, array('ranked_ceo', 'ranked_partner', 'industry_leader'), true); // legacy fallback
+$is_contributor    = !$is_paid_ec;
+$is_partner        = $is_ranked_partner; // alias kept for legacy template references below
 $headshot        = get_field('ec_headshot', $pid);
 $headshot_url    = is_array($headshot) ? $headshot['url'] : (is_numeric($headshot) ? wp_get_attachment_url($headshot) : ($headshot ?: ''));
 
@@ -321,10 +342,10 @@ if ($recognition_raw) {
                         <span style="font-size: 80px; font-weight: 900; color: #fff;"><?php echo esc_html(mb_substr($first_name, 0, 1)); ?></span>
                     </div>
                     <?php endif; ?>
-                    <?php if ($power_rank && $is_ranked_ceo) : ?>
-                    <div class="ec-hero-rank-badge">
-                        <span class="rank-num"><?php echo esc_html($power_rank); ?></span>
-                        <span class="rank-lbl">Ranked<br>CEO</span>
+                    <?php if ($is_ranked && $rank_number) : ?>
+                    <div class="ec-hero-rank-badge ec-hero-rank-badge--<?php echo $is_ranked_ceo ? 'ceo' : 'partner'; ?>">
+                        <span class="rank-num">#<?php echo esc_html($rank_number); ?></span>
+                        <span class="rank-lbl">Ranked<br><?php echo $is_ranked_ceo ? 'CEO' : 'Partner'; ?></span>
                     </div>
                     <?php endif; ?>
                 </div>
