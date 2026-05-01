@@ -25,6 +25,10 @@ add_action('init', function () {
         'ec_stat_years', 'ec_stat_revenue', 'ec_stat_markets',
         'ec_stat_custom_label', 'ec_stat_custom_value',
         'ec_snapshots',
+        // Two-axis model (locked 2026-04-30): rank_status is independent of contributor_type.
+        // ec_rank_status: 'ranked_ceo' | 'ranked_partner' | empty. ec_rank_number: integer.
+        // See memory/reference_two_axis_contributor_model.md
+        'ec_rank_status',
     );
 
     // Per-video and per-testimonial fields
@@ -57,4 +61,12 @@ add_action('init', function () {
             'auth_callback' => function () { return current_user_can('edit_posts'); },
         ));
     }
+
+    // ec_rank_number — separate registration so REST returns it as int, not string
+    register_post_meta('page', 'ec_rank_number', array(
+        'show_in_rest' => true,
+        'single'       => true,
+        'type'         => 'integer',
+        'auth_callback' => function () { return current_user_can('edit_posts'); },
+    ));
 });

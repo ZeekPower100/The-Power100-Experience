@@ -36,6 +36,10 @@ const META_TO_COLUMN = {
   ec_recognition:         'recognition',
   ec_videos:              'videos',
   ec_testimonials:        'testimonials',
+  // Two-axis model — rank_status is independent of contributor_type/contributor_class.
+  // See memory/reference_two_axis_contributor_model.md (locked 2026-04-30).
+  ec_rank_status:         'rank_status',
+  ec_rank_number:         'rank_number',
 };
 
 // Off-limits even with force (UNIQUE constraint, system-managed, or already auth'd elsewhere)
