@@ -1164,6 +1164,21 @@ const createFromForm = async (req, res) => {
           return contributorEnrichment.enrichSingleLeader(fullName);
         } catch (e) { /* enrichment service not critical */ }
       })
+      .then(async () => {
+        // Gap-fill enrichment: re-read fresh row, score completeness, and if
+        // the form submission was thin (custom_stat / credentials / expertise_topics
+        // / recognition / headshot blank), run researchContributor() in gap-fill
+        // mode via upsertContributorLander. Form-submitted fields are preserved.
+        try {
+          const fresh = await query('SELECT * FROM expert_contributors WHERE id = $1', [contributor.id]);
+          if (fresh.rows.length === 0) return;
+          const contributorEnrichment = require('../services/contributorEnrichmentService');
+          await contributorEnrichment.upsertContributorLander(fresh.rows[0], {
+            source: 'public_form',
+            enrichOnGap: true,
+          });
+        } catch (e) { console.warn('[EC from-form gap-fill] non-fatal:', e.message); }
+      })
       .catch(e => console.error('[EC-DRC from-form] Integration chain error:', e.message));
 
     return res.status(wasUpdate ? 200 : 201).json({
