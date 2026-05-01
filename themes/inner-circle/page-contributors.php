@@ -58,27 +58,35 @@ get_header();
             $name = get_the_title($cp);
             $link_url = get_permalink($cp);
 
-            // Type / badge — derived from ec_contributor_type
-            $ctype_raw = get_post_meta($cid, 'ec_contributor_type', true) ?: 'contributor';
-            $ctype_map = array(
-                'ceo' => 'ranked_ceo', 'ranked_ceo' => 'ranked_ceo',
-                'partner' => 'ranked_partner', 'ranked_partner' => 'ranked_partner',
-                'industry_leader' => 'industry_leader', 'advisory_board' => 'industry_leader',
-                'contributor' => 'contributor',
-            );
-            $ctype = isset($ctype_map[$ctype_raw]) ? $ctype_map[$ctype_raw] : 'contributor';
-            $is_ec = in_array($ctype, array('ranked_ceo', 'ranked_partner', 'industry_leader'), true);
+            // ── Two-axis model (locked 2026-04-30) — see memory/reference_two_axis_contributor_model.md ──
+            // EC status (paid contributor) and rank status (CEO/Partner ranking) are INDEPENDENT.
+            // Read NEW fields first, fall back to legacy ec_contributor_type / ec_power_rank.
+            $rank_status = get_post_meta($cid, 'ec_rank_status', true);
+            $rank_number = get_post_meta($cid, 'ec_rank_number', true);
+            $ctype_raw   = get_post_meta($cid, 'ec_contributor_type', true) ?: 'contributor';
+            // Legacy fallback when new fields aren't synced yet
+            if (empty($rank_status)) {
+                if (in_array($ctype_raw, array('ranked_ceo', 'ceo'), true))     $rank_status = 'ranked_ceo';
+                elseif (in_array($ctype_raw, array('ranked_partner','partner'), true)) $rank_status = 'ranked_partner';
+            }
+            if (empty($rank_number)) {
+                $legacy_pr = get_post_meta($cid, 'ec_power_rank', true);
+                if ($legacy_pr) $rank_number = (int) ltrim((string) $legacy_pr, '#');
+            }
+            // EC = paid contributor. industry_leader is collapsed into 'contributor' going forward,
+            // but legacy paid-EC rows still show ranked_ceo/ranked_partner/industry_leader on the
+            // legacy contributor_type field — so use that as the EC marker.
+            $is_ec = in_array($ctype_raw, array('ranked_ceo', 'ranked_partner', 'industry_leader'), true);
 
-            // EC badge always shows for paid contributors. CEO/PARTNER is a SECOND
-            // chip when applicable (industry_leader gets just EC since rank already implies role).
+            // Sub-badge label from rank_status
             $sub_badge = '';
-            if ($ctype === 'ranked_ceo')        $sub_badge = 'CEO';
-            elseif ($ctype === 'ranked_partner') $sub_badge = 'PARTNER';
+            if ($rank_status === 'ranked_ceo')         $sub_badge = 'CEO';
+            elseif ($rank_status === 'ranked_partner') $sub_badge = 'PARTNER';
 
             // Company
             $company = get_post_meta($cid, 'ec_company_name', true);
-            // Power rank (for ranked CEOs)
-            $power_rank = get_post_meta($cid, 'ec_power_rank', true);
+            // Numeric rank for the # chip (independent of CEO/PARTNER label)
+            $power_rank = $rank_number ? (int) $rank_number : '';
 
             // Photo — prefer post thumbnail (the IC-side sideloaded image)
             $photo = get_the_post_thumbnail_url($cid, 'medium');
