@@ -20,21 +20,28 @@ $title_position   = get_post_meta($pid, 'ec_title_position', true);
 $hero_quote       = get_post_meta($pid, 'ec_hero_quote', true);
 $linkedin_url     = get_post_meta($pid, 'ec_linkedin_url', true);
 $website_url      = get_post_meta($pid, 'ec_website_url', true);
-$power_rank       = get_post_meta($pid, 'ec_power_rank', true);
+// ── Two-axis model (locked 2026-04-30) — see memory/reference_two_axis_contributor_model.md ──
+// Rank status (CEO/Partner/none) and contributor class (EC/contributor) are INDEPENDENT axes.
+// Read NEW fields first, fall back to legacy ec_contributor_type / ec_power_rank.
+$rank_status_raw      = get_post_meta($pid, 'ec_rank_status', true);
+$rank_number          = get_post_meta($pid, 'ec_rank_number', true);
 $contributor_type_raw = get_post_meta($pid, 'ec_contributor_type', true) ?: 'contributor';
 
-// Normalize to canonical 4-variation set (matches P100 template)
-$variation_map = array(
-    'ceo' => 'ranked_ceo', 'ranked_ceo' => 'ranked_ceo',
-    'partner' => 'ranked_partner', 'ranked_partner' => 'ranked_partner',
-    'industry_leader' => 'industry_leader', 'advisory_board' => 'industry_leader',
-    'contributor' => 'contributor',
-);
-$contributor_type = isset($variation_map[$contributor_type_raw]) ? $variation_map[$contributor_type_raw] : 'contributor';
-$is_paid_ec     = in_array($contributor_type, array('ranked_ceo', 'ranked_partner', 'industry_leader'), true);
-$is_ranked_ceo  = ($contributor_type === 'ranked_ceo');
-$is_partner     = ($contributor_type === 'ranked_partner');
-$is_contributor = ($contributor_type === 'contributor');
+// Variation derivation: NEW two-axis fields win, fall back to legacy contributor_type
+$is_ranked_ceo     = ($rank_status_raw === 'ranked_ceo')     || in_array($contributor_type_raw, array('ranked_ceo','ceo'), true);
+$is_partner        = ($rank_status_raw === 'ranked_partner') || in_array($contributor_type_raw, array('ranked_partner','partner'), true);
+$is_industry_lead  = ($contributor_type_raw === 'industry_leader' || $contributor_type_raw === 'advisory_board');
+$is_paid_ec        = $is_ranked_ceo || $is_partner || $is_industry_lead;
+$is_contributor    = !$is_paid_ec;
+
+// Canonical contributor_type for badge text fallback
+if     ($is_ranked_ceo)    $contributor_type = 'ranked_ceo';
+elseif ($is_partner)       $contributor_type = 'ranked_partner';
+elseif ($is_industry_lead) $contributor_type = 'industry_leader';
+else                       $contributor_type = 'contributor';
+
+// Power rank: prefer NEW ec_rank_number (integer), fall back to legacy ec_power_rank (may have "#" prefix)
+$power_rank = $rank_number ?: ltrim((string) get_post_meta($pid, 'ec_power_rank', true), '#');
 
 $expertise_bio   = get_post_meta($pid, 'ec_expertise_bio', true);
 $credentials     = get_post_meta($pid, 'ec_credentials', true);
@@ -148,6 +155,7 @@ $power_verified_label = $is_contributor ? '★ CONTRIBUTOR' : '★ EXPERT';
 // Badge text
 if ($is_ranked_ceo && $power_rank)               $badge_text = "#$power_rank Ranked CEO · Power100 Expert Contributor";
 elseif ($is_ranked_ceo)                          $badge_text = 'Ranked CEO · Power100 Expert Contributor';
+elseif ($is_partner && $power_rank)              $badge_text = "#$power_rank Ranked Partner · Power100 Expert Contributor";
 elseif ($is_partner)                             $badge_text = 'Preferred Partner · Power100 Expert Contributor';
 elseif ($contributor_type === 'industry_leader') $badge_text = 'Industry Leader · Power100 Expert Contributor';
 elseif ($is_contributor)                         $badge_text = 'Power100 Contributor';
@@ -323,10 +331,10 @@ include get_stylesheet_directory() . '/css/ec-lander-dark.css';
                         <span style="font-size: 80px; font-weight: 900; color: #fff;"><?php echo esc_html(mb_substr($first_name, 0, 1)); ?></span>
                     </div>
                     <?php endif; ?>
-                    <?php if ($power_rank && $is_ranked_ceo) : ?>
-                    <div class="ec-hero-rank-badge">
-                        <span class="rank-num"><?php echo esc_html($power_rank); ?></span>
-                        <span class="rank-lbl">Ranked<br>CEO</span>
+                    <?php if ($power_rank && ($is_ranked_ceo || $is_partner)) : ?>
+                    <div class="ec-hero-rank-badge ec-hero-rank-badge--<?php echo $is_ranked_ceo ? 'ceo' : 'partner'; ?>">
+                        <span class="rank-num">#<?php echo esc_html($power_rank); ?></span>
+                        <span class="rank-lbl">Ranked<br><?php echo $is_ranked_ceo ? 'CEO' : 'Partner'; ?></span>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -373,8 +381,8 @@ include get_stylesheet_directory() . '/css/ec-lander-dark.css';
             <?php if ($stat_custom_value) : ?>
             <div class="ec-stat-item"><span class="ec-stat-value"><?php echo esc_html($stat_custom_value); ?></span><span class="ec-stat-label"><?php echo esc_html($stat_custom_label ?: 'Signature Metric'); ?></span></div>
             <?php endif; ?>
-            <?php if ($power_rank && $is_ranked_ceo) : ?>
-            <div class="ec-stat-item"><span class="ec-stat-value">#<?php echo esc_html($power_rank); ?></span><span class="ec-stat-label">National Power Ranking</span></div>
+            <?php if ($power_rank && ($is_ranked_ceo || $is_partner)) : ?>
+            <div class="ec-stat-item"><span class="ec-stat-value">#<?php echo esc_html($power_rank); ?></span><span class="ec-stat-label"><?php echo $is_ranked_ceo ? 'National Power Ranking' : 'Ranked Partner'; ?></span></div>
             <?php else : ?>
             <div class="ec-stat-item"><span class="ec-stat-value" style="color:var(--p-gold)"><?php echo esc_html($power_verified_label); ?></span><span class="ec-stat-label">Power100 Verified</span></div>
             <?php endif; ?>
