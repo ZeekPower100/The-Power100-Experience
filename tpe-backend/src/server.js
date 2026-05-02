@@ -30,6 +30,7 @@ const { initializeIGEScheduler } = require('./queues/igeQueue');
 const { initializeProactiveMessageScheduler } = require('./queues/proactiveMessageQueue');
 const { initializeQuarterlyPowerCardScheduler } = require('./queues/powerCardQueue');
 const { initializeHeartbeatScheduler } = require('./services/heartbeatService');
+const { initializeStuckDelegationScheduler } = require('./services/stuckDelegationSweepService');
 
 // Import routes
 const contractorRoutes = require('./routes/contractorRoutes');
@@ -378,6 +379,16 @@ initializeHeartbeatScheduler()
   })
   .catch((err) => {
     console.error('❌ Failed to initialize heartbeat scheduler:', err.message);
+  });
+
+// Initialize Stuck-Delegation Sweep (daily 8 AM ET nudge to operators for ECs
+// parked >= 3 days at delegation_sent / pending_delegation; re-nag every 7 days)
+initializeStuckDelegationScheduler()
+  .then(() => {
+    console.log('✅ Stuck-delegation sweep initialized — daily 8 AM America/New_York');
+  })
+  .catch((err) => {
+    console.error('❌ Failed to initialize stuck-delegation sweep:', err.message);
   });
 
 // Start server
