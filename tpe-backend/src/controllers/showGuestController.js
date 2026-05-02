@@ -465,6 +465,20 @@ const submitShowGuestForm = async (req, res) => {
     // Token submit = delegate completed on guest's behalf. Three messages:
     // delegate confirmation, guest email, guest SMS.
     setImmediate(() => { sendDelegateCompletionNotifications(row).catch(() => {}); });
+    // DRC mirror — surface this completion on the rep's company card. Re-fetch
+    // full row first (RETURNING above is a partial projection) so the handler
+    // sees rankings_company_id / assigned_rep_id if they were already set.
+    setImmediate(async () => {
+      try {
+        const ecDrcIntegration = require('../services/ecDrcIntegrationService');
+        const full = await query('SELECT * FROM expert_contributors WHERE id = $1', [row.id]);
+        if (full.rows.length > 0) {
+          await ecDrcIntegration.handleShowGuestProfileComplete(full.rows[0], true);
+        }
+      } catch (e) {
+        console.error('[showGuest] DRC mirror failed (delegate path):', e.message);
+      }
+    });
 
     return res.json({
       success: true,
@@ -589,6 +603,20 @@ const submitShowGuestFormPublic = async (req, res) => {
         });
       } catch (e) {
         console.error('[showGuest] upsertContributorLander failed:', e.message);
+      }
+    });
+    // DRC mirror — surface this completion on the rep's company card. Does the
+    // company-name lookup show guests don't otherwise get, then writes comm +
+    // note + task. Re-fetch full row so handler sees any post-INSERT meta.
+    setImmediate(async () => {
+      try {
+        const ecDrcIntegration = require('../services/ecDrcIntegrationService');
+        const full = await query('SELECT * FROM expert_contributors WHERE id = $1', [row.id]);
+        if (full.rows.length > 0) {
+          await ecDrcIntegration.handleShowGuestProfileComplete(full.rows[0], false);
+        }
+      } catch (e) {
+        console.error('[showGuest] DRC mirror failed (public path):', e.message);
       }
     });
 
