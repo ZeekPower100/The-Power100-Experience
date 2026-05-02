@@ -18,6 +18,7 @@ const { Queue, Worker } = require('bullmq');
 const Redis = require('ioredis');
 const { query } = require('../config/database');
 const { sendOperatorAlert } = require('./communicationService');
+const ecDrcIntegration = require('./ecDrcIntegrationService');
 
 const STUCK_DAYS_THRESHOLD = 3;       // First alert fires once row is >= 3 days old
 const RENAG_DAYS = 7;                  // Re-alert cadence after the first nudge
@@ -102,6 +103,15 @@ async function processStuckDelegationSweep() {
           );
           stats.alerted++;
           console.log(`[StuckDelegationSweep] Alerted EC#${row.id} (${row.first_name} ${row.last_name}) — ${days}d parked${row.self_delegated ? ' [SELF]' : ''}`);
+
+          // Mirror the alert into DRC so the rep sees it on the company card
+          // (comm timeline + pinned note on re-nags + escalating-priority task).
+          // Non-blocking — DRC failure does not roll back the alert-sent timestamp.
+          try {
+            await ecDrcIntegration.handleStuckDelegation(row, days, isFirstAlert);
+          } catch (e) {
+            console.warn(`[StuckDelegationSweep] DRC mirror failed for EC#${row.id} (alert still counted):`, e.message);
+          }
         } else {
           stats.errors++;
           console.warn(`[StuckDelegationSweep] Alert send failed for EC#${row.id}:`, alertResult);
