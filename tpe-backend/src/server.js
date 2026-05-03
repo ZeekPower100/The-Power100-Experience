@@ -31,6 +31,7 @@ const { initializeProactiveMessageScheduler } = require('./queues/proactiveMessa
 const { initializeQuarterlyPowerCardScheduler } = require('./queues/powerCardQueue');
 const { initializeHeartbeatScheduler } = require('./services/heartbeatService');
 const { initializeStuckDelegationScheduler } = require('./services/stuckDelegationSweepService');
+const aiosHybridSearchRoutes = require('./routes/internal/hybridSearch');
 
 // Import routes
 const contractorRoutes = require('./routes/contractorRoutes');
@@ -201,6 +202,7 @@ app.use((req, res, next) => {
 });
 
 // API Routes
+app.use('/api/internal/hybrid-search', aiosHybridSearchRoutes);
 app.use('/api/partners/public', publicPartnerRoutes);
 app.use('/api/public/live-pcrs', livePCRRoutes);
 app.use('/api/contractors', contractorRoutes);
